@@ -1,6 +1,14 @@
 """
 Audio preprocessor - converts uploaded audio to SurfPerch-compatible format.
-Target: 32 kHz, mono, 16-bit PCM, 5-second segments (160000 samples)
+
+SurfPerch Model Requirements (from perch-hoplite model_configs.py):
+- Sample rate: 32 kHz
+- Window duration: 5.0 seconds
+- Samples per window: 160,000
+
+Note: Williams et al. 2024 ReefSet uses 16 kHz / 1.88s for *training data*,
+but the actual SurfPerch model inference requires 32 kHz / 5.0s windows.
+
 Uses numpy for WAV processing (no external dependencies).
 """
 
@@ -21,14 +29,31 @@ EMBEDDINGS_BUCKET = os.environ.get('EMBEDDINGS_BUCKET')
 METADATA_TABLE = os.environ.get('METADATA_TABLE')
 CLASSIFIER_FUNCTION = os.environ.get('CLASSIFIER_FUNCTION')
 
-# Model requirements: 32kHz, 5-second segments
-TARGET_SAMPLE_RATE = 32000
-SEGMENT_DURATION = 5.0
-SEGMENT_SAMPLES = int(TARGET_SAMPLE_RATE * SEGMENT_DURATION)  # 160000
+# SurfPerch model requirements (from perch-hoplite model_configs.py)
+TARGET_SAMPLE_RATE = 32000  # 32 kHz
+SEGMENT_DURATION = 5.0      # 5.0 seconds (SurfPerch window size)
+SEGMENT_SAMPLES = 160000    # Exact: 32000 * 5.0 = 160,000 samples
+MIN_AUDIO_DURATION = 5.0    # Minimum audio length required
+MAX_AUDIO_DURATION = 600    # 10 minutes max (cost control)
+
+
+class AudioTooShortError(ValueError):
+    """Raised when audio is shorter than minimum required duration."""
+    pass
+
+
+class AudioTooLongError(ValueError):
+    """Raised when audio exceeds maximum allowed duration."""
+    pass
+
+
+class InvalidAudioFormatError(ValueError):
+    """Raised when audio file format is invalid or unsupported."""
+    pass
 
 
 def handler(event, context):
-    """Process uploaded audio file."""
+    """Process uploaded audio file for SurfPerch inference."""
     upload_id = event['upload_id']
     analysis_id = event['analysis_id']
     s3_key = event['s3_key']
@@ -41,16 +66,36 @@ def handler(event, context):
             output_path = Path(tmpdir) / 'processed.wav'
 
             # Download from S3
+            print(f"Downloading audio from s3://{AUDIO_BUCKET}/{s3_key}")
             s3.download_file(AUDIO_BUCKET, s3_key, str(input_path))
 
             # Read WAV file using pure Python
             orig_sample_rate, audio_data = read_wav(str(input_path))
+            orig_channels = audio_data.shape[1] if len(audio_data.shape) > 1 else 1
+            orig_duration = len(audio_data) / orig_sample_rate if orig_channels == 1 else audio_data.shape[0] / orig_sample_rate
+
+            print(f"Input audio: {orig_sample_rate}Hz, {orig_channels} channel(s), {orig_duration:.2f}s")
+
+            # Validate duration before processing
+            if orig_duration < MIN_AUDIO_DURATION:
+                raise AudioTooShortError(
+                    f"Audio too short: {orig_duration:.2f}s. "
+                    f"SurfPerch requires minimum {MIN_AUDIO_DURATION}s."
+                )
+
+            if orig_duration > MAX_AUDIO_DURATION:
+                raise AudioTooLongError(
+                    f"Audio too long: {orig_duration:.2f}s. "
+                    f"Maximum allowed is {MAX_AUDIO_DURATION}s (10 minutes) for cost control. "
+                    f"Consider splitting the audio into shorter segments."
+                )
 
             # Convert to mono if stereo
             if len(audio_data.shape) > 1:
+                print(f"Converting {orig_channels} channels to mono")
                 audio_data = audio_data.mean(axis=1)
 
-            # Convert to float32 and normalize
+            # Convert to float32 and normalize to [-1.0, 1.0]
             if audio_data.dtype == np.int16:
                 samples = audio_data.astype(np.float32) / 32768.0
             elif audio_data.dtype == np.int32:
@@ -60,15 +105,21 @@ def handler(event, context):
             else:
                 samples = audio_data.astype(np.float32) / np.max(np.abs(audio_data))
 
-            # Resample to target sample rate if needed
+            # Resample to 16kHz if needed
             if orig_sample_rate != TARGET_SAMPLE_RATE:
+                print(f"Resampling from {orig_sample_rate}Hz to {TARGET_SAMPLE_RATE}Hz")
                 samples = resample_linear(samples, orig_sample_rate, TARGET_SAMPLE_RATE)
 
             duration_seconds = len(samples) / TARGET_SAMPLE_RATE
             num_segments = int(duration_seconds / SEGMENT_DURATION)
 
+            print(f"Processed audio: {TARGET_SAMPLE_RATE}Hz, {duration_seconds:.2f}s, {num_segments} segments")
+
             if num_segments == 0:
-                raise ValueError(f"Audio too short: {duration_seconds:.2f}s (minimum: {SEGMENT_DURATION}s)")
+                raise AudioTooShortError(
+                    f"Audio too short after processing: {duration_seconds:.2f}s. "
+                    f"Need at least {MIN_AUDIO_DURATION}s for one {SEGMENT_DURATION}s segment."
+                )
 
             # Save processed audio as 16-bit WAV
             processed_samples = (samples * 32767).astype(np.int16)
@@ -78,7 +129,7 @@ def handler(event, context):
             processed_key = f'processed/{analysis_id}/audio.wav'
             s3.upload_file(str(output_path), AUDIO_BUCKET, processed_key)
 
-            # Segment audio for embedding
+            # Segment audio into 5.0s windows for SurfPerch
             segments = []
             for i in range(num_segments):
                 start = i * SEGMENT_SAMPLES
@@ -86,12 +137,22 @@ def handler(event, context):
                 if end <= len(samples):
                     segments.append(samples[start:end].tolist())
 
-            # Save segments for classifier
+            print(f"Created {len(segments)} segments of {SEGMENT_SAMPLES} samples each")
+
+            # Save segments for classifier with metadata
             segments_key = f'processed/{analysis_id}/segments.json'
+            segments_data = {
+                'segments': segments,
+                'sample_rate': TARGET_SAMPLE_RATE,
+                'segment_duration': SEGMENT_DURATION,
+                'segment_samples': SEGMENT_SAMPLES,
+                'total_duration': duration_seconds,
+                'original_sample_rate': orig_sample_rate
+            }
             s3.put_object(
                 Bucket=AUDIO_BUCKET,
                 Key=segments_key,
-                Body=json.dumps({'segments': segments}),
+                Body=json.dumps(segments_data),
                 ContentType='application/json'
             )
 
@@ -122,11 +183,55 @@ def handler(event, context):
 
             return {'statusCode': 200, 'body': json.dumps({'analysis_id': analysis_id, 'status': 'preprocessed', 'num_segments': num_segments})}
 
-    except Exception as e:
+    except AudioTooShortError as e:
+        error_code = 'AUDIO_TOO_SHORT'
+        print(f"Error: {error_code} - {str(e)}")
         table.put_item(Item={
             'pk': f'ANALYSIS#{analysis_id}',
             'sk': 'ERROR',
             'upload_id': upload_id,
+            'error_code': error_code,
+            'error': str(e),
+            'status': 'failed',
+            'min_duration_required': str(MIN_AUDIO_DURATION)
+        })
+        raise
+
+    except AudioTooLongError as e:
+        error_code = 'AUDIO_TOO_LONG'
+        print(f"Error: {error_code} - {str(e)}")
+        table.put_item(Item={
+            'pk': f'ANALYSIS#{analysis_id}',
+            'sk': 'ERROR',
+            'upload_id': upload_id,
+            'error_code': error_code,
+            'error': str(e),
+            'status': 'failed',
+            'max_duration_allowed': str(MAX_AUDIO_DURATION)
+        })
+        raise
+
+    except InvalidAudioFormatError as e:
+        error_code = 'INVALID_AUDIO_FORMAT'
+        print(f"Error: {error_code} - {str(e)}")
+        table.put_item(Item={
+            'pk': f'ANALYSIS#{analysis_id}',
+            'sk': 'ERROR',
+            'upload_id': upload_id,
+            'error_code': error_code,
+            'error': str(e),
+            'status': 'failed'
+        })
+        raise
+
+    except Exception as e:
+        error_code = 'PROCESSING_FAILED'
+        print(f"Error: {error_code} - {str(e)}")
+        table.put_item(Item={
+            'pk': f'ANALYSIS#{analysis_id}',
+            'sk': 'ERROR',
+            'upload_id': upload_id,
+            'error_code': error_code,
             'error': str(e),
             'status': 'failed'
         })
@@ -139,11 +244,17 @@ def read_wav(filepath):
         # Read RIFF header
         riff = f.read(4)
         if riff != b'RIFF':
-            raise ValueError("Not a valid WAV file (missing RIFF)")
+            raise InvalidAudioFormatError(
+                "Not a valid WAV file (missing RIFF header). "
+                "Please upload a standard WAV audio file."
+            )
         f.read(4)  # file size
         wave = f.read(4)
         if wave != b'WAVE':
-            raise ValueError("Not a valid WAV file (missing WAVE)")
+            raise InvalidAudioFormatError(
+                "Not a valid WAV file (missing WAVE marker). "
+                "Please upload a standard WAV audio file."
+            )
 
         # Find fmt chunk
         sample_rate = None
@@ -175,7 +286,10 @@ def read_wav(filepath):
                 f.read(chunk_size)
 
         if sample_rate is None:
-            raise ValueError("Invalid WAV: missing fmt chunk")
+            raise InvalidAudioFormatError(
+                "Invalid WAV file: missing format chunk. "
+                "The file may be corrupted or in an unsupported format."
+            )
 
         # Convert bytes to numpy array
         if bits_per_sample == 16:
@@ -185,7 +299,10 @@ def read_wav(filepath):
         elif bits_per_sample == 8:
             audio_data = np.frombuffer(data, dtype=np.uint8).astype(np.int16) - 128
         else:
-            raise ValueError(f"Unsupported bit depth: {bits_per_sample}")
+            raise InvalidAudioFormatError(
+                f"Unsupported bit depth: {bits_per_sample}-bit. "
+                f"Supported formats: 8-bit, 16-bit, 32-bit PCM."
+            )
 
         # Reshape for stereo
         if num_channels > 1:

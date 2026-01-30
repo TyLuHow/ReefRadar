@@ -1,5 +1,8 @@
 """
 Health classifier - uses SurfPerch embeddings to classify reef health.
+
+Uses the SurfPerch inference Lambda (container-based) for real ML embeddings.
+Falls back to synthetic embeddings if inference Lambda is unavailable.
 """
 
 import json
@@ -10,7 +13,7 @@ from datetime import datetime
 from decimal import Decimal
 
 s3 = boto3.client('s3')
-sagemaker_runtime = boto3.client('sagemaker-runtime')
+lambda_client = boto3.client('lambda')
 dynamodb = boto3.resource('dynamodb')
 
 
@@ -27,7 +30,7 @@ def convert_floats(obj):
 AUDIO_BUCKET = os.environ.get('AUDIO_BUCKET')
 EMBEDDINGS_BUCKET = os.environ.get('EMBEDDINGS_BUCKET')
 METADATA_TABLE = os.environ.get('METADATA_TABLE')
-SAGEMAKER_ENDPOINT = os.environ.get('SAGEMAKER_ENDPOINT')
+INFERENCE_FUNCTION = os.environ.get('INFERENCE_FUNCTION', 'reefradar-2477-inference')
 
 CATEGORIES = ['healthy', 'degraded', 'restored_early', 'restored_mid']
 
@@ -47,23 +50,43 @@ def handler(event, context):
         segments_data = json.loads(response['Body'].read().decode())
         segments = segments_data['segments']
 
-        # Try to get embeddings from SageMaker, fallback to synthetic if unavailable
+        # Try to get embeddings from inference Lambda, fallback to synthetic if unavailable
         embeddings = []
         use_synthetic = False
 
         try:
-            for segment in segments:
-                sm_response = sagemaker_runtime.invoke_endpoint(
-                    EndpointName=SAGEMAKER_ENDPOINT,
-                    ContentType='application/json',
-                    Body=json.dumps({'inputs': segment})
-                )
-                result = json.loads(sm_response['Body'].read().decode())
-                embedding = result.get('output_1', result.get('embedding', []))
-                embeddings.append(embedding)
-        except Exception as sm_error:
-            # SageMaker unavailable - use synthetic embeddings for demo
-            print(f"SageMaker unavailable: {sm_error}, using synthetic embeddings")
+            # Call SurfPerch inference Lambda with all segments at once
+            print(f"Calling inference Lambda: {INFERENCE_FUNCTION}")
+            inference_response = lambda_client.invoke(
+                FunctionName=INFERENCE_FUNCTION,
+                InvocationType='RequestResponse',
+                Payload=json.dumps({
+                    'segments': segments,
+                    'sample_rate': segments_data.get('sample_rate', 16000)
+                })
+            )
+
+            # Parse response
+            response_payload = json.loads(inference_response['Payload'].read().decode())
+
+            # Check for Lambda execution errors
+            if 'FunctionError' in inference_response:
+                raise Exception(f"Lambda error: {response_payload}")
+
+            # Extract embeddings from response body
+            if response_payload.get('statusCode') == 200:
+                body = response_payload.get('body', {})
+                if isinstance(body, str):
+                    body = json.loads(body)
+                embeddings = body.get('embeddings', [])
+                use_synthetic = body.get('synthetic', False)
+                print(f"Received {len(embeddings)} real embeddings from inference Lambda")
+            else:
+                raise Exception(f"Inference failed: {response_payload}")
+
+        except Exception as inference_error:
+            # Inference Lambda unavailable - use synthetic embeddings for demo
+            print(f"Inference Lambda unavailable: {inference_error}, using synthetic embeddings")
             use_synthetic = True
             embeddings = []
             for segment in segments:

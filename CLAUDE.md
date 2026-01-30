@@ -6,7 +6,7 @@ This file helps AI assistants understand and navigate the ReefRadar codebase.
 
 ReefRadar is a serverless API for analyzing coral reef health from underwater audio recordings. It uses ML-based acoustic signature comparison to classify reef health status.
 
-**Tech Stack:** AWS Lambda, API Gateway, S3, DynamoDB, SageMaker, Python 3.11, Streamlit
+**Tech Stack:** AWS Lambda (including container-based), API Gateway, S3, DynamoDB, Python 3.11, Streamlit, TensorFlow, perch-hoplite
 
 **Live API:** `https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod`
 
@@ -33,12 +33,19 @@ ReefRadar/
 │       └── *.npy               # NumPy embedding files (1280-dim each)
 │
 ├── infrastructure/
-│   └── resources.json          # Complete AWS resource inventory with ARNs
+│   ├── resources.json          # Complete AWS resource inventory with ARNs
+│   └── lambda_container/       # SurfPerch inference container
+│       ├── Dockerfile          # Lambda container image definition
+│       ├── requirements.txt    # perch-hoplite, tensorflow-cpu, etc.
+│       └── inference.py        # SurfPerch embedding generation handler
 │
 ├── scripts/                    # Operational scripts
 │   ├── test-all.sh             # Full API test suite
 │   ├── status.sh               # System health check
-│   └── cleanup.sh              # AWS resource deletion
+│   ├── cleanup.sh              # AWS resource deletion
+│   ├── deploy_inference_lambda.sh  # Build & deploy SurfPerch container
+│   ├── update_classifier_env.sh    # Update classifier to use inference Lambda
+│   └── delete_sagemaker_endpoint.sh # Remove old SageMaker (saves $83/mo)
 │
 ├── prompts/                    # Development prompts (for reference)
 │   └── 001-008-*.md            # Phase-by-phase build instructions
@@ -73,15 +80,15 @@ ReefRadar/
 User Audio Upload
        │
        ▼
-┌──────────────┐    ┌─────────────────┐    ┌──────────────┐
-│    Router    │───▶│  Preprocessor   │───▶│  Classifier  │
-│  /upload     │    │  32kHz resample │    │  embeddings  │
-│  /analyze    │    │  5s segments    │    │  similarity  │
-└──────────────┘    └─────────────────┘    └──────────────┘
-       │                    │                      │
-       ▼                    ▼                      ▼
-   DynamoDB              S3 Audio            S3 Embeddings
-   (metadata)           (uploads/)           (reference/)
+┌──────────────┐    ┌─────────────────┐    ┌──────────────┐    ┌──────────────┐
+│    Router    │───▶│  Preprocessor   │───▶│  Classifier  │───▶│  Inference   │
+│  /upload     │    │  16kHz resample │    │  orchestrates│    │  SurfPerch   │
+│  /analyze    │    │  1.88s segments │    │  similarity  │    │  embeddings  │
+└──────────────┘    └─────────────────┘    └──────────────┘    └──────────────┘
+       │                    │                      │                   │
+       ▼                    ▼                      ▼                   ▼
+   DynamoDB              S3 Audio            S3 Embeddings      perch-hoplite
+   (metadata)           (uploads/)           (reference/)       (TensorFlow)
 ```
 
 ## API Endpoints Quick Reference
@@ -109,12 +116,18 @@ The router uses `DecimalEncoder` to convert Decimals back to floats for JSON.
 ### Audio Processing Pipeline
 1. Read WAV with pure Python (struct module)
 2. Convert stereo to mono (average channels)
-3. Resample to 32kHz (linear interpolation)
-4. Segment into 5-second chunks (160,000 samples)
+3. Resample to 16kHz (SurfPerch requirement)
+4. Segment into 1.88-second windows (30,080 samples)
+
+### ML Inference (SurfPerch)
+- **Model**: SurfPerch v1.0 via perch-hoplite
+- **Input**: 16kHz mono audio, 1.88s windows
+- **Output**: 1280-dimensional embeddings
+- **Deployment**: Lambda container (3GB memory, 5min timeout)
+- **Fallback**: Synthetic embeddings if inference Lambda unavailable
 
 ### Classification
-- Generates 1280-dimensional embeddings
-- Uses synthetic fallback (SageMaker has XLA error)
+- Generates real SurfPerch embeddings via inference Lambda
 - Compares to 8 reference sites via cosine similarity
 - Categories: healthy, degraded, restored_early, restored_mid
 
@@ -144,16 +157,19 @@ All resources use prefix: `reefradar-2477-`
 | Lambda (router) | reefradar-2477-router |
 | Lambda (preprocessor) | reefradar-2477-preprocessor |
 | Lambda (classifier) | reefradar-2477-classifier |
+| Lambda (inference) | reefradar-2477-inference (container) |
+| ECR (inference) | reefradar-2477-inference |
 | S3 (audio) | reefradar-2477-audio |
 | S3 (embeddings) | reefradar-2477-embeddings |
 | DynamoDB | reefradar-2477-metadata |
-| SageMaker | reefradar-2477-surfperch-endpoint |
 
 ## Known Issues
 
-1. **SageMaker XLA Error**: The SurfPerch model fails with XLA compilation error. System uses synthetic embeddings as fallback.
+1. **Cold Start Latency**: The inference Lambda container has cold starts of 5-30 seconds. This is acceptable for async processing but not ideal for real-time use. Consider provisioned concurrency if needed.
 
 2. **WSL2 Port Forwarding**: Streamlit dashboard may not be accessible from Windows browser without additional port forwarding configuration.
+
+3. **Kaggle Model Download**: First invocation downloads SurfPerch model from Kaggle (~127MB). Subsequent invocations use cached model in /tmp.
 
 ## Testing
 
@@ -170,10 +186,26 @@ curl https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod/health
 
 ## Deployment
 
-Lambda functions are deployed via AWS CLI:
+### Standard Lambda Functions
 ```bash
 cd lambdas/router && zip -r function.zip handler.py
 aws lambda update-function-code --function-name reefradar-2477-router --zip-file fileb://function.zip
+```
+
+### Inference Lambda (Container)
+```bash
+# Build, push, and deploy the SurfPerch inference container
+./scripts/deploy_inference_lambda.sh
+
+# Update classifier to use inference Lambda
+./scripts/update_classifier_env.sh
+
+# Redeploy classifier code
+cd lambdas/classifier && zip -r function.zip handler.py
+aws lambda update-function-code --function-name reefradar-2477-classifier --zip-file fileb://function.zip
+
+# Delete old SageMaker endpoint (saves ~$83/month)
+./scripts/delete_sagemaker_endpoint.sh
 ```
 
 See `infrastructure/resources.json` for all ARNs needed for deployment commands.
