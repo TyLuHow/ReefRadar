@@ -288,6 +288,99 @@ with tab2:
 with tab3:
     st.header("About ReefRadar")
 
+    st.markdown("### System Architecture")
+
+    # Architecture diagram using graphviz
+    architecture_graph = """
+    digraph ReefRadar {
+        rankdir=TB;
+        node [shape=box, style="rounded,filled", fontname="Helvetica"];
+        edge [fontname="Helvetica", fontsize=10];
+
+        // Styling
+        bgcolor="transparent";
+
+        // User layer
+        subgraph cluster_user {
+            label="User Interface";
+            style="dashed";
+            color="#666666";
+            Browser [label="Browser/Dashboard", fillcolor="#E8F4FD"];
+        }
+
+        // API layer
+        subgraph cluster_api {
+            label="API Layer";
+            style="dashed";
+            color="#FF9900";
+            APIGateway [label="API Gateway\\nHTTP API", fillcolor="#FF9900", fontcolor="white"];
+        }
+
+        // Compute layer
+        subgraph cluster_compute {
+            label="Compute Layer (Lambda)";
+            style="dashed";
+            color="#FF9900";
+            Router [label="Router\\n256MB, 30s", fillcolor="#FF9900", fontcolor="white"];
+            Preprocessor [label="Preprocessor\\n1024MB, 180s", fillcolor="#FF9900", fontcolor="white"];
+            Classifier [label="Classifier\\n512MB, 120s", fillcolor="#FF9900", fontcolor="white"];
+        }
+
+        // Storage layer
+        subgraph cluster_storage {
+            label="Storage Layer";
+            style="dashed";
+            color="#3F8624";
+            S3Audio [label="S3: Audio\\nuploads, processed", fillcolor="#3F8624", fontcolor="white"];
+            S3Embeddings [label="S3: Embeddings\\nmodels, reference", fillcolor="#3F8624", fontcolor="white"];
+            DynamoDB [label="DynamoDB\\nmetadata", fillcolor="#3F8624", fontcolor="white"];
+        }
+
+        // ML layer
+        subgraph cluster_ml {
+            label="ML Layer";
+            style="dashed";
+            color="#9D5025";
+            SageMaker [label="SageMaker\\nSurfPerch Model", fillcolor="#9D5025", fontcolor="white", style="rounded,filled,dashed"];
+        }
+
+        // Connections
+        Browser -> APIGateway [label="HTTPS"];
+        APIGateway -> Router;
+        Router -> Preprocessor [label="async"];
+        Router -> DynamoDB;
+        Preprocessor -> S3Audio;
+        Preprocessor -> Classifier [label="async"];
+        Classifier -> S3Embeddings;
+        Classifier -> DynamoDB;
+        Classifier -> SageMaker [label="fallback", style="dashed"];
+    }
+    """
+
+    st.graphviz_chart(architecture_graph)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("""
+        **AWS Services Used:**
+        - 🟠 **API Gateway** - HTTP API endpoint
+        - 🟠 **Lambda** - 3 serverless functions
+        - 🟢 **S3** - Audio and embedding storage
+        - 🟢 **DynamoDB** - Metadata tracking
+        - 🟤 **SageMaker** - ML inference (with fallback)
+        """)
+    with col2:
+        st.markdown("""
+        **Data Flow:**
+        1. User uploads audio via API Gateway
+        2. Router stores file in S3, triggers preprocessing
+        3. Preprocessor converts to 32kHz, segments audio
+        4. Classifier generates embeddings, compares to references
+        5. Results stored in DynamoDB, returned to user
+        """)
+
+    st.markdown("---")
+
     st.markdown("""
     ### What is ReefRadar?
 
