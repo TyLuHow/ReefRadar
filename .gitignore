@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+ENV/
+env/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# AWS
+.aws/
+*.pem
+
+# Environment
+.env
+.env.local
+*.local.json
+
+# Temporary files
+*.tmp
+*.log
+/tmp/
+
+# Large files (audio samples)
+*.wav
+*.mp3
+*.flac
+
+# Lambda deployment zips
+*.zip

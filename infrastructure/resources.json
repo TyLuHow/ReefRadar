@@ -1,0 +1,155 @@
+{
+  "project": {
+    "name": "ReefRadar",
+    "prefix": "reefradar-2477",
+    "region": "us-east-1",
+    "account_id": "781978598306"
+  },
+  "api": {
+    "id": "rgoe4pqatf",
+    "name": "reefradar-2477-api",
+    "endpoint": "https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com",
+    "stage": "prod",
+    "full_url": "https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod",
+    "routes": {
+      "default": "$default",
+      "integration_id": "hl8zxb4"
+    }
+  },
+  "lambda": {
+    "functions": {
+      "router": {
+        "name": "reefradar-2477-router",
+        "arn": "arn:aws:lambda:us-east-1:781978598306:function:reefradar-2477-router",
+        "runtime": "python3.11",
+        "memory_mb": 256,
+        "timeout_sec": 30,
+        "handler": "handler.handler",
+        "environment": {
+          "AUDIO_BUCKET": "reefradar-2477-audio",
+          "METADATA_TABLE": "reefradar-2477-metadata",
+          "PREPROCESSOR_FUNCTION": "reefradar-2477-preprocessor"
+        }
+      },
+      "preprocessor": {
+        "name": "reefradar-2477-preprocessor",
+        "arn": "arn:aws:lambda:us-east-1:781978598306:function:reefradar-2477-preprocessor",
+        "runtime": "python3.11",
+        "memory_mb": 1024,
+        "timeout_sec": 180,
+        "handler": "handler.handler",
+        "layers": ["arn:aws:lambda:us-east-1:781978598306:layer:reefradar-2477-numpy:1"],
+        "environment": {
+          "AUDIO_BUCKET": "reefradar-2477-audio",
+          "EMBEDDINGS_BUCKET": "reefradar-2477-embeddings",
+          "METADATA_TABLE": "reefradar-2477-metadata",
+          "CLASSIFIER_FUNCTION": "reefradar-2477-classifier"
+        }
+      },
+      "classifier": {
+        "name": "reefradar-2477-classifier",
+        "arn": "arn:aws:lambda:us-east-1:781978598306:function:reefradar-2477-classifier",
+        "runtime": "python3.11",
+        "memory_mb": 512,
+        "timeout_sec": 120,
+        "handler": "handler.handler",
+        "layers": ["arn:aws:lambda:us-east-1:781978598306:layer:reefradar-2477-numpy:1"],
+        "environment": {
+          "AUDIO_BUCKET": "reefradar-2477-audio",
+          "EMBEDDINGS_BUCKET": "reefradar-2477-embeddings",
+          "METADATA_TABLE": "reefradar-2477-metadata",
+          "SAGEMAKER_ENDPOINT": "reefradar-2477-surfperch-endpoint"
+        }
+      }
+    },
+    "layers": {
+      "numpy": {
+        "name": "reefradar-2477-numpy",
+        "arn": "arn:aws:lambda:us-east-1:781978598306:layer:reefradar-2477-numpy:1",
+        "version": 1,
+        "runtime": "python3.11",
+        "description": "NumPy 1.26.4 for Python 3.11"
+      }
+    }
+  },
+  "s3": {
+    "buckets": {
+      "audio": {
+        "name": "reefradar-2477-audio",
+        "arn": "arn:aws:s3:::reefradar-2477-audio",
+        "region": "us-east-1",
+        "folders": ["uploads/", "processed/", "reference/"]
+      },
+      "embeddings": {
+        "name": "reefradar-2477-embeddings",
+        "arn": "arn:aws:s3:::reefradar-2477-embeddings",
+        "region": "us-east-1",
+        "folders": ["models/", "reference/", "layers/"]
+      }
+    }
+  },
+  "dynamodb": {
+    "tables": {
+      "metadata": {
+        "name": "reefradar-2477-metadata",
+        "arn": "arn:aws:dynamodb:us-east-1:781978598306:table/reefradar-2477-metadata",
+        "partition_key": "pk",
+        "sort_key": "sk",
+        "billing_mode": "PAY_PER_REQUEST"
+      }
+    }
+  },
+  "sagemaker": {
+    "endpoint": {
+      "name": "reefradar-2477-surfperch-endpoint",
+      "arn": "arn:aws:sagemaker:us-east-1:781978598306:endpoint/reefradar-2477-surfperch-endpoint",
+      "status": "InService",
+      "instance_type": "ml.m5.large",
+      "note": "XLA compilation error - system uses synthetic embeddings fallback"
+    },
+    "model": {
+      "name": "reefradar-2477-surfperch",
+      "arn": "arn:aws:sagemaker:us-east-1:781978598306:model/reefradar-2477-surfperch",
+      "container": "763104351884.dkr.ecr.us-east-1.amazonaws.com/tensorflow-inference:2.12-cpu",
+      "model_data": "s3://reefradar-2477-embeddings/models/surfperch/model.tar.gz"
+    }
+  },
+  "iam": {
+    "roles": {
+      "lambda": {
+        "name": "reefradar-2477-lambda-role",
+        "arn": "arn:aws:iam::781978598306:role/reefradar-2477-lambda-role",
+        "trust": "lambda.amazonaws.com",
+        "managed_policies": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+          "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess",
+          "arn:aws:iam::aws:policy/AmazonS3FullAccess",
+          "arn:aws:iam::aws:policy/AmazonSageMakerFullAccess"
+        ],
+        "inline_policies": ["LambdaInvokePolicy"]
+      },
+      "sagemaker": {
+        "name": "reefradar-2477-sagemaker-role",
+        "arn": "arn:aws:iam::781978598306:role/reefradar-2477-sagemaker-role",
+        "trust": "sagemaker.amazonaws.com"
+      }
+    }
+  },
+  "ecr": {
+    "repositories": {
+      "preprocessor": {
+        "name": "reefradar-2477-preprocessor",
+        "arn": "arn:aws:ecr:us-east-1:781978598306:repository/reefradar-2477-preprocessor",
+        "uri": "781978598306.dkr.ecr.us-east-1.amazonaws.com/reefradar-2477-preprocessor",
+        "status": "empty"
+      }
+    }
+  },
+  "cloudwatch": {
+    "log_groups": [
+      "/aws/lambda/reefradar-2477-router",
+      "/aws/lambda/reefradar-2477-preprocessor",
+      "/aws/lambda/reefradar-2477-classifier"
+    ]
+  }
+}
