@@ -82,8 +82,8 @@ User Audio Upload
        ▼
 ┌──────────────┐    ┌─────────────────┐    ┌──────────────┐    ┌──────────────┐
 │    Router    │───▶│  Preprocessor   │───▶│  Classifier  │───▶│  Inference   │
-│  /upload     │    │  16kHz resample │    │  orchestrates│    │  SurfPerch   │
-│  /analyze    │    │  1.88s segments │    │  similarity  │    │  embeddings  │
+│  /upload     │    │  32kHz resample │    │  orchestrates│    │  SurfPerch   │
+│  /analyze    │    │  5.0s segments  │    │  similarity  │    │  embeddings  │
 └──────────────┘    └─────────────────┘    └──────────────┘    └──────────────┘
        │                    │                      │                   │
        ▼                    ▼                      ▼                   ▼
@@ -96,7 +96,7 @@ User Audio Upload
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | /health | Health check |
-| GET | /sites | List 8 reference sites |
+| GET | /sites | List 6 reference sites |
 | POST | /upload | Upload WAV file (returns upload_id) |
 | POST | /analyze | Start analysis (returns analysis_id) |
 | GET | /visualize/{id} | Get results (poll until complete) |
@@ -116,19 +116,20 @@ The router uses `DecimalEncoder` to convert Decimals back to floats for JSON.
 ### Audio Processing Pipeline
 1. Read WAV with pure Python (struct module)
 2. Convert stereo to mono (average channels)
-3. Resample to 16kHz (SurfPerch requirement)
-4. Segment into 1.88-second windows (30,080 samples)
+3. Resample to 32kHz (SurfPerch requirement)
+4. Segment into 5.0-second windows (160,000 samples)
 
 ### ML Inference (SurfPerch)
-- **Model**: SurfPerch v1.0 via perch-hoplite
-- **Input**: 16kHz mono audio, 1.88s windows
+- **Model**: SurfPerch v1.0 via tensorflow-hub/kagglehub
+- **Input**: 32kHz mono audio, 5.0s windows (160,000 samples)
 - **Output**: 1280-dimensional embeddings
 - **Deployment**: Lambda container (3GB memory, 5min timeout)
-- **Fallback**: Synthetic embeddings if inference Lambda unavailable
+- **Fallback**: None — fails with InferenceError if inference Lambda unavailable
 
 ### Classification
 - Generates real SurfPerch embeddings via inference Lambda
-- Compares to 8 reference sites via cosine similarity
+- Classifies using trained MLP (1280→256→64→4, ~90% test accuracy)
+- Compares to 6 reference sites via cosine similarity
 - Categories: healthy, degraded, restored_early, restored_mid
 
 ## Common Modifications
@@ -144,8 +145,9 @@ The router uses `DecimalEncoder` to convert Decimals back to floats for JSON.
 3. Upload to S3: `s3://reefradar-2477-embeddings/reference/`
 
 ### Change classification categories
-1. Edit `lambdas/classifier/handler.py`
-2. Modify `CATEGORIES` list and probability calculation
+1. Retrain the model with new labels (see `scripts/train_classifier.py`)
+2. Update `models/model_config.json` with new `label_to_idx` mapping
+3. Upload new weights and config to `s3://reefradar-2477-embeddings/models/`
 
 ## AWS Resource Names
 

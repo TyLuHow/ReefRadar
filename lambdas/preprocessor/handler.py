@@ -105,7 +105,7 @@ def handler(event, context):
             else:
                 samples = audio_data.astype(np.float32) / np.max(np.abs(audio_data))
 
-            # Resample to 16kHz if needed
+            # Resample to 32kHz if needed
             if orig_sample_rate != TARGET_SAMPLE_RATE:
                 print(f"Resampling from {orig_sample_rate}Hz to {TARGET_SAMPLE_RATE}Hz")
                 samples = resample_linear(samples, orig_sample_rate, TARGET_SAMPLE_RATE)

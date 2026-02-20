@@ -23,6 +23,7 @@ dynamodb = boto3.resource('dynamodb')
 lambda_client = boto3.client('lambda')
 
 AUDIO_BUCKET = os.environ.get('AUDIO_BUCKET')
+EMBEDDINGS_BUCKET = os.environ.get('EMBEDDINGS_BUCKET')
 METADATA_TABLE = os.environ.get('METADATA_TABLE')
 PREPROCESSOR_FUNCTION = os.environ.get('PREPROCESSOR_FUNCTION')
 
@@ -173,54 +174,101 @@ def handle_analyze(event):
 
 
 def handle_get_sites(event):
-    """Return list of reference sites."""
-    # For MVP, return hardcoded list. Production would query DynamoDB.
-    sites = [
-        {'site_id': 'aus_H1', 'country': 'Australia', 'status': 'healthy'},
-        {'site_id': 'aus_H2', 'country': 'Australia', 'status': 'healthy'},
-        {'site_id': 'idn_H1', 'country': 'Indonesia', 'status': 'healthy'},
-        {'site_id': 'aus_D1', 'country': 'Australia', 'status': 'degraded'},
-        {'site_id': 'phl_D1', 'country': 'Philippines', 'status': 'degraded'},
-        {'site_id': 'mex_R1', 'country': 'Mexico', 'status': 'restored_early'},
-        {'site_id': 'aus_R1', 'country': 'Australia', 'status': 'restored_early'},
-        {'site_id': 'idn_M1', 'country': 'Indonesia', 'status': 'restored_mid'},
-    ]
+    """Return list of reference sites from S3 metadata."""
+    try:
+        # Load sites from S3 embeddings metadata
+        s3_response = s3.get_object(Bucket=EMBEDDINGS_BUCKET, Key='reference/metadata.json')
+        metadata = json.loads(s3_response['Body'].read().decode())
 
-    return response(200, {
-        'sites': sites,
-        'total_sites': len(sites),
-        'countries': list(set(s['country'] for s in sites))
-    })
+        # Handle new format (v2.0) with 'sites' key
+        if isinstance(metadata, dict) and 'sites' in metadata:
+            raw_sites = metadata['sites']
+        elif isinstance(metadata, list):
+            raw_sites = metadata
+        else:
+            raw_sites = []
+
+        # Extract only the fields needed for the API response (exclude large embeddings)
+        sites = []
+        for site in raw_sites:
+            sites.append({
+                'site_id': site.get('site_id'),
+                'country': site.get('country'),
+                'region': site.get('region'),
+                'status': site.get('status'),
+                'latitude': site.get('latitude'),
+                'longitude': site.get('longitude'),
+                'synthetic': site.get('synthetic', True)
+            })
+
+        return response(200, {
+            'sites': sites,
+            'total_sites': len(sites),
+            'countries': list(set(s['country'] for s in sites)),
+            'version': metadata.get('version', '1.0') if isinstance(metadata, dict) else '1.0',
+            'source': metadata.get('source', 'Unknown') if isinstance(metadata, dict) else 'Unknown',
+            'notes': metadata.get('notes', '') if isinstance(metadata, dict) else ''
+        })
+    except Exception as e:
+        # Fallback to hardcoded minimal list if S3 fails
+        sites = [
+            {'site_id': 'ind_H4', 'country': 'Indonesia', 'status': 'healthy', 'synthetic': False},
+            {'site_id': 'ind_H5', 'country': 'Indonesia', 'status': 'healthy', 'synthetic': False},
+            {'site_id': 'ken_H1', 'country': 'Kenya', 'status': 'healthy', 'synthetic': False},
+            {'site_id': 'ind_N1', 'country': 'Indonesia', 'status': 'restored_early', 'synthetic': False},
+        ]
+        return response(200, {
+            'sites': sites,
+            'total_sites': len(sites),
+            'countries': list(set(s['country'] for s in sites)),
+            'error_note': f'Loaded from fallback: {str(e)}'
+        })
 
 
 def handle_visualize(analysis_id):
     """Return visualization data for an analysis."""
-    table = dynamodb.Table(METADATA_TABLE)
-    result = table.get_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': 'RESULT'})
+    try:
+        table = dynamodb.Table(METADATA_TABLE)
+        result = table.get_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': 'RESULT'})
 
-    if 'Item' not in result:
-        # Check if still processing
-        preprocess_result = table.get_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': 'PREPROCESSED'})
-        if 'Item' in preprocess_result:
-            return response(200, {'analysis_id': analysis_id, 'status': 'processing'})
+        if 'Item' not in result:
+            # Check if still processing
+            preprocess_result = table.get_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': 'PREPROCESSED'})
+            if 'Item' in preprocess_result:
+                return response(200, {'analysis_id': analysis_id, 'status': 'processing'})
 
-        # Check for errors
-        error_result = table.get_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': 'ERROR'})
-        if 'Item' in error_result:
-            return response(200, {'analysis_id': analysis_id, 'status': 'failed', 'error': error_result['Item'].get('error')})
+            # Check for errors - return detailed error information
+            error_result = table.get_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': 'ERROR'})
+            if 'Item' in error_result:
+                error_item = error_result['Item']
+                return response(200, {
+                    'analysis_id': analysis_id,
+                    'status': 'failed',
+                    'error': {
+                        'code': error_item.get('error_code', 'UNKNOWN_ERROR'),
+                        'message': error_item.get('error', 'An unknown error occurred'),
+                        'stage': error_item.get('stage', 'unknown'),
+                        'suggestion': error_item.get('suggestion', 'Please retry the analysis'),
+                        'request_id': error_item.get('request_id'),
+                        'retry_count': error_item.get('retry_count', 0)
+                    }
+                })
 
-        return response(404, {'error': {'code': 'ANALYSIS_NOT_FOUND', 'message': f'No analysis found with ID: {analysis_id}'}})
+            return response(404, {'error': {'code': 'ANALYSIS_NOT_FOUND', 'message': f'No analysis found with ID: {analysis_id}'}})
 
-    item = result['Item']
-    return response(200, {
-        'analysis_id': analysis_id,
-        'status': 'complete',
-        'classification': item.get('classification', {}),
-        'similar_sites': item.get('similar_sites', []),
-        'visualization': item.get('visualization', {}),
-        'embedding_summary': item.get('embedding_summary', {}),
-        'caveats': item.get('caveats', '')
-    })
+        item = result['Item']
+        return response(200, {
+            'analysis_id': analysis_id,
+            'status': 'complete',
+            'classification': item.get('classification', {}),
+            'similar_sites': item.get('similar_sites', []),
+            'visualization': item.get('visualization', {}),
+            'embedding_summary': item.get('embedding_summary', {}),
+            'caveats': item.get('caveats', '')
+        })
+
+    except Exception as e:
+        return response(500, {'error': {'code': 'VISUALIZE_FAILED', 'message': str(e)}})
 
 
 def handle_health(event):
