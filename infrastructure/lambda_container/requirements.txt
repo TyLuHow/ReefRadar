@@ -1,5 +1,6 @@
 # SurfPerch inference dependencies
 # Uses tensorflow_hub for model loading with kagglehub as fallback
+setuptools>=69.0.0
 tensorflow-hub>=0.16.0
 kagglehub>=0.3.0
 tensorflow-cpu>=2.18.0

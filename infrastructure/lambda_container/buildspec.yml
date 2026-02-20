@@ -1,0 +1,30 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_ACCOUNT_ID: "781978598306"
+    AWS_DEFAULT_REGION: "us-east-1"
+    REPO_NAME: "reefradar-2477-inference"
+    FUNCTION_NAME: "reefradar-2477-inference"
+    IMAGE_TAG: "latest"
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - IMAGE_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$REPO_NAME:$IMAGE_TAG
+  build:
+    commands:
+      - echo Building Docker image...
+      - docker build --platform linux/amd64 --provenance=false -t $REPO_NAME:$IMAGE_TAG .
+      - docker tag $REPO_NAME:$IMAGE_TAG $IMAGE_URI
+  post_build:
+    commands:
+      - echo Pushing image to ECR...
+      - docker push $IMAGE_URI
+      - echo Updating Lambda function...
+      - aws lambda update-function-code --function-name $FUNCTION_NAME --image-uri $IMAGE_URI --region $AWS_DEFAULT_REGION
+      - echo Waiting for Lambda to be ready...
+      - aws lambda wait function-updated --function-name $FUNCTION_NAME --region $AWS_DEFAULT_REGION || echo "Wait timed out - Lambda may still be updating"
+      - echo Deploy complete.
