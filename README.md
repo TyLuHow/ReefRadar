@@ -1,11 +1,10 @@
 # ReefRadar - Coral Reef Acoustic Health Analysis System
 
-A serverless AWS-based system for analyzing coral reef health through underwater acoustic recordings using machine learning.
+A serverless AWS-based system for analyzing coral reef health through underwater acoustic recordings using machine learning. Uses the SurfPerch bioacoustics model to generate 1280-dimensional acoustic embeddings, then classifies reef health status with a trained MLP classifier.
 
-**Project Prefix:** `reefradar-2477`
-**AWS Account:** `781978598306` (tlubyhow@calpoly.edu)
+**API Endpoint:** `https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod`
 **Region:** `us-east-1`
-**API Endpoint:** https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod
+**Project Prefix:** `reefradar-2477`
 
 ## Table of Contents
 
@@ -13,52 +12,60 @@ A serverless AWS-based system for analyzing coral reef health through underwater
 - [AWS Resources](#aws-resources)
 - [API Reference](#api-reference)
 - [Quick Start](#quick-start)
+- [Methodology](#methodology)
 - [Cost Analysis](#cost-analysis)
-- [Known Issues](#known-issues)
+- [Known Limitations](#known-limitations)
 
 ---
 
 ## Architecture Overview
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              REEFRADAR ARCHITECTURE                          │
-└─────────────────────────────────────────────────────────────────────────────┘
+> **Detailed Diagrams:** See [Architecture Diagrams](./docs/ARCHITECTURE_DIAGRAMS.md) for interactive Mermaid diagrams.
 
-    ┌──────────────┐         ┌─────────────────────────────────────────────┐
-    │   Streamlit  │         │              AWS Cloud (us-east-1)          │
-    │   Dashboard  │         │                                             │
-    │  (localhost) │         │  ┌─────────────┐    ┌──────────────────┐   │
-    └──────┬───────┘         │  │ API Gateway │───▶│  Lambda: Router  │   │
-           │                 │  │  (HTTP API) │    │   (256 MB, 30s)  │   │
-           │ HTTPS           │  └─────────────┘    └────────┬─────────┘   │
-           │                 │                              │              │
-           ▼                 │                    ┌─────────▼──────────┐   │
-    ┌──────────────┐         │                    │ Lambda: Preprocess │   │
-    │    Users     │─────────┼───────────────────▶│  (1024 MB, 180s)   │   │
-    │  (Browser)   │         │                    │  + numpy layer     │   │
-    └──────────────┘         │                    └─────────┬──────────┘   │
-                             │                              │              │
-                             │                    ┌─────────▼──────────┐   │
-                             │                    │ Lambda: Classifier │   │
-                             │                    │   (512 MB, 120s)   │   │
-                             │                    │  + numpy layer     │   │
-                             │                    └─────────┬──────────┘   │
-                             │                              │              │
-                             │  ┌───────────────────────────┼────────────┐ │
-                             │  │                           ▼            │ │
-                             │  │  ┌────────────┐    ┌─────────────┐    │ │
-                             │  │  │ S3: Audio  │    │ S3: Embed   │    │ │
-                             │  │  │  Bucket    │    │   Bucket    │    │ │
-                             │  │  └────────────┘    └─────────────┘    │ │
-                             │  │                                       │ │
-                             │  │  ┌────────────┐    ┌─────────────┐    │ │
-                             │  │  │  DynamoDB  │    │  SageMaker  │    │ │
-                             │  │  │  Metadata  │    │  Endpoint*  │    │ │
-                             │  │  └────────────┘    └─────────────┘    │ │
-                             │  │         (* XLA issue - using fallback) │ │
-                             │  └───────────────────────────────────────┘ │
-                             └─────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph Client
+        User["User"]
+        NextJS["Next.js<br/>Dashboard"]
+        Streamlit["Streamlit<br/>Dashboard"]
+    end
+
+    subgraph AWS["AWS Cloud"]
+        APIGW["API Gateway"]
+
+        subgraph Lambda["Lambda Functions"]
+            Router["Router<br/>256MB"]
+            Preproc["Preprocessor<br/>1024MB"]
+            Class["Classifier<br/>512MB"]
+            Infer["Inference<br/>3008MB<br/>(Container)"]
+        end
+
+        subgraph Storage
+            S3["S3 Buckets"]
+            DDB["DynamoDB"]
+        end
+    end
+
+    User --> APIGW
+    NextJS --> APIGW
+    Streamlit --> APIGW
+    APIGW --> Router
+    Router --> Preproc
+    Preproc --> Class
+    Class --> Infer
+    Router <--> S3
+    Router <--> DDB
+    Preproc <--> S3
+    Class <--> S3
+    Class <--> DDB
+
+    style APIGW fill:#ff9900
+    style Router fill:#ff9900
+    style Preproc fill:#ff9900
+    style Class fill:#ff9900
+    style Infer fill:#232f3e,color:#fff
+    style S3 fill:#3f8624,color:#fff
+    style DDB fill:#3f8624,color:#fff
 ```
 
 ### Data Flow
@@ -70,6 +77,7 @@ A serverless AWS-based system for analyzing coral reef health through underwater
 
 2. **Analyze** (`POST /analyze`)
    - Router triggers Preprocessor Lambda asynchronously
+   - Optionally accepts `latitude`/`longitude` for geographic region detection
    - Returns `analysis_id` immediately (202 Accepted)
 
 3. **Preprocess** (Async)
@@ -77,91 +85,47 @@ A serverless AWS-based system for analyzing coral reef health through underwater
    - Converts to 32kHz mono, 16-bit PCM
    - Segments into 5-second chunks (160,000 samples each)
    - Stores segments as JSON in S3
-   - Triggers Classifier Lambda
+   - Forwards coordinates to Classifier
 
 4. **Classify** (Async)
-   - Loads audio segments from S3
-   - Generates embeddings (synthetic fallback due to SageMaker XLA issue)
-   - Compares to reference site embeddings using cosine similarity
+   - Invokes Inference Lambda to generate real SurfPerch embeddings
+   - Classifies using trained MLP (1280->256->64->4, ~90% test accuracy)
+   - Detects geographic region and adjusts confidence if out-of-distribution
+   - Compares to 8 reference site embeddings via cosine similarity
    - Stores results in DynamoDB
 
 5. **Visualize** (`GET /visualize/{analysis_id}`)
-   - Returns classification results, similar sites, and visualization data
+   - Returns classification, similar sites, region info, and visualization data
 
 ---
 
 ## AWS Resources
 
-### S3 Buckets
-
-| Bucket | Purpose | Contents |
-|--------|---------|----------|
-| `reefradar-2477-audio` | Audio storage | `uploads/`, `processed/`, `reference/` |
-| `reefradar-2477-embeddings` | Model & embeddings | `models/`, `reference/`, `layers/` |
-
-**Storage Usage:**
-- Audio bucket: ~18 MB (17 files)
-- Embeddings bucket: ~102 MB (11 files, includes 88MB model)
-
-### DynamoDB
-
-| Table | Schema | Mode |
-|-------|--------|------|
-| `reefradar-2477-metadata` | PK: `pk` (String), SK: `sk` (String) | On-Demand |
-
-**Item Types:**
-- `UPLOAD#{id}` / `METADATA` - Upload records
-- `ANALYSIS#{id}` / `PREPROCESSED` - Preprocessing status
-- `ANALYSIS#{id}` / `RESULT` - Analysis results
-- `ANALYSIS#{id}` / `ERROR` - Error records
-
 ### Lambda Functions
 
-| Function | Memory | Timeout | Layers | Purpose |
-|----------|--------|---------|--------|---------|
-| `reefradar-2477-router` | 256 MB | 30s | None | API routing, upload handling |
-| `reefradar-2477-preprocessor` | 1024 MB | 180s | numpy | Audio processing |
-| `reefradar-2477-classifier` | 512 MB | 120s | numpy | Classification |
+| Function | Memory | Timeout | Runtime | Purpose |
+|----------|--------|---------|---------|---------|
+| `reefradar-2477-router` | 256 MB | 30s | Python 3.11 | API routing, upload handling |
+| `reefradar-2477-preprocessor` | 1024 MB | 180s | Python 3.11 + numpy | Audio processing |
+| `reefradar-2477-classifier` | 512 MB | 120s | Python 3.11 + numpy | MLP classification + region detection |
+| `reefradar-2477-inference` | 3008 MB | 300s | Container (Python 3.12) | SurfPerch embedding generation |
 
-### Lambda Layer
+### S3 Buckets
 
-| Layer | Version | Size | Contents |
-|-------|---------|------|----------|
-| `reefradar-2477-numpy` | 1 | 18 MB | numpy 1.26.4 |
+| Bucket | Purpose |
+|--------|---------|
+| `reefradar-2477-audio` | User uploads (`uploads/`), processed audio (`processed/`) |
+| `reefradar-2477-embeddings` | Reference embeddings (`reference/metadata.json`), Lambda layers |
 
-### API Gateway
+### Other Resources
 
-| Property | Value |
-|----------|-------|
-| API ID | `rgoe4pqatf` |
-| Type | HTTP API |
-| Endpoint | https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com |
-| Stage | `prod` |
-| Route | `$default` → Lambda Router |
-| CORS | Allow all origins, GET/POST/OPTIONS |
-
-### IAM Roles
-
-| Role | Trust | Policies |
-|------|-------|----------|
-| `reefradar-2477-lambda-role` | lambda.amazonaws.com | AWSLambdaBasicExecutionRole, AmazonDynamoDBFullAccess, AmazonS3FullAccess, AmazonSageMakerFullAccess, LambdaInvokePolicy (inline) |
-| `reefradar-2477-sagemaker-role` | sagemaker.amazonaws.com | AmazonSageMakerFullAccess, AmazonS3ReadOnlyAccess |
-
-### SageMaker (Demo Mode)
-
-| Resource | Value | Status |
-|----------|-------|--------|
-| Endpoint | `reefradar-2477-surfperch-endpoint` | InService (XLA Error) |
-| Model | `reefradar-2477-surfperch` | Deployed |
-| Instance | ml.m5.large | Running |
-
-**Note:** The SageMaker endpoint returns XLA compilation errors due to model compatibility issues. The system falls back to synthetic embeddings for demo purposes.
-
-### ECR
-
-| Repository | URI | Status |
-|------------|-----|--------|
-| `reefradar-2477-preprocessor` | 781978598306.dkr.ecr.us-east-1.amazonaws.com/reefradar-2477-preprocessor | Empty (not used) |
+| Resource | Name |
+|----------|------|
+| DynamoDB | `reefradar-2477-metadata` (on-demand, pk/sk schema) |
+| API Gateway | HTTP API, `$default` route, CORS enabled |
+| ECR | `reefradar-2477-inference` (SurfPerch container) |
+| CodeBuild | `reefradar-2477-inference-build` (container build pipeline) |
+| Lambda Layer | `reefradar-2477-numpy` (numpy 1.26.4) |
 
 ---
 
@@ -175,160 +139,66 @@ https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod
 ### Endpoints
 
 #### GET /health
-Health check endpoint.
+Health check.
 
-**Response:**
-```json
-{
-  "status": "healthy",
-  "timestamp": "2026-01-30T03:01:43.855765"
-}
-```
-
-**curl:**
 ```bash
 curl https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod/health
 ```
-
----
-
-#### GET /sites
-List reference sites.
-
-**Response:**
 ```json
-{
-  "sites": [
-    {"site_id": "aus_H1", "country": "Australia", "status": "healthy"},
-    {"site_id": "aus_H2", "country": "Australia", "status": "healthy"},
-    {"site_id": "idn_H1", "country": "Indonesia", "status": "healthy"},
-    {"site_id": "aus_D1", "country": "Australia", "status": "degraded"},
-    {"site_id": "phl_D1", "country": "Philippines", "status": "degraded"},
-    {"site_id": "mex_R1", "country": "Mexico", "status": "restored_early"},
-    {"site_id": "aus_R1", "country": "Australia", "status": "restored_early"},
-    {"site_id": "idn_M1", "country": "Indonesia", "status": "restored_mid"}
-  ],
-  "total_sites": 8,
-  "countries": ["Australia", "Indonesia", "Philippines", "Mexico"]
-}
+{"status": "healthy", "timestamp": "2026-02-20T12:00:00.000000"}
 ```
 
-**curl:**
+#### GET /sites
+List reference sites with health status.
+
 ```bash
 curl https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod/sites
 ```
 
----
-
 #### POST /upload
-Upload an audio file for analysis.
+Upload a WAV file. Returns `upload_id`.
 
-**Headers:**
-- `Content-Type: audio/wav`
-- `X-Filename: yourfile.wav` (optional)
-
-**Body:** Raw WAV file bytes
-
-**Response:**
-```json
-{
-  "upload_id": "038bf9da-b260-4f95-bf04-20ab191e9b6c",
-  "filename": "test_reef.wav",
-  "s3_key": "uploads/038bf9da-b260-4f95-bf04-20ab191e9b6c/test_reef.wav",
-  "size_bytes": 384044,
-  "status": "uploaded"
-}
-```
-
-**curl:**
 ```bash
-curl -X POST https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod/upload \
-  -H "Content-Type: audio/wav" \
-  -H "X-Filename: reef_audio.wav" \
-  --data-binary @your_audio.wav
+curl -X POST .../upload -H "Content-Type: audio/wav" --data-binary @recording.wav
 ```
-
----
 
 #### POST /analyze
-Start analysis of an uploaded file.
+Start analysis. Optionally include coordinates for region detection.
 
-**Body:**
-```json
-{
-  "upload_id": "038bf9da-b260-4f95-bf04-20ab191e9b6c"
-}
-```
-
-**Response (202 Accepted):**
-```json
-{
-  "analysis_id": "a1d941dd-5d28-4486-ad45-09c214aca530",
-  "upload_id": "038bf9da-b260-4f95-bf04-20ab191e9b6c",
-  "status": "processing",
-  "message": "Analysis started. Poll GET /visualize/{analysis_id} for results."
-}
-```
-
-**curl:**
 ```bash
-curl -X POST https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"upload_id": "YOUR_UPLOAD_ID"}'
+curl -X POST .../analyze -H "Content-Type: application/json" \
+  -d '{"upload_id": "UUID", "latitude": -4.93, "longitude": 119.32}'
 ```
 
----
+Returns `analysis_id`. Poll `/visualize/{analysis_id}` for results.
 
 #### GET /visualize/{analysis_id}
-Get analysis results.
+Get analysis results (poll until `status: "complete"`).
 
-**Response (Complete):**
 ```json
 {
-  "analysis_id": "36d93866-d414-4a60-a562-68a72eed219a",
+  "analysis_id": "...",
   "status": "complete",
   "classification": {
-    "label": "degraded",
-    "confidence": 0.261377,
-    "probabilities": {
-      "healthy": 0.241853,
-      "degraded": 0.261377,
-      "restored_early": 0.250283,
-      "restored_mid": 0.246488
+    "label": "healthy",
+    "confidence": 0.87,
+    "probabilities": {"healthy": 0.87, "degraded": 0.04, "restored_early": 0.05, "restored_mid": 0.04},
+    "region": {
+      "detected": "INDO_PACIFIC_WEST",
+      "name": "Indo-Pacific West (Indonesia/Philippines)",
+      "in_training_distribution": true,
+      "confidence_adjusted": false
     }
   },
   "similar_sites": [
-    {"site_id": "phl_D1", "country": "phl", "similarity": 0.223476, "status": "degraded"},
-    {"site_id": "aus_D1", "country": "aus", "similarity": 0.20864, "status": "degraded"},
-    {"site_id": "aus_R1", "country": "aus", "similarity": 0.20801, "status": "restored_early"}
+    {"site_id": "ind_H4", "country": "Indonesia", "similarity": 0.94, "status": "healthy"}
   ],
-  "visualization": {
-    "type": "projection_2d",
-    "coordinates": {"x": 0.662955, "y": 0.318253},
-    "reference_sites": [...]
-  },
-  "embedding_summary": {
-    "dimension": 1280,
-    "num_segments": 1,
-    "aggregation": "mean",
-    "synthetic": true
-  },
-  "caveats": "Classification based on acoustic similarity... (Demo mode: using synthetic embeddings)"
+  "caveats": "..."
 }
 ```
 
-**Response (Processing):**
-```json
-{
-  "analysis_id": "36d93866-d414-4a60-a562-68a72eed219a",
-  "status": "processing"
-}
-```
-
-**curl:**
-```bash
-curl https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod/visualize/YOUR_ANALYSIS_ID
-```
+#### GET /status/{analysis_id}
+Get detailed processing stage (preprocessing, classifying, complete, failed).
 
 ---
 
@@ -342,8 +212,7 @@ curl https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod/health
 
 # 2. Create test audio (6 seconds, 32kHz)
 python3 << 'EOF'
-import numpy as np
-import struct
+import numpy as np, struct
 sr, dur = 32000, 6
 t = np.linspace(0, dur, sr * dur)
 audio = (np.sin(2*np.pi*500*t) * 0.5 * 32767).astype(np.int16)
@@ -354,55 +223,94 @@ with open('/tmp/test.wav', 'wb') as f:
 EOF
 
 # 3. Upload
-UPLOAD=$(curl -s -X POST https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod/upload \
-  -H "Content-Type: audio/wav" --data-binary @/tmp/test.wav)
+UPLOAD=$(curl -s -X POST .../upload -H "Content-Type: audio/wav" --data-binary @/tmp/test.wav)
 UPLOAD_ID=$(echo $UPLOAD | python3 -c "import sys,json; print(json.load(sys.stdin)['upload_id'])")
 
-# 4. Analyze
-ANALYZE=$(curl -s -X POST https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod/analyze \
-  -H "Content-Type: application/json" -d "{\"upload_id\": \"$UPLOAD_ID\"}")
+# 4. Analyze (with optional coordinates)
+ANALYZE=$(curl -s -X POST .../analyze -H "Content-Type: application/json" \
+  -d "{\"upload_id\": \"$UPLOAD_ID\", \"latitude\": -4.93, \"longitude\": 119.32}")
 ANALYSIS_ID=$(echo $ANALYZE | python3 -c "import sys,json; print(json.load(sys.stdin)['analysis_id'])")
 
-# 5. Poll for results
-sleep 15
-curl https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod/visualize/$ANALYSIS_ID
+# 5. Poll for results (allow ~30s for cold start + processing)
+sleep 30
+curl .../visualize/$ANALYSIS_ID
 ```
 
-### Run the Dashboard
+### Run the Next.js Dashboard
 
 ```bash
-cd ~/ReefRadar/dashboard
-./start.sh
+cd dashboard-next
+npm install
+npm run dev
+# Open http://localhost:3000
+```
+
+### Run the Streamlit Dashboard
+
+```bash
+cd dashboard
+pip install -r requirements.txt
+streamlit run app.py
 # Open http://localhost:8501
 ```
 
 ---
 
+## Methodology
+
+### What It Measures
+
+ReefRadar analyzes **biological sound activity** - the acoustic signatures produced by reef-associated fauna (fish vocalizations, snapping shrimp, invertebrate sounds). These soundscapes serve as a proxy for reef biodiversity and ecosystem health.
+
+### ML Pipeline
+
+1. **Audio Preprocessing**: WAV files are resampled to 32kHz mono and segmented into 5.0-second windows (160,000 samples)
+2. **Embedding Generation**: Each segment is processed by the [SurfPerch model](https://www.kaggle.com/models/google/surfperch) (Google Research), producing a 1280-dimensional acoustic embedding
+3. **Classification**: A trained MLP classifier (1280->256->64->4 architecture, ~90% test accuracy) classifies the mean embedding into one of four categories
+4. **Region Detection**: If coordinates are provided, geographic region is detected and confidence is adjusted for out-of-distribution regions
+
+### Health Categories
+
+| Category | Description |
+|----------|-------------|
+| `healthy` | Diverse fish communities, abundant snapping shrimp, complex acoustic signatures |
+| `degraded` | Reduced acoustic diversity, lower biological sound production |
+| `restored_early` | Recently restored (<3 months), initial signs of acoustic recovery |
+| `restored_mid` | Mid-restoration (32-53 months), soundscapes approaching healthy characteristics |
+
+### Reference Data
+
+8 reference sites with real SurfPerch embeddings from the [MARRS coral reef restoration dataset](https://doi.org/10.5281/zenodo.6024203):
+
+- **Indonesia (South Sulawesi)**: ind_H4, ind_H5 (healthy), ind_D2, ind_D3 (degraded), ind_N1 (restored early), ind_R1, ind_R2 (restored mid)
+- **Kenya (Lamu)**: ken_H1 (healthy)
+
+### What It Cannot Measure
+
+- Direct coral tissue health, bleaching status, or disease
+- Fish species counts or population dynamics
+- Water quality parameters (temperature, pH, turbidity)
+
+Acoustic monitoring measures biological sound activity, not coral tissue health directly. Results should be combined with visual surveys and environmental data for comprehensive reef assessment.
+
+---
+
 ## Cost Analysis
 
-### Current Month Costs (January 2026)
+### Current Monthly Costs
 
 | Service | Cost |
 |---------|------|
-| SageMaker | ~$2.76/day (ml.m5.large @ $0.115/hr) |
-| Lambda | Free tier (likely $0) |
+| Lambda | Free tier (~$0) |
 | S3 | ~$0.01 |
-| DynamoDB | Free tier (likely $0) |
-| API Gateway | Free tier (likely $0) |
-| **Total** | **~$83/month if SageMaker runs continuously** |
+| DynamoDB | Free tier (~$0) |
+| API Gateway | Free tier (~$0) |
+| ECR | ~$0.10 |
+| **Total** | **< $1/month** |
 
-### Cost Optimization
+SageMaker resources have been deleted. All ML inference runs on Lambda containers with no idle costs.
 
-1. **Delete SageMaker endpoint when not in use** - Saves $83/month
-   ```bash
-   aws sagemaker delete-endpoint --endpoint-name reefradar-2477-surfperch-endpoint --region us-east-1
-   ```
-
-2. **Use Serverless Inference** - Pay per request instead of hourly
-
-3. **Current system works without SageMaker** - Falls back to synthetic embeddings
-
-### Projected Costs (Without SageMaker)
+### Projected Costs at Scale
 
 | Usage Level | Monthly Cost |
 |-------------|--------------|
@@ -412,100 +320,23 @@ cd ~/ReefRadar/dashboard
 
 ---
 
-## Known Issues
+## Known Limitations
 
-### 1. SageMaker XLA Compilation Error
+1. **Cold Start Latency**: The inference Lambda container has cold starts of 5-30 seconds. First analysis after idle period takes longer.
 
-**Error:**
-```
-XLA compilation disabled
-[[{{function_node __inference_signature_wrapper_21994}}{{node StatefulPartitionedCall}}]]
-```
+2. **Geographic Coverage**: Model trained on Indo-Pacific (Indonesia) and Indian Ocean (Kenya) reef data only. Results from other regions (Caribbean, Red Sea, etc.) have reduced confidence with automatic warnings.
 
-**Cause:** The SurfPerch model from Kaggle was compiled with XLA enabled, which TensorFlow Serving doesn't support out of the box.
+3. **Temporal Limitation**: Training data from specific recording periods. Reef soundscapes vary seasonally and diurnally.
 
-**Workaround:** System uses synthetic embeddings generated from audio features. Results are illustrative but not from the actual ML model.
-
-**Fix:** Re-export the TensorFlow model without XLA compilation:
-```python
-tf.saved_model.save(model, 'new_model', options=tf.saved_model.SaveOptions(experimental_custom_gradients=False))
-```
-
-### 2. WSL2 Port Forwarding
-
-The Streamlit dashboard may not be accessible from Windows browsers due to WSL2 networking.
-
-**Fix:** Run in Windows PowerShell as Admin:
-```powershell
-netsh interface portproxy add v4tov4 listenport=8501 listenaddress=0.0.0.0 connectport=8501 connectaddress=$(wsl hostname -I)
-```
-
----
-
-## Project Structure
-
-```
-~/reef-project/
-├── lambdas/
-│   ├── router/
-│   │   ├── handler.py          # API routing logic
-│   │   └── requirements.txt    # boto3
-│   ├── preprocessor/
-│   │   ├── handler.py          # Audio processing
-│   │   ├── requirements.txt    # boto3, numpy
-│   │   └── Dockerfile          # (unused)
-│   └── classifier/
-│       ├── handler.py          # Classification logic
-│       └── requirements.txt    # boto3, numpy
-├── sagemaker/
-│   └── code/
-│       ├── inference.py        # TF Serving handlers
-│       └── requirements.txt    # tensorflow, numpy
-├── scripts/
-│   └── prepare_embeddings.py   # Reference embedding generation
-├── data/
-│   ├── marrs/                  # Sample audio files
-│   └── embeddings/             # Pre-computed embeddings
-└── models/
-    └── surfperch/              # SurfPerch model files
-
-~/ReefRadar/
-└── dashboard/
-    ├── app.py                  # Streamlit application
-    ├── requirements.txt        # streamlit, requests, plotly, pandas
-    └── start.sh                # Launch script
-```
-
----
-
-## Environment Configuration
-
-File: `~/.reefradar-env`
-```bash
-export PROJECT_PREFIX=reefradar-2477
-export AWS_ACCOUNT_ID=781978598306
-export ECR_URI=781978598306.dkr.ecr.us-east-1.amazonaws.com/reefradar-2477-preprocessor
-export LAMBDA_ROLE_ARN=arn:aws:iam::781978598306:role/reefradar-2477-lambda-role
-export SAGEMAKER_ROLE_ARN=arn:aws:iam::781978598306:role/reefradar-2477-sagemaker-role
-export SAGEMAKER_ENDPOINT=reefradar-2477-surfperch-endpoint
-export API_URL="https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod"
-```
-
----
-
-## AWS Console Links
-
-- **Lambda:** https://us-east-1.console.aws.amazon.com/lambda/home?region=us-east-1#/functions
-- **DynamoDB:** https://us-east-1.console.aws.amazon.com/dynamodbv2/home?region=us-east-1#tables
-- **S3:** https://s3.console.aws.amazon.com/s3/buckets
-- **API Gateway:** https://us-east-1.console.aws.amazon.com/apigateway/main/apis?region=us-east-1
-- **SageMaker:** https://us-east-1.console.aws.amazon.com/sagemaker/home?region=us-east-1#/endpoints
-- **CloudWatch Logs:** https://us-east-1.console.aws.amazon.com/cloudwatch/home?region=us-east-1#logsV2:log-groups
+4. **WSL2 Port Forwarding**: Dashboards may not be accessible from Windows browser without port forwarding:
+   ```powershell
+   netsh interface portproxy add v4tov4 listenport=3000 listenaddress=0.0.0.0 connectport=3000 connectaddress=$(wsl hostname -I)
+   ```
 
 ---
 
 ## Credits
 
-- **SurfPerch Model:** Google Research (bird-vocalization-classifier)
-- **Reference Data:** MARRS coral reef acoustic research
-- **Built for:** AWS Cloud Practitioner certification demonstration
+- **SurfPerch Model:** Google Research (bird-vocalization-classifier, adapted for underwater acoustics)
+- **Reference Data:** [MARRS Coral Reef Restoration Monitoring](https://doi.org/10.5281/zenodo.6024203) - University of Exeter
+- **Built with:** AWS Lambda, Next.js 14, TensorFlow, perch-hoplite

@@ -1,0 +1,24 @@
+{
+  "version": "2.0",
+  "created": "2026-02-05T04:21:19.979618",
+  "input_dim": 1280,
+  "hidden_dims": [
+    256,
+    64
+  ],
+  "num_classes": 4,
+  "label_to_idx": {
+    "degraded": 0,
+    "healthy": 1,
+    "restored_early": 2,
+    "restored_mid": 3
+  },
+  "idx_to_label": {
+    "0": "degraded",
+    "1": "healthy",
+    "2": "restored_early",
+    "3": "restored_mid"
+  },
+  "training_samples": 140,
+  "test_accuracy": 0.9047619047619048
+}

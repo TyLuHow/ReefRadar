@@ -47,6 +47,11 @@ def handler(event, context):
         ('GET', '/health'): handle_health,
     }
 
+    # Check for status endpoint (has path parameter)
+    if path.startswith('/status/') and http_method == 'GET':
+        analysis_id = path.split('/')[-1]
+        return handle_status(analysis_id)
+
     # Check for visualize endpoint (has path parameter)
     if path.startswith('/visualize/') and http_method == 'GET':
         analysis_id = path.split('/')[-1]
@@ -130,6 +135,8 @@ def handle_analyze(event):
     try:
         body = json.loads(event.get('body', '{}'))
         upload_id = body.get('upload_id')
+        latitude = body.get('latitude')
+        longitude = body.get('longitude')
 
         if not upload_id:
             return response(400, {'error': {'code': 'MISSING_UPLOAD_ID', 'message': 'upload_id is required'}})
@@ -144,14 +151,20 @@ def handle_analyze(event):
         analysis_id = str(uuid.uuid4())
 
         # Invoke preprocessor asynchronously
+        preprocess_payload = {
+            'upload_id': upload_id,
+            'analysis_id': analysis_id,
+            's3_key': upload_item['s3_key']
+        }
+        if latitude is not None:
+            preprocess_payload['latitude'] = latitude
+        if longitude is not None:
+            preprocess_payload['longitude'] = longitude
+
         lambda_client.invoke(
             FunctionName=PREPROCESSOR_FUNCTION,
             InvocationType='Event',
-            Payload=json.dumps({
-                'upload_id': upload_id,
-                'analysis_id': analysis_id,
-                's3_key': upload_item['s3_key']
-            })
+            Payload=json.dumps(preprocess_payload)
         )
 
         # Update status
@@ -269,6 +282,60 @@ def handle_visualize(analysis_id):
 
     except Exception as e:
         return response(500, {'error': {'code': 'VISUALIZE_FAILED', 'message': str(e)}})
+
+
+def handle_status(analysis_id):
+    """Get detailed processing status for an analysis."""
+    try:
+        table = dynamodb.Table(METADATA_TABLE)
+
+        # Check for completed result
+        result = table.get_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': 'RESULT'})
+        if 'Item' in result:
+            return response(200, {
+                'analysis_id': analysis_id,
+                'stage': 'complete',
+                'status': 'complete',
+                'completed_at': result['Item'].get('completed_at')
+            })
+
+        # Check for error
+        error_result = table.get_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': 'ERROR'})
+        if 'Item' in error_result:
+            item = error_result['Item']
+            return response(200, {
+                'analysis_id': analysis_id,
+                'stage': item.get('stage', 'unknown'),
+                'status': 'failed',
+                'error': {
+                    'code': item.get('error_code', 'UNKNOWN_ERROR'),
+                    'message': item.get('error', 'An unknown error occurred'),
+                    'suggestion': item.get('suggestion', 'Please retry the analysis')
+                }
+            })
+
+        # Check for preprocessed (in classification stage)
+        preprocess_result = table.get_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': 'PREPROCESSED'})
+        if 'Item' in preprocess_result:
+            item = preprocess_result['Item']
+            return response(200, {
+                'analysis_id': analysis_id,
+                'stage': 'classifying',
+                'status': 'processing',
+                'progress': f'Classifying {item.get("num_segments", "?")} audio segments'
+            })
+
+        # Check if upload exists (still in preprocessing)
+        # Look for any upload record that references this analysis
+        return response(200, {
+            'analysis_id': analysis_id,
+            'stage': 'preprocessing',
+            'status': 'processing',
+            'progress': 'Processing audio file'
+        })
+
+    except Exception as e:
+        return response(500, {'error': {'code': 'STATUS_FAILED', 'message': str(e)}})
 
 
 def handle_health(event):

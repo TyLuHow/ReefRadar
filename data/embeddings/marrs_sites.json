@@ -1,0 +1,407 @@
+[
+  {
+    "site_id": "ind_D6",
+    "country": "Indonesia",
+    "site_code": "D6",
+    "status": "degraded",
+    "latitude": -4.930792,
+    "longitude": 119.318102,
+    "file_count": 15231
+  },
+  {
+    "site_id": "ind_D3",
+    "country": "Indonesia",
+    "site_code": "D3",
+    "status": "degraded",
+    "latitude": -4.930635,
+    "longitude": 119.316119,
+    "file_count": 15650
+  },
+  {
+    "site_id": "ind_D4",
+    "country": "Indonesia",
+    "site_code": "D4",
+    "status": "degraded",
+    "latitude": -4.931781,
+    "longitude": 119.316612,
+    "file_count": 15374
+  },
+  {
+    "site_id": "ind_D5",
+    "country": "Indonesia",
+    "site_code": "D5",
+    "status": "degraded",
+    "latitude": -4.932403,
+    "longitude": 119.31646,
+    "file_count": 17921
+  },
+  {
+    "site_id": "ind_D2",
+    "country": "Indonesia",
+    "site_code": "D2",
+    "status": "degraded",
+    "latitude": -4.9401,
+    "longitude": 119.318815,
+    "file_count": 15486
+  },
+  {
+    "site_id": "ind_D1",
+    "country": "Indonesia",
+    "site_code": "D1",
+    "status": "degraded",
+    "latitude": -4.928784,
+    "longitude": 119.316541,
+    "file_count": 15768
+  },
+  {
+    "site_id": "ind_R6",
+    "country": "Indonesia",
+    "site_code": "R6",
+    "status": "restored_mid",
+    "latitude": -4.92572,
+    "longitude": 119.316127,
+    "file_count": 16047
+  },
+  {
+    "site_id": "ind_R1",
+    "country": "Indonesia",
+    "site_code": "R1",
+    "status": "restored_mid",
+    "latitude": -4.922214,
+    "longitude": 119.317036,
+    "file_count": 15477
+  },
+  {
+    "site_id": "ind_R2",
+    "country": "Indonesia",
+    "site_code": "R2",
+    "status": "restored_mid",
+    "latitude": -4.926557,
+    "longitude": 119.316267,
+    "file_count": 14815
+  },
+  {
+    "site_id": "ind_R3",
+    "country": "Indonesia",
+    "site_code": "R3",
+    "status": "restored_mid",
+    "latitude": -4.927522,
+    "longitude": 119.317245,
+    "file_count": 15489
+  },
+  {
+    "site_id": "ind_R4",
+    "country": "Indonesia",
+    "site_code": "R4",
+    "status": "restored_mid",
+    "latitude": -4.927955,
+    "longitude": 119.315882,
+    "file_count": 15850
+  },
+  {
+    "site_id": "ind_H3",
+    "country": "Indonesia",
+    "site_code": "H3",
+    "status": "healthy",
+    "latitude": -4.934867,
+    "longitude": 119.317384,
+    "file_count": 16980
+  },
+  {
+    "site_id": "ind_H5",
+    "country": "Indonesia",
+    "site_code": "H5",
+    "status": "healthy",
+    "latitude": -4.936146,
+    "longitude": 119.317739,
+    "file_count": 3372
+  },
+  {
+    "site_id": "ind_H6",
+    "country": "Indonesia",
+    "site_code": "H6",
+    "status": "healthy",
+    "latitude": -4.940581,
+    "longitude": 119.32009,
+    "file_count": 15730
+  },
+  {
+    "site_id": "ind_H4",
+    "country": "Indonesia",
+    "site_code": "H4",
+    "status": "healthy",
+    "latitude": -4.929463,
+    "longitude": 119.316792,
+    "file_count": 3414
+  },
+  {
+    "site_id": "ind_H2",
+    "country": "Indonesia",
+    "site_code": "H2",
+    "status": "healthy",
+    "latitude": -4.923003,
+    "longitude": 119.316719,
+    "file_count": 15941
+  },
+  {
+    "site_id": "ind_N3",
+    "country": "Indonesia",
+    "site_code": "N3",
+    "status": "restored_early",
+    "latitude": -4.9319109,
+    "longitude": 119.3163365,
+    "file_count": 4217
+  },
+  {
+    "site_id": "ind_N1",
+    "country": "Indonesia",
+    "site_code": "N1",
+    "status": "restored_early",
+    "latitude": -4.9310799,
+    "longitude": 119.3159127,
+    "file_count": 4063
+  },
+  {
+    "site_id": "ind_H1",
+    "country": "Indonesia",
+    "site_code": "H1",
+    "status": "healthy",
+    "latitude": -4.9216,
+    "longitude": 119.316922,
+    "file_count": 16220
+  },
+  {
+    "site_id": "ind_R5",
+    "country": "Indonesia",
+    "site_code": "R5",
+    "status": "restored_mid",
+    "latitude": -4.93155,
+    "longitude": 119.315775,
+    "file_count": 16024
+  },
+  {
+    "site_id": "ind_N2",
+    "country": "Indonesia",
+    "site_code": "N2",
+    "status": "restored_early",
+    "latitude": -4.9314166,
+    "longitude": 119.3162828,
+    "file_count": 4106
+  },
+  {
+    "site_id": "aus_H3",
+    "country": "Australia",
+    "site_code": "H3",
+    "status": "healthy",
+    "latitude": -16.84656,
+    "longitude": 146.22653,
+    "file_count": 14041
+  },
+  {
+    "site_id": "aus_H2",
+    "country": "Australia",
+    "site_code": "H2",
+    "status": "healthy",
+    "latitude": -16.84782,
+    "longitude": 146.22798,
+    "file_count": 12630
+  },
+  {
+    "site_id": "aus_H1",
+    "country": "Australia",
+    "site_code": "H1",
+    "status": "healthy",
+    "latitude": -16.84761,
+    "longitude": 146.22839,
+    "file_count": 13664
+  },
+  {
+    "site_id": "aus_R1",
+    "country": "Australia",
+    "site_code": "R1",
+    "status": "restored_mid",
+    "latitude": -16.84719,
+    "longitude": 146.22866,
+    "file_count": 14287
+  },
+  {
+    "site_id": "aus_D1",
+    "country": "Australia",
+    "site_code": "D1",
+    "status": "degraded",
+    "latitude": -16.84732,
+    "longitude": 146.22907,
+    "file_count": 13738
+  },
+  {
+    "site_id": "aus_D2",
+    "country": "Australia",
+    "site_code": "D2",
+    "status": "degraded",
+    "latitude": -16.847,
+    "longitude": 146.22946,
+    "file_count": 14084
+  },
+  {
+    "site_id": "aus_D3",
+    "country": "Australia",
+    "site_code": "D3",
+    "status": "degraded",
+    "latitude": -16.84667,
+    "longitude": 146.22975,
+    "file_count": 14058
+  },
+  {
+    "site_id": "ken_H1",
+    "country": "Kenya",
+    "site_code": "H1",
+    "status": "healthy",
+    "latitude": -2.215614,
+    "longitude": 41.013482,
+    "file_count": 1060
+  },
+  {
+    "site_id": "ken_H2",
+    "country": "Kenya",
+    "site_code": "H2",
+    "status": "healthy",
+    "latitude": -2.214743,
+    "longitude": 41.016132,
+    "file_count": 12269
+  },
+  {
+    "site_id": "ken_D1",
+    "country": "Kenya",
+    "site_code": "D1",
+    "status": "degraded",
+    "latitude": -2.215419,
+    "longitude": 41.014101,
+    "file_count": 4675
+  },
+  {
+    "site_id": "ken_N1",
+    "country": "Kenya",
+    "site_code": "N1",
+    "status": "restored_early",
+    "latitude": -2.21411,
+    "longitude": 41.017986,
+    "file_count": 11954
+  },
+  {
+    "site_id": "ken_D3",
+    "country": "Kenya",
+    "site_code": "D3",
+    "status": "degraded",
+    "latitude": -2.213638,
+    "longitude": 41.019482,
+    "file_count": 0
+  },
+  {
+    "site_id": "mal_H2",
+    "country": "Maldives",
+    "site_code": "H2",
+    "status": "healthy",
+    "latitude": 4.8856,
+    "longitude": 72.9239,
+    "file_count": 11562
+  },
+  {
+    "site_id": "mal_H1",
+    "country": "Maldives",
+    "site_code": "H1",
+    "status": "healthy",
+    "latitude": 4.8864,
+    "longitude": 72.9278,
+    "file_count": 11594
+  },
+  {
+    "site_id": "mal_D1",
+    "country": "Maldives",
+    "site_code": "D1",
+    "status": "degraded",
+    "latitude": 4.8864713,
+    "longitude": 72.9360995,
+    "file_count": 11538
+  },
+  {
+    "site_id": "mal_D2",
+    "country": "Maldives",
+    "site_code": "D2",
+    "status": "degraded",
+    "latitude": 4.8867,
+    "longitude": 72.9349,
+    "file_count": 10953
+  },
+  {
+    "site_id": "mal_N1",
+    "country": "Maldives",
+    "site_code": "N1",
+    "status": "restored_early",
+    "latitude": 4.8855893,
+    "longitude": 72.9251649,
+    "file_count": 11481
+  },
+  {
+    "site_id": "mex_D2",
+    "country": "Mexico",
+    "site_code": "D2",
+    "status": "degraded",
+    "latitude": 18.288481,
+    "longitude": -87.825105,
+    "file_count": 11158
+  },
+  {
+    "site_id": "mex_N1",
+    "country": "Mexico",
+    "site_code": "N1",
+    "status": "restored_early",
+    "latitude": 18.262246,
+    "longitude": -87.825671,
+    "file_count": 10206
+  },
+  {
+    "site_id": "mex_H2",
+    "country": "Mexico",
+    "site_code": "H2",
+    "status": "healthy",
+    "latitude": 18.260936,
+    "longitude": -87.825753,
+    "file_count": 9986
+  },
+  {
+    "site_id": "mex_R1",
+    "country": "Mexico",
+    "site_code": "R1",
+    "status": "restored_mid",
+    "latitude": 18.34107,
+    "longitude": -87.807348,
+    "file_count": 10434
+  },
+  {
+    "site_id": "mex_D1",
+    "country": "Mexico",
+    "site_code": "D1",
+    "status": "degraded",
+    "latitude": 18.3405443,
+    "longitude": -87.8075489,
+    "file_count": 10741
+  },
+  {
+    "site_id": "mex_H1",
+    "country": "Mexico",
+    "site_code": "H1",
+    "status": "healthy",
+    "latitude": 18.3416616,
+    "longitude": -87.8074022,
+    "file_count": 10794
+  },
+  {
+    "site_id": "mex_H3",
+    "country": "Mexico",
+    "site_code": "H3",
+    "status": "healthy",
+    "latitude": 18.261723,
+    "longitude": -87.8255695,
+    "file_count": 10188
+  }
+]

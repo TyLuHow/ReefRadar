@@ -13,6 +13,7 @@ import uuid
 import time
 from datetime import datetime
 from decimal import Decimal
+from region_detection import detect_region, adjust_classification
 
 s3 = boto3.client('s3')
 lambda_client = boto3.client('lambda')
@@ -63,6 +64,8 @@ def handler(event, context):
     analysis_id = event['analysis_id']
     segments_key = event['segments_key']
     num_segments = event['num_segments']
+    latitude = event.get('latitude')
+    longitude = event.get('longitude')
 
     table = dynamodb.Table(METADATA_TABLE)
     request_id = context.aws_request_id if context else str(uuid.uuid4())
@@ -87,6 +90,11 @@ def handler(event, context):
 
         # Load reference embeddings and classify
         classification = classify_embedding(mean_embedding)
+
+        # Apply geographic region detection and confidence adjustment
+        region_result = detect_region(latitude, longitude)
+        classification = adjust_classification(classification, region_result)
+
         similar_sites = find_similar_sites(mean_embedding)
         viz_coords = generate_visualization(mean_embedding)
 
@@ -111,7 +119,7 @@ def handler(event, context):
                 'classifier_version': classification.get('model_version', '1.0')
             },
             'completed_at': datetime.utcnow().isoformat(),
-            'caveats': 'Classification by trained MLP on SurfPerch embeddings (90% test accuracy on MARRS data). Not a definitive health diagnosis. Complements visual surveys.'
+            'caveats': region_result['caveat']
         }
         # Convert floats to Decimal for DynamoDB
         table.put_item(Item=convert_floats(result_item))

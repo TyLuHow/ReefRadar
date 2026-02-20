@@ -57,6 +57,8 @@ def handler(event, context):
     upload_id = event['upload_id']
     analysis_id = event['analysis_id']
     s3_key = event['s3_key']
+    latitude = event.get('latitude')
+    longitude = event.get('longitude')
 
     table = dynamodb.Table(METADATA_TABLE)
 
@@ -170,15 +172,21 @@ def handler(event, context):
             })
 
             # Invoke classifier
+            classifier_payload = {
+                'upload_id': upload_id,
+                'analysis_id': analysis_id,
+                'segments_key': segments_key,
+                'num_segments': num_segments
+            }
+            if latitude is not None:
+                classifier_payload['latitude'] = latitude
+            if longitude is not None:
+                classifier_payload['longitude'] = longitude
+
             lambda_client.invoke(
                 FunctionName=CLASSIFIER_FUNCTION,
                 InvocationType='Event',
-                Payload=json.dumps({
-                    'upload_id': upload_id,
-                    'analysis_id': analysis_id,
-                    'segments_key': segments_key,
-                    'num_segments': num_segments
-                })
+                Payload=json.dumps(classifier_payload)
             )
 
             return {'statusCode': 200, 'body': json.dumps({'analysis_id': analysis_id, 'status': 'preprocessed', 'num_segments': num_segments})}

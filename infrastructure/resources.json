@@ -27,6 +27,7 @@
         "handler": "handler.handler",
         "environment": {
           "AUDIO_BUCKET": "reefradar-2477-audio",
+          "EMBEDDINGS_BUCKET": "reefradar-2477-embeddings",
           "METADATA_TABLE": "reefradar-2477-metadata",
           "PREPROCESSOR_FUNCTION": "reefradar-2477-preprocessor"
         }
@@ -113,18 +114,13 @@
     }
   },
   "sagemaker": {
-    "endpoint": {
-      "name": "reefradar-2477-surfperch-endpoint",
-      "arn": "arn:aws:sagemaker:us-east-1:781978598306:endpoint/reefradar-2477-surfperch-endpoint",
-      "status": "TO_BE_DELETED",
-      "instance_type": "ml.m5.large",
-      "note": "DEPRECATED - Replaced by Lambda container inference. Delete to save $83/month."
-    },
-    "model": {
-      "name": "reefradar-2477-surfperch",
-      "arn": "arn:aws:sagemaker:us-east-1:781978598306:model/reefradar-2477-surfperch",
-      "container": "763104351884.dkr.ecr.us-east-1.amazonaws.com/tensorflow-inference:2.12-cpu",
-      "model_data": "s3://reefradar-2477-embeddings/models/surfperch/model.tar.gz"
+    "status": "DELETED",
+    "deleted_at": "2026-02-20",
+    "note": "All SageMaker resources deleted. Inference moved to Lambda container (reefradar-2477-inference). Saves ~$83/month.",
+    "deleted_resources": {
+      "endpoint": "reefradar-2477-surfperch-endpoint",
+      "endpoint_config": "reefradar-2477-surfperch-config",
+      "model": "reefradar-2477-surfperch"
     }
   },
   "iam": {

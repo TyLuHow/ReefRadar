@@ -24,6 +24,8 @@ SITE_COORDINATES = {
     "ind_N1": {"lat": -4.9310799, "lon": 119.3159127, "location": "South Sulawesi, Indonesia"},
     "ind_D2": {"lat": -4.9401, "lon": 119.318815, "location": "South Sulawesi, Indonesia"},
     "ind_D3": {"lat": -4.930635, "lon": 119.316119, "location": "South Sulawesi, Indonesia"},
+    "ind_R1": {"lat": -4.922214, "lon": 119.317036, "location": "South Sulawesi, Indonesia"},
+    "ind_R2": {"lat": -4.926557, "lon": 119.316267, "location": "South Sulawesi, Indonesia"},
     # Kenya - Lamu site
     "ken_H1": {"lat": -2.215614, "lon": 41.013482, "location": "Lamu, Kenya"},
 }
@@ -463,6 +465,15 @@ with tab1:
                 st.warning(f"Could not visualize audio: {str(e)}")
                 uploaded_file.seek(0)
 
+                # Optional coordinates for region detection
+            with st.expander("Recording Location (optional)", expanded=False):
+                st.caption("Providing coordinates enables geographic region detection and confidence adjustment.")
+                coord_col1, coord_col2 = st.columns(2)
+                with coord_col1:
+                    user_lat = st.number_input("Latitude", value=None, min_value=-90.0, max_value=90.0, step=0.001, format="%.6f", key="lat_input")
+                with coord_col2:
+                    user_lon = st.number_input("Longitude", value=None, min_value=-180.0, max_value=180.0, step=0.001, format="%.6f", key="lon_input")
+
             if st.button("🔬 Analyze Audio", type="primary"):
                 with st.spinner("Uploading audio..."):
                     # Upload file
@@ -485,11 +496,17 @@ with tab1:
                             upload_id = upload_result['upload_id']
                             st.success(f"Upload successful! ID: {upload_id}")
 
-                            # Start analysis
+                            # Start analysis with optional coordinates
                             with st.spinner("Starting analysis..."):
+                                analyze_payload = {'upload_id': upload_id}
+                                if user_lat is not None:
+                                    analyze_payload['latitude'] = user_lat
+                                if user_lon is not None:
+                                    analyze_payload['longitude'] = user_lon
+
                                 analyze_response = requests.post(
                                     f"{API_URL}/analyze",
-                                    json={'upload_id': upload_id},
+                                    json=analyze_payload,
                                     timeout=30
                                 )
                                 analyze_result = analyze_response.json()
@@ -554,6 +571,14 @@ with tab1:
         with col1:
             st.metric("Health Classification", label.replace('_', ' ').title())
             st.progress(confidence, f"{confidence*100:.1f}% confidence")
+
+            # Region detection info
+            region = classification.get('region', {})
+            if region:
+                if not region.get('in_training_distribution', True):
+                    st.warning(f"⚠️ Recording from **{region.get('name', 'Unknown')}** — outside model training distribution. Confidence reduced.")
+                else:
+                    st.info(f"Region: **{region.get('name', 'Unknown')}** (in training distribution)")
 
         with col2:
             st.markdown("### Probability Distribution")

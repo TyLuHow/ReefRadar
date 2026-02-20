@@ -1,66 +1,72 @@
 # ReefRadar - Technical Architecture
 
+> **See Also:** [Architecture Diagrams (Mermaid)](./docs/ARCHITECTURE_DIAGRAMS.md) - Interactive diagrams that render on GitHub.
+
 ## System Architecture Diagram
 
 ```
-                                    ┌─────────────────────────────────────┐
-                                    │           USER INTERFACE            │
-                                    │  ┌─────────────┐  ┌─────────────┐   │
-                                    │  │  Streamlit  │  │   curl/     │   │
-                                    │  │  Dashboard  │  │  Browser    │   │
-                                    │  └──────┬──────┘  └──────┬──────┘   │
-                                    └─────────┼────────────────┼──────────┘
-                                              │                │
-                                              └───────┬────────┘
-                                                      │ HTTPS
-                                    ┌─────────────────▼─────────────────┐
-                                    │         API GATEWAY (HTTP)         │
-                                    │  ┌─────────────────────────────┐  │
-                                    │  │   rgoe4pqatf / prod stage   │  │
-                                    │  │   CORS: Allow all origins   │  │
-                                    │  └─────────────────────────────┘  │
-                                    └─────────────────┬─────────────────┘
-                                                      │ $default route
-                                    ┌─────────────────▼─────────────────┐
-                                    │        LAMBDA: ROUTER              │
-                                    │  ┌─────────────────────────────┐  │
-                                    │  │  • Route requests           │  │
-                                    │  │  • Handle uploads to S3     │  │
-                                    │  │  • Query DynamoDB           │  │
-                                    │  │  • Trigger preprocessing    │  │
-                                    │  └─────────────────────────────┘  │
-                                    └────────┬──────────────────┬───────┘
-                                             │                  │
-                           ┌─────────────────▼──────┐   ┌───────▼────────┐
-                           │   LAMBDA: PREPROCESS   │   │    DynamoDB    │
-                           │ ┌────────────────────┐ │   │ ┌────────────┐ │
-                           │ │ • Download from S3 │ │   │ │  Metadata  │ │
-                           │ │ • Convert to 32kHz │ │   │ │   Table    │ │
-                           │ │ • Segment audio    │ │   │ │ pk/sk keys │ │
-                           │ │ • Trigger classify │ │   │ └────────────┘ │
-                           │ └────────────────────┘ │   └────────────────┘
-                           └────────────┬───────────┘
-                                        │ async invoke
-                           ┌────────────▼───────────┐
-                           │  LAMBDA: CLASSIFIER    │
-                           │ ┌────────────────────┐ │
-                           │ │ • Load segments    │ │
-                           │ │ • Generate embeds  │◄──── (Synthetic fallback)
-                           │ │ • Compare to refs  │ │
-                           │ │ • Store results    │ │
-                           │ └────────────────────┘ │
-                           └───────────┬────────────┘
-                                       │
-           ┌───────────────────────────┼───────────────────────────┐
-           │                           │                           │
-    ┌──────▼──────┐             ┌──────▼──────┐             ┌──────▼──────┐
-    │  S3: AUDIO  │             │S3: EMBEDDINGS│             │  SAGEMAKER  │
-    │ ┌─────────┐ │             │ ┌─────────┐ │             │ (XLA Error) │
-    │ │uploads/ │ │             │ │models/  │ │             │ ┌─────────┐ │
-    │ │processed│ │             │ │reference│ │             │ │SurfPerch│ │
-    │ │reference│ │             │ │layers/  │ │             │ │ Model   │ │
-    │ └─────────┘ │             │ └─────────┘ │             │ └─────────┘ │
-    └─────────────┘             └─────────────┘             └─────────────┘
+                                    +-------------------------------------+
+                                    |           USER INTERFACE            |
+                                    |  +-----------+  +-----------+       |
+                                    |  |  Next.js  |  | Streamlit |       |
+                                    |  | Dashboard |  | Dashboard |       |
+                                    |  +-----+-----+  +-----+-----+      |
+                                    +--------|--------------|-----------+
+                                             |              |
+                                             +------+-------+
+                                                    | HTTPS
+                                    +---------------v-----------------+
+                                    |         API GATEWAY (HTTP)       |
+                                    |  +-----------------------------+ |
+                                    |  |   rgoe4pqatf / prod stage   | |
+                                    |  |   CORS: Allow all origins   | |
+                                    |  +-----------------------------+ |
+                                    +---------------+-----------------+
+                                                    | $default route
+                                    +---------------v-----------------+
+                                    |        LAMBDA: ROUTER            |
+                                    |  +-----------------------------+ |
+                                    |  |  Route requests             | |
+                                    |  |  Handle uploads to S3       | |
+                                    |  |  Query DynamoDB             | |
+                                    |  |  Trigger preprocessing      | |
+                                    |  |  Forward lat/lon coords     | |
+                                    |  +-----------------------------+ |
+                                    +--------+------------------+------+
+                                             |                  |
+                           +-----------------v------+   +-------v--------+
+                           |   LAMBDA: PREPROCESS   |   |    DynamoDB    |
+                           | +--------------------+ |   | +------------+ |
+                           | | Download from S3   | |   | |  Metadata  | |
+                           | | Convert to 32kHz   | |   | |   Table    | |
+                           | | Segment 5.0s       | |   | | pk/sk keys | |
+                           | | Forward coords     | |   | +------------+ |
+                           | +--------------------+ |   +----------------+
+                           +------------+-----------+
+                                        | async invoke
+                           +------------v-----------+
+                           |  LAMBDA: CLASSIFIER    |
+                           | +--------------------+ |
+                           | | Invoke inference   | |
+                           | | MLP classification | |
+                           | | Region detection   | |
+                           | | Cosine similarity  | |
+                           | | Store results      | |
+                           | +--------------------+ |
+                           +------+-----+-----------+
+                                  |     |
+              +-------------------+     +-------------------+
+              |                                             |
+    +---------v---------+                        +----------v----------+
+    |  LAMBDA: INFERENCE |                        |    S3: EMBEDDINGS   |
+    | (Container, 3GB)  |                        | +-----------------+ |
+    | +---------------+ |                        | | reference/      | |
+    | | SurfPerch     | |                        | |  metadata.json  | |
+    | | TensorFlow    | |                        | |  (8 sites,      | |
+    | | perch-hoplite | |                        | |   1280-dim)     | |
+    | | 1280-dim out  | |                        | +-----------------+ |
+    | +---------------+ |                        +---------------------+
+    +-------------------+
 ```
 
 ## Component Details
@@ -68,122 +74,125 @@
 ### 1. API Gateway
 
 **Type:** HTTP API (v2)
-**ID:** `rgoe4pqatf`
 **Endpoint:** `https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod`
 
-**Configuration:**
 - Single `$default` route catches all requests
 - Lambda proxy integration (payload format 2.0)
 - CORS enabled for all origins
 - No authentication configured
 
-**Why HTTP API vs REST API:**
-- Lower latency (~10ms vs ~30ms)
-- Lower cost ($1.00/million vs $3.50/million)
-- Simpler configuration
-- Sufficient for this use case
-
 ### 2. Lambda Functions
 
 #### Router (reefradar-2477-router)
-**Purpose:** API request handling
 **Memory:** 256 MB | **Timeout:** 30s
 
-**Responsibilities:**
-- Parse HTTP requests (method, path, headers, body)
-- Route to appropriate handler function
-- Handle file uploads (base64 decode if needed)
-- Store uploads in S3
-- Store metadata in DynamoDB
-- Invoke preprocessor asynchronously
-- Return JSON responses
+**Routes:**
+| Method | Path | Handler |
+|--------|------|---------|
+| GET | /health | Health check |
+| GET | /sites | List reference sites |
+| POST | /upload | Upload WAV file |
+| POST | /analyze | Start analysis (accepts optional lat/lon) |
+| GET | /visualize/{id} | Get analysis results |
+| GET | /status/{id} | Get processing stage |
 
-**Code Highlights:**
-```python
-# Stage prefix stripping (API Gateway adds /prod)
-stage = event.get('requestContext', {}).get('stage', '')
-if stage and path.startswith(f'/{stage}'):
-    path = path[len(f'/{stage}'):]
-
-# DynamoDB Decimal handling
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Decimal):
-            return float(obj)
-```
+**Key patterns:**
+- Stage prefix stripping (API Gateway adds `/prod`)
+- `DecimalEncoder` for DynamoDB Decimal-to-float conversion
+- Forwards `latitude`/`longitude` from `/analyze` body through the pipeline
 
 #### Preprocessor (reefradar-2477-preprocessor)
-**Purpose:** Audio conversion and segmentation
-**Memory:** 1024 MB | **Timeout:** 180s
-**Layer:** numpy 1.26.4
+**Memory:** 1024 MB | **Timeout:** 180s | **Layer:** numpy
 
 **Processing Pipeline:**
 1. Download WAV from S3
 2. Parse WAV headers (pure Python, no ffmpeg)
 3. Convert to mono if stereo
-4. Normalize to float32 [-1, 1]
-5. Resample to 32kHz using linear interpolation
-6. Segment into 5-second chunks (160,000 samples)
-7. Store segments as JSON
-8. Trigger classifier
+4. Resample to 32kHz using linear interpolation
+5. Segment into 5.0-second windows (160,000 samples)
+6. Store segments as JSON in S3
+7. Forward coordinates to classifier
 
 **Audio Requirements:**
 - Input: WAV format (8/16/32 bit PCM)
-- Output: 32kHz, mono, 16-bit PCM
+- Output: 32kHz, mono, float32
 - Minimum duration: 5 seconds
 
 #### Classifier (reefradar-2477-classifier)
-**Purpose:** Health classification
-**Memory:** 512 MB | **Timeout:** 120s
-**Layer:** numpy 1.26.4
+**Memory:** 512 MB | **Timeout:** 120s | **Layer:** numpy
+
+**Files:** `handler.py` + `region_detection.py`
 
 **Classification Pipeline:**
 1. Load audio segments from S3
-2. Try SageMaker endpoint → fallback to synthetic
-3. Generate 1280-dimensional embeddings
-4. Compare to reference embeddings (cosine similarity)
-5. Calculate category probabilities
-6. Find top-3 similar reference sites
-7. Generate 2D visualization coordinates
-8. Store results in DynamoDB
+2. Invoke inference Lambda to generate real SurfPerch embeddings
+3. Average embeddings across segments (mean pooling)
+4. Classify using trained MLP (1280->256->64->4)
+5. Detect geographic region from coordinates
+6. Adjust confidence for out-of-distribution regions
+7. Find top similar reference sites via cosine similarity
+8. Generate 2D visualization coordinates (PCA-like projection)
+9. Store results in DynamoDB
 
 **Categories:**
-- `healthy` - Intact reef with diverse soundscape
-- `degraded` - Reduced acoustic activity
-- `restored_early` - Early restoration (0-2 years)
-- `restored_mid` - Mid restoration (2-5 years)
+- `healthy` - Diverse bioacoustic signatures
+- `degraded` - Reduced acoustic diversity
+- `restored_early` - Early restoration (<3 months)
+- `restored_mid` - Mid restoration (32-53 months)
 
-### 3. Storage
+#### Inference (reefradar-2477-inference)
+**Memory:** 3008 MB | **Timeout:** 300s | **Runtime:** Container (Python 3.12)
 
-#### S3: Audio Bucket
-**Name:** `reefradar-2477-audio`
+**Container contents:**
+- TensorFlow CPU
+- perch-hoplite (SurfPerch model loader)
+- kagglehub (model download)
+- setuptools (pkg_resources dependency)
+
+**Pipeline:**
+1. Receive audio segments (JSON array of float32 arrays)
+2. Load SurfPerch model from Kaggle cache (first invocation downloads ~127MB)
+3. Process each segment through SurfPerch
+4. Return 1280-dimensional embeddings per segment
+
+**Build:** Via AWS CodeBuild (`reefradar-2477-inference-build`)
+
+### 3. Geographic Region Detection
+
+**File:** `lambdas/classifier/region_detection.py`
+
+Detects biogeographic region from recording coordinates and adjusts classification confidence:
+
+| Region | Confidence Multiplier | Training Data? |
+|--------|----------------------|----------------|
+| Indo-Pacific West (Indonesia/Philippines) | 1.0 | Yes |
+| Indian Ocean (Kenya/Maldives) | 1.0 | Yes |
+| Indo-Pacific Central (Australia/PNG) | 0.6 | No |
+| Caribbean | 0.6 | No |
+| Eastern Atlantic | 0.6 | No |
+| Red Sea | 0.6 | No |
+| Eastern Pacific | 0.6 | No |
+| Unknown (no coordinates) | 0.7 | Unknown |
+
+### 4. Storage
+
+#### S3: Audio Bucket (`reefradar-2477-audio`)
 
 | Folder | Purpose |
 |--------|---------|
 | `uploads/{upload_id}/` | Original user uploads |
 | `processed/{analysis_id}/` | Converted audio + segments JSON |
-| `reference/` | Reference site audio files |
 
-#### S3: Embeddings Bucket
-**Name:** `reefradar-2477-embeddings`
+#### S3: Embeddings Bucket (`reefradar-2477-embeddings`)
 
 | Folder | Purpose |
 |--------|---------|
-| `models/surfperch/` | SurfPerch model (model.tar.gz) |
-| `reference/` | Pre-computed embeddings + metadata.json |
+| `reference/metadata.json` | 8 reference site embeddings (v3.0) |
 | `layers/` | Lambda layer zips |
 
-#### DynamoDB: Metadata Table
-**Name:** `reefradar-2477-metadata`
+#### DynamoDB (`reefradar-2477-metadata`)
+
 **Mode:** On-Demand (pay-per-request)
-
-**Schema:**
-```
-Partition Key: pk (String)
-Sort Key: sk (String)
-```
-
-**Item Types:**
 
 | pk | sk | Contents |
 |----|-----|----------|
@@ -192,60 +201,60 @@ Sort Key: sk (String)
 | `ANALYSIS#{id}` | `RESULT` | classification, similar_sites, visualization |
 | `ANALYSIS#{id}` | `ERROR` | error message, status |
 
-### 4. ML Pipeline
+### 5. ML Pipeline
 
 #### SurfPerch Model
 **Source:** Google Research (bird-vocalization-classifier)
 **Input:** 160,000 samples (5s @ 32kHz)
-**Output:**
-- `output_0`: Logits (not used)
-- `output_1`: 1280-dim embedding vector
+**Output:** 1280-dimensional embedding vector
 
-**Issue:** Model compiled with XLA, incompatible with TensorFlow Serving.
+The model runs in a Lambda container via perch-hoplite. First invocation downloads the model from Kaggle (~127MB), subsequent invocations use the cached model in `/tmp`.
 
-#### Synthetic Embedding Fallback
-When SageMaker fails, generates embeddings from audio features:
-- RMS energy
-- Zero crossing rate
-- Peak amplitude
-- Spectral centroid
-- Deterministic noise based on RMS seed
+#### MLP Classifier
+**Architecture:** 1280 -> 256 (ReLU) -> 64 (ReLU) -> 4 (Softmax)
+**Test Accuracy:** ~90.5%
+**Inference:** Pure NumPy (no TensorFlow dependency in classifier Lambda)
+**Weights:** `models/reef_classifier_weights.npz`
 
-**Note:** Synthetic embeddings are for demo purposes only. They provide consistent but not acoustically meaningful results.
+Trained on real SurfPerch embeddings from 7 MARRS sites (ind_H4, ind_H5, ind_N1, ind_D2, ind_D3, ind_R1, ind_R2) with augmentation.
 
 #### Reference Embeddings
-Pre-computed embeddings for 8 reference sites:
-- 3 healthy (Australia × 2, Indonesia)
-- 2 degraded (Australia, Philippines)
-- 2 early restoration (Australia, Mexico)
-- 1 mid restoration (Indonesia)
+8 sites with real SurfPerch embeddings (metadata.json v3.0):
+- **Healthy (3):** ind_H4, ind_H5, ken_H1
+- **Degraded (2):** ind_D2, ind_D3
+- **Restored Early (1):** ind_N1
+- **Restored Mid (2):** ind_R1, ind_R2
 
-Stored in `s3://reefradar-2477-embeddings/reference/metadata.json`
+### 6. Frontends
 
-### 5. Frontend
+#### Next.js Dashboard (Primary)
+**Location:** `dashboard-next/`
+**Stack:** Next.js 14 (App Router), TypeScript, Tailwind CSS, Leaflet maps
 
-#### Streamlit Dashboard
-**Location:** `~/ReefRadar/dashboard/app.py`
-**Port:** 8501
-
-**Tabs:**
-1. **Analyze Audio** - Upload and process WAV files
-2. **Reference Sites** - View database of reference sites
-3. **About** - System documentation
+**Pages:**
+- `/` - Upload and analyze audio with optional coordinates
+- `/sites` - Interactive map of reference sites
+- `/about` - Methodology, limitations, and references
 
 **Features:**
-- File upload with audio preview
-- Progress bar during processing
-- Interactive Plotly visualizations
-- Probability distribution chart
-- 2D acoustic space scatter plot
+- Drag-and-drop file upload
+- Optional lat/lon input for region detection
+- Animated probability distribution bars
+- Interactive Leaflet map of similar sites
+- Region detection warnings for out-of-distribution
+
+#### Streamlit Dashboard (Legacy)
+**Location:** `dashboard/app.py`
+**Port:** 8501
+
+3-tab interface: Analyze Audio, Reference Sites, About
 
 ## Security Considerations
 
 ### Current State (Demo)
 - No authentication on API
 - CORS allows all origins
-- IAM roles use FullAccess policies
+- IAM roles use broad policies
 - No encryption at rest configured
 
 ### Production Recommendations
@@ -253,34 +262,17 @@ Stored in `s3://reefradar-2477-embeddings/reference/metadata.json`
 2. Restrict CORS to specific origins
 3. Use least-privilege IAM policies
 4. Enable S3 bucket encryption
-5. Enable DynamoDB encryption
-6. Add WAF for API protection
-7. Implement rate limiting
+5. Add WAF for API protection
+6. Implement rate limiting
 
-## Performance Characteristics
+## Performance
 
 | Stage | Typical Duration |
 |-------|-----------------|
 | Upload (1MB file) | 1-2 seconds |
 | Preprocessing | 3-5 seconds |
-| Classification | 2-4 seconds |
-| Total end-to-end | 10-15 seconds |
-
-**Bottlenecks:**
-- Lambda cold starts (first request): +1-3 seconds
-- S3 uploads for large files
-- DynamoDB writes (minimal)
-
-## Scalability
-
-**Current Limits:**
-- Lambda concurrent executions: 1000 (default)
-- API Gateway: 10,000 requests/second
-- DynamoDB: Unlimited (on-demand)
-- S3: Unlimited
-
-**Scaling Considerations:**
-- Lambda scales automatically
-- No provisioned capacity needed
-- Consider S3 Transfer Acceleration for global users
-- SageMaker Serverless could replace real-time endpoint
+| Inference (warm) | 5-10 seconds |
+| Inference (cold) | 15-35 seconds |
+| Classification | 1-2 seconds |
+| Total (warm) | 10-20 seconds |
+| Total (cold) | 25-45 seconds |
