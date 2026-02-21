@@ -91,25 +91,36 @@ def detect_region(lat, lon):
             'caveat': CAVEATS['unknown_region']
         }
 
+    # Find all matching regions, then pick the most specific (smallest area)
+    # to handle overlapping bounding boxes (e.g. Red Sea within Indian Ocean)
+    matches = []
     for region_code, bounds in REGION_BOUNDS.items():
         if (bounds['lat_min'] <= lat <= bounds['lat_max'] and
                 bounds['lon_min'] <= lon <= bounds['lon_max']):
-            in_dist = bounds['in_distribution']
+            area = ((bounds['lat_max'] - bounds['lat_min']) *
+                    (bounds['lon_max'] - bounds['lon_min']))
+            matches.append((area, region_code, bounds))
 
-            if in_dist:
-                caveat = CAVEATS['in_distribution']
-            else:
-                caveat = CAVEATS['out_of_distribution'].format(
-                    region_name=bounds['name']
-                )
+    if matches:
+        # Smallest bounding box = most specific region
+        matches.sort(key=lambda x: x[0])
+        _, region_code, bounds = matches[0]
+        in_dist = bounds['in_distribution']
 
-            return {
-                'region': region_code,
-                'region_name': bounds['name'],
-                'in_training_distribution': in_dist,
-                'confidence_multiplier': 1.0 if in_dist else 0.6,
-                'caveat': caveat
-            }
+        if in_dist:
+            caveat = CAVEATS['in_distribution']
+        else:
+            caveat = CAVEATS['out_of_distribution'].format(
+                region_name=bounds['name']
+            )
+
+        return {
+            'region': region_code,
+            'region_name': bounds['name'],
+            'in_training_distribution': in_dist,
+            'confidence_multiplier': 1.0 if in_dist else 0.6,
+            'caveat': caveat
+        }
 
     return {
         'region': 'UNKNOWN',

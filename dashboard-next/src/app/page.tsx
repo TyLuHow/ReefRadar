@@ -286,7 +286,7 @@ export default function AnalyzePage() {
             <h3 className="font-semibold text-gray-900 mb-3">Requirements</h3>
             <ul className="text-sm text-gray-600 space-y-2">
               <li>WAV format audio files</li>
-              <li>Maximum file size: 10MB</li>
+              <li>Maximum file size: 50MB</li>
               <li>Minimum duration: 5 seconds</li>
               <li>Best results with underwater recordings</li>
             </ul>

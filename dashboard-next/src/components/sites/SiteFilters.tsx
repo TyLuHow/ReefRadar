@@ -15,10 +15,8 @@ export function SiteFilters({ sites, onFilteredSitesChange, className = '' }: Si
   const [selectedStatuses, setSelectedStatuses] = useState<Set<ReefStatus>>(new Set());
   const [selectedCountries, setSelectedCountries] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
-  // Default to collapsed on mobile (window width check happens after mount)
-  const [isExpanded, setIsExpanded] = useState(
-    typeof window !== 'undefined' ? window.innerWidth >= 1024 : true
-  );
+  // Default to expanded, collapses on mobile after mount
+  const [isExpanded, setIsExpanded] = useState(true);
 
   // Get unique statuses and countries
   const uniqueStatuses = useMemo(() => {

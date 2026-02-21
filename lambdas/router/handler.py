@@ -80,20 +80,37 @@ def handle_upload(event):
         else:
             file_content = body.encode() if isinstance(body, str) else body
 
-        upload_id = str(uuid.uuid4())
-        headers = event.get('headers', {})
-        content_type = headers.get('content-type', 'audio/wav')
-        filename = headers.get('x-filename', f'upload_{upload_id}.wav')
+        # Validate file: minimum size (WAV header is 44 bytes)
+        if len(file_content) < 44:
+            return response(400, {
+                'error': {
+                    'code': 'FILE_TOO_SMALL',
+                    'message': 'File is too small to be a valid audio file'
+                }
+            })
 
-        # Validate file size (50 MB max)
+        # Validate WAV magic bytes: RIFF header (bytes 0-3) and WAVE format (bytes 8-11)
+        if file_content[:4] != b'RIFF' or file_content[8:12] != b'WAVE':
+            return response(400, {
+                'error': {
+                    'code': 'INVALID_AUDIO_FORMAT',
+                    'message': 'File does not appear to be a WAV file. Please upload a standard WAV audio file.'
+                }
+            })
+
+        # Validate file size (50MB max)
         if len(file_content) > 50 * 1024 * 1024:
             return response(400, {
                 'error': {
                     'code': 'FILE_TOO_LARGE',
-                    'message': 'File exceeds 50 MB limit',
-                    'details': {'size_bytes': len(file_content)}
+                    'message': 'File exceeds 50MB limit'
                 }
             })
+
+        upload_id = str(uuid.uuid4())
+        headers = event.get('headers', {})
+        content_type = headers.get('content-type', 'audio/wav')
+        filename = headers.get('x-filename', f'upload_{upload_id}.wav')
 
         # Upload to S3
         s3_key = f'uploads/{upload_id}/{filename}'
@@ -167,7 +184,18 @@ def handle_analyze(event):
             Payload=json.dumps(preprocess_payload)
         )
 
-        # Update status
+        # Create analysis metadata record (enables /status lookups immediately)
+        table.put_item(Item={
+            'pk': f'ANALYSIS#{analysis_id}',
+            'sk': 'METADATA',
+            'upload_id': upload_id,
+            'analysis_id': analysis_id,
+            'status': 'processing',
+            'stage': 'preprocessing',
+            'created_at': datetime.utcnow().isoformat(),
+        })
+
+        # Update upload status
         table.update_item(
             Key={'pk': f'UPLOAD#{upload_id}', 'sk': 'METADATA'},
             UpdateExpression='SET #status = :status, analysis_id = :aid',
@@ -325,13 +353,22 @@ def handle_status(analysis_id):
                 'progress': f'Classifying {item.get("num_segments", "?")} audio segments'
             })
 
-        # Check if upload exists (still in preprocessing)
-        # Look for any upload record that references this analysis
-        return response(200, {
-            'analysis_id': analysis_id,
-            'stage': 'preprocessing',
-            'status': 'processing',
-            'progress': 'Processing audio file'
+        # Check for metadata record (analysis just started, still in early preprocessing)
+        metadata_result = table.get_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': 'METADATA'})
+        if 'Item' in metadata_result:
+            return response(200, {
+                'analysis_id': analysis_id,
+                'stage': 'preprocessing',
+                'status': 'processing',
+                'progress': 'Processing audio file'
+            })
+
+        # No records found at all — analysis does not exist
+        return response(404, {
+            'error': {
+                'code': 'ANALYSIS_NOT_FOUND',
+                'message': f'No analysis found with ID: {analysis_id}'
+            }
         })
 
     except Exception as e:

@@ -154,7 +154,7 @@ export function FileUpload({
           </div>
 
           <div className="text-xs text-gray-400">
-            WAV format only, maximum 10MB
+            WAV format only, maximum 50MB
           </div>
         </div>
       </div>

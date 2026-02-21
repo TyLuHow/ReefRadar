@@ -25,7 +25,7 @@ export function formatFileSize(bytes: number): string {
 
 // Validate WAV file
 export function validateWavFile(file: File): { valid: boolean; error?: string } {
-  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+  const MAX_SIZE = 50 * 1024 * 1024; // 50MB
 
   if (!file.name.toLowerCase().endsWith('.wav')) {
     return { valid: false, error: 'Please upload a WAV file' };
