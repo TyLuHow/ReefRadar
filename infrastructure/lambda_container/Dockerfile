@@ -19,6 +19,9 @@ RUN pip install --upgrade pip
 COPY requirements.txt ${LAMBDA_TASK_ROOT}/
 RUN pip install --no-cache-dir -r ${LAMBDA_TASK_ROOT}/requirements.txt
 
+# Force-reinstall setuptools last (tensorflow-cpu can clobber it)
+RUN pip install --force-reinstall setuptools>=69.0.0
+
 # Copy inference code
 COPY inference.py ${LAMBDA_TASK_ROOT}/
 

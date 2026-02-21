@@ -38,48 +38,32 @@ def get_model():
     if _model is None:
         print("Loading SurfPerch model...")
         import tensorflow as tf
-        import tensorflow_hub as hub
+        import kagglehub
 
-        # Set TF Hub cache directory to /tmp for Lambda
-        os.environ['TFHUB_CACHE_DIR'] = '/tmp/tfhub_cache'
+        os.environ['KAGGLEHUB_CACHE'] = '/tmp/kagglehub'
 
-        # Try loading via tensorflow_hub with the Kaggle URL
-        # TF Hub automatically handles Kaggle model URLs
-        model_url = 'https://www.kaggle.com/models/google/surfperch/TensorFlow2/1'
-        print(f"Loading model from: {model_url}")
+        # Download model via kagglehub (no tensorflow_hub dependency)
+        handles_to_try = [
+            MODEL_HANDLE,
+            'google/surfperch/tensorFlow2',
+            'google/surfperch',
+        ]
 
-        try:
-            # Use hub.load for SavedModel format
-            _model = hub.load(model_url)
-            print("Model loaded via hub.load")
-        except Exception as e:
-            print(f"hub.load failed: {e}")
-            # Fallback: try downloading via kagglehub and loading directly
-            import kagglehub
-            os.environ['KAGGLEHUB_CACHE'] = '/tmp/kagglehub'
+        model_path = None
+        for handle in handles_to_try:
+            try:
+                print(f"Downloading model: {handle}")
+                model_path = kagglehub.model_download(handle)
+                print(f"Downloaded to: {model_path}")
+                break
+            except Exception as e:
+                print(f"Handle {handle} failed: {e}")
+                continue
 
-            # Try different handle formats
-            handles_to_try = [
-                MODEL_HANDLE,
-                'google/surfperch/tensorFlow2',
-                'google/surfperch',
-            ]
+        if not model_path:
+            raise RuntimeError("Could not download SurfPerch model from Kaggle")
 
-            model_path = None
-            for handle in handles_to_try:
-                try:
-                    print(f"Trying kagglehub download: {handle}")
-                    model_path = kagglehub.model_download(handle)
-                    print(f"Downloaded to: {model_path}")
-                    break
-                except Exception as he:
-                    print(f"Handle {handle} failed: {he}")
-                    continue
-
-            if model_path:
-                _model = tf.saved_model.load(model_path)
-            else:
-                raise RuntimeError("Could not download SurfPerch model")
+        _model = tf.saved_model.load(model_path)
 
         # Get the embedding function
         if hasattr(_model, 'signatures'):
