@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Navbar } from '@/components/Navbar';
+import { Footer } from '@/components/layout/Footer';
 import { ToastProvider } from '@/components/Toast';
 import { Providers } from './providers';
 
@@ -25,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="scroll-smooth">
       <body className={inter.className}>
         <Providers>
           <div className="min-h-screen flex flex-col">
@@ -33,13 +34,7 @@ export default function RootLayout({
             <main className="flex-1">
               {children}
             </main>
-            <footer className="border-t border-gray-200 py-6 mt-auto">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <p className="text-center text-sm text-gray-500">
-                  ReefRadar - Coral Reef Acoustic Health Analysis
-                </p>
-              </div>
-            </footer>
+            <Footer />
           </div>
           <ToastProvider />
         </Providers>

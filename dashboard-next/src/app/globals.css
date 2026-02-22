@@ -9,6 +9,40 @@
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 248, 250, 252;
   --background-end-rgb: 255, 255, 255;
+
+  /* Ocean depth palette */
+  --abyss: #030b1a;
+  --deep: #061428;
+  --mid: #0a2240;
+  --surface: #0d3b66;
+
+  /* Bioluminescent accents */
+  --glow-cyan: #00e5ff;
+  --glow-green: #00ffa3;
+  --glow-coral: #ff6b6b;
+  --glow-gold: #ffd700;
+
+  /* Health classification */
+  --healthy: #00ffa3;
+  --degraded: #ff6b6b;
+  --restored-early: #ffd700;
+  --restored-mid: #00e5ff;
+
+  /* Text hierarchy */
+  --text-primary: #e0f0ff;
+  --text-muted: #6b8aad;
+  --text-dim: #3a5a7c;
+
+  /* Spectrogram thermal */
+  --spec-cold: #0a0a2e;
+  --spec-cool: #1a3a8a;
+  --spec-warm: #00e5ff;
+  --spec-hot: #ffd700;
+  --spec-fire: #ff6b6b;
+
+  /* Region status */
+  --in-distribution: var(--glow-green);
+  --out-of-distribution: var(--glow-coral);
 }
 
 body {

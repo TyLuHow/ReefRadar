@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Site, ReefStatus, STATUS_COLORS } from '@/types';
 import { formatStatus, cn } from '@/lib/utils';
 import { Filter, X, ChevronDown, Search } from 'lucide-react';
@@ -55,7 +55,7 @@ export function SiteFilters({ sites, onFilteredSitesChange, className = '' }: Si
   }, [sites, selectedStatuses, selectedCountries, searchQuery]);
 
   // Update parent whenever filters change
-  useMemo(() => {
+  useEffect(() => {
     onFilteredSitesChange(filteredSites);
   }, [filteredSites, onFilteredSitesChange]);
 

@@ -21,6 +21,31 @@ module.exports = {
           'restored-early': '#F39C12',
           'restored-mid': '#3498DB',
         },
+        // Ocean depth palette
+        abyss: 'var(--abyss)',
+        deep: 'var(--deep)',
+        mid: 'var(--mid)',
+        surface: 'var(--surface)',
+        // Bioluminescent accents
+        'glow-cyan': 'var(--glow-cyan)',
+        'glow-green': 'var(--glow-green)',
+        'glow-coral': 'var(--glow-coral)',
+        'glow-gold': 'var(--glow-gold)',
+        // Health classification (ocean theme)
+        'health-healthy': 'var(--healthy)',
+        'health-degraded': 'var(--degraded)',
+        'health-restored-early': 'var(--restored-early)',
+        'health-restored-mid': 'var(--restored-mid)',
+        // Text hierarchy
+        'text-primary': 'var(--text-primary)',
+        'text-muted': 'var(--text-muted)',
+        'text-dim': 'var(--text-dim)',
+        // Spectrogram thermal
+        'spec-cold': 'var(--spec-cold)',
+        'spec-cool': 'var(--spec-cool)',
+        'spec-warm': 'var(--spec-warm)',
+        'spec-hot': 'var(--spec-hot)',
+        'spec-fire': 'var(--spec-fire)',
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

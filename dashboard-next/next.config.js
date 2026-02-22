@@ -4,6 +4,12 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Transpile deck.gl ESM packages for Next.js compatibility
+  transpilePackages: [
+    '@deck.gl/core',
+    '@deck.gl/layers',
+    '@deck.gl/react',
+  ],
   // WSL2: dev and start scripts bind to 0.0.0.0 via -H flag in package.json
   // If upgrading to Next.js 15+, add allowedDevOrigins for CORS support
 };

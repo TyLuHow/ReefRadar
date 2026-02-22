@@ -226,7 +226,7 @@ export default function AboutPage() {
           <ul className="space-y-2 text-sm text-gray-600">
             <li>Indonesia - South Sulawesi (healthy, degraded, restored)</li>
             <li>Kenya - Coastal Kenya (healthy)</li>
-            <li>6 validated sites from 45-site MARRS dataset</li>
+            <li>8 validated sites from 45-site MARRS dataset</li>
             <li>DOI: 10.5522/04/29958062 (CC BY 4.0)</li>
           </ul>
         </div>
@@ -276,7 +276,7 @@ export default function AboutPage() {
           <li>Model trained on Indo-Pacific reef sounds (Indonesia, Kenya, Australia, Maldives, Mexico) — Caribbean/Atlantic reefs have different soundscapes and are not validated</li>
           <li>Background noise (boats, weather, equipment) can affect accuracy</li>
           <li>Soundscapes vary by time of day, season, and lunar cycle — single recordings may not represent overall reef health</li>
-          <li>Currently 6 reference sites; expanding to full 45-site MARRS dataset</li>
+          <li>Currently 8 reference sites; expanding to full 45-site MARRS dataset</li>
         </ul>
       </div>
 
