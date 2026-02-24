@@ -30,7 +30,7 @@ export function RegionWarning({ region, className }: RegionWarningProps) {
           <p className="text-sm text-amber-100/80 leading-relaxed">
             The detected region <strong>{region.name}</strong> ({region.detected})
             is outside the training distribution. Our models were trained primarily
-            on Indo-Pacific reef data (Indonesia and Kenya).
+            on Indo-Pacific reef data (Indonesia, Australia, Kenya, Maldives, and Mexico).
           </p>
           {region.confidence_adjusted && (
             <p className="text-sm text-amber-100/80 leading-relaxed">

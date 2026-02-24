@@ -5,10 +5,10 @@ import { Site, ReefStatus } from '@/types';
 import { formatStatus } from '@/lib/utils';
 
 const STATUS_DOT_COLORS: Record<ReefStatus, string> = {
-  healthy: '#00ffa3',
-  degraded: '#ff6b6b',
-  restored_early: '#ffd700',
-  restored_mid: '#00e5ff',
+  healthy: '#cd853f',
+  degraded: '#6b6560',
+  restored_early: '#8b7355',
+  restored_mid: '#c08081',
 };
 
 interface SitePopupProps {
@@ -29,8 +29,8 @@ export function SitePopup({ site, onClose }: SitePopupProps) {
     <div
       className="rounded-xl shadow-2xl overflow-hidden pointer-events-auto"
       style={{
-        background: 'rgba(6, 20, 40, 0.95)',
-        border: '1px solid rgba(255,255,255,0.1)',
+        background: 'rgba(26, 23, 20, 0.95)',
+        border: '1px solid rgba(229, 225, 219, 0.1)',
         backdropFilter: 'blur(12px)',
         width: '260px',
       }}

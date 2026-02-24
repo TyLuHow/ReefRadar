@@ -244,10 +244,10 @@ export default function EnhancedAnalyzePage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Hero Section */}
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">
+        <h1 className="text-4xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
           Analyze Reef Audio
         </h1>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+        <p className="text-lg max-w-2xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
           Upload underwater audio recordings to analyze coral reef health using
           AI-powered acoustic analysis
         </p>
@@ -257,9 +257,9 @@ export default function EnhancedAnalyzePage() {
         {/* Left Column - Upload and Progress */}
         <div className="lg:col-span-2 space-y-6">
           {/* File Upload */}
-          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <Upload className="w-5 h-5 mr-2 text-reef-primary" />
+          <div className="glass-panel p-6">
+            <h2 className="text-lg font-semibold mb-4 flex items-center" style={{ color: 'var(--text-primary)' }}>
+              <Upload className="w-5 h-5 mr-2 text-ochre" />
               Upload Audio
             </h2>
             <FileUpload
@@ -274,17 +274,25 @@ export default function EnhancedAnalyzePage() {
               analysisStep === 'idle' &&
               audioBufferRef.current &&
               previewSupported && (
-                <div className="mt-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
+                <div
+                  className="mt-4 p-4 rounded-lg"
+                  style={{ background: 'var(--bg-depths)', border: '1px solid var(--glass-border)' }}
+                >
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <AudioLines className="w-4 h-4 text-cyan-400" />
-                      <span className="text-sm font-medium text-gray-200">
+                      <AudioLines className="w-4 h-4 text-ochre" />
+                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                         Audio Preview
                       </span>
                     </div>
                     <button
                       onClick={togglePreview}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors bg-cyan-900/40 text-cyan-300 hover:bg-cyan-900/60 border border-cyan-700/40"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors"
+                      style={{
+                        background: 'rgba(205, 133, 63, 0.15)',
+                        color: '#cd853f',
+                        border: '1px solid rgba(205, 133, 63, 0.3)',
+                      }}
                     >
                       {previewPlaying ? (
                         <>
@@ -306,7 +314,7 @@ export default function EnhancedAnalyzePage() {
                     showFrequencyLabels={false}
                   />
                   {!previewPlaying && (
-                    <p className="text-xs text-gray-500 mt-2 text-center">
+                    <p className="text-xs mt-2 text-center" style={{ color: 'var(--text-muted)' }}>
                       Press Preview to see the live spectrogram of your
                       recording
                     </p>
@@ -316,14 +324,17 @@ export default function EnhancedAnalyzePage() {
 
             {/* Optional Coordinates */}
             {selectedFile && analysisStep === 'idle' && (
-              <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div
+                className="mt-4 p-4 rounded-lg"
+                style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
+              >
                 <div className="flex items-center mb-2">
-                  <MapPin className="w-4 h-4 mr-2 text-gray-500" />
-                  <span className="text-sm font-medium text-gray-700">
+                  <MapPin className="w-4 h-4 mr-2" style={{ color: 'var(--text-muted)' }} />
+                  <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                     Recording Location (optional)
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 mb-3">
+                <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
                   Providing coordinates enables geographic region detection and
                   confidence adjustment.
                 </p>
@@ -334,7 +345,12 @@ export default function EnhancedAnalyzePage() {
                     placeholder="Latitude (e.g. -4.93)"
                     value={latitude}
                     onChange={(e) => setLatitude(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-reef-primary focus:border-reef-primary"
+                    className="px-3 py-2 rounded-md text-sm"
+                    style={{
+                      background: 'var(--bg-depths)',
+                      border: '1px solid var(--glass-border)',
+                      color: 'var(--text-primary)',
+                    }}
                   />
                   <input
                     type="number"
@@ -342,7 +358,12 @@ export default function EnhancedAnalyzePage() {
                     placeholder="Longitude (e.g. 119.32)"
                     value={longitude}
                     onChange={(e) => setLongitude(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-reef-primary focus:border-reef-primary"
+                    className="px-3 py-2 rounded-md text-sm"
+                    style={{
+                      background: 'var(--bg-depths)',
+                      border: '1px solid var(--glass-border)',
+                      color: 'var(--text-primary)',
+                    }}
                   />
                 </div>
               </div>
@@ -352,7 +373,7 @@ export default function EnhancedAnalyzePage() {
             {selectedFile && analysisStep === 'idle' && (
               <button
                 onClick={handleAnalyze}
-                className="mt-4 w-full bg-reef-primary hover:bg-reef-primary/90 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center space-x-2 transition-colors"
+                className="mt-4 w-full bg-ochre hover:bg-ochre/90 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center space-x-2 transition-colors"
               >
                 <Sparkles className="w-5 h-5" />
                 <span>Analyze Audio</span>
@@ -363,7 +384,12 @@ export default function EnhancedAnalyzePage() {
             {(analysisStep === 'complete' || analysisStep === 'error') && (
               <button
                 onClick={handleReset}
-                className="mt-4 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg flex items-center justify-center space-x-2 transition-colors"
+                className="mt-4 w-full font-semibold py-3 px-6 rounded-lg flex items-center justify-center space-x-2 transition-colors"
+                style={{
+                  background: 'var(--glass-bg)',
+                  border: '1px solid var(--glass-border)',
+                  color: 'var(--text-primary)',
+                }}
               >
                 <RefreshCw className="w-5 h-5" />
                 <span>Analyze Another File</span>
@@ -404,66 +430,66 @@ export default function EnhancedAnalyzePage() {
 
         {/* Right Column - How It Works */}
         <div className="space-y-6">
-          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="glass-panel p-6">
+            <h2 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
               How It Works
             </h2>
             <div className="space-y-4">
               <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 bg-reef-light text-reef-primary rounded-full flex items-center justify-center flex-shrink-0 font-semibold">
+                <div className="w-8 h-8 text-ochre rounded-full flex items-center justify-center flex-shrink-0 font-semibold" style={{ background: 'rgba(205, 133, 63, 0.15)' }}>
                   1
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">Upload</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Upload</p>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                     Upload your underwater audio recording (WAV format)
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 bg-reef-light text-reef-primary rounded-full flex items-center justify-center flex-shrink-0 font-semibold">
+                <div className="w-8 h-8 text-ochre rounded-full flex items-center justify-center flex-shrink-0 font-semibold" style={{ background: 'rgba(205, 133, 63, 0.15)' }}>
                   2
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">Process</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Process</p>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                     Audio is converted to 32kHz and segmented into 5s windows
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 bg-reef-light text-reef-primary rounded-full flex items-center justify-center flex-shrink-0 font-semibold">
+                <div className="w-8 h-8 text-ochre rounded-full flex items-center justify-center flex-shrink-0 font-semibold" style={{ background: 'rgba(205, 133, 63, 0.15)' }}>
                   3
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">Analyze</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Analyze</p>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                     AI model extracts 1280-dimensional acoustic features
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 bg-reef-light text-reef-primary rounded-full flex items-center justify-center flex-shrink-0 font-semibold">
+                <div className="w-8 h-8 text-ochre rounded-full flex items-center justify-center flex-shrink-0 font-semibold" style={{ background: 'rgba(205, 133, 63, 0.15)' }}>
                   4
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">Compare</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Compare</p>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                     Trained classifier determines reef health status
                   </p>
                 </div>
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 bg-reef-light text-reef-primary rounded-full flex items-center justify-center flex-shrink-0 font-semibold">
+                <div className="w-8 h-8 text-ochre rounded-full flex items-center justify-center flex-shrink-0 font-semibold" style={{ background: 'rgba(205, 133, 63, 0.15)' }}>
                   5
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">Results</p>
-                  <p className="text-sm text-gray-500">
+                  <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Results</p>
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                     Health classification and similar reference sites
                   </p>
                 </div>
@@ -472,7 +498,7 @@ export default function EnhancedAnalyzePage() {
           </div>
 
           {/* Quick Stats */}
-          <div className="bg-gradient-to-br from-reef-primary to-reef-secondary rounded-xl p-6 text-white">
+          <div className="bg-gradient-to-br from-ochre to-dusty-rose rounded-xl p-6 text-white">
             <h2 className="text-lg font-semibold mb-4">Quick Facts</h2>
             <div className="space-y-3">
               <div className="flex items-center space-x-3">
@@ -491,9 +517,9 @@ export default function EnhancedAnalyzePage() {
           </div>
 
           {/* Supported Formats */}
-          <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
-            <h3 className="font-semibold text-gray-900 mb-3">Requirements</h3>
-            <ul className="text-sm text-gray-600 space-y-2">
+          <div className="glass-panel p-6">
+            <h3 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Requirements</h3>
+            <ul className="text-sm space-y-2" style={{ color: 'var(--text-secondary)' }}>
               <li>WAV format audio files</li>
               <li>Maximum file size: 50MB</li>
               <li>Minimum duration: 5 seconds</li>

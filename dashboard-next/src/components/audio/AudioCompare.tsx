@@ -7,8 +7,7 @@ import {
   useCallback,
 } from 'react';
 import Link from 'next/link';
-import { Play, Pause, Volume2, AlertTriangle, Loader2 } from 'lucide-react';
-import { generateHealthyReef, generateDegradedReef } from './SyntheticAudioGenerator';
+import { Play, Pause, Volume2, Info, AlertTriangle, Loader2 } from 'lucide-react';
 import { SpectrogramCanvas } from './SpectrogramCanvas';
 import { FrequencyBandLabels } from './FrequencyBandLabels';
 import { ABCrossfader } from './ABCrossfader';
@@ -65,11 +64,25 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
       const ctx = new AudioContextClass();
       audioCtxRef.current = ctx;
 
-      // Generate buffers asynchronously (yields to UI)
-      await new Promise((r) => setTimeout(r, 50));
-      const healthyBuf = generateHealthyReef(ctx, 15);
-      await new Promise((r) => setTimeout(r, 50));
-      const degradedBuf = generateDegradedReef(ctx, 15);
+      // Fetch real MARRS reef audio files
+      const [healthyResponse, degradedResponse] = await Promise.all([
+        fetch('/audio/healthy-reef.wav'),
+        fetch('/audio/degraded-reef.wav'),
+      ]);
+
+      if (!healthyResponse.ok || !degradedResponse.ok) {
+        throw new Error('Failed to load audio files');
+      }
+
+      const [healthyArrayBuffer, degradedArrayBuffer] = await Promise.all([
+        healthyResponse.arrayBuffer(),
+        degradedResponse.arrayBuffer(),
+      ]);
+
+      const [healthyBuf, degradedBuf] = await Promise.all([
+        ctx.decodeAudioData(healthyArrayBuffer),
+        ctx.decodeAudioData(degradedArrayBuffer),
+      ]);
 
       healthyBufferRef.current = healthyBuf;
       degradedBufferRef.current = degradedBuf;
@@ -213,13 +226,14 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
     }
   }, [loadState, startPlayback]);
 
-  // --- Update gain when crossfade changes ---
+  // --- Update gain when crossfade changes (equal-power crossfade) ---
   useEffect(() => {
+    const angle = crossfade * Math.PI / 2;
     if (healthyGainRef.current) {
-      healthyGainRef.current.gain.value = 1 - crossfade;
+      healthyGainRef.current.gain.value = Math.cos(angle);
     }
     if (degradedGainRef.current) {
-      degradedGainRef.current.gain.value = crossfade;
+      degradedGainRef.current.gain.value = Math.sin(angle);
     }
   }, [crossfade]);
 
@@ -241,7 +255,7 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
 
   if (!webAudioSupported) {
     return (
-      <div className={cn('p-6 text-center rounded-lg bg-gray-800 text-gray-400', className)}>
+      <div className={cn('p-6 text-center rounded-lg', className)} style={{ background: 'var(--bg-surface)', color: 'var(--text-muted)' }}>
         <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-amber-400" />
         <p>Web Audio API is not supported in this browser.</p>
       </div>
@@ -256,14 +270,14 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
   return (
     <div className={cn('rounded-xl overflow-hidden', className)}>
       {/* Header banner */}
-      <div className="flex items-center gap-2 px-4 py-2 text-xs" style={{ background: '#0a2240', color: '#6b8aad' }}>
-        <AlertTriangle className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+      <div className="flex items-center gap-2 px-4 py-2 text-xs" style={{ background: '#252220', color: '#a8a29e' }}>
+        <Info className="w-3.5 h-3.5 text-ochre flex-shrink-0" />
         <span>
-          Demo audio generated synthetically -- upload real reef recordings for actual analysis
+          Real reef recordings from the MARRS dataset (CC-BY 4.0) -- Williams et al. 2024
         </span>
       </div>
 
-      <div style={{ background: '#061428' }} className="p-4 space-y-4">
+      <div style={{ background: '#0f0d0b' }} className="p-4 space-y-4">
         {/* Play controls + Crossfader */}
         <div className="flex items-center gap-4">
           <button
@@ -273,8 +287,8 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
               'flex items-center justify-center w-12 h-12 rounded-full flex-shrink-0',
               'border-2 transition-all duration-200',
               isPlaying
-                ? 'border-glow-cyan bg-glow-cyan/20 text-glow-cyan'
-                : 'border-glow-green bg-glow-green/10 text-glow-green hover:bg-glow-green/20',
+                ? 'border-ochre bg-ochre/20 text-ochre'
+                : 'border-ochre bg-ochre/10 text-ochre hover:bg-ochre/20',
               loadState === 'loading' && 'opacity-60 cursor-wait',
             )}
             aria-label={isPlaying ? 'Pause' : 'Play'}
@@ -292,22 +306,22 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
             <ABCrossfader value={crossfade} onChange={setCrossfade} />
           </div>
 
-          <Volume2 className="w-4 h-4 text-glow-cyan flex-shrink-0 opacity-60" />
+          <Volume2 className="w-4 h-4 text-ochre flex-shrink-0 opacity-60" />
         </div>
 
         {/* Progress bar */}
-        <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: '#0d3b66' }}>
+        <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: '#252220' }}>
           <div
             className="h-full rounded-full transition-[width] duration-100"
             style={{
               width: `${progressPct}%`,
-              background: 'linear-gradient(to right, #00ffa3, #00e5ff)',
+              background: 'linear-gradient(to right, #cd853f, #e9dcc9)',
             }}
           />
         </div>
 
         {/* Time display */}
-        <div className="flex justify-between text-xs" style={{ color: '#6b8aad' }}>
+        <div className="flex justify-between text-xs" style={{ color: '#a8a29e' }}>
           <span>{formatTime(currentTime)}</span>
           <span>{formatTime(duration)}</span>
         </div>
@@ -317,8 +331,8 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
           {/* Healthy spectrogram */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="w-2 h-2 rounded-full" style={{ background: '#00ffa3' }} />
-              <span className="text-xs font-semibold" style={{ color: '#00ffa3' }}>
+              <span className="w-2 h-2 rounded-full" style={{ background: '#cd853f' }} />
+              <span className="text-xs font-semibold" style={{ color: '#cd853f' }}>
                 Healthy Reef
               </span>
             </div>
@@ -340,8 +354,8 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
           {/* Degraded spectrogram */}
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <span className="w-2 h-2 rounded-full" style={{ background: '#ff6b6b' }} />
-              <span className="text-xs font-semibold" style={{ color: '#ff6b6b' }}>
+              <span className="w-2 h-2 rounded-full" style={{ background: '#c08081' }} />
+              <span className="text-xs font-semibold" style={{ color: '#c08081' }}>
                 Degraded Reef
               </span>
             </div>
@@ -362,9 +376,9 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
             <Link
               href="/dashboard/compare"
               className="text-xs font-semibold hover:underline"
-              style={{ color: '#00e5ff' }}
+              style={{ color: '#cd853f' }}
             >
-              Open full audio comparison &rarr;
+              Open full audio comparison {"\u2192"}
             </Link>
           </div>
         )}

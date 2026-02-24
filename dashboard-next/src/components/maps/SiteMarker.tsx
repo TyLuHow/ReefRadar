@@ -88,7 +88,7 @@ export function SiteMarker({ site, isHighlighted = false, similarity, onClick }:
             <div className="mt-2 pt-2 border-t border-gray-200">
               <p className="text-sm">
                 <span className="font-medium text-gray-700">Similarity:</span>{' '}
-                <span className="font-bold text-reef-primary">
+                <span className="font-bold text-ochre">
                   {(similarity * 100).toFixed(1)}%
                 </span>
               </p>

@@ -82,15 +82,18 @@ export function FileUpload({
 
   if (selectedFile) {
     return (
-      <div className="border-2 border-reef-primary bg-reef-light/30 rounded-xl p-6">
+      <div
+        className="rounded-xl p-6"
+        style={{ border: '2px solid #cd853f', background: 'rgba(205, 133, 63, 0.08)' }}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-reef-primary/10 rounded-lg flex items-center justify-center">
-              <File className="w-6 h-6 text-reef-primary" />
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: 'rgba(205, 133, 63, 0.15)' }}>
+              <File className="w-6 h-6 text-ochre" />
             </div>
             <div>
-              <p className="font-medium text-gray-900">{selectedFile.name}</p>
-              <p className="text-sm text-gray-500">
+              <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{selectedFile.name}</p>
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 {formatFileSize(selectedFile.size)}
               </p>
             </div>
@@ -98,7 +101,8 @@ export function FileUpload({
           {!disabled && (
             <button
               onClick={handleClear}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 rounded-lg transition-colors hover:bg-white/10"
+              style={{ color: 'var(--text-dim)' }}
               aria-label="Remove file"
             >
               <X className="w-5 h-5" />
@@ -118,11 +122,15 @@ export function FileUpload({
         className={cn(
           'relative border-2 border-dashed rounded-xl p-8 text-center transition-all',
           isDragging
-            ? 'border-reef-primary bg-reef-light/50 scale-[1.02]'
-            : 'border-gray-300 hover:border-reef-secondary',
+            ? 'border-ochre scale-[1.02]'
+            : 'hover:border-ochre/50',
           disabled && 'opacity-50 cursor-not-allowed',
-          error && 'border-red-300 bg-red-50'
+          error && 'border-dusty-rose'
         )}
+        style={{
+          borderColor: isDragging ? '#cd853f' : error ? '#c08081' : 'var(--glass-border)',
+          background: isDragging ? 'rgba(205, 133, 63, 0.08)' : error ? 'rgba(192, 128, 129, 0.08)' : 'transparent',
+        }}
       >
         <input
           type="file"
@@ -136,31 +144,34 @@ export function FileUpload({
           <div
             className={cn(
               'mx-auto w-16 h-16 rounded-full flex items-center justify-center transition-colors',
-              isDragging ? 'bg-reef-primary text-white' : 'bg-gray-100 text-gray-400'
             )}
+            style={{
+              background: isDragging ? 'rgba(205, 133, 63, 0.3)' : 'var(--glass-bg)',
+              color: isDragging ? '#cd853f' : 'var(--text-dim)',
+            }}
           >
             <Upload className="w-8 h-8" />
           </div>
 
           <div>
-            <p className="text-lg font-medium text-gray-700">
+            <p className="text-lg font-medium" style={{ color: 'var(--text-secondary)' }}>
               {isDragging ? 'Drop your file here' : 'Drag and drop your audio file'}
             </p>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
               or{' '}
-              <span className="text-reef-primary font-medium">browse</span>{' '}
+              <span className="text-ochre font-medium">browse</span>{' '}
               to upload
             </p>
           </div>
 
-          <div className="text-xs text-gray-400">
+          <div className="text-xs" style={{ color: 'var(--text-dim)' }}>
             WAV format only, maximum 50MB
           </div>
         </div>
       </div>
 
       {error && (
-        <div className="mt-3 flex items-center space-x-2 text-red-600 text-sm">
+        <div className="mt-3 flex items-center space-x-2 text-sm" style={{ color: '#c08081' }}>
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <span>{error}</span>
         </div>

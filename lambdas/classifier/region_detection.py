@@ -2,14 +2,18 @@
 Detect biogeographic region from coordinates and apply appropriate
 confidence adjustments and caveats.
 
-The model was trained on Indo-Pacific data (MARRS dataset: Indonesia, Kenya,
-Australia, Maldives, Mexico). Caribbean, Atlantic, and Red Sea reefs have
-fundamentally different soundscapes and are out of distribution.
+The model was trained on MARRS dataset recordings from 5 countries:
+Indonesia, Australia, Kenya, Maldives, and Mexico. Reefs outside these
+training regions (Caribbean, Atlantic, Red Sea, etc.) have fundamentally
+different soundscapes and are out of distribution.
 """
 
 
 # Bounding boxes for major reef regions (approximate)
+# More specific regions are smaller in area and will be matched first
+# by the smallest-area-wins logic in detect_region().
 REGION_BOUNDS = {
+    # --- Broad regions ---
     'INDO_PACIFIC_WEST': {
         'lat_min': -35, 'lat_max': 30,
         'lon_min': 90, 'lon_max': 180,
@@ -51,27 +55,55 @@ REGION_BOUNDS = {
         'lon_min': -120, 'lon_max': -75,
         'name': 'Tropical Eastern Pacific',
         'in_distribution': False
-    }
+    },
+    # --- Specific training regions (smaller area, matched first) ---
+    'EAST_AFRICA': {
+        'lat_min': -12, 'lat_max': 5,
+        'lon_min': 38, 'lon_max': 52,
+        'name': 'East African Coast',
+        'in_distribution': True  # Kenya training data
+    },
+    'GREAT_BARRIER_REEF': {
+        'lat_min': -25, 'lat_max': -10,
+        'lon_min': 142, 'lon_max': 155,
+        'name': 'Great Barrier Reef',
+        'in_distribution': True  # Australia training data
+    },
+    'MALDIVES': {
+        'lat_min': -1, 'lat_max': 8,
+        'lon_min': 71, 'lon_max': 75,
+        'name': 'Maldives',
+        'in_distribution': True  # Maldives training data
+    },
+    'MESOAMERICAN_REEF': {
+        'lat_min': 15, 'lat_max': 22,
+        'lon_min': -90, 'lon_max': -84,
+        'name': 'Mesoamerican Barrier Reef',
+        'in_distribution': True  # Mexico training data
+    },
 }
 
 CAVEATS = {
     'in_distribution': (
-        "Classification based on acoustic similarity to reference sites from the "
-        "Indo-Pacific region (MARRS dataset). Results represent acoustic profile "
-        "similarity, not definitive health diagnosis. Acoustic monitoring "
-        "complements but does not replace visual surveys."
+        "Classification based on acoustic similarity to reference sites from "
+        "MARRS training regions (Indonesia, Australia, Kenya, Maldives, Mexico). "
+        "Results represent acoustic profile similarity, not definitive health "
+        "diagnosis. Acoustic monitoring complements but does not replace "
+        "visual surveys."
     ),
     'out_of_distribution': (
         "GEOGRAPHIC LIMITATION: This recording appears to be from {region_name}, "
-        "which is outside the model's training distribution (Indo-Pacific). "
-        "The model was trained on Indo-Pacific reef soundscapes and has NOT been "
-        "validated for {region_name} reefs. Confidence scores have been reduced. "
+        "which is outside the model's training distribution. "
+        "The model was trained on reef soundscapes from Indonesia, Australia, "
+        "Kenya, Maldives, and Mexico (MARRS dataset) and has NOT been validated "
+        "for {region_name} reefs. Confidence scores have been reduced. "
         "Results should be interpreted with significant caution."
     ),
     'unknown_region': (
         "No coordinates provided. Classification is based on acoustic similarity "
-        "to Indo-Pacific reference sites. If this recording is from outside the "
-        "Indo-Pacific region, results may not be ecologically valid."
+        "to MARRS reference sites (Indonesia, Australia, Kenya, Maldives, Mexico). "
+        "If this recording is from outside these training regions, results may "
+        "not be ecologically valid."
     )
 }
 

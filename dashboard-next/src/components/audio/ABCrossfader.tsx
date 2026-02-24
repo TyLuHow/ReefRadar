@@ -31,14 +31,14 @@ export function ABCrossfader({ value, onChange, className }: ABCrossfaderProps) 
 
   // Gradient stops: green (healthy) on left, red (degraded) on right
   const trackGradient =
-    'linear-gradient(to right, #00ffa3 0%, #ffd700 40%, #ff6b6b 100%)';
+    'linear-gradient(to right, #cd853f 0%, #e9dcc9 40%, #c08081 100%)';
 
   return (
     <div className={cn('w-full', className)}>
       {/* Labels */}
       <div className="flex justify-between mb-1 text-xs font-semibold tracking-wide">
-        <span style={{ color: '#00ffa3' }}>Healthy</span>
-        <span style={{ color: '#ff6b6b' }}>Degraded</span>
+        <span style={{ color: '#cd853f' }}>Healthy</span>
+        <span style={{ color: '#c08081' }}>Degraded</span>
       </div>
 
       {/* Slider */}
@@ -61,7 +61,7 @@ export function ABCrossfader({ value, onChange, className }: ABCrossfaderProps) 
       </div>
 
       {/* Dynamic description */}
-      <p className="mt-2 text-center text-xs" style={{ color: '#6b8aad' }}>
+      <p className="mt-2 text-center text-xs" style={{ color: '#a8a29e' }}>
         {description}
       </p>
 
@@ -72,22 +72,22 @@ export function ABCrossfader({ value, onChange, className }: ABCrossfaderProps) 
           height: 22px;
           border-radius: 50%;
           background: #ffffff;
-          border: 3px solid #0d3b66;
-          box-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
+          border: 3px solid #252220;
+          box-shadow: 0 0 8px rgba(205, 133, 63, 0.5);
           cursor: grab;
           transition: box-shadow 0.15s ease;
         }
         input[type='range']::-webkit-slider-thumb:active {
           cursor: grabbing;
-          box-shadow: 0 0 14px rgba(0, 229, 255, 0.8);
+          box-shadow: 0 0 14px rgba(205, 133, 63, 0.8);
         }
         input[type='range']::-moz-range-thumb {
           width: 22px;
           height: 22px;
           border-radius: 50%;
           background: #ffffff;
-          border: 3px solid #0d3b66;
-          box-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
+          border: 3px solid #252220;
+          box-shadow: 0 0 8px rgba(205, 133, 63, 0.5);
           cursor: grab;
         }
         input[type='range']::-moz-range-track {

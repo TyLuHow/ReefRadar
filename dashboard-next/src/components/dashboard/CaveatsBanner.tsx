@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 const CAVEATS = [
   'Classification based on acoustic similarity to reference sites. Not a definitive health diagnosis.',
   'Passive acoustic monitoring complements but does not replace visual surveys.',
-  'Models trained primarily on Indo-Pacific reefs (Indonesia, Kenya). Results for Caribbean, Red Sea, and other regions carry reduced confidence.',
+  'Models trained primarily on Indo-Pacific reefs (Indonesia, Australia, Kenya, Maldives, Mexico). Results for Caribbean, Red Sea, and other regions carry reduced confidence.',
   'Single audio recordings provide a snapshot. Reef health assessment requires temporal monitoring.',
   'Acoustic indices developed for terrestrial environments perform inconsistently underwater.',
 ];

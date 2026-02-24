@@ -55,11 +55,11 @@ export function getStatusColorClass(status: string): string {
     case 'degraded':
       return 'text-status-degraded bg-status-degraded/10';
     case 'restored_early':
-      return 'text-status-restored-early bg-status-restored-early/10';
+      return 'text-status-restoring-early bg-status-restoring-early/10';
     case 'restored_mid':
-      return 'text-status-restored-mid bg-status-restored-mid/10';
+      return 'text-status-restoring-mid bg-status-restoring-mid/10';
     default:
-      return 'text-gray-600 bg-gray-100';
+      return 'text-warm-gray bg-warm-gray/10';
   }
 }
 
@@ -72,10 +72,10 @@ export function getStatusBgColor(status: string): string {
     case 'degraded':
       return 'bg-status-degraded';
     case 'restored_early':
-      return 'bg-status-restored-early';
+      return 'bg-status-restoring-early';
     case 'restored_mid':
-      return 'bg-status-restored-mid';
+      return 'bg-status-restoring-mid';
     default:
-      return 'bg-gray-400';
+      return 'bg-warm-gray';
   }
 }

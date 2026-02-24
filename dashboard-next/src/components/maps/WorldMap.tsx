@@ -55,15 +55,22 @@ function FitBoundsController({ sites }: { sites: Site[] }) {
 // Legend component
 function MapLegend({ statusCounts }: { statusCounts: Record<string, number> }) {
   const legendItems: { status: ReefStatus; label: string; color: string }[] = [
-    { status: 'healthy', label: 'Healthy', color: '#2ECC71' },
-    { status: 'degraded', label: 'Degraded', color: '#E74C3C' },
-    { status: 'restored_early', label: 'Restored (Early)', color: '#F39C12' },
-    { status: 'restored_mid', label: 'Restored (Mid)', color: '#3498DB' },
+    { status: 'healthy', label: 'Healthy', color: '#cd853f' },
+    { status: 'degraded', label: 'Degraded', color: '#6b6560' },
+    { status: 'restored_early', label: 'Restored (Early)', color: '#8b7355' },
+    { status: 'restored_mid', label: 'Restored (Mid)', color: '#c08081' },
   ];
 
   return (
-    <div className="absolute bottom-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-3">
-      <h4 className="text-xs font-semibold text-gray-700 mb-2">Reef Status</h4>
+    <div
+      className="absolute bottom-4 right-4 z-[1000] rounded-lg shadow-lg p-3"
+      style={{
+        background: 'rgba(26, 23, 20, 0.85)',
+        backdropFilter: 'blur(8px)',
+        border: '1px solid rgba(229, 225, 219, 0.1)',
+      }}
+    >
+      <h4 className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Reef Status</h4>
       <div className="space-y-1.5">
         {legendItems.map(({ status, label, color }) => {
           const count = statusCounts[status] || 0;
@@ -71,10 +78,10 @@ function MapLegend({ statusCounts }: { statusCounts: Record<string, number> }) {
           return (
             <div key={status} className="flex items-center space-x-2">
               <div
-                className="w-3 h-3 rounded-full border-2 border-white shadow-sm"
+                className="w-3 h-3 rounded-full shadow-sm"
                 style={{ backgroundColor: color }}
               />
-              <span className="text-xs text-gray-600">
+              <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                 {label} ({count})
               </span>
             </div>
@@ -104,9 +111,9 @@ export function WorldMap({
     }, {} as Record<string, number>);
   }, [sites]);
 
-  // Calculate initial center - default to showing both Indonesia and Kenya
+  // Calculate initial center - default to global view showing all 5 countries
   const initialCenter = useMemo<[number, number]>(() => {
-    if (sites.length === 0) return [-3.5, 80]; // Center between Indonesia and Kenya
+    if (sites.length === 0) return [0, 80]; // Global center at equator
 
     const validSites = sites.filter((site) => {
       const lat = site.latitude ?? SITE_COORDINATES[site.site_id]?.lat;
@@ -114,7 +121,7 @@ export function WorldMap({
       return lat !== undefined && lon !== undefined;
     });
 
-    if (validSites.length === 0) return [-3.5, 80];
+    if (validSites.length === 0) return [0, 80];
 
     const lats = validSites.map(
       (s) => s.latitude ?? SITE_COORDINATES[s.site_id]?.lat ?? 0
@@ -133,7 +140,7 @@ export function WorldMap({
     <div className={`relative ${className}`} style={{ height }}>
       <MapContainer
         center={initialCenter}
-        zoom={4}
+        zoom={2}
         scrollWheelZoom={true}
         className="w-full h-full rounded-lg z-0"
         ref={mapRef}

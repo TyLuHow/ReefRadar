@@ -1,10 +1,10 @@
 'use client';
 
 const LEGEND_ITEMS = [
-  { label: 'Healthy', color: '#00ffa3' },
-  { label: 'Degraded', color: '#ff6b6b' },
-  { label: 'Restored (Early)', color: '#ffd700' },
-  { label: 'Restored (Mid)', color: '#00e5ff' },
+  { label: 'Healthy', color: '#cd853f' },
+  { label: 'Degraded', color: '#6b6560' },
+  { label: 'Restored (Early)', color: '#8b7355' },
+  { label: 'Restored (Mid)', color: '#c08081' },
 ];
 
 interface HealthLegendProps {
@@ -20,9 +20,9 @@ export function HealthLegend({ className }: HealthLegendProps) {
         bottom: '24px',
         left: '16px',
         zIndex: 10,
-        background: 'rgba(3, 11, 26, 0.85)',
+        background: 'rgba(26, 23, 20, 0.85)',
         backdropFilter: 'blur(8px)',
-        border: '1px solid rgba(255,255,255,0.08)',
+        border: '1px solid rgba(229, 225, 219, 0.1)',
         borderRadius: '10px',
         padding: '12px 16px',
       }}

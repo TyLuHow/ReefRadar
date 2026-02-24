@@ -14,10 +14,10 @@ const sizeConfig = {
 };
 
 const reefColors = [
-  'var(--glow-cyan)',
-  'var(--glow-green)',
-  'var(--glow-coral)',
-  'var(--glow-gold)',
+  '#cd853f',
+  '#8b7355',
+  '#c08081',
+  '#e9dcc9',
 ];
 
 export function LoadingReef({ size = 'md', text }: LoadingReefProps) {
@@ -54,7 +54,7 @@ export function LoadingReef({ size = 'md', text }: LoadingReefProps) {
           style={{
             width: `${config.circles[0] * 0.8}px`,
             height: `${config.circles[0] * 0.8}px`,
-            backgroundColor: 'var(--glow-cyan)',
+            backgroundColor: '#cd853f',
             left: '50%',
             top: '50%',
             transform: 'translate(-50%, -50%)',

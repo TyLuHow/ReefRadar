@@ -31,8 +31,8 @@ export function EmbeddingChart({ result }: EmbeddingChartProps) {
 
   if (!visualization?.reference_sites || !visualization.coordinates) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <p className="text-gray-500 text-center">No visualization data available</p>
+      <div className="glass-panel p-6">
+        <p className="text-center" style={{ color: 'var(--text-muted)' }}>No visualization data available</p>
       </div>
     );
   }
@@ -73,12 +73,15 @@ export function EmbeddingChart({ result }: EmbeddingChartProps) {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-          <p className="font-semibold text-gray-900">{data.name}</p>
-          <p className="text-sm text-gray-600">
+        <div
+          className="rounded-lg shadow-lg p-3"
+          style={{ background: 'rgba(26, 23, 20, 0.95)', border: '1px solid var(--glass-border)' }}
+        >
+          <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{data.name}</p>
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             Status: {formatStatus(data.status)}
           </p>
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs mt-1" style={{ color: 'var(--text-dim)' }}>
             ({data.x.toFixed(3)}, {data.y.toFixed(3)})
           </p>
         </div>
@@ -88,47 +91,47 @@ export function EmbeddingChart({ result }: EmbeddingChartProps) {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+    <div className="glass-panel p-6">
+      <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
         Acoustic Embedding Space
       </h3>
-      <p className="text-sm text-gray-500 mb-4">
+      <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
         2D visualization of how your audio sample compares to reference sites
       </p>
 
       <div className="h-[400px]">
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 20, right: 20, bottom: 40, left: 40 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(229, 225, 219, 0.1)" />
             <XAxis
               type="number"
               dataKey="x"
               name="x"
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 12, fill: '#a8a29e' }}
               label={{
                 value: 'Acoustic Dimension 1',
                 position: 'insideBottom',
                 offset: -10,
-                style: { fontSize: 12, fill: '#6b7280' },
+                style: { fontSize: 12, fill: '#a8a29e' },
               }}
             />
             <YAxis
               type="number"
               dataKey="y"
               name="y"
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: 12, fill: '#a8a29e' }}
               label={{
                 value: 'Acoustic Dimension 2',
                 angle: -90,
                 position: 'insideLeft',
-                style: { fontSize: 12, fill: '#6b7280' },
+                style: { fontSize: 12, fill: '#a8a29e' },
               }}
             />
             <Tooltip content={<CustomTooltip />} />
             <Legend
               verticalAlign="top"
               height={36}
-              formatter={(value) => <span className="text-sm">{value}</span>}
+              formatter={(value) => <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{value}</span>}
             />
 
             {/* Reference site scatters by status */}
@@ -156,7 +159,7 @@ export function EmbeddingChart({ result }: EmbeddingChartProps) {
             <Scatter name="Your Sample" data={[userSample]} shape="star">
               <Cell
                 fill={STATUS_COLORS[userSample.status]}
-                stroke="#fff"
+                stroke="#e5e1db"
                 strokeWidth={2}
                 r={12}
               />
@@ -173,12 +176,12 @@ export function EmbeddingChart({ result }: EmbeddingChartProps) {
               className="w-3 h-3 rounded-full"
               style={{ backgroundColor: color }}
             />
-            <span className="text-gray-600">{formatStatus(status)}</span>
+            <span style={{ color: 'var(--text-secondary)' }}>{formatStatus(status)}</span>
           </div>
         ))}
         <div className="flex items-center space-x-2">
-          <div className="text-lg">&#9733;</div>
-          <span className="text-gray-600">Your Sample</span>
+          <div className="text-lg" style={{ color: 'var(--text-primary)' }}>&#9733;</div>
+          <span style={{ color: 'var(--text-secondary)' }}>Your Sample</span>
         </div>
       </div>
     </div>

@@ -11,12 +11,14 @@ import {
   GitCompare,
   Compass,
   Info,
+  Headphones,
   Menu,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
+  { href: '/experience', label: 'Experience', icon: Headphones },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/analyze', label: 'Analyze', icon: Upload },
   { href: '/dashboard/map', label: 'Map', icon: MapPin },
@@ -29,8 +31,8 @@ export function Navbar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Dark theme on landing page and all dashboard pages
-  const isDark = pathname === '/' || pathname.startsWith('/dashboard');
+  // Dark theme on all pages
+  const isDark = true;
 
   return (
     <nav
@@ -49,15 +51,15 @@ export function Navbar() {
               <div
                 className={cn(
                   'w-10 h-10 rounded-lg flex items-center justify-center',
-                  isDark ? 'bg-glow-cyan/20' : 'bg-reef-primary',
+                  isDark ? 'bg-ochre/20' : 'bg-ochre',
                 )}
               >
-                <Waves className={cn('w-6 h-6', isDark ? 'text-glow-cyan' : 'text-white')} />
+                <Waves className={cn('w-6 h-6', isDark ? 'text-ochre' : 'text-white')} />
               </div>
               <span
                 className={cn(
                   'text-xl font-bold',
-                  isDark ? 'text-white' : 'text-reef-primary',
+                  isDark ? 'text-white' : 'text-ochre',
                 )}
               >
                 ReefRadar
@@ -83,7 +85,7 @@ export function Navbar() {
                         ? 'bg-white/10 text-white'
                         : 'text-white/60 hover:bg-white/5 hover:text-white/90'
                       : isActive
-                        ? 'bg-reef-light text-reef-primary'
+                        ? 'bg-muted-tan/20 text-ochre'
                         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
                   )}
                 >
@@ -135,7 +137,7 @@ export function Navbar() {
                       ? 'bg-white/10 text-white'
                       : 'text-white/60 hover:bg-white/5 hover:text-white'
                     : isActive
-                      ? 'bg-reef-light text-reef-primary'
+                      ? 'bg-muted-tan/20 text-ochre'
                       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
                 )}
               >

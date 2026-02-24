@@ -18,7 +18,7 @@ export function LoadingSpinner({ size = 'md', className }: LoadingSpinnerProps) 
   return (
     <Loader2
       className={cn(
-        'animate-spin text-reef-primary',
+        'animate-spin text-ochre',
         sizeClasses[size],
         className
       )}
@@ -34,19 +34,19 @@ export function LoadingState({ message = 'Loading...' }: LoadingStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-12 space-y-4">
       <LoadingSpinner size="lg" />
-      <p className="text-gray-500 text-sm">{message}</p>
+      <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{message}</p>
     </div>
   );
 }
 
 export function SkeletonCard() {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse">
-      <div className="h-4 bg-gray-200 rounded w-1/3 mb-4" />
+    <div className="glass-panel p-6 animate-pulse">
+      <div className="h-4 rounded w-1/3 mb-4" style={{ background: 'var(--glass-bg-hover)' }} />
       <div className="space-y-3">
-        <div className="h-3 bg-gray-200 rounded w-full" />
-        <div className="h-3 bg-gray-200 rounded w-5/6" />
-        <div className="h-3 bg-gray-200 rounded w-4/6" />
+        <div className="h-3 rounded w-full" style={{ background: 'var(--glass-bg-hover)' }} />
+        <div className="h-3 rounded w-5/6" style={{ background: 'var(--glass-bg-hover)' }} />
+        <div className="h-3 rounded w-4/6" style={{ background: 'var(--glass-bg-hover)' }} />
       </div>
     </div>
   );

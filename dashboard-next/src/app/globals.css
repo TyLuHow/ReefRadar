@@ -6,53 +6,44 @@
 @import 'leaflet/dist/leaflet.css';
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 248, 250, 252;
-  --background-end-rgb: 255, 255, 255;
+  /* Backgrounds */
+  --bg-abyss: #1a1714;
+  --bg-depths: #0f0d0b;
+  --bg-surface: #252220;
 
-  /* Ocean depth palette */
-  --abyss: #030b1a;
-  --deep: #061428;
-  --mid: #0a2240;
-  --surface: #0d3b66;
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-bg-hover: rgba(255, 255, 255, 0.08);
+  --glass-bg-active: rgba(255, 255, 255, 0.12);
+  --glass-border: rgba(229, 225, 219, 0.1);
+  --glass-border-bright: rgba(229, 225, 219, 0.2);
 
-  /* Bioluminescent accents */
-  --glow-cyan: #00e5ff;
-  --glow-green: #00ffa3;
-  --glow-coral: #ff6b6b;
-  --glow-gold: #ffd700;
+  /* Text */
+  --text-primary: #e5e1db;
+  --text-secondary: #a8a29e;
+  --text-muted: #6b6560;
+  --text-dim: #4a4542;
 
-  /* Health classification */
-  --healthy: #00ffa3;
-  --degraded: #ff6b6b;
-  --restored-early: #ffd700;
-  --restored-mid: #00e5ff;
+  /* Frequency Bands */
+  --freq-low: #cd853f;
+  --freq-mid: #c08081;
+  --freq-high: #e9dcc9;
 
-  /* Text hierarchy */
-  --text-primary: #e0f0ff;
-  --text-muted: #6b8aad;
-  --text-dim: #3a5a7c;
+  /* Health Status */
+  --status-healthy: #cd853f;
+  --status-degraded: #6b6560;
+  --status-restoring-early: #8b7355;
+  --status-restoring-mid: #c08081;
 
-  /* Spectrogram thermal */
-  --spec-cold: #0a0a2e;
-  --spec-cool: #1a3a8a;
-  --spec-warm: #00e5ff;
-  --spec-hot: #ffd700;
-  --spec-fire: #ff6b6b;
-
-  /* Region status */
-  --in-distribution: var(--glow-green);
-  --out-of-distribution: var(--glow-coral);
+  /* Accents */
+  --accent-glow: rgba(205, 133, 63, 0.4);
+  --accent-warning: #b8860b;
+  --accent-info: #a8a29e;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  color: var(--text-primary);
+  background: var(--bg-abyss);
   min-height: 100vh;
 }
 
@@ -63,17 +54,17 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--bg-depths);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--text-dim);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
+  background: var(--text-muted);
 }
 
 /* Smooth transitions */
@@ -91,7 +82,7 @@ body {
 
 /* Focus styles */
 :focus-visible {
-  outline: 2px solid #0077B6;
+  outline: 2px solid #cd853f;
   outline-offset: 2px;
 }
 
@@ -174,4 +165,59 @@ input[type="file"]:disabled {
   padding: 2px 6px !important;
   border-radius: 4px !important;
   font-size: 10px !important;
+}
+
+/* Glass components */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+}
+
+.glass-button {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 9999px;
+  transition: all 0.2s ease;
+}
+
+.glass-button:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-bright);
+}
+
+/* Typography */
+.heading {
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.hero-text {
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  font-weight: 200;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.mono {
+  font-family: var(--font-jetbrains-mono), 'Fira Code', 'SF Mono', monospace;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+/* Custom spinner */
+@keyframes spin-clockwise {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spin-counter {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
 }

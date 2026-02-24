@@ -8,9 +8,11 @@ export function ToastProvider() {
       position="top-right"
       toastOptions={{
         style: {
-          background: 'white',
-          border: '1px solid #e5e7eb',
+          background: 'rgba(26, 23, 20, 0.95)',
+          border: '1px solid rgba(229, 225, 219, 0.1)',
           borderRadius: '0.75rem',
+          color: '#e5e1db',
+          backdropFilter: 'blur(12px)',
         },
         className: 'shadow-lg',
       }}

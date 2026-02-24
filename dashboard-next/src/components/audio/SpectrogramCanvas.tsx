@@ -30,18 +30,18 @@ function mapColor(
 
   const ramps: Record<'ocean' | 'thermal', Stop[]> = {
     ocean: [
-      { pos: 0.0, r: 10, g: 10, b: 46 },
-      { pos: 0.25, r: 26, g: 58, b: 138 },
-      { pos: 0.5, r: 0, g: 229, b: 255 },
-      { pos: 0.75, r: 255, g: 215, b: 0 },
-      { pos: 1.0, r: 255, g: 107, b: 107 },
+      { pos: 0.0, r: 15, g: 13, b: 11 },
+      { pos: 0.25, r: 74, g: 60, b: 42 },
+      { pos: 0.5, r: 205, g: 133, b: 63 },
+      { pos: 0.75, r: 233, g: 220, b: 201 },
+      { pos: 1.0, r: 229, g: 225, b: 219 },
     ],
     thermal: [
-      { pos: 0.0, r: 10, g: 10, b: 46 },
-      { pos: 0.25, r: 0, g: 229, b: 255 },
-      { pos: 0.5, r: 255, g: 215, b: 0 },
-      { pos: 0.75, r: 255, g: 140, b: 0 },
-      { pos: 1.0, r: 255, g: 107, b: 107 },
+      { pos: 0.0, r: 15, g: 13, b: 11 },
+      { pos: 0.25, r: 107, g: 101, b: 96 },
+      { pos: 0.5, r: 192, g: 128, b: 129 },
+      { pos: 0.75, r: 233, g: 220, b: 201 },
+      { pos: 1.0, r: 229, g: 225, b: 219 },
     ],
   };
 
@@ -219,7 +219,7 @@ export function SpectrogramCanvas({
             position: 'relative',
             flexShrink: 0,
             fontSize: 10,
-            color: '#6b8aad',
+            color: '#a8a29e',
             userSelect: 'none',
           }}
         >
@@ -260,7 +260,7 @@ export function SpectrogramCanvas({
         style={{
           flex: 1,
           borderRadius: 4,
-          background: '#0a0a2e',
+          background: '#0f0d0b',
         }}
       />
     </div>

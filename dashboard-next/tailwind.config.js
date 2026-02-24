@@ -8,44 +8,31 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // ReefRadar brand colors
-        reef: {
-          primary: '#0077B6',
-          secondary: '#00B4D8',
-          accent: '#90E0EF',
-          light: '#CAF0F8',
-        },
-        status: {
-          healthy: '#2ECC71',
-          degraded: '#E74C3C',
-          'restored-early': '#F39C12',
-          'restored-mid': '#3498DB',
-        },
-        // Ocean depth palette
-        abyss: 'var(--abyss)',
-        deep: 'var(--deep)',
-        mid: 'var(--mid)',
-        surface: 'var(--surface)',
-        // Bioluminescent accents
-        'glow-cyan': 'var(--glow-cyan)',
-        'glow-green': 'var(--glow-green)',
-        'glow-coral': 'var(--glow-coral)',
-        'glow-gold': 'var(--glow-gold)',
-        // Health classification (ocean theme)
-        'health-healthy': 'var(--healthy)',
-        'health-degraded': 'var(--degraded)',
-        'health-restored-early': 'var(--restored-early)',
-        'health-restored-mid': 'var(--restored-mid)',
-        // Text hierarchy
-        'text-primary': 'var(--text-primary)',
-        'text-muted': 'var(--text-muted)',
-        'text-dim': 'var(--text-dim)',
-        // Spectrogram thermal
-        'spec-cold': 'var(--spec-cold)',
-        'spec-cool': 'var(--spec-cool)',
-        'spec-warm': 'var(--spec-warm)',
-        'spec-hot': 'var(--spec-hot)',
-        'spec-fire': 'var(--spec-fire)',
+        abyss: '#1a1714',
+        depths: '#0f0d0b',
+        'bg-surface': '#252220',
+        bone: '#e5e1db',
+        ochre: '#cd853f',
+        'dusty-rose': '#c08081',
+        'pale-gold': '#e9dcc9',
+        'muted-tan': '#8b7355',
+        'warm-gray': '#a8a29e',
+        'warm-amber': '#b8860b',
+        'glass-bg': 'var(--glass-bg)',
+        'glass-hover': 'var(--glass-bg-hover)',
+        'glass-active': 'var(--glass-bg-active)',
+        'glass-border': 'var(--glass-border)',
+        'status-healthy': 'var(--status-healthy)',
+        'status-degraded': 'var(--status-degraded)',
+        'status-restoring-early': 'var(--status-restoring-early)',
+        'status-restoring-mid': 'var(--status-restoring-mid)',
+      },
+      fontFamily: {
+        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-jetbrains-mono)', '"Fira Code"', 'monospace'],
+      },
+      backdropBlur: {
+        glass: '16px',
       },
       animation: {
         'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',

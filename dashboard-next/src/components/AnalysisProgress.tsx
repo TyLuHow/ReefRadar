@@ -23,7 +23,7 @@ export function AnalysisProgress({ step, progress = 0, error }: AnalysisProgress
   const currentStepIndex = steps.findIndex((s) => s.id === step);
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+    <div className="glass-panel p-6">
       <div className="space-y-4">
         {steps.map((s, index) => {
           const isActive = s.id === step;
@@ -37,10 +37,14 @@ export function AnalysisProgress({ step, progress = 0, error }: AnalysisProgress
                 className={cn(
                   'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors',
                   isComplete && 'bg-status-healthy text-white',
-                  isActive && !isComplete && !isError && 'bg-reef-primary text-white',
+                  isActive && !isComplete && !isError && 'bg-ochre text-white',
                   isError && 'bg-status-degraded text-white',
-                  !isActive && !isComplete && 'bg-gray-100 text-gray-400'
                 )}
+                style={
+                  !isActive && !isComplete
+                    ? { background: 'var(--glass-bg)', color: 'var(--text-dim)' }
+                    : undefined
+                }
               >
                 {isComplete ? (
                   <Check className="w-5 h-5" />
@@ -56,18 +60,22 @@ export function AnalysisProgress({ step, progress = 0, error }: AnalysisProgress
               {/* Text */}
               <div className="flex-1 min-w-0">
                 <p
-                  className={cn(
-                    'font-medium',
-                    isActive || isComplete ? 'text-gray-900' : 'text-gray-400'
-                  )}
+                  className="font-medium"
+                  style={{
+                    color: isActive || isComplete
+                      ? 'var(--text-primary)'
+                      : 'var(--text-dim)',
+                  }}
                 >
                   {s.label}
                 </p>
                 <p
-                  className={cn(
-                    'text-sm',
-                    isActive || isComplete ? 'text-gray-500' : 'text-gray-300'
-                  )}
+                  className="text-sm"
+                  style={{
+                    color: isActive || isComplete
+                      ? 'var(--text-muted)'
+                      : 'var(--text-dim)',
+                  }}
                 >
                   {s.description}
                 </p>
@@ -75,13 +83,16 @@ export function AnalysisProgress({ step, progress = 0, error }: AnalysisProgress
                 {/* Progress bar for analyzing step */}
                 {isActive && s.id === 'analyzing' && progress > 0 && (
                   <div className="mt-2">
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-2 rounded-full overflow-hidden"
+                      style={{ background: 'var(--glass-bg)' }}
+                    >
                       <div
-                        className="h-full bg-reef-primary transition-all duration-300 ease-out rounded-full"
+                        className="h-full bg-ochre transition-all duration-300 ease-out rounded-full"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-dim)' }}>
                       {progress}% complete
                     </p>
                   </div>

@@ -11,7 +11,7 @@ interface GlowCardProps {
 export function GlowCard({
   children,
   className,
-  glowColor = 'var(--glow-cyan)',
+  glowColor = '#cd853f',
 }: GlowCardProps) {
   return (
     <div
@@ -23,7 +23,7 @@ export function GlowCard({
       )}
       style={
         {
-          backgroundColor: 'var(--deep)',
+          backgroundColor: 'var(--bg-depths)',
           '--glow-color': glowColor,
           borderColor: 'rgba(255, 255, 255, 0.1)',
         } as React.CSSProperties

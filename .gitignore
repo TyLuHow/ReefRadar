@@ -41,5 +41,17 @@ Thumbs.db
 *.mp3
 *.flac
 
+# But allow demo audio in dashboard public/
+!dashboard-next/public/audio/*.wav
+
 # Lambda deployment zips
 *.zip
+
+# Large data directories
+data/marrs/
+data/marrs_audio/
+data/training/
+
+# Node
+node_modules/
+.next/

@@ -8,9 +8,9 @@ interface FrequencyBand {
 }
 
 const FREQUENCY_BANDS: FrequencyBand[] = [
-  { name: 'Boat/Vessel Noise', minHz: 0, maxHz: 500, color: '#ff6b6b' },
-  { name: 'Fish Vocalizations', minHz: 50, maxHz: 1000, color: '#00ffa3' },
-  { name: 'Snapping Shrimp', minHz: 2000, maxHz: 16000, color: '#00e5ff' },
+  { name: 'Boat/Vessel Noise', minHz: 0, maxHz: 500, color: '#c08081' },
+  { name: 'Fish Vocalizations', minHz: 50, maxHz: 1000, color: '#cd853f' },
+  { name: 'Snapping Shrimp', minHz: 2000, maxHz: 16000, color: '#e9dcc9' },
 ];
 
 interface FrequencyBandLabelsProps {

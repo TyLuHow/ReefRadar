@@ -27,7 +27,7 @@ export function WaveBackground({
           >
             <path
               d="M0,60 C240,120 480,0 720,60 C960,120 1200,0 1440,60 L1440,0 L0,0 Z"
-              fill="var(--abyss)"
+              fill="var(--bg-abyss)"
               fillOpacity="0.4"
             />
           </svg>
@@ -38,7 +38,7 @@ export function WaveBackground({
           >
             <path
               d="M0,40 C360,100 720,0 1080,80 C1260,40 1380,60 1440,40 L1440,0 L0,0 Z"
-              fill="var(--deep)"
+              fill="var(--bg-depths)"
               fillOpacity="0.3"
             />
           </svg>
@@ -49,7 +49,7 @@ export function WaveBackground({
           >
             <path
               d="M0,80 C180,20 360,100 540,40 C720,80 900,20 1080,60 C1260,100 1380,30 1440,80 L1440,0 L0,0 Z"
-              fill="var(--mid)"
+              fill="var(--bg-surface)"
               fillOpacity="0.2"
             />
           </svg>
@@ -67,7 +67,7 @@ export function WaveBackground({
           >
             <path
               d="M0,60 C240,0 480,120 720,60 C960,0 1200,120 1440,60 L1440,120 L0,120 Z"
-              fill="var(--abyss)"
+              fill="var(--bg-abyss)"
               fillOpacity="0.4"
             />
           </svg>
@@ -78,7 +78,7 @@ export function WaveBackground({
           >
             <path
               d="M0,80 C360,20 720,120 1080,40 C1260,80 1380,60 1440,80 L1440,120 L0,120 Z"
-              fill="var(--deep)"
+              fill="var(--bg-depths)"
               fillOpacity="0.3"
             />
           </svg>
@@ -89,7 +89,7 @@ export function WaveBackground({
           >
             <path
               d="M0,40 C180,100 360,20 540,80 C720,40 900,100 1080,60 C1260,20 1380,90 1440,40 L1440,120 L0,120 Z"
-              fill="var(--mid)"
+              fill="var(--bg-surface)"
               fillOpacity="0.2"
             />
           </svg>

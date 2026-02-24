@@ -110,10 +110,10 @@ export interface SiteCoordinates {
 
 // Status colors mapping
 export const STATUS_COLORS: Record<ReefStatus, string> = {
-  healthy: '#2ECC71',
-  degraded: '#E74C3C',
-  restored_early: '#F39C12',
-  restored_mid: '#3498DB',
+  healthy: '#cd853f',
+  degraded: '#6b6560',
+  restored_early: '#8b7355',
+  restored_mid: '#c08081',
 };
 
 // Reference site coordinates - all MARRS dataset sites with embeddings
@@ -130,10 +130,10 @@ export const SITE_COORDINATES: Record<string, SiteCoordinates> = {
 
 // Status marker colors for map (hex colors for Leaflet)
 export const STATUS_MARKER_COLORS: Record<ReefStatus, string> = {
-  healthy: '#2ECC71',
-  degraded: '#E74C3C',
-  restored_early: '#F39C12',
-  restored_mid: '#3498DB',
+  healthy: '#cd853f',
+  degraded: '#6b6560',
+  restored_early: '#8b7355',
+  restored_mid: '#c08081',
 };
 
 // Extended Site interface with region

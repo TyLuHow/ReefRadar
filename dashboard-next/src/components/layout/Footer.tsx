@@ -5,7 +5,8 @@ import { cn } from '@/lib/utils';
 
 export function Footer() {
   const pathname = usePathname();
-  const isDark = pathname === '/' || pathname.startsWith('/dashboard');
+  // Dark theme on all pages
+  const isDark = true;
 
   return (
     <footer
@@ -23,7 +24,7 @@ export function Footer() {
             isDark ? 'text-white/30' : 'text-gray-500',
           )}
         >
-          ReefRadar &mdash; Coral Reef Acoustic Health Analysis
+          ReefRadar {"\u2014"} Coral Reef Acoustic Health Analysis
         </p>
       </div>
     </footer>

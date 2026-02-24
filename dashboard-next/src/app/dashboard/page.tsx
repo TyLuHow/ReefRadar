@@ -11,35 +11,35 @@ const cards = [
     icon: Upload,
     title: 'Analyze Audio',
     desc: 'Upload underwater recordings for AI-powered reef health classification',
-    glow: 'var(--glow-green)',
+    glow: '#cd853f',
   },
   {
     href: '/dashboard/compare',
     icon: GitCompare,
     title: 'Audio Comparison',
     desc: 'Hear the difference between healthy and degraded reefs side by side',
-    glow: 'var(--glow-cyan)',
+    glow: '#8b7355',
   },
   {
     href: '/dashboard/map',
     icon: MapPin,
     title: 'Site Map',
     desc: 'Explore reference sites on an interactive map',
-    glow: 'var(--glow-gold)',
+    glow: '#e9dcc9',
   },
   {
     href: '/sites',
     icon: Compass,
     title: 'Reference Sites',
-    desc: 'Browse the 8 reference sites across Indonesia and Kenya',
-    glow: 'var(--glow-coral)',
+    desc: 'Browse 45 reference sites across 5 countries',
+    glow: '#c08081',
   },
 ];
 
 const quickStats = [
-  { value: 8, label: 'Reference Sites', icon: Compass, glow: 'var(--glow-cyan)' },
-  { value: 2, label: 'Countries', icon: Globe2, glow: 'var(--glow-green)' },
-  { value: 4, label: 'Health Classes', icon: Waves, glow: 'var(--glow-gold)' },
+  { value: 45, label: 'Reference Sites', icon: Compass, glow: '#cd853f' },
+  { value: 5, label: 'Countries', icon: Globe2, glow: '#8b7355' },
+  { value: 4, label: 'Health Classes', icon: Waves, glow: '#e9dcc9' },
 ];
 
 export default function DashboardHomePage() {

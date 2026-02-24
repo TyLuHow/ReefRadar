@@ -21,8 +21,8 @@ const ReefMap = dynamic(
         className="flex items-center justify-center rounded-xl"
         style={{
           height: '600px',
-          background: 'rgba(6, 20, 40, 0.5)',
-          border: '1px solid rgba(255,255,255,0.05)',
+          background: 'rgba(26, 23, 20, 0.5)',
+          border: '1px solid rgba(229, 225, 219, 0.05)',
         }}
       >
         <LoadingReef size="lg" text="Loading map..." />
@@ -31,7 +31,7 @@ const ReefMap = dynamic(
   },
 );
 
-const ALL_COUNTRIES = ['Indonesia', 'Kenya'];
+const ALL_COUNTRIES = ['Indonesia', 'Australia', 'Kenya', 'Maldives', 'Mexico'];
 const ALL_STATUSES: ReefStatus[] = [
   'healthy',
   'degraded',
@@ -115,7 +115,7 @@ export default function MapPage() {
       {/* Page Header */}
       <div className="text-center space-y-2">
         <div className="flex items-center justify-center gap-2">
-          <MapPin className="w-6 h-6" style={{ color: 'var(--glow-gold)' }} />
+          <MapPin className="w-6 h-6" style={{ color: '#e9dcc9' }} />
           <h1
             className="text-2xl sm:text-3xl font-bold"
             style={{ color: 'var(--text-primary)' }}
@@ -127,8 +127,8 @@ export default function MapPage() {
           className="text-sm max-w-lg mx-auto"
           style={{ color: 'var(--text-muted)' }}
         >
-          Explore the reference reef monitoring sites across Indonesia and
-          Kenya. Click a site to view details.
+          Explore the reference reef monitoring sites across 5 countries.
+          Click a site to view details.
         </p>
       </div>
 
@@ -138,8 +138,8 @@ export default function MapPage() {
           className="flex items-center justify-center rounded-xl"
           style={{
             height: '600px',
-            background: 'rgba(6, 20, 40, 0.5)',
-            border: '1px solid rgba(255,255,255,0.05)',
+            background: 'rgba(26, 23, 20, 0.5)',
+            border: '1px solid rgba(229, 225, 219, 0.05)',
           }}
         >
           <LoadingReef size="lg" text="Fetching sites..." />
@@ -149,11 +149,11 @@ export default function MapPage() {
           className="rounded-xl p-8 text-center"
           style={{
             height: '400px',
-            background: 'rgba(6, 20, 40, 0.5)',
-            border: '1px solid rgba(255,107,107,0.2)',
+            background: 'rgba(26, 23, 20, 0.5)',
+            border: '1px solid rgba(192, 128, 129, 0.2)',
           }}
         >
-          <p style={{ color: 'var(--glow-coral)' }}>
+          <p style={{ color: '#c08081' }}>
             Failed to load sites. Please try refreshing.
           </p>
         </div>

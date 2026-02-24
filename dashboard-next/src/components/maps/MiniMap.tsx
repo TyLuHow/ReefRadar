@@ -94,10 +94,10 @@ export function MiniMap({
   if (sitesWithCoords.length === 0) {
     return (
       <div
-        className={`bg-gray-100 rounded-lg flex items-center justify-center ${className}`}
-        style={{ height: '200px' }}
+        className={`rounded-lg flex items-center justify-center ${className}`}
+        style={{ height: '200px', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
       >
-        <div className="text-center text-gray-500">
+        <div className="text-center" style={{ color: 'var(--text-muted)' }}>
           <MapPin className="w-8 h-8 mx-auto mb-2 opacity-50" />
           <p className="text-sm">No location data available</p>
         </div>
@@ -137,7 +137,8 @@ export function MiniMap({
         {sitesWithCoords.slice(0, highlightCount).map((site, index) => (
           <div
             key={site.site_id}
-            className="flex items-center space-x-1.5 bg-white/90 rounded px-2 py-1 text-xs shadow"
+            className="flex items-center space-x-1.5 rounded px-2 py-1 text-xs shadow"
+            style={{ background: 'rgba(26, 23, 20, 0.9)', backdropFilter: 'blur(8px)' }}
           >
             <span
               className="w-4 h-4 rounded-full flex items-center justify-center text-white font-bold text-[10px]"
@@ -145,8 +146,8 @@ export function MiniMap({
             >
               {index + 1}
             </span>
-            <span className="font-medium text-gray-700">{site.site_id}</span>
-            <span className="text-gray-500">
+            <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{site.site_id}</span>
+            <span style={{ color: 'var(--text-muted)' }}>
               {(site.similarity * 100).toFixed(0)}%
             </span>
           </div>

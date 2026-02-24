@@ -85,9 +85,12 @@ export function ProbabilityBars({
                     className={cn(
                       'text-sm',
                       isHighlighted
-                        ? 'font-semibold text-gray-900'
-                        : 'text-gray-600'
+                        ? 'font-semibold'
+                        : ''
                     )}
+                    style={{
+                      color: isHighlighted ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    }}
                   >
                     {formatStatus(status)}
                   </span>
@@ -96,9 +99,12 @@ export function ProbabilityBars({
                   className={cn(
                     'text-sm tabular-nums',
                     isHighlighted
-                      ? 'font-bold text-gray-900'
-                      : 'font-medium text-gray-700'
+                      ? 'font-bold'
+                      : 'font-medium'
                   )}
+                  style={{
+                    color: isHighlighted ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  }}
                 >
                   {(probability * 100).toFixed(1)}%
                 </span>
@@ -108,9 +114,10 @@ export function ProbabilityBars({
             {/* Bar */}
             <div
               className={cn(
-                'w-full bg-gray-100 rounded-full overflow-hidden',
+                'w-full rounded-full overflow-hidden',
                 compact ? 'h-2' : 'h-3'
               )}
+              style={{ background: 'var(--glass-bg)' }}
             >
               <div
                 className={cn(
@@ -186,14 +193,15 @@ export function ProbabilityStackedBar({
                 className={cn('w-3 h-3 rounded-full', isHighlighted && 'ring-2 ring-offset-1')}
                 style={{
                   backgroundColor: color,
-                  boxShadow: isHighlighted ? `0 0 0 2px white, 0 0 0 4px ${color}` : undefined
+                  boxShadow: isHighlighted ? `0 0 0 2px #1a1714, 0 0 0 4px ${color}` : undefined
                 }}
               />
               <span
-                className={cn(
-                  'text-xs',
-                  isHighlighted ? 'font-semibold text-gray-900' : 'text-gray-600'
-                )}
+                className="text-xs"
+                style={{
+                  color: isHighlighted ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  fontWeight: isHighlighted ? 600 : 400,
+                }}
               >
                 {formatStatus(status)} ({(probability * 100).toFixed(0)}%)
               </span>

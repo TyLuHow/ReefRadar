@@ -7,7 +7,7 @@ export default function DashboardLayout({
     <div
       className="min-h-screen"
       style={{
-        background: 'linear-gradient(180deg, var(--abyss) 0%, var(--deep) 50%, var(--mid) 100%)',
+        background: 'linear-gradient(180deg, var(--bg-abyss) 0%, var(--bg-depths) 50%, var(--bg-surface) 100%)',
       }}
     >
       {children}

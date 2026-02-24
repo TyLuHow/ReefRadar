@@ -88,47 +88,54 @@ export function SiteFilters({ sites, onFilteredSitesChange, className = '' }: Si
   const hasActiveFilters = selectedStatuses.size > 0 || selectedCountries.size > 0 || searchQuery;
 
   return (
-    <div className={cn('bg-white rounded-xl border border-gray-200 shadow-sm', className)}>
+    <div className={cn('glass-panel', className)}>
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50 rounded-t-xl transition-colors"
+        className="w-full px-4 py-3 flex items-center justify-between text-left rounded-t-xl transition-colors hover:bg-white/5"
       >
         <div className="flex items-center space-x-2">
-          <Filter className="w-5 h-5 text-reef-primary" />
-          <span className="font-semibold text-gray-900">Filters</span>
+          <Filter className="w-5 h-5 text-ochre" />
+          <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>Filters</span>
           {hasActiveFilters && (
-            <span className="bg-reef-primary text-white text-xs px-2 py-0.5 rounded-full">
+            <span className="bg-ochre text-white text-xs px-2 py-0.5 rounded-full">
               {selectedStatuses.size + selectedCountries.size + (searchQuery ? 1 : 0)}
             </span>
           )}
         </div>
         <ChevronDown
           className={cn(
-            'w-5 h-5 text-gray-400 transition-transform',
+            'w-5 h-5 transition-transform',
             isExpanded ? 'rotate-180' : ''
           )}
+          style={{ color: 'var(--text-dim)' }}
         />
       </button>
 
       {/* Filter Content */}
       {isExpanded && (
-        <div className="px-4 pb-4 space-y-4 border-t border-gray-100">
+        <div className="px-4 pb-4 space-y-4" style={{ borderTop: '1px solid var(--glass-border)' }}>
           {/* Search */}
           <div className="pt-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-dim)' }} />
               <input
                 type="text"
                 placeholder="Search sites..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-reef-primary focus:border-transparent"
+                className="w-full pl-9 pr-4 py-2 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-ochre"
+                style={{
+                  background: 'var(--bg-depths)',
+                  border: '1px solid var(--glass-border)',
+                  color: 'var(--text-primary)',
+                }}
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                  style={{ color: 'var(--text-dim)' }}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -138,7 +145,7 @@ export function SiteFilters({ sites, onFilteredSitesChange, className = '' }: Si
 
           {/* Status Filter */}
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="text-sm font-medium mb-2 block" style={{ color: 'var(--text-secondary)' }}>
               Health Status
             </label>
             <div className="flex flex-wrap gap-2">
@@ -153,9 +160,13 @@ export function SiteFilters({ sites, onFilteredSitesChange, className = '' }: Si
                       'px-3 py-1.5 rounded-full text-sm font-medium transition-all',
                       isSelected
                         ? 'text-white shadow-sm'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        : 'hover:bg-white/10'
                     )}
-                    style={isSelected ? { backgroundColor: color } : undefined}
+                    style={
+                      isSelected
+                        ? { backgroundColor: color }
+                        : { background: 'var(--glass-bg)', color: 'var(--text-secondary)', border: '1px solid var(--glass-border)' }
+                    }
                   >
                     {formatStatus(status)}
                   </button>
@@ -166,7 +177,7 @@ export function SiteFilters({ sites, onFilteredSitesChange, className = '' }: Si
 
           {/* Country Filter */}
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="text-sm font-medium mb-2 block" style={{ color: 'var(--text-secondary)' }}>
               Country
             </label>
             <div className="flex flex-wrap gap-2">
@@ -180,16 +191,22 @@ export function SiteFilters({ sites, onFilteredSitesChange, className = '' }: Si
                     className={cn(
                       'px-3 py-1.5 rounded-full text-sm font-medium transition-all flex items-center space-x-1',
                       isSelected
-                        ? 'bg-reef-primary text-white shadow-sm'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        ? 'bg-ochre text-white shadow-sm'
+                        : 'hover:bg-white/10'
                     )}
+                    style={
+                      !isSelected
+                        ? { background: 'var(--glass-bg)', color: 'var(--text-secondary)', border: '1px solid var(--glass-border)' }
+                        : undefined
+                    }
                   >
                     <span>{country}</span>
                     <span
                       className={cn(
                         'text-xs',
-                        isSelected ? 'text-white/80' : 'text-gray-400'
+                        isSelected ? 'text-white/80' : ''
                       )}
+                      style={!isSelected ? { color: 'var(--text-dim)' } : undefined}
                     >
                       ({count})
                     </span>
@@ -201,10 +218,10 @@ export function SiteFilters({ sites, onFilteredSitesChange, className = '' }: Si
 
           {/* Clear Filters */}
           {hasActiveFilters && (
-            <div className="pt-2 border-t border-gray-100">
+            <div className="pt-2" style={{ borderTop: '1px solid var(--glass-border)' }}>
               <button
                 onClick={clearFilters}
-                className="text-sm text-reef-primary hover:text-reef-secondary font-medium flex items-center space-x-1"
+                className="text-sm text-ochre hover:text-pale-gold font-medium flex items-center space-x-1"
               >
                 <X className="w-4 h-4" />
                 <span>Clear all filters</span>
@@ -213,7 +230,7 @@ export function SiteFilters({ sites, onFilteredSitesChange, className = '' }: Si
           )}
 
           {/* Results Count */}
-          <div className="text-sm text-gray-500">
+          <div className="text-sm" style={{ color: 'var(--text-muted)' }}>
             Showing {filteredSites.length} of {sites.length} sites
           </div>
         </div>

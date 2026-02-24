@@ -6,8 +6,19 @@ A serverless AWS-based system for analyzing coral reef health through underwater
 **Region:** `us-east-1`
 **Project Prefix:** `reefradar-2477`
 
+## Live Demo
+
+**Next.js Dashboard:** Deploy to Vercel by following the [Deployment Guide](./docs/DEPLOYMENT.md). After deployment, the dashboard will be available at your Vercel project URL (e.g., `https://reefradar-dashboard.vercel.app`).
+
+The dashboard provides:
+- Interactive reef health analysis with audio upload
+- Reference site map with health status visualization
+- Side-by-side audio comparison between healthy and degraded reefs
+- Real-time analysis progress tracking
+
 ## Table of Contents
 
+- [Live Demo](#live-demo)
 - [Architecture Overview](#architecture-overview)
 - [AWS Resources](#aws-resources)
 - [API Reference](#api-reference)
@@ -335,8 +346,33 @@ SageMaker resources have been deleted. All ML inference runs on Lambda container
 
 ---
 
+## Dashboard Deployment
+
+The Next.js dashboard (`dashboard-next/`) is configured for deployment on **Vercel** (free Hobby tier). See the full [Deployment Guide](./docs/DEPLOYMENT.md) for step-by-step instructions.
+
+**Quick deploy:**
+
+```bash
+# Install Vercel CLI
+npm install -g vercel
+
+# Log in (requires browser)
+vercel login
+
+# Link and deploy from dashboard-next/
+cd dashboard-next
+vercel link
+vercel env add NEXT_PUBLIC_API_URL  # Value: https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod
+vercel --prod
+```
+
+After connecting the GitHub repository in Vercel settings (with root directory set to `dashboard-next`), pushes to `main` trigger production deployments automatically, and pull requests create preview deployments.
+
+---
+
 ## Credits
 
 - **SurfPerch Model:** Google Research (bird-vocalization-classifier, adapted for underwater acoustics)
 - **Reference Data:** [MARRS Coral Reef Restoration Monitoring](https://doi.org/10.5281/zenodo.6024203) - University of Exeter
 - **Built with:** AWS Lambda, Next.js 14, TensorFlow, perch-hoplite
+- **Dashboard Hosting:** [Vercel](https://vercel.com)
