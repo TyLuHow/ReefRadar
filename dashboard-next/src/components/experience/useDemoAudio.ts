@@ -1,6 +1,8 @@
 'use client';
 
 import { useRef, useState, useCallback, useEffect } from 'react';
+import type { BandId } from '@/components/spectrogram/FrequencyBands';
+import { ALL_BANDS } from '@/components/spectrogram/FrequencyBands';
 
 interface DemoAudioReturn {
   isPlaying: boolean;
@@ -11,7 +13,22 @@ interface DemoAudioReturn {
   handlePlayPause: () => Promise<void>;
   crossfade: number;
   setCrossfade: (v: number) => void;
+  activeBands: Set<BandId>;
+  toggleBand: (band: BandId) => void;
 }
+
+/**
+ * Filter cutoff frequencies based on AUDIO_DIAGNOSIS.md recommendations
+ * for 16 kHz source files (8 kHz Nyquist).
+ *
+ *   Low  (Fish Calls):      lowpass  at 800 Hz
+ *   Mid  (Grazing):         bandpass at 2000 Hz, Q = 1.5
+ *   High (Snapping Shrimp): highpass at 3500 Hz
+ */
+const FILTER_LOW_FREQ = 800;
+const FILTER_MID_FREQ = 2000;
+const FILTER_MID_Q = 1.5;
+const FILTER_HIGH_FREQ = 3500;
 
 export function useDemoAudio(): DemoAudioReturn {
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -26,12 +43,26 @@ export function useDemoAudio(): DemoAudioReturn {
   const rafRef = useRef<number | null>(null);
   const pendingPlayRef = useRef(false);
 
+  // Filter nodes -- parallel branches for each frequency band
+  const lowFilterRef = useRef<BiquadFilterNode | null>(null);
+  const midFilterRef = useRef<BiquadFilterNode | null>(null);
+  const highFilterRef = useRef<BiquadFilterNode | null>(null);
+
+  // Per-band gain nodes (0 = muted, 1 = active)
+  const lowGainRef = useRef<GainNode | null>(null);
+  const midGainRef = useRef<GainNode | null>(null);
+  const highGainRef = useRef<GainNode | null>(null);
+
+  // Merger node to sum filtered branches before analyser
+  const mergerGainRef = useRef<GainNode | null>(null);
+
   const [loadState, setLoadState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
   const [crossfade, setCrossfadeState] = useState(0);
+  const [activeBands, setActiveBands] = useState<Set<BandId>>(() => new Set(ALL_BANDS));
 
   const initAudio = useCallback(async () => {
     if (loadState !== 'idle') return;
@@ -57,6 +88,7 @@ export function useDemoAudio(): DemoAudioReturn {
       degradedBufRef.current = dBuf;
       setDuration(hBuf.duration);
 
+      // --- Crossfade gain nodes (healthy vs degraded) ---
       const hGain = ctx.createGain();
       hGain.gain.value = 1;
       healthyGainRef.current = hGain;
@@ -65,14 +97,70 @@ export function useDemoAudio(): DemoAudioReturn {
       dGain.gain.value = 0;
       degradedGainRef.current = dGain;
 
+      // --- Merger: both crossfade gains feed into this node ---
+      const merger = ctx.createGain();
+      merger.gain.value = 1;
+      mergerGainRef.current = merger;
+
+      hGain.connect(merger);
+      dGain.connect(merger);
+
+      // --- Parallel filter bank ---
+      // Each filter branch: merger -> filter -> bandGain -> analyser -> destination
+      //
+      //                   +--> lowFilter  --> lowGain  --+
+      //   merger -------->+--> midFilter  --> midGain  --+--> analyser --> destination
+      //                   +--> highFilter --> highGain --+
+
+      const lowFilter = ctx.createBiquadFilter();
+      lowFilter.type = 'lowpass';
+      lowFilter.frequency.value = FILTER_LOW_FREQ;
+      lowFilterRef.current = lowFilter;
+
+      const midFilter = ctx.createBiquadFilter();
+      midFilter.type = 'bandpass';
+      midFilter.frequency.value = FILTER_MID_FREQ;
+      midFilter.Q.value = FILTER_MID_Q;
+      midFilterRef.current = midFilter;
+
+      const highFilter = ctx.createBiquadFilter();
+      highFilter.type = 'highpass';
+      highFilter.frequency.value = FILTER_HIGH_FREQ;
+      highFilterRef.current = highFilter;
+
+      const lowGain = ctx.createGain();
+      lowGain.gain.value = 1;
+      lowGainRef.current = lowGain;
+
+      const midGain = ctx.createGain();
+      midGain.gain.value = 1;
+      midGainRef.current = midGain;
+
+      const highGain = ctx.createGain();
+      highGain.gain.value = 1;
+      highGainRef.current = highGain;
+
+      // Wire filters
+      merger.connect(lowFilter);
+      merger.connect(midFilter);
+      merger.connect(highFilter);
+
+      lowFilter.connect(lowGain);
+      midFilter.connect(midGain);
+      highFilter.connect(highGain);
+
+      // Analyser node
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 2048;
       analyser.smoothingTimeConstant = 0.8;
       analyserRef.current = analyser;
       setAnalyserNode(analyser);
 
-      hGain.connect(analyser);
-      dGain.connect(analyser);
+      // All band gains merge into the analyser
+      lowGain.connect(analyser);
+      midGain.connect(analyser);
+      highGain.connect(analyser);
+
       analyser.connect(ctx.destination);
 
       setLoadState('ready');
@@ -152,8 +240,42 @@ export function useDemoAudio(): DemoAudioReturn {
     setCrossfadeState(v);
     // Equal-power crossfade: avoids volume dip at 50%
     const angle = v * Math.PI / 2;
-    if (healthyGainRef.current) healthyGainRef.current.gain.value = Math.cos(angle);
-    if (degradedGainRef.current) degradedGainRef.current.gain.value = Math.sin(angle);
+    if (healthyGainRef.current) {
+      healthyGainRef.current.gain.setValueAtTime(
+        Math.cos(angle),
+        audioCtxRef.current?.currentTime ?? 0
+      );
+    }
+    if (degradedGainRef.current) {
+      degradedGainRef.current.gain.setValueAtTime(
+        Math.sin(angle),
+        audioCtxRef.current?.currentTime ?? 0
+      );
+    }
+  }, []);
+
+  const toggleBand = useCallback((band: BandId) => {
+    setActiveBands((prev) => {
+      const next = new Set(prev);
+      if (next.has(band)) next.delete(band);
+      else next.add(band);
+
+      // Map band IDs to their gain node refs
+      const gainMap: Record<BandId, React.RefObject<GainNode | null>> = {
+        low: lowGainRef,
+        mid: midGainRef,
+        high: highGainRef,
+      };
+
+      const gainNode = gainMap[band].current;
+      const ctx = audioCtxRef.current;
+      if (gainNode && ctx) {
+        // Click-free switching via setValueAtTime
+        gainNode.gain.setValueAtTime(next.has(band) ? 1 : 0, ctx.currentTime);
+      }
+
+      return next;
+    });
   }, []);
 
   useEffect(() => {
@@ -176,5 +298,7 @@ export function useDemoAudio(): DemoAudioReturn {
     handlePlayPause,
     crossfade,
     setCrossfade,
+    activeBands,
+    toggleBand,
   };
 }

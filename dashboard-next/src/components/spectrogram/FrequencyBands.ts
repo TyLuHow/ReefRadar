@@ -15,8 +15,8 @@ export interface BandConfig {
 export const BANDS: Record<BandId, BandConfig> = {
   low: {
     id: 'low',
-    label: 'Fish Calls',
-    range: '50-1000 Hz',
+    label: 'Fish Calls (< 800 Hz)',
+    range: '< 800 Hz',
     color: '#cd853f', // Ochre
     baseAmplitude: 30,
     playingAmplitude: 80,
@@ -26,8 +26,8 @@ export const BANDS: Record<BandId, BandConfig> = {
   },
   mid: {
     id: 'mid',
-    label: 'Grazing Sounds',
-    range: '1-4 kHz',
+    label: 'Grazing (800-3500 Hz)',
+    range: '800-3500 Hz',
     color: '#c08081', // Dusty Rose
     baseAmplitude: 20,
     playingAmplitude: 60,
@@ -37,8 +37,8 @@ export const BANDS: Record<BandId, BandConfig> = {
   },
   high: {
     id: 'high',
-    label: 'Snapping Shrimp',
-    range: '4-20 kHz',
+    label: 'Snapping Shrimp (> 3500 Hz)',
+    range: '> 3500 Hz',
     color: '#e9dcc9', // Pale Gold
     baseAmplitude: 15,
     playingAmplitude: 50,

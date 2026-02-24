@@ -14,13 +14,11 @@ UCL Figshare. DOI: 10.5522/04/29958062
 https://creativecommons.org/licenses/by/4.0/
 
 **Files:**
-- `healthy-reef.wav` -- Excerpt from ind_H4 (healthy reef, South Sulawesi, Indonesia)
-- `degraded-reef.wav` -- Excerpt from ind_D2 (degraded reef, South Sulawesi, Indonesia)
+- `healthy-reef.wav` -- 15s excerpt from mex_H1_20230627_171200.WAV (mex_H1, dusk chorus)
+- `degraded-reef.wav` -- 15s excerpt from mal_D2_20211115_110800.WAV (mal_D2, midday)
 
-**Original recording specifications:**
-- Format: WAV (PCM)
-- Sample rate: 32,000 Hz
+**Processing:**
+- Trimmed to 15 seconds
+- Peak-normalized to 0.95 for matched playback levels
+- Sample rate: 16,000 Hz (original)
 - Channels: Mono
-- Duration: ~30 seconds per original file
-
-These excerpts are trimmed to ~15 seconds for the web demo audio comparison.

@@ -4,8 +4,7 @@ import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { Play, Pause, ArrowLeft } from 'lucide-react';
 import { GlassPanel, GlassButton } from '@/components/ui/glass';
-import { BANDS, BAND_IDS, ALL_BANDS } from '@/components/spectrogram/FrequencyBands';
-import type { BandId } from '@/components/spectrogram/FrequencyBands';
+import { BANDS, BAND_IDS } from '@/components/spectrogram/FrequencyBands';
 import { CaveatsFooter } from './CaveatsFooter';
 import { useDemoAudio } from './useDemoAudio';
 
@@ -26,25 +25,15 @@ function formatTime(s: number): string {
 
 export function DemoState({ onGoLanding }: DemoStateProps) {
   const [activeTrack, setActiveTrack] = useState<'healthy' | 'degraded'>('healthy');
-  const [activeBands, setActiveBands] = useState<Set<BandId>>(() => new Set(ALL_BANDS));
 
   const audio = useDemoAudio();
-
-  function toggleBand(band: BandId) {
-    setActiveBands((prev) => {
-      const next = new Set(prev);
-      if (next.has(band)) next.delete(band);
-      else next.add(band);
-      return next;
-    });
-  }
 
   return (
     <div className="relative min-h-screen flex flex-col">
       <div className="absolute inset-0 z-0">
         <SpectrogramCanvas
           state={audio.isPlaying ? 'playing' : 'idle'}
-          activeBands={activeBands}
+          activeBands={audio.activeBands}
           audioAnalyser={audio.analyserNode}
           opacity={0.25}
         />
@@ -124,14 +113,14 @@ export function DemoState({ onGoLanding }: DemoStateProps) {
 
           <div className="space-y-2">
             <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Frequency Bands</p>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {BAND_IDS.map((id) => {
                 const band = BANDS[id];
-                const active = activeBands.has(id);
+                const active = audio.activeBands.has(id);
                 return (
                   <button
                     key={id}
-                    onClick={() => toggleBand(id)}
+                    onClick={() => audio.toggleBand(id)}
                     className={`px-3 py-1.5 rounded-full text-xs border transition-all ${
                       active ? 'border-current bg-white/5' : 'border-white/10 opacity-40'
                     }`}
@@ -150,8 +139,8 @@ export function DemoState({ onGoLanding }: DemoStateProps) {
           <p className="mono">What You Are Hearing</p>
           <div className="space-y-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
             <p>
-              These are real underwater recordings from the MARRS restoration project
-              in South Sulawesi, Indonesia.
+              These are real underwater recordings from the MARRS restoration project.
+              The healthy sample is a dusk chorus recording; the degraded sample is from a midday recording on a damaged reef.
             </p>
             <div className="space-y-2">
               <div className="flex items-start gap-2">

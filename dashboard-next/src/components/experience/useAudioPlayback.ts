@@ -68,18 +68,18 @@ export function useAudioPlayback(): AudioPlaybackReturn {
     // Create band filters and gains
     const lowFilter = ctx.createBiquadFilter();
     lowFilter.type = 'lowpass';
-    lowFilter.frequency.value = 1000;
+    lowFilter.frequency.value = 800;
     lowFilterRef.current = lowFilter;
 
     const midFilter = ctx.createBiquadFilter();
     midFilter.type = 'bandpass';
-    midFilter.frequency.value = 2500;
-    midFilter.Q.value = 1;
+    midFilter.frequency.value = 2000;
+    midFilter.Q.value = 1.5;
     midFilterRef.current = midFilter;
 
     const highFilter = ctx.createBiquadFilter();
     highFilter.type = 'highpass';
-    highFilter.frequency.value = 4000;
+    highFilter.frequency.value = 3500;
     highFilterRef.current = highFilter;
 
     const lowGain = ctx.createGain();
@@ -221,8 +221,10 @@ export function useAudioPlayback(): AudioPlaybackReturn {
       };
 
       const gainNode = gainMap[band].current;
-      if (gainNode) {
-        gainNode.gain.value = next.has(band) ? 1 : 0;
+      const ctx = audioCtxRef.current;
+      if (gainNode && ctx) {
+        // Click-free switching via setValueAtTime
+        gainNode.gain.setValueAtTime(next.has(band) ? 1 : 0, ctx.currentTime);
       }
 
       return next;
