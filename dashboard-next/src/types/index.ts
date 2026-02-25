@@ -9,11 +9,18 @@ export interface Site {
   latitude?: number;
   longitude?: number;
   location?: string;
+  has_embedding?: boolean;
+  region?: string;
+  source?: string;
 }
 
 export interface SitesResponse {
   sites: Site[];
   count: number;
+  total_sites?: number;
+  total_all_sites?: number;
+  sites_with_embeddings?: number;
+  version?: string;
 }
 
 export interface HealthResponse {
@@ -116,16 +123,58 @@ export const STATUS_COLORS: Record<ReefStatus, string> = {
   restored_mid: '#c08081',
 };
 
-// Reference site coordinates - all MARRS dataset sites with embeddings
+// Reference site coordinates - all 45 MARRS dataset sites
 export const SITE_COORDINATES: Record<string, SiteCoordinates> = {
-  ind_H4: { lat: -4.929463, lon: 119.316792, location: 'South Sulawesi, Indonesia' },
-  ind_H5: { lat: -4.936146, lon: 119.317739, location: 'South Sulawesi, Indonesia' },
-  ind_N1: { lat: -4.9310799, lon: 119.3159127, location: 'South Sulawesi, Indonesia' },
+  // Indonesia - South Sulawesi (21 sites)
+  ind_D1: { lat: -4.928784, lon: 119.316541, location: 'South Sulawesi, Indonesia' },
   ind_D2: { lat: -4.9401, lon: 119.318815, location: 'South Sulawesi, Indonesia' },
   ind_D3: { lat: -4.930635, lon: 119.316119, location: 'South Sulawesi, Indonesia' },
+  ind_D4: { lat: -4.931781, lon: 119.316612, location: 'South Sulawesi, Indonesia' },
+  ind_D5: { lat: -4.932403, lon: 119.31646, location: 'South Sulawesi, Indonesia' },
+  ind_D6: { lat: -4.930792, lon: 119.318102, location: 'South Sulawesi, Indonesia' },
+  ind_H1: { lat: -4.9216, lon: 119.316922, location: 'South Sulawesi, Indonesia' },
+  ind_H2: { lat: -4.923003, lon: 119.316719, location: 'South Sulawesi, Indonesia' },
+  ind_H3: { lat: -4.934867, lon: 119.317384, location: 'South Sulawesi, Indonesia' },
+  ind_H4: { lat: -4.929463, lon: 119.316792, location: 'South Sulawesi, Indonesia' },
+  ind_H5: { lat: -4.936146, lon: 119.317739, location: 'South Sulawesi, Indonesia' },
+  ind_H6: { lat: -4.940581, lon: 119.32009, location: 'South Sulawesi, Indonesia' },
+  ind_N1: { lat: -4.9310799, lon: 119.3159127, location: 'South Sulawesi, Indonesia' },
+  ind_N2: { lat: -4.9314166, lon: 119.3162828, location: 'South Sulawesi, Indonesia' },
+  ind_N3: { lat: -4.9319109, lon: 119.3163365, location: 'South Sulawesi, Indonesia' },
   ind_R1: { lat: -4.922214, lon: 119.317036, location: 'South Sulawesi, Indonesia' },
   ind_R2: { lat: -4.926557, lon: 119.316267, location: 'South Sulawesi, Indonesia' },
-  ken_H1: { lat: -2.215614, lon: 41.013482, location: 'Lamu, Kenya' },
+  ind_R3: { lat: -4.927522, lon: 119.317245, location: 'South Sulawesi, Indonesia' },
+  ind_R4: { lat: -4.927955, lon: 119.315882, location: 'South Sulawesi, Indonesia' },
+  ind_R5: { lat: -4.93155, lon: 119.315775, location: 'South Sulawesi, Indonesia' },
+  ind_R6: { lat: -4.92572, lon: 119.316127, location: 'South Sulawesi, Indonesia' },
+  // Australia - Great Barrier Reef (7 sites)
+  aus_D1: { lat: -16.84732, lon: 146.22907, location: 'Great Barrier Reef, Australia' },
+  aus_D2: { lat: -16.847, lon: 146.22946, location: 'Great Barrier Reef, Australia' },
+  aus_D3: { lat: -16.84667, lon: 146.22975, location: 'Great Barrier Reef, Australia' },
+  aus_H1: { lat: -16.84761, lon: 146.22839, location: 'Great Barrier Reef, Australia' },
+  aus_H2: { lat: -16.84782, lon: 146.22798, location: 'Great Barrier Reef, Australia' },
+  aus_H3: { lat: -16.84656, lon: 146.22653, location: 'Great Barrier Reef, Australia' },
+  aus_R1: { lat: -16.84719, lon: 146.22866, location: 'Great Barrier Reef, Australia' },
+  // Kenya - Mombasa Coast (5 sites)
+  ken_D1: { lat: -2.215419, lon: 41.014101, location: 'Mombasa Coast, Kenya' },
+  ken_D3: { lat: -2.213638, lon: 41.019482, location: 'Mombasa Coast, Kenya' },
+  ken_H1: { lat: -2.215614, lon: 41.013482, location: 'Mombasa Coast, Kenya' },
+  ken_H2: { lat: -2.214743, lon: 41.016132, location: 'Mombasa Coast, Kenya' },
+  ken_N1: { lat: -2.21411, lon: 41.017986, location: 'Mombasa Coast, Kenya' },
+  // Maldives - North Male Atoll (5 sites)
+  mal_D1: { lat: 4.8864713, lon: 72.9360995, location: 'North Male Atoll, Maldives' },
+  mal_D2: { lat: 4.8867, lon: 72.9349, location: 'North Male Atoll, Maldives' },
+  mal_H1: { lat: 4.8864, lon: 72.9278, location: 'North Male Atoll, Maldives' },
+  mal_H2: { lat: 4.8856, lon: 72.9239, location: 'North Male Atoll, Maldives' },
+  mal_N1: { lat: 4.8855893, lon: 72.9251649, location: 'North Male Atoll, Maldives' },
+  // Mexico - Caribbean Coast (7 sites)
+  mex_D1: { lat: 18.3405443, lon: -87.8075489, location: 'Caribbean Coast, Mexico' },
+  mex_D2: { lat: 18.288481, lon: -87.825105, location: 'Caribbean Coast, Mexico' },
+  mex_H1: { lat: 18.3416616, lon: -87.8074022, location: 'Caribbean Coast, Mexico' },
+  mex_H2: { lat: 18.260936, lon: -87.825753, location: 'Caribbean Coast, Mexico' },
+  mex_H3: { lat: 18.261723, lon: -87.8255695, location: 'Caribbean Coast, Mexico' },
+  mex_N1: { lat: 18.262246, lon: -87.825671, location: 'Caribbean Coast, Mexico' },
+  mex_R1: { lat: 18.34107, lon: -87.807348, location: 'Caribbean Coast, Mexico' },
 };
 
 // Status marker colors for map (hex colors for Leaflet)

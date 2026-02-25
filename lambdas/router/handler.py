@@ -217,11 +217,20 @@ def handle_analyze(event):
 def handle_get_sites(event):
     """Return list of reference sites from S3 metadata."""
     try:
-        # Load sites from S3 embeddings metadata
-        s3_response = s3.get_object(Bucket=EMBEDDINGS_BUCKET, Key='reference/metadata.json')
-        metadata = json.loads(s3_response['Body'].read().decode())
+        # Try loading v5 metadata first, fall back to legacy metadata.json
+        metadata = None
+        for key in ['reference/metadata_v5.json', 'reference/metadata.json']:
+            try:
+                s3_response = s3.get_object(Bucket=EMBEDDINGS_BUCKET, Key=key)
+                metadata = json.loads(s3_response['Body'].read().decode())
+                break
+            except Exception:
+                continue
 
-        # Handle new format (v2.0) with 'sites' key
+        if metadata is None:
+            raise Exception('Could not load metadata from S3')
+
+        # Handle new format (v2.0+) with 'sites' key
         if isinstance(metadata, dict) and 'sites' in metadata:
             raw_sites = metadata['sites']
         elif isinstance(metadata, list):
@@ -229,9 +238,21 @@ def handle_get_sites(event):
         else:
             raw_sites = []
 
+        # Check for ?has_embedding=true query parameter
+        query_params = event.get('queryStringParameters') or {}
+        filter_has_embedding = query_params.get('has_embedding')
+
         # Extract only the fields needed for the API response (exclude large embeddings)
         sites = []
         for site in raw_sites:
+            has_embedding = site.get('has_embedding', True)
+
+            # Apply has_embedding filter if specified
+            if filter_has_embedding is not None:
+                filter_val = filter_has_embedding.lower() == 'true'
+                if has_embedding != filter_val:
+                    continue
+
             sites.append({
                 'site_id': site.get('site_id'),
                 'country': site.get('country'),
@@ -239,12 +260,21 @@ def handle_get_sites(event):
                 'status': site.get('status'),
                 'latitude': site.get('latitude'),
                 'longitude': site.get('longitude'),
-                'synthetic': site.get('synthetic', True)
+                'has_embedding': has_embedding,
+                'source': site.get('source', 'MARRS'),
+                'synthetic': site.get('synthetic', False)
             })
+
+        # Include metadata-level counts for the full dataset
+        total_all_sites = len(raw_sites)
+        sites_with_embeddings = metadata.get('sites_with_embeddings',
+            sum(1 for s in raw_sites if s.get('has_embedding', True)))
 
         return response(200, {
             'sites': sites,
             'total_sites': len(sites),
+            'total_all_sites': total_all_sites,
+            'sites_with_embeddings': sites_with_embeddings,
             'countries': list(set(s['country'] for s in sites)),
             'version': metadata.get('version', '1.0') if isinstance(metadata, dict) else '1.0',
             'source': metadata.get('source', 'Unknown') if isinstance(metadata, dict) else 'Unknown',
@@ -253,14 +283,16 @@ def handle_get_sites(event):
     except Exception as e:
         # Fallback to hardcoded minimal list if S3 fails
         sites = [
-            {'site_id': 'ind_H4', 'country': 'Indonesia', 'status': 'healthy', 'synthetic': False},
-            {'site_id': 'ind_H5', 'country': 'Indonesia', 'status': 'healthy', 'synthetic': False},
-            {'site_id': 'ken_H1', 'country': 'Kenya', 'status': 'healthy', 'synthetic': False},
-            {'site_id': 'ind_N1', 'country': 'Indonesia', 'status': 'restored_early', 'synthetic': False},
+            {'site_id': 'ind_H4', 'country': 'Indonesia', 'status': 'healthy', 'has_embedding': True, 'synthetic': False},
+            {'site_id': 'ind_H5', 'country': 'Indonesia', 'status': 'healthy', 'has_embedding': True, 'synthetic': False},
+            {'site_id': 'ken_H1', 'country': 'Kenya', 'status': 'healthy', 'has_embedding': True, 'synthetic': False},
+            {'site_id': 'ind_N1', 'country': 'Indonesia', 'status': 'restored_early', 'has_embedding': True, 'synthetic': False},
         ]
         return response(200, {
             'sites': sites,
             'total_sites': len(sites),
+            'total_all_sites': len(sites),
+            'sites_with_embeddings': len(sites),
             'countries': list(set(s['country'] for s in sites)),
             'error_note': f'Loaded from fallback: {str(e)}'
         })

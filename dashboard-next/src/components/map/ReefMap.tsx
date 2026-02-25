@@ -1,17 +1,19 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import DeckGL from '@deck.gl/react';
+import { FlyToInterpolator } from '@deck.gl/core';
 import { ScatterplotLayer } from '@deck.gl/layers';
 import ReactMapGL from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Site, ReefStatus } from '@/types';
 import { SitePopup } from './SitePopup';
+import type { RegionBounds } from '@/lib/regions';
 
 const MAP_STYLE =
   'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
-const INITIAL_VIEW_STATE = {
+const DEFAULT_VIEW_STATE = {
   latitude: 0,
   longitude: 80,
   zoom: 2,
@@ -25,6 +27,17 @@ const STATUS_COLORS_RGB: Record<ReefStatus, [number, number, number]> = {
   restored_early: [139, 115, 85],
   restored_mid: [192, 128, 129],
 };
+
+// --- Reduced-motion detection ------------------------------------------------
+
+function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+}
 
 // --- WebGL support detection -------------------------------------------------
 
@@ -169,6 +182,8 @@ interface ReefMapProps {
   onSiteSelect?: (site: Site | null) => void;
   className?: string;
   height?: string;
+  /** Region to fly to -- when this changes, the map animates to the region */
+  flyToRegion?: RegionBounds | null;
 }
 
 export function ReefMap({
@@ -177,16 +192,50 @@ export function ReefMap({
   onSiteSelect,
   className,
   height = '600px',
+  flyToRegion,
 }: ReefMapProps) {
   const [internalSelectedSite, setInternalSelectedSite] =
     useState<Site | null>(null);
   const [hoveredSiteId, setHoveredSiteId] = useState<string | null>(null);
   const [webglSupported, setWebglSupported] = useState<boolean | null>(null);
 
+  // Controlled view state for fly-to animation support
+  const [viewState, setViewState] = useState<Record<string, unknown>>(DEFAULT_VIEW_STATE);
+  const lastFlyToIdRef = useRef<string | null>(null);
+
   // Detect WebGL support after mount (client-side only)
   useEffect(() => {
     setWebglSupported(detectWebGLSupport());
   }, []);
+
+  // Fly to region when flyToRegion prop changes
+  useEffect(() => {
+    if (!flyToRegion) return;
+    // Avoid re-triggering for the same region
+    if (lastFlyToIdRef.current === flyToRegion.id) return;
+    lastFlyToIdRef.current = flyToRegion.id;
+
+    const reducedMotion = prefersReducedMotion();
+
+    setViewState((prev) => ({
+      ...prev,
+      latitude: flyToRegion.center.lat,
+      longitude: flyToRegion.center.lon,
+      zoom: flyToRegion.zoom,
+      pitch: 30,
+      bearing: 0,
+      transitionDuration: reducedMotion ? 0 : 1500,
+      transitionInterpolator: reducedMotion ? undefined : new FlyToInterpolator(),
+    }));
+  }, [flyToRegion]);
+
+  // Handle manual pan/zoom via DeckGL onViewStateChange
+  const handleViewStateChange = useCallback(
+    ({ viewState: newViewState }: { viewState: Record<string, unknown> }) => {
+      setViewState(newViewState);
+    },
+    [],
+  );
 
   const selectedSite =
     externalSelectedSite !== undefined
@@ -213,11 +262,21 @@ export function ReefMap({
     [sites],
   );
 
+  // Separate sites into those with and without embeddings
+  const sitesWithEmbeddings = useMemo(
+    () => validSites.filter((s) => s.has_embedding !== false),
+    [validSites],
+  );
+  const sitesWithoutEmbeddings = useMemo(
+    () => validSites.filter((s) => s.has_embedding === false),
+    [validSites],
+  );
+
   const layers = useMemo(() => {
-    // Glow layer (larger, semi-transparent)
+    // Glow layer for sites WITH embeddings (larger, semi-transparent)
     const glowLayer = new ScatterplotLayer<Site>({
       id: 'sites-glow',
-      data: validSites,
+      data: sitesWithEmbeddings,
       getPosition: (d: Site) => [d.longitude!, d.latitude!],
       getRadius: 2000,
       getFillColor: (d: Site) => {
@@ -234,10 +293,10 @@ export function ReefMap({
       pickable: false,
     });
 
-    // Core layer (smaller, full opacity)
+    // Core layer for sites WITH embeddings (smaller, full opacity)
     const coreLayer = new ScatterplotLayer<Site>({
       id: 'sites-core',
-      data: validSites,
+      data: sitesWithEmbeddings,
       getPosition: (d: Site) => [d.longitude!, d.latitude!],
       getRadius: (d: Site) =>
         hoveredSiteId === d.site_id || selectedSite?.site_id === d.site_id
@@ -268,8 +327,74 @@ export function ReefMap({
       },
     });
 
-    return [glowLayer, coreLayer];
-  }, [validSites, hoveredSiteId, selectedSite, handleSelect]);
+    // Layer for sites WITHOUT embeddings (smaller radius, lower opacity, dashed-style ring)
+    const noEmbeddingGlowLayer = new ScatterplotLayer<Site>({
+      id: 'sites-no-embedding-glow',
+      data: sitesWithoutEmbeddings,
+      getPosition: (d: Site) => [d.longitude!, d.latitude!],
+      getRadius: 1200,
+      getFillColor: (d: Site) => {
+        const rgb = STATUS_COLORS_RGB[d.status] || [136, 136, 136];
+        return [rgb[0], rgb[1], rgb[2], 40] as [
+          number,
+          number,
+          number,
+          number,
+        ];
+      },
+      radiusMinPixels: 8,
+      radiusMaxPixels: 28,
+      pickable: false,
+    });
+
+    const noEmbeddingCoreLayer = new ScatterplotLayer<Site>({
+      id: 'sites-no-embedding-core',
+      data: sitesWithoutEmbeddings,
+      getPosition: (d: Site) => [d.longitude!, d.latitude!],
+      getRadius: (d: Site) =>
+        hoveredSiteId === d.site_id || selectedSite?.site_id === d.site_id
+          ? 800
+          : 500,
+      getFillColor: (d: Site) => {
+        const rgb = STATUS_COLORS_RGB[d.status] || [136, 136, 136];
+        return [rgb[0], rgb[1], rgb[2], 120] as [
+          number,
+          number,
+          number,
+          number,
+        ];
+      },
+      getLineColor: (d: Site) => {
+        const rgb = STATUS_COLORS_RGB[d.status] || [136, 136, 136];
+        return [rgb[0], rgb[1], rgb[2], 180] as [
+          number,
+          number,
+          number,
+          number,
+        ];
+      },
+      getLineWidth: 2,
+      stroked: true,
+      lineWidthMinPixels: 1,
+      lineWidthMaxPixels: 3,
+      radiusMinPixels: 4,
+      radiusMaxPixels: 16,
+      pickable: true,
+      onClick: (info: { object?: Site }) => {
+        if (info.object) {
+          handleSelect(info.object);
+        }
+      },
+      onHover: (info: { object?: Site }) => {
+        setHoveredSiteId(info.object?.site_id ?? null);
+      },
+      updateTriggers: {
+        getRadius: [hoveredSiteId, selectedSite?.site_id],
+      },
+    });
+
+    return [glowLayer, coreLayer, noEmbeddingGlowLayer, noEmbeddingCoreLayer];
+  }, [sitesWithEmbeddings, sitesWithoutEmbeddings, hoveredSiteId, selectedSite, handleSelect]);
 
   // Still detecting WebGL support
   if (webglSupported === null) {
@@ -315,7 +440,8 @@ export function ReefMap({
           }}
         >
           <DeckGL
-            initialViewState={INITIAL_VIEW_STATE}
+            viewState={viewState}
+            onViewStateChange={handleViewStateChange}
             controller={true}
             layers={layers}
             style={{ position: 'absolute', top: '0', left: '0', right: '0', bottom: '0' }}
@@ -344,6 +470,57 @@ export function ReefMap({
                 site={selectedSite}
                 onClose={() => handleSelect(null)}
               />
+            </div>
+          )}
+
+          {/* Legend for embedding vs location-only sites */}
+          {sitesWithoutEmbeddings.length > 0 && (
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '16px',
+                left: '16px',
+                zIndex: 10,
+                background: 'rgba(26, 23, 20, 0.85)',
+                backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(229, 225, 219, 0.1)',
+                borderRadius: '8px',
+                padding: '10px 14px',
+                fontSize: '11px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <span
+                  style={{
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(205, 133, 63, 0.9)',
+                    display: 'inline-block',
+                    flexShrink: 0,
+                  }}
+                />
+                <span style={{ color: '#e5e1db' }}>
+                  Full data ({sitesWithEmbeddings.length})
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span
+                  style={{
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(205, 133, 63, 0.35)',
+                    border: '1.5px solid rgba(205, 133, 63, 0.6)',
+                    display: 'inline-block',
+                    flexShrink: 0,
+                    boxSizing: 'border-box',
+                  }}
+                />
+                <span style={{ color: '#a8a29e' }}>
+                  Location only ({sitesWithoutEmbeddings.length})
+                </span>
+              </div>
             </div>
           )}
         </div>

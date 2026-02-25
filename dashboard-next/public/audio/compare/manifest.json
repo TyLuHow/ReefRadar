@@ -1,0 +1,71 @@
+{
+  "locations": [
+    {
+      "id": "ind",
+      "name": "Indonesia",
+      "region": "Sulawesi",
+      "coordinates": { "lat": -4.93, "lon": 119.32 },
+      "available": ["healthy", "degraded", "restored_early", "restored_mid"],
+      "files": {
+        "healthy": "/audio/compare/ind/healthy.wav",
+        "degraded": "/audio/compare/ind/degraded.wav",
+        "restored_early": "/audio/compare/ind/restored_early.wav",
+        "restored_mid": "/audio/compare/ind/restored_mid.wav"
+      },
+      "description": "MARRS restoration sites in South Sulawesi"
+    },
+    {
+      "id": "aus",
+      "name": "Australia",
+      "region": "Great Barrier Reef",
+      "coordinates": { "lat": -18.0, "lon": 147.0 },
+      "available": ["healthy", "degraded", "restored_mid"],
+      "files": {
+        "healthy": "/audio/compare/aus/healthy.wav",
+        "degraded": "/audio/compare/aus/degraded.wav",
+        "restored_mid": "/audio/compare/aus/restored_mid.wav"
+      },
+      "description": "Great Barrier Reef monitoring sites"
+    },
+    {
+      "id": "ken",
+      "name": "Kenya",
+      "region": "Mombasa Coast",
+      "coordinates": { "lat": -4.02, "lon": 39.67 },
+      "available": ["healthy", "degraded", "restored_early"],
+      "files": {
+        "healthy": "/audio/compare/ken/healthy.wav",
+        "degraded": "/audio/compare/ken/degraded.wav",
+        "restored_early": "/audio/compare/ken/restored_early.wav"
+      },
+      "description": "Coastal reef sites along the Mombasa Coast"
+    },
+    {
+      "id": "mal",
+      "name": "Maldives",
+      "region": "North Male Atoll",
+      "coordinates": { "lat": 4.17, "lon": 73.51 },
+      "available": ["healthy", "degraded", "restored_early"],
+      "files": {
+        "healthy": "/audio/compare/mal/healthy.wav",
+        "degraded": "/audio/compare/mal/degraded.wav",
+        "restored_early": "/audio/compare/mal/restored_early.wav"
+      },
+      "description": "Atoll reef sites in the North Male Atoll"
+    },
+    {
+      "id": "mex",
+      "name": "Mexico",
+      "region": "Caribbean Coast",
+      "coordinates": { "lat": 20.21, "lon": -87.43 },
+      "available": ["healthy", "degraded", "restored_early", "restored_mid"],
+      "files": {
+        "healthy": "/audio/compare/mex/healthy.wav",
+        "degraded": "/audio/compare/mex/degraded.wav",
+        "restored_early": "/audio/compare/mex/restored_early.wav",
+        "restored_mid": "/audio/compare/mex/restored_mid.wav"
+      },
+      "description": "Caribbean reef monitoring and restoration sites"
+    }
+  ]
+}

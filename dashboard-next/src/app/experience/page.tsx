@@ -12,6 +12,7 @@ import { ControlsPanel } from '@/components/experience/ControlsPanel';
 import { ComparisonPanel } from '@/components/experience/ComparisonPanel';
 import { CaveatsFooter } from '@/components/experience/CaveatsFooter';
 import { DemoState } from '@/components/experience/DemoState';
+import { LocationCompare } from '@/components/experience/LocationCompare';
 import { validateWavFile } from '@/lib/utils';
 import type { AnalysisResult } from '@/types';
 
@@ -27,6 +28,7 @@ const API_BASE = 'https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod';
 type ExperienceState =
   | { type: 'landing' }
   | { type: 'demo' }
+  | { type: 'compare' }
   | { type: 'uploading'; file: File }
   | { type: 'processing'; analysisId: string }
   | { type: 'results'; data: AnalysisResult; audioUrl?: string }
@@ -35,6 +37,7 @@ type ExperienceState =
 type ExperienceAction =
   | { type: 'GO_LANDING' }
   | { type: 'GO_DEMO' }
+  | { type: 'GO_COMPARE' }
   | { type: 'FILE_SELECTED'; file: File }
   | { type: 'START_PROCESSING'; analysisId: string }
   | { type: 'RESULTS_READY'; data: AnalysisResult; audioUrl?: string }
@@ -46,6 +49,8 @@ function reducer(_state: ExperienceState, action: ExperienceAction): ExperienceS
       return { type: 'landing' };
     case 'GO_DEMO':
       return { type: 'demo' };
+    case 'GO_COMPARE':
+      return { type: 'compare' };
     case 'FILE_SELECTED':
       return { type: 'uploading', file: action.file };
     case 'START_PROCESSING':
@@ -71,6 +76,7 @@ function ExperienceInner() {
     initializedRef.current = true;
     const mode = searchParams.get('mode');
     if (mode === 'demo') dispatch({ type: 'GO_DEMO' });
+    else if (mode === 'compare') dispatch({ type: 'GO_COMPARE' });
   }, [searchParams]);
 
   const content = (() => {
@@ -82,6 +88,15 @@ function ExperienceInner() {
           <DemoState
             key="demo"
             onGoLanding={() => dispatch({ type: 'GO_LANDING' })}
+            onGoCompare={() => dispatch({ type: 'GO_COMPARE' })}
+          />
+        );
+      case 'compare':
+        return (
+          <LocationCompare
+            key="compare"
+            onGoLanding={() => dispatch({ type: 'GO_LANDING' })}
+            onGoDemo={() => dispatch({ type: 'GO_DEMO' })}
           />
         );
       case 'uploading':
@@ -146,8 +161,17 @@ function LandingState({ dispatch }: { dispatch: React.Dispatch<ExperienceAction>
         <div className="max-w-lg w-full space-y-6 text-center">
           <h1 className="text-2xl font-light text-bone">Analyze Reef Audio</h1>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Upload a WAV recording to classify reef health
+            Upload a WAV recording to classify reef health, or explore demo audio
           </p>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <GlassButton onClick={() => dispatch({ type: 'GO_DEMO' })}>
+              Listen to Demo
+            </GlassButton>
+            <GlassButton variant="ghost" onClick={() => dispatch({ type: 'GO_COMPARE' })}>
+              Compare Locations
+            </GlassButton>
+          </div>
 
           <GlassPanel
             className={`p-10 border-dashed cursor-pointer w-full ${

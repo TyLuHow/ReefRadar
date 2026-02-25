@@ -1,0 +1,570 @@
+{
+  "locations": [
+    {
+      "id": "aus",
+      "name": "Australia",
+      "region": "Great Barrier Reef",
+      "available_states": [
+        "degraded",
+        "healthy",
+        "restored_mid"
+      ],
+      "sites_per_state": {
+        "degraded": 3,
+        "healthy": 3,
+        "restored_mid": 1
+      },
+      "sites_detail": {
+        "degraded": {
+          "aus_D1": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_D1/aus_D1_20230208_090000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_D1/aus_D1_20230214_034000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_D1/aus_D1_20230225_023600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_D1/aus_D1_20230303_020400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_D1/aus_D1_20230307_054800.WAV"
+            ]
+          },
+          "aus_D2": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_D2/aus_D2_20230212_082400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_D2/aus_D2_20230219_082000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_D2/aus_D2_20230220_234000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_D2/aus_D2_20230223_025600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_D2/aus_D2_20230302_152400.WAV"
+            ]
+          },
+          "aus_D3": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_D3/aus_D3_20230211_104400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_D3/aus_D3_20230301_085200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_D3/aus_D3_20230305_122000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_D3/aus_D3_20230312_130000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_D3/aus_D3_20230317_040400.WAV"
+            ]
+          }
+        },
+        "healthy": {
+          "aus_H1": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_H1/aus_H1_20230217_054800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_H1/aus_H1_20230217_234000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_H1/aus_H1_20230224_202800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_H1/aus_H1_20230302_170400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_H1/aus_H1_20230302_191600.WAV"
+            ]
+          },
+          "aus_H2": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_H2/aus_H2_20230208_180800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_H2/aus_H2_20230219_134800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_H2/aus_H2_20230226_221200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_H2/aus_H2_20230307_152400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_H2/aus_H2_20230309_122800.WAV"
+            ]
+          },
+          "aus_H3": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_H3/aus_H3_20230211_121600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_H3/aus_H3_20230228_142400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_H3/aus_H3_20230306_232400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_H3/aus_H3_20230312_221600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_H3/aus_H3_20230315_035600.WAV"
+            ]
+          }
+        },
+        "restored_mid": {
+          "aus_R1": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_R1/aus_R1_20230213_160000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_R1/aus_R1_20230221_023600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_R1/aus_R1_20230304_012400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_R1/aus_R1_20230312_195600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/aus_R1/aus_R1_20230318_215600.WAV"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "ind",
+      "name": "Indonesia",
+      "region": "Sulawesi",
+      "available_states": [
+        "degraded",
+        "healthy",
+        "restored_early",
+        "restored_mid"
+      ],
+      "sites_per_state": {
+        "degraded": 6,
+        "healthy": 6,
+        "restored_early": 3,
+        "restored_mid": 6
+      },
+      "sites_detail": {
+        "degraded": {
+          "ind_D1": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D1/ind_D1_20220910_031400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D1/ind_D1_20220911_094000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D1/ind_D1_20220915_113800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D1/ind_D1_20220917_205600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D1/ind_D1_20220922_230000.WAV"
+            ]
+          },
+          "ind_D2": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D2/ind_D2_20220830_151000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D2/ind_D2_20220831_235600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D2/ind_D2_20220901_113200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D2/ind_D2_20220901_161400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D2/ind_D2_20220902_081800.WAV"
+            ]
+          },
+          "ind_D3": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D3/ind_D3_20220830_144200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D3/ind_D3_20220831_103200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D3/ind_D3_20220831_195600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D3/ind_D3_20220901_060000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D3/ind_D3_20220901_100000.WAV"
+            ]
+          },
+          "ind_D4": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D4/ind_D4_20220909_191600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D4/ind_D4_20220910_080600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D4/ind_D4_20220913_111000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D4/ind_D4_20220921_041600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D4/ind_D4_20220922_074000.WAV"
+            ]
+          },
+          "ind_D5": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D5/ind_D5_20220908_005400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D5/ind_D5_20220919_210000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D5/ind_D5_20220924_145000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D5/ind_D5_20220924_195400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D5/ind_D5_20220925_030600.WAV"
+            ]
+          },
+          "ind_D6": {
+            "wav_count": 4,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D6/ind_D6_20220901_002200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D6/ind_D6_20220902_033600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D6/ind_D6_20220915_084400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_D6/ind_D6_20220920_143000.WAV"
+            ]
+          }
+        },
+        "healthy": {
+          "ind_H1": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H1/ind_H1_20220831_222200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H1/ind_H1_20220908_135200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H1/ind_H1_20220914_041000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H1/ind_H1_20220917_064600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H1/ind_H1_20220920_192000.WAV"
+            ]
+          },
+          "ind_H2": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H2/ind_H2_20220903_205200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H2/ind_H2_20220909_163200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H2/ind_H2_20220912_140800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H2/ind_H2_20220916_080200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H2/ind_H2_20220920_113400.WAV"
+            ]
+          },
+          "ind_H3": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H3/ind_H3_20220903_091400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H3/ind_H3_20220914_151400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H3/ind_H3_20220915_081800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H3/ind_H3_20220918_053800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H3/ind_H3_20220918_204400.WAV"
+            ]
+          },
+          "ind_H4": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H4/ind_H4_20220830_134400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H4/ind_H4_20220901_104400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H4/ind_H4_20220903_053000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H4/ind_H4_20220903_061200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H4/ind_H4_20220903_215400.WAV"
+            ]
+          },
+          "ind_H5": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H5/ind_H5_20220830_120800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H5/ind_H5_20220831_080600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H5/ind_H5_20220902_051000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H5/ind_H5_20220903_130800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H5/ind_H5_20220903_231000.WAV"
+            ]
+          },
+          "ind_H6": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H6/ind_H6_20220903_025600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H6/ind_H6_20220907_063400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H6/ind_H6_20220911_081800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H6/ind_H6_20220917_100000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_H6/ind_H6_20220922_163600.WAV"
+            ]
+          }
+        },
+        "restored_early": {
+          "ind_N1": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_N1/ind_N1_20220906_203200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_N1/ind_N1_20220908_192600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_N1/ind_N1_20220910_091400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_N1/ind_N1_20220911_162600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_N1/ind_N1_20220912_060600.WAV"
+            ]
+          },
+          "ind_N2": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_N2/ind_N2_20220906_152400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_N2/ind_N2_20220908_085800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_N2/ind_N2_20220908_140800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_N2/ind_N2_20220909_152000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_N2/ind_N2_20220911_112600.WAV"
+            ]
+          },
+          "ind_N3": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_N3/ind_N3_20220906_194800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_N3/ind_N3_20220907_145800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_N3/ind_N3_20220909_105200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_N3/ind_N3_20220910_044200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_N3/ind_N3_20220912_012600.WAV"
+            ]
+          }
+        },
+        "restored_mid": {
+          "ind_R1": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R1/ind_R1_20220829_163000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R1/ind_R1_20220906_175800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R1/ind_R1_20220907_074600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R1/ind_R1_20220916_073800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R1/ind_R1_20220921_040000.WAV"
+            ]
+          },
+          "ind_R2": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R2/ind_R2_20220902_073800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R2/ind_R2_20220906_100000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R2/ind_R2_20220908_021800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R2/ind_R2_20220910_055400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R2/ind_R2_20220911_142200.WAV"
+            ]
+          },
+          "ind_R3": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R3/ind_R3_20220908_092000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R3/ind_R3_20220912_081600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R3/ind_R3_20220914_061800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R3/ind_R3_20220915_062400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R3/ind_R3_20220919_204600.WAV"
+            ]
+          },
+          "ind_R4": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R4/ind_R4_20220907_081000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R4/ind_R4_20220911_192000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R4/ind_R4_20220912_063200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R4/ind_R4_20220913_021600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R4/ind_R4_20220915_192600.WAV"
+            ]
+          },
+          "ind_R5": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R5/ind_R5_20220903_135800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R5/ind_R5_20220911_153600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R5/ind_R5_20220914_023600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R5/ind_R5_20220917_135200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R5/ind_R5_20220920_042200.WAV"
+            ]
+          },
+          "ind_R6": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R6/ind_R6_20220910_114800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R6/ind_R6_20220911_070000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R6/ind_R6_20220911_212600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R6/ind_R6_20220912_022800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ind_R6/ind_R6_20220916_030800.WAV"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "ken",
+      "name": "Kenya",
+      "region": "Mombasa Coast",
+      "available_states": [
+        "degraded",
+        "healthy",
+        "restored_early"
+      ],
+      "sites_per_state": {
+        "degraded": 2,
+        "healthy": 2,
+        "restored_early": 1
+      },
+      "sites_detail": {
+        "degraded": {
+          "ken_D1": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_D1/ken_D1_20230226_022800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_D1/ken_D1_20230226_040000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_D1/ken_D1_20230226_094400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_D1/ken_D1_20230227_060400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_D1/ken_D1_20230228_065600.WAV"
+            ]
+          },
+          "ken_D3": {
+            "wav_count": 0,
+            "files": []
+          }
+        },
+        "healthy": {
+          "ken_H1": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_H1/ken_H1_20230222_220000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_H1/ken_H1_20230223_082000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_H1/ken_H1_20230223_123600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_H1/ken_H1_20230224_172400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_H1/ken_H1_20230225_052800.WAV"
+            ]
+          },
+          "ken_H2": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_H2/ken_H2_20230305_150800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_H2/ken_H2_20230308_233200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_H2/ken_H2_20230319_110000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_H2/ken_H2_20230321_012800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_H2/ken_H2_20230323_093600.WAV"
+            ]
+          }
+        },
+        "restored_early": {
+          "ken_N1": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_N1/ken_N1_20230223_195600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_N1/ken_N1_20230303_180800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_N1/ken_N1_20230305_155600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_N1/ken_N1_20230312_155200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/ken_N1/ken_N1_20230315_052400.WAV"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "mal",
+      "name": "Maldives",
+      "region": "North Male Atoll",
+      "available_states": [
+        "degraded",
+        "healthy",
+        "restored_early"
+      ],
+      "sites_per_state": {
+        "degraded": 2,
+        "healthy": 2,
+        "restored_early": 1
+      },
+      "sites_detail": {
+        "degraded": {
+          "mal_D1": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_D1/mal_D1_20211029_040400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_D1/mal_D1_20211029_162800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_D1/mal_D1_20211114_152800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_D1/mal_D1_20211123_001600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_D1/mal_D1_20211125_091600.WAV"
+            ]
+          },
+          "mal_D2": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_D2/mal_D2_20211108_220400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_D2/mal_D2_20211110_030400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_D2/mal_D2_20211112_095200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_D2/mal_D2_20211115_110800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_D2/mal_D2_20211117_030400.WAV"
+            ]
+          }
+        },
+        "healthy": {
+          "mal_H1": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_H1/mal_H1_20211028_143200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_H1/mal_H1_20211029_074400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_H1/mal_H1_20211102_020800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_H1/mal_H1_20211103_023600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_H1/mal_H1_20211117_065600.WAV"
+            ]
+          },
+          "mal_H2": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_H2/mal_H2_20211105_114800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_H2/mal_H2_20211112_134000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_H2/mal_H2_20211117_060000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_H2/mal_H2_20211122_145200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_H2/mal_H2_20211125_022400.WAV"
+            ]
+          }
+        },
+        "restored_early": {
+          "mal_N1": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_N1/mal_N1_20211030_023600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_N1/mal_N1_20211104_043200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_N1/mal_N1_20211112_164000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_N1/mal_N1_20211118_054000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mal_N1/mal_N1_20211120_074000.WAV"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "mex",
+      "name": "Mexico",
+      "region": "Caribbean Coast",
+      "available_states": [
+        "degraded",
+        "healthy",
+        "restored_early",
+        "restored_mid"
+      ],
+      "sites_per_state": {
+        "degraded": 2,
+        "healthy": 3,
+        "restored_early": 1,
+        "restored_mid": 1
+      },
+      "sites_detail": {
+        "degraded": {
+          "mex_D1": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_D1/mex_D1_20230604_144800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_D1/mex_D1_20230605_023200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_D1/mex_D1_20230612_050000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_D1/mex_D1_20230621_090800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_D1/mex_D1_20230622_170000.WAV"
+            ]
+          },
+          "mex_D2": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_D2/mex_D2_20230601_011200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_D2/mex_D2_20230613_140400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_D2/mex_D2_20230620_174400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_D2/mex_D2_20230626_143200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_D2/mex_D2_20230627_185200.WAV"
+            ]
+          }
+        },
+        "healthy": {
+          "mex_H1": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_H1/mex_H1_20230528_174000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_H1/mex_H1_20230609_084400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_H1/mex_H1_20230615_190400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_H1/mex_H1_20230623_222800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_H1/mex_H1_20230627_171200.WAV"
+            ]
+          },
+          "mex_H2": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_H2/mex_H2_20230529_070400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_H2/mex_H2_20230615_115200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_H2/mex_H2_20230622_030000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_H2/mex_H2_20230623_230000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_H2/mex_H2_20230625_040000.WAV"
+            ]
+          },
+          "mex_H3": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_H3/mex_H3_20230601_120000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_H3/mex_H3_20230608_145200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_H3/mex_H3_20230612_131600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_H3/mex_H3_20230621_052800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_H3/mex_H3_20230623_002000.WAV"
+            ]
+          }
+        },
+        "restored_early": {
+          "mex_N1": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_N1/mex_N1_20230528_143200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_N1/mex_N1_20230530_005200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_N1/mex_N1_20230620_091200.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_N1/mex_N1_20230625_024000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_N1/mex_N1_20230626_082000.WAV"
+            ]
+          }
+        },
+        "restored_mid": {
+          "mex_R1": {
+            "wav_count": 5,
+            "files": [
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_R1/mex_R1_20230530_002400.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_R1/mex_R1_20230614_224000.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_R1/mex_R1_20230615_024800.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_R1/mex_R1_20230619_043600.WAV",
+              "/home/yler_uby_oward/ReefRadar/data/marrs/samples/mex_R1/mex_R1_20230626_025200.WAV"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

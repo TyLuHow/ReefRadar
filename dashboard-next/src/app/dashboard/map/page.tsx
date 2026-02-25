@@ -10,6 +10,7 @@ import { MapControls } from '@/components/map/MapControls';
 import { CaveatsBanner } from '@/components/dashboard/CaveatsBanner';
 import { LoadingReef } from '@/components/ui/LoadingReef';
 import { MapPin } from 'lucide-react';
+import type { RegionBounds } from '@/lib/regions';
 
 // Dynamic import for deck.gl map (no SSR)
 const ReefMap = dynamic(
@@ -45,6 +46,7 @@ export default function MapPage() {
   const [selectedStatuses, setSelectedStatuses] =
     useState<ReefStatus[]>(ALL_STATUSES);
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<RegionBounds | null>(null);
 
   const {
     data: sitesData,
@@ -110,6 +112,10 @@ export default function MapPage() {
     setSelectedStatuses(ALL_STATUSES);
   }, []);
 
+  const handleRegionSelect = useCallback((region: RegionBounds) => {
+    setSelectedRegion(region);
+  }, []);
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Page Header */}
@@ -164,6 +170,7 @@ export default function MapPage() {
             selectedSite={selectedSite}
             onSiteSelect={setSelectedSite}
             height="600px"
+            flyToRegion={selectedRegion}
           />
           <HealthLegend />
           <MapControls
@@ -172,6 +179,8 @@ export default function MapPage() {
             onCountryToggle={handleCountryToggle}
             onStatusToggle={handleStatusToggle}
             onReset={handleReset}
+            onRegionSelect={handleRegionSelect}
+            selectedRegionId={selectedRegion?.id}
           />
         </div>
       )}

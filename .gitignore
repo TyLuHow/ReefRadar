@@ -43,6 +43,7 @@ Thumbs.db
 
 # But allow demo audio in dashboard public/
 !dashboard-next/public/audio/*.wav
+!dashboard-next/public/audio/compare/**/*.wav
 
 # Lambda deployment zips
 *.zip

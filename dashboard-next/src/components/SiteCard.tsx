@@ -99,7 +99,7 @@ export function SiteCard({ site, expanded: initialExpanded = false }: SiteCardPr
               <Database className="w-4 h-4 mr-2" style={{ color: 'var(--text-dim)' }} />
               <span style={{ color: 'var(--text-secondary)' }}>Embedding:</span>
               <span className="ml-2 font-medium" style={{ color: 'var(--text-primary)' }}>
-                1280 dimensions
+                {site.has_embedding === false ? 'Location only' : '1280 dimensions'}
               </span>
             </div>
 

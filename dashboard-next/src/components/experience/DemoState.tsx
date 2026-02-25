@@ -15,6 +15,7 @@ const SpectrogramCanvas = dynamic(
 
 interface DemoStateProps {
   onGoLanding: () => void;
+  onGoCompare?: () => void;
 }
 
 function formatTime(s: number): string {
@@ -23,7 +24,7 @@ function formatTime(s: number): string {
   return `${m}:${sec.toString().padStart(2, '0')}`;
 }
 
-export function DemoState({ onGoLanding }: DemoStateProps) {
+export function DemoState({ onGoLanding, onGoCompare }: DemoStateProps) {
   const [activeTrack, setActiveTrack] = useState<'healthy' | 'degraded'>('healthy');
 
   const audio = useDemoAudio();
@@ -168,8 +169,13 @@ export function DemoState({ onGoLanding }: DemoStateProps) {
             <GlassButton onClick={onGoLanding}>
               Upload Your Own Recording
             </GlassButton>
+            {onGoCompare && (
+              <GlassButton variant="ghost" onClick={onGoCompare}>
+                Compare Locations
+              </GlassButton>
+            )}
             <GlassButton variant="ghost" href="/dashboard/map">
-              Explore 44 Sites on Map
+              Explore 45 Sites on Map
             </GlassButton>
           </div>
         </GlassPanel>

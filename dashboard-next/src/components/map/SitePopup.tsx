@@ -79,6 +79,20 @@ export function SitePopup({ site, onClose }: SitePopupProps) {
             {site.location}
           </div>
         )}
+
+        {/* Embedding status */}
+        {site.has_embedding === false && (
+          <div
+            className="text-xs px-2 py-0.5 rounded-full inline-block mt-1"
+            style={{
+              color: 'rgba(168, 162, 158, 0.8)',
+              background: 'rgba(168, 162, 158, 0.1)',
+              border: '1px solid rgba(168, 162, 158, 0.2)',
+            }}
+          >
+            Location only -- no audio data
+          </div>
+        )}
       </div>
     </div>
   );
