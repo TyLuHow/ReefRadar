@@ -26,6 +26,7 @@ const STATUS_COLORS_RGB: Record<ReefStatus, [number, number, number]> = {
   degraded: [107, 101, 96],
   restored_early: [139, 115, 85],
   restored_mid: [192, 128, 129],
+  unknown: [168, 162, 158],
 };
 
 // --- Reduced-motion detection ------------------------------------------------

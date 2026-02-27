@@ -5,12 +5,13 @@ import { RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
 import { ReefStatus } from '@/types';
 import { REGIONS, type RegionBounds } from '@/lib/regions';
 
-const COUNTRIES = ['Indonesia', 'Australia', 'Kenya', 'Maldives', 'Mexico'];
+const COUNTRIES = ['Indonesia', 'Australia', 'Kenya', 'Maldives', 'Mexico', 'USA', 'French Polynesia'];
 const STATUSES: { value: ReefStatus; label: string; color: string }[] = [
   { value: 'healthy', label: 'Healthy', color: '#cd853f' },
   { value: 'degraded', label: 'Degraded', color: '#6b6560' },
   { value: 'restored_early', label: 'Restored (Early)', color: '#8b7355' },
   { value: 'restored_mid', label: 'Restored (Mid)', color: '#c08081' },
+  { value: 'unknown', label: 'Unknown', color: '#a8a29e' },
 ];
 
 interface MapControlsProps {

@@ -60,6 +60,7 @@ export function EmbeddingChart({ result }: EmbeddingChartProps) {
     degraded: [],
     restored_early: [],
     restored_mid: [],
+    unknown: [],
   };
 
   referenceData.forEach((point) => {

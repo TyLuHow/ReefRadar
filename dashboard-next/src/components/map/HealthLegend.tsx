@@ -5,6 +5,7 @@ const LEGEND_ITEMS = [
   { label: 'Degraded', color: '#6b6560' },
   { label: 'Restored (Early)', color: '#8b7355' },
   { label: 'Restored (Mid)', color: '#c08081' },
+  { label: 'Unknown', color: '#a8a29e' },
 ];
 
 interface HealthLegendProps {

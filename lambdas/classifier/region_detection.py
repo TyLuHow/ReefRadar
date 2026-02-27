@@ -81,6 +81,19 @@ REGION_BOUNDS = {
         'name': 'Mesoamerican Barrier Reef',
         'in_distribution': True  # Mexico training data
     },
+    # --- Expansion regions (out of training distribution) ---
+    'FLORIDA_KEYS': {
+        'lat_min': 24.3, 'lat_max': 25.5,
+        'lon_min': -82.5, 'lon_max': -80.0,
+        'name': 'Florida Keys',
+        'in_distribution': False  # Caribbean, outside training distribution
+    },
+    'FRENCH_POLYNESIA': {
+        'lat_min': -18, 'lat_max': -14,
+        'lon_min': -155, 'lon_max': -148,
+        'name': 'French Polynesia',
+        'in_distribution': False  # Pacific, different ecosystem
+    },
 }
 
 CAVEATS = {

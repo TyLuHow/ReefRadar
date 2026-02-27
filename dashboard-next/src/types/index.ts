@@ -1,6 +1,6 @@
 // ReefRadar API Types
 
-export type ReefStatus = 'healthy' | 'degraded' | 'restored_early' | 'restored_mid';
+export type ReefStatus = 'healthy' | 'degraded' | 'restored_early' | 'restored_mid' | 'unknown';
 
 export interface Site {
   site_id: string;
@@ -121,9 +121,10 @@ export const STATUS_COLORS: Record<ReefStatus, string> = {
   degraded: '#6b6560',
   restored_early: '#8b7355',
   restored_mid: '#c08081',
+  unknown: '#a8a29e',
 };
 
-// Reference site coordinates - all 45 MARRS dataset sites
+// Reference site coordinates - 54 sites (45 MARRS + 9 expansion)
 export const SITE_COORDINATES: Record<string, SiteCoordinates> = {
   // Indonesia - South Sulawesi (21 sites)
   ind_D1: { lat: -4.928784, lon: 119.316541, location: 'South Sulawesi, Indonesia' },
@@ -175,6 +176,17 @@ export const SITE_COORDINATES: Record<string, SiteCoordinates> = {
   mex_H3: { lat: 18.261723, lon: -87.8255695, location: 'Caribbean Coast, Mexico' },
   mex_N1: { lat: 18.262246, lon: -87.825671, location: 'Caribbean Coast, Mexico' },
   mex_R1: { lat: 18.34107, lon: -87.807348, location: 'Caribbean Coast, Mexico' },
+  // French Polynesia - Society Islands (3 sites)
+  borabora_undisturbed: { lat: -16.5004, lon: -151.7415, location: 'Bora-Bora, French Polynesia' },
+  borabora_tourist: { lat: -16.4864, lon: -151.7256, location: 'Bora-Bora, French Polynesia' },
+  borabora_boat_traffic: { lat: -16.5132, lon: -151.7589, location: 'Bora-Bora, French Polynesia' },
+  // USA - Florida Keys (6 sites)
+  irma_eastern_sambo: { lat: 24.4915, lon: -81.6625, location: 'Florida Keys, USA' },
+  irma_western_dry_rocks: { lat: 24.4468, lon: -81.9275, location: 'Florida Keys, USA' },
+  sanctsound_fk01: { lat: 24.5575, lon: -81.4044, location: 'Florida Keys, USA' },
+  sanctsound_fk02: { lat: 24.5433, lon: -81.5192, location: 'Florida Keys, USA' },
+  sanctsound_fk03: { lat: 24.6128, lon: -81.1067, location: 'Florida Keys, USA' },
+  sanctsound_fk04: { lat: 24.4561, lon: -81.7858, location: 'Florida Keys, USA' },
 };
 
 // Status marker colors for map (hex colors for Leaflet)
@@ -183,6 +195,7 @@ export const STATUS_MARKER_COLORS: Record<ReefStatus, string> = {
   degraded: '#6b6560',
   restored_early: '#8b7355',
   restored_mid: '#c08081',
+  unknown: '#a8a29e',
 };
 
 // Extended Site interface with region

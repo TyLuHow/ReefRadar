@@ -43,7 +43,7 @@ export default function LandingPage() {
                 Upload Your Recording
               </h2>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                Classify a WAV file against 45 reference sites
+                Classify a WAV file against 54 reference sites
               </p>
             </GlassPanel>
           </Link>
@@ -53,7 +53,7 @@ export default function LandingPage() {
         <Link href="/dashboard/map" className="w-full">
           <GlassPanel className="p-4 text-center hover:border-ochre/40 cursor-pointer group">
             <h2 className="text-sm font-light text-bone group-hover:text-ochre">
-              Explore 45 Reference Sites
+              Explore 54 Reference Sites
             </h2>
           </GlassPanel>
         </Link>
@@ -62,7 +62,7 @@ export default function LandingPage() {
         <div className="flex items-center gap-6 mt-10 text-xs" style={{ color: 'var(--text-muted)' }}>
           <Link href="/about" className="hover:text-bone">About</Link>
           <Link href="/about" className="hover:text-bone">Methodology</Link>
-          <span>45 sites across 5 countries</span>
+          <span>54 sites across 7 countries</span>
         </div>
       </div>
     </div>

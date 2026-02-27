@@ -241,14 +241,13 @@ export default function AboutPage() {
           <div className="glass-panel p-6">
             <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Reference Data</h3>
             <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
-              Reference recordings from the <strong>MARRS</strong> (Mars Assisted Reef
-              Restoration System) dataset, featuring underwater acoustic recordings
-              from coral reefs.
+              54 reference sites across 7 countries, combining multiple open-access
+              underwater acoustic datasets.
             </p>
             <ul className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              <li>Indonesia - South Sulawesi (healthy, degraded, restored)</li>
-              <li>Australia, Kenya, Maldives, Mexico (healthy, degraded, restored)</li>
-              <li>45 validated sites across 5 countries from the MARRS dataset</li>
+              <li>Indonesia, Australia, Kenya, Maldives, Mexico (MARRS dataset)</li>
+              <li>USA - Florida Keys (Hurricane Irma study, NOAA SanctSound)</li>
+              <li>French Polynesia - Bora-Bora (CoralSoundExplorer)</li>
               <li>DOI: 10.5522/04/29958062 (CC BY 4.0)</li>
             </ul>
           </div>
@@ -301,8 +300,51 @@ export default function AboutPage() {
             <li>Model trained on reef sounds from Indonesia, Australia, Kenya, Maldives, and Mexico -- Caribbean/Atlantic reefs have different soundscapes and are not validated</li>
             <li>Background noise (boats, weather, equipment) can affect accuracy</li>
             <li>Soundscapes vary by time of day, season, and lunar cycle -- single recordings may not represent overall reef health</li>
-            <li>45 reference sites across 5 countries (Indonesia, Australia, Kenya, Maldives, Mexico)</li>
+            <li>54 reference sites across 7 countries (Indonesia, Australia, Kenya, Maldives, Mexico, USA, French Polynesia)</li>
           </ul>
+        </div>
+
+        {/* Data Sources */}
+        <div className="glass-panel p-8 mb-8">
+          <h2 className="text-2xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>Data Sources</h2>
+          <div className="space-y-6">
+            <div>
+              <h4 className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>MARRS Foundation</h4>
+              <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+                Mars Assisted Reef Restoration System -- 45 sites across Indo-Pacific
+              </p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                DOI: 10.5522/04/29958062 | License: CC BY 4.0
+              </p>
+            </div>
+            <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '16px' }}>
+              <h4 className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Hurricane Irma Florida Keys Dataset</h4>
+              <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+                Simmons, K.R., Bohnenstiehl, D.R., &amp; Eggleston, D.B. (2020). Reef soundscapes before and after Hurricane Irma.
+              </p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                DOI: 10.5061/dryad.sxksn0319 | License: CC0 (Public Domain)
+              </p>
+            </div>
+            <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '16px' }}>
+              <h4 className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>CoralSoundExplorer Bora-Bora</h4>
+              <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+                Minier, L., et al. (2025). CoralSoundExplorer: A tool for soundscape-based coral reef monitoring. PLOS Computational Biology.
+              </p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                DOI: 10.5281/zenodo.14577064 | License: CC-BY 4.0
+              </p>
+            </div>
+            <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '16px' }}>
+              <h4 className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>NOAA SanctSound</h4>
+              <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
+                NOAA Sanctuary Soundscape Monitoring Project -- Florida Keys National Marine Sanctuary
+              </p>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                License: Public Domain (U.S. Government Work)
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Credits */}

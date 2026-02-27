@@ -32,12 +32,13 @@ const ReefMap = dynamic(
   },
 );
 
-const ALL_COUNTRIES = ['Indonesia', 'Australia', 'Kenya', 'Maldives', 'Mexico'];
+const ALL_COUNTRIES = ['Indonesia', 'Australia', 'Kenya', 'Maldives', 'Mexico', 'USA', 'French Polynesia'];
 const ALL_STATUSES: ReefStatus[] = [
   'healthy',
   'degraded',
   'restored_early',
   'restored_mid',
+  'unknown',
 ];
 
 export default function MapPage() {
@@ -133,7 +134,7 @@ export default function MapPage() {
           className="text-sm max-w-lg mx-auto"
           style={{ color: 'var(--text-muted)' }}
         >
-          Explore the reference reef monitoring sites across 5 countries.
+          Explore the reference reef monitoring sites across 7 countries.
           Click a site to view details.
         </p>
       </div>

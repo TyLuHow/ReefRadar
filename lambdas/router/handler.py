@@ -219,7 +219,7 @@ def handle_get_sites(event):
     try:
         # Try loading v5 metadata first, fall back to legacy metadata.json
         metadata = None
-        for key in ['reference/metadata_v5.json', 'reference/metadata.json']:
+        for key in ['reference/metadata_v6.json', 'reference/metadata_v5.json', 'reference/metadata.json']:
             try:
                 s3_response = s3.get_object(Bucket=EMBEDDINGS_BUCKET, Key=key)
                 metadata = json.loads(s3_response['Body'].read().decode())

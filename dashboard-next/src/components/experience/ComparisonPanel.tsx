@@ -17,6 +17,7 @@ const CATEGORY_LABELS: Record<ReefStatus, string> = {
   degraded: 'Degraded',
   restored_early: 'Restored (Early)',
   restored_mid: 'Restored (Mid)',
+  unknown: 'Unknown',
 };
 
 export function ComparisonPanel({ analysisData }: ComparisonPanelProps) {

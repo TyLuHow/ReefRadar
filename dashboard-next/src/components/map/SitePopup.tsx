@@ -9,6 +9,7 @@ const STATUS_DOT_COLORS: Record<ReefStatus, string> = {
   degraded: '#6b6560',
   restored_early: '#8b7355',
   restored_mid: '#c08081',
+  unknown: '#a8a29e',
 };
 
 interface SitePopupProps {
