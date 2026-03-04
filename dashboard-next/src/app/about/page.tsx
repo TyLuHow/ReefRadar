@@ -241,8 +241,8 @@ export default function AboutPage() {
           <div className="glass-panel p-6">
             <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Reference Data</h3>
             <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
-              54 reference sites across 7 countries, combining multiple open-access
-              underwater acoustic datasets.
+              56 reference sites across 7 countries, combining multiple open-access
+              underwater acoustic datasets including pre/post hurricane comparison.
             </p>
             <ul className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
               <li>Indonesia, Australia, Kenya, Maldives, Mexico (MARRS dataset)</li>
@@ -300,7 +300,7 @@ export default function AboutPage() {
             <li>Model trained on reef sounds from Indonesia, Australia, Kenya, Maldives, and Mexico -- Caribbean/Atlantic reefs have different soundscapes and are not validated</li>
             <li>Background noise (boats, weather, equipment) can affect accuracy</li>
             <li>Soundscapes vary by time of day, season, and lunar cycle -- single recordings may not represent overall reef health</li>
-            <li>54 reference sites across 7 countries (Indonesia, Australia, Kenya, Maldives, Mexico, USA, French Polynesia)</li>
+            <li>56 reference sites across 7 countries (Indonesia, Australia, Kenya, Maldives, Mexico, USA, French Polynesia)</li>
           </ul>
         </div>
 
@@ -321,9 +321,10 @@ export default function AboutPage() {
               <h4 className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Hurricane Irma Florida Keys Dataset</h4>
               <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
                 Simmons, K.R., Bohnenstiehl, D.R., &amp; Eggleston, D.B. (2020). Reef soundscapes before and after Hurricane Irma.
+                Pre/post hurricane comparison at Western Dry Rocks and Eastern Sambo reef sites.
               </p>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                DOI: 10.5061/dryad.sxksn0319 | License: CC0 (Public Domain)
+                DOI: 10.5061/dryad.5tb2rbp38 | License: CC0 (Public Domain)
               </p>
             </div>
             <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '16px' }}>

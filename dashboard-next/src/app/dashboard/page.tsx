@@ -31,13 +31,13 @@ const cards = [
     href: '/sites',
     icon: Compass,
     title: 'Reference Sites',
-    desc: 'Browse 54 reference sites across 7 countries',
+    desc: 'Browse 56 reference sites across 7 countries',
     glow: '#c08081',
   },
 ];
 
 const quickStats = [
-  { value: 54, label: 'Reference Sites', icon: Compass, glow: '#cd853f' },
+  { value: 56, label: 'Reference Sites', icon: Compass, glow: '#cd853f' },
   { value: 7, label: 'Countries', icon: Globe2, glow: '#8b7355' },
   { value: 4, label: 'Health Classes', icon: Waves, glow: '#e9dcc9' },
 ];

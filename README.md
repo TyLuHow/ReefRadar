@@ -346,6 +346,15 @@ SageMaker resources have been deleted. All ML inference runs on Lambda container
 
 ---
 
+## Data Sources
+
+- **MARRS Foundation** -- Mars Assisted Reef Restoration System monitoring data, 45 sites across Indonesia, Australia, Kenya, Maldives, Mexico. DOI: [10.5522/04/29958062](https://doi.org/10.5522/04/29958062) (CC BY 4.0)
+- **Hurricane Irma Reef Acoustics** -- Simmons, Bohnenstiehl & Eggleston (2021). Pre/post hurricane reef soundscapes, Florida Keys. DOI: [10.5061/dryad.5tb2rbp38](https://doi.org/10.5061/dryad.5tb2rbp38) (CC0)
+- **CoralSoundExplorer** -- Minier et al. (2025). Bora-Bora reef soundscapes, French Polynesia. DOI: [10.5281/zenodo.14577064](https://doi.org/10.5281/zenodo.14577064) (CC BY 4.0)
+- **NOAA SanctSound** -- Sanctuary Soundscape Monitoring Project, Florida Keys National Marine Sanctuary (Public Domain)
+
+---
+
 ## Dashboard Deployment
 
 The Next.js dashboard (`dashboard-next/`) is configured for deployment on **Vercel** (free Hobby tier). See the full [Deployment Guide](./docs/DEPLOYMENT.md) for step-by-step instructions.

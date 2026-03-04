@@ -70,7 +70,7 @@ NEW_SITES = [
         'has_embedding': False,
         'embedding': None,
         'source': 'Hurricane Irma Dataset',
-        'doi': '10.5061/dryad.sxksn0319',
+        'doi': '10.5061/dryad.5tb2rbp38',
     },
     {
         'site_id': 'irma_western_dry_rocks',
@@ -82,7 +82,7 @@ NEW_SITES = [
         'has_embedding': False,
         'embedding': None,
         'source': 'Hurricane Irma Dataset',
-        'doi': '10.5061/dryad.sxksn0319',
+        'doi': '10.5061/dryad.5tb2rbp38',
     },
     # NOAA SanctSound - Florida Keys
     {

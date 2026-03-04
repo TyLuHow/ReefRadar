@@ -1,0 +1,354 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: |
+  MARRS Coral Reef Audio Transfer Infrastructure
+
+  Creates the resources needed to transfer MARRS dataset from Figshare to S3:
+  - S3 bucket for raw audio data with lifecycle policy
+  - IAM role for EC2 transfer instance
+  - EC2 Launch Template for spot instance
+  - CloudWatch alarm for cost monitoring
+
+  Cost estimate: <$5 for full transfer (~16GB sampled data)
+
+  Usage:
+    aws cloudformation create-stack \
+      --stack-name reefradar-marrs-transfer \
+      --template-body file://ec2_transfer_template.yaml \
+      --capabilities CAPABILITY_IAM
+
+Parameters:
+  ProjectPrefix:
+    Type: String
+    Default: reefradar-2477
+    Description: Prefix for all resource names
+
+  S3BucketName:
+    Type: String
+    Default: reefradar-2477-marrs-raw
+    Description: Name for the S3 bucket to store MARRS audio data
+
+  SpotMaxPrice:
+    Type: String
+    Default: "0.05"
+    Description: Maximum hourly price for spot instance (on-demand is ~$0.04)
+
+  InstanceType:
+    Type: String
+    Default: t3.small
+    AllowedValues:
+      - t3.micro
+      - t3.small
+      - t3.medium
+    Description: EC2 instance type (t3.small recommended for cost/performance balance)
+
+  SamplesPerSite:
+    Type: Number
+    Default: 200
+    MinValue: 10
+    MaxValue: 1000
+    Description: Number of audio files to sample per site (200 = ~16GB total)
+
+  DataRetentionDays:
+    Type: Number
+    Default: 30
+    MinValue: 1
+    MaxValue: 365
+    Description: Days to retain data in S3 before automatic deletion (cost control)
+
+  CostAlarmThreshold:
+    Type: Number
+    Default: 5
+    Description: CloudWatch alarm triggers if estimated charges exceed this USD amount
+
+Resources:
+  # S3 Bucket for MARRS raw audio
+  MARRSAudioBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Ref S3BucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireAfterRetentionPeriod
+            Status: Enabled
+            ExpirationInDays: !Ref DataRetentionDays
+            NoncurrentVersionExpirationInDays: 1
+      Tags:
+        - Key: Project
+          Value: ReefRadar
+        - Key: Purpose
+          Value: MARRS audio data storage
+
+  # IAM Role for EC2 Transfer Instance
+  TransferInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ProjectPrefix}-transfer-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: TransferPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # S3 permissions for data transfer
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:HeadBucket
+                  - s3:HeadObject
+                  - s3:PutLifecycleConfiguration
+                Resource:
+                  - !GetAtt MARRSAudioBucket.Arn
+                  - !Sub ${MARRSAudioBucket.Arn}/*
+              # Allow self-termination (cost control)
+              - Effect: Allow
+                Action:
+                  - ec2:TerminateInstances
+                Resource: '*'
+                Condition:
+                  StringEquals:
+                    ec2:ResourceTag/Purpose: marrs-transfer
+              # CloudWatch logs for monitoring
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/ec2/marrs-transfer:*
+      Tags:
+        - Key: Project
+          Value: ReefRadar
+
+  # Instance Profile
+  TransferInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub ${ProjectPrefix}-transfer-profile
+      Roles:
+        - !Ref TransferInstanceRole
+
+  # EC2 Launch Template
+  TransferLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub ${ProjectPrefix}-transfer-template
+      LaunchTemplateData:
+        InstanceType: !Ref InstanceType
+        ImageId: !Sub '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2}}'
+        IamInstanceProfile:
+          Arn: !GetAtt TransferInstanceProfile.Arn
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeSize: 50
+              VolumeType: gp3
+              DeleteOnTermination: true
+              Encrypted: true
+        InstanceMarketOptions:
+          MarketType: spot
+          SpotOptions:
+            MaxPrice: !Ref SpotMaxPrice
+            SpotInstanceType: one-time
+            InstanceInterruptionBehavior: terminate
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub ${ProjectPrefix}-marrs-transfer
+              - Key: Project
+                Value: ReefRadar
+              - Key: Purpose
+                Value: marrs-transfer
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            set -ex
+
+            # Log everything
+            exec > >(tee /var/log/marrs-transfer.log) 2>&1
+
+            echo "=========================================="
+            echo "MARRS Cloud-to-Cloud Transfer Starting"
+            echo "Instance: $(curl -s http://169.254.169.254/latest/meta-data/instance-id)"
+            echo "Time: $(date)"
+            echo "=========================================="
+
+            # Install dependencies
+            yum update -y
+            yum install -y python3 python3-pip
+            pip3 install boto3 requests
+
+            # Download transfer script from GitHub or S3
+            # For now, inline a minimal version
+            cat > /tmp/marrs_transfer.py << 'PYTHON_SCRIPT'
+            #!/usr/bin/env python3
+            """
+            Minimal MARRS transfer script for EC2 user data.
+            Full version available at scripts/marrs_cloud_transfer.py
+            """
+            import boto3
+            import json
+            import logging
+            import os
+            import random
+            import requests
+            import sys
+            import tempfile
+            import time
+            import zipfile
+
+            logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
+            logger = logging.getLogger()
+
+            FIGSHARE_API = "https://api.figshare.com/v2/articles/29958062/files"
+            BUCKET = os.environ.get('S3_BUCKET', '${S3BucketName}')
+            SAMPLES = int(os.environ.get('SAMPLES_PER_SITE', '${SamplesPerSite}'))
+
+            def main():
+                s3 = boto3.client('s3')
+
+                # Ensure bucket exists
+                try:
+                    s3.head_bucket(Bucket=BUCKET)
+                except:
+                    s3.create_bucket(Bucket=BUCKET)
+
+                # Get Figshare files
+                logger.info("Fetching Figshare file list...")
+                files = requests.get(FIGSHARE_API).json()
+                site_zips = [f for f in files if f['name'].endswith('.zip')
+                            and not f['name'].startswith('detect')]
+
+                logger.info(f"Found {len(site_zips)} site ZIP files")
+
+                stats = {'files': 0, 'bytes': 0, 'errors': 0}
+
+                for site_file in site_zips:
+                    site_id = site_file['name'].replace('.zip', '')
+                    logger.info(f"\nProcessing {site_id}...")
+
+                    try:
+                        # Download ZIP
+                        url = site_file['download_url']
+                        with tempfile.NamedTemporaryFile(suffix='.zip', delete=False) as tmp:
+                            r = requests.get(url, stream=True, allow_redirects=True)
+                            for chunk in r.iter_content(chunk_size=8*1024*1024):
+                                tmp.write(chunk)
+                            tmp_path = tmp.name
+
+                        # Sample and upload
+                        with zipfile.ZipFile(tmp_path, 'r') as zf:
+                            wavs = [n for n in zf.namelist() if n.endswith('.wav')]
+                            selected = random.sample(wavs, min(len(wavs), SAMPLES))
+
+                            for wav in selected:
+                                data = zf.read(wav)
+                                key = f"sites/{site_id}/{os.path.basename(wav)}"
+                                s3.put_object(Bucket=BUCKET, Key=key, Body=data)
+                                stats['files'] += 1
+                                stats['bytes'] += len(data)
+
+                        os.unlink(tmp_path)
+                        logger.info(f"  Uploaded {len(selected)} files")
+
+                    except Exception as e:
+                        logger.error(f"  Error: {e}")
+                        stats['errors'] += 1
+
+                # Save stats
+                s3.put_object(
+                    Bucket=BUCKET,
+                    Key='manifest.json',
+                    Body=json.dumps(stats, indent=2),
+                    ContentType='application/json'
+                )
+
+                logger.info(f"\n{'='*50}")
+                logger.info(f"Complete: {stats['files']} files, {stats['bytes']/1e9:.2f} GB")
+                logger.info(f"Errors: {stats['errors']}")
+
+            if __name__ == '__main__':
+                main()
+            PYTHON_SCRIPT
+
+            # Run transfer
+            python3 /tmp/marrs_transfer.py
+
+            # Upload logs
+            aws s3 cp /var/log/marrs-transfer.log \
+                s3://${S3BucketName}/logs/transfer_$(date +%Y%m%d_%H%M%S).log
+
+            echo "Transfer complete, self-terminating..."
+
+            # Self-terminate
+            INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+            aws ec2 terminate-instances --instance-ids $INSTANCE_ID --region ${AWS::Region}
+
+  # CloudWatch Alarm for Cost Monitoring
+  CostAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${ProjectPrefix}-marrs-cost-alarm
+      AlarmDescription: Alarm when MARRS transfer costs exceed threshold
+      MetricName: EstimatedCharges
+      Namespace: AWS/Billing
+      Statistic: Maximum
+      Period: 21600  # 6 hours
+      EvaluationPeriods: 1
+      Threshold: !Ref CostAlarmThreshold
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: Currency
+          Value: USD
+      TreatMissingData: notBreaching
+      Tags:
+        - Key: Project
+          Value: ReefRadar
+
+Outputs:
+  BucketName:
+    Description: S3 bucket for MARRS audio data
+    Value: !Ref MARRSAudioBucket
+    Export:
+      Name: !Sub ${AWS::StackName}-BucketName
+
+  BucketArn:
+    Description: ARN of the S3 bucket
+    Value: !GetAtt MARRSAudioBucket.Arn
+
+  LaunchTemplateId:
+    Description: EC2 Launch Template ID for transfer instance
+    Value: !Ref TransferLaunchTemplate
+
+  LaunchCommand:
+    Description: Command to launch the transfer instance
+    Value: !Sub |
+      aws ec2 run-instances \
+        --launch-template LaunchTemplateId=${TransferLaunchTemplate} \
+        --region ${AWS::Region}
+
+  InstanceProfileArn:
+    Description: ARN of the instance profile
+    Value: !GetAtt TransferInstanceProfile.Arn
+
+  EstimatedCosts:
+    Description: Estimated costs for the transfer
+    Value: |
+      EC2 spot (t3.small, 2hr): ~$0.02
+      S3 storage (16GB, 30 days): ~$0.37
+      S3 PUT requests (~9000): ~$0.05
+      Data transfer IN: FREE
+      TOTAL: ~$0.50 (well under $5 budget)

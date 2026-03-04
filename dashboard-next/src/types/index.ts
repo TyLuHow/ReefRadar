@@ -124,7 +124,7 @@ export const STATUS_COLORS: Record<ReefStatus, string> = {
   unknown: '#a8a29e',
 };
 
-// Reference site coordinates - 54 sites (45 MARRS + 9 expansion)
+// Reference site coordinates - 56 sites (45 MARRS + 11 expansion)
 export const SITE_COORDINATES: Record<string, SiteCoordinates> = {
   // Indonesia - South Sulawesi (21 sites)
   ind_D1: { lat: -4.928784, lon: 119.316541, location: 'South Sulawesi, Indonesia' },
@@ -180,9 +180,11 @@ export const SITE_COORDINATES: Record<string, SiteCoordinates> = {
   borabora_undisturbed: { lat: -16.5004, lon: -151.7415, location: 'Bora-Bora, French Polynesia' },
   borabora_tourist: { lat: -16.4864, lon: -151.7256, location: 'Bora-Bora, French Polynesia' },
   borabora_boat_traffic: { lat: -16.5132, lon: -151.7589, location: 'Bora-Bora, French Polynesia' },
-  // USA - Florida Keys (6 sites)
-  irma_eastern_sambo: { lat: 24.4915, lon: -81.6625, location: 'Florida Keys, USA' },
+  // USA - Florida Keys (8 sites)
   irma_western_dry_rocks: { lat: 24.4468, lon: -81.9275, location: 'Florida Keys, USA' },
+  irma_western_dry_rocks_pre: { lat: 24.4468, lon: -81.9275, location: 'Florida Keys, USA' },
+  irma_eastern_sambo_pre: { lat: 24.4915, lon: -81.6625, location: 'Florida Keys, USA' },
+  irma_eastern_sambo_post: { lat: 24.4915, lon: -81.6625, location: 'Florida Keys, USA' },
   sanctsound_fk01: { lat: 24.5575, lon: -81.4044, location: 'Florida Keys, USA' },
   sanctsound_fk02: { lat: 24.5433, lon: -81.5192, location: 'Florida Keys, USA' },
   sanctsound_fk03: { lat: 24.6128, lon: -81.1067, location: 'Florida Keys, USA' },
