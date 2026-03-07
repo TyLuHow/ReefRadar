@@ -124,7 +124,7 @@ export const STATUS_COLORS: Record<ReefStatus, string> = {
   unknown: '#a8a29e',
 };
 
-// Reference site coordinates - 56 sites (45 MARRS + 11 expansion)
+// Reference site coordinates - 54 sites across 7 countries
 export const SITE_COORDINATES: Record<string, SiteCoordinates> = {
   // Indonesia - South Sulawesi (21 sites)
   ind_D1: { lat: -4.928784, lon: 119.316541, location: 'South Sulawesi, Indonesia' },

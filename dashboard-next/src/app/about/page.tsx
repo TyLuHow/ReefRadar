@@ -241,7 +241,7 @@ export default function AboutPage() {
           <div className="glass-panel p-6">
             <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Reference Data</h3>
             <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
-              56 reference sites across 7 countries, combining multiple open-access
+              54 reference sites across 7 countries, combining multiple open-access
               underwater acoustic datasets including pre/post hurricane comparison.
             </p>
             <ul className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -300,7 +300,7 @@ export default function AboutPage() {
             <li>Model trained on reef sounds from Indonesia, Australia, Kenya, Maldives, and Mexico -- Caribbean/Atlantic reefs have different soundscapes and are not validated</li>
             <li>Background noise (boats, weather, equipment) can affect accuracy</li>
             <li>Soundscapes vary by time of day, season, and lunar cycle -- single recordings may not represent overall reef health</li>
-            <li>56 reference sites across 7 countries (Indonesia, Australia, Kenya, Maldives, Mexico, USA, French Polynesia)</li>
+            <li>54 reference sites across 7 countries (Indonesia, Australia, Kenya, Maldives, Mexico, USA, French Polynesia)</li>
           </ul>
         </div>
 

@@ -175,7 +175,7 @@ export function DemoState({ onGoLanding, onGoCompare }: DemoStateProps) {
               </GlassButton>
             )}
             <GlassButton variant="ghost" href="/dashboard/map">
-              Explore 56 Sites on Map
+              Explore 54 Sites on Map
             </GlassButton>
           </div>
         </GlassPanel>
