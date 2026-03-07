@@ -59,6 +59,9 @@ data/embeddings/*.json
 models/*.npz
 models/*.json
 
+# Generated diagram outputs
+aws_architecture.*
+
 # Node
 node_modules/
 .next/
