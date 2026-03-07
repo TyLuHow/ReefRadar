@@ -38,7 +38,6 @@ flowchart LR
     subgraph Client
         User["User"]
         NextJS["Next.js<br/>Dashboard"]
-        Streamlit["Streamlit<br/>Dashboard"]
     end
 
     subgraph AWS["AWS Cloud"]
@@ -59,7 +58,6 @@ flowchart LR
 
     User --> APIGW
     NextJS --> APIGW
-    Streamlit --> APIGW
     APIGW --> Router
     Router --> Preproc
     Preproc --> Class
@@ -254,15 +252,6 @@ cd dashboard-next
 npm install
 npm run dev
 # Open http://localhost:3000
-```
-
-### Run the Streamlit Dashboard
-
-```bash
-cd dashboard
-pip install -r requirements.txt
-streamlit run app.py
-# Open http://localhost:8501
 ```
 
 ---

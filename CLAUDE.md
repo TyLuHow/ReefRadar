@@ -6,7 +6,7 @@ This file helps AI assistants understand and navigate the ReefRadar codebase.
 
 ReefRadar is a serverless API for analyzing coral reef health from underwater audio recordings. It uses a trained MLP classifier on SurfPerch embeddings to classify reef health status, with geographic region detection for out-of-distribution warnings.
 
-**Tech Stack:** AWS Lambda (including container-based), API Gateway, S3, DynamoDB, Python 3.11, Next.js 14, Streamlit, TensorFlow, perch-hoplite
+**Tech Stack:** AWS Lambda (including container-based), API Gateway, S3, DynamoDB, Python 3.11, Next.js 14, TensorFlow, perch-hoplite
 
 **Live API:** `https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod`
 
