@@ -8,7 +8,7 @@ A serverless AWS-based system for analyzing coral reef health through underwater
 
 ## Live Demo
 
-**Next.js Dashboard:** [FRONTEND_URL]
+**Next.js Dashboard:** [https://dashboard-next-indol-nu.vercel.app](https://dashboard-next-indol-nu.vercel.app)
 
 The dashboard provides:
 - Interactive reef health analysis with audio upload
