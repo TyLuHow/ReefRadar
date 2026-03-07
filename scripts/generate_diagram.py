@@ -148,7 +148,7 @@ def fetch_resources(session, tag_filter: dict = None, limit: int = 15):
     s3 = session.client("s3")
     resp = safe_call(s3.list_buckets, default={})
     for bucket in (resp.get("Buckets") or [])[:limit]:
-        name = bucket["BucketName"]
+        name = bucket.get("BucketName") or bucket.get("Name", "unknown")
         try:
             loc = s3.get_bucket_location(Bucket=name).get("LocationConstraint") or "us-east-1"
         except Exception:
