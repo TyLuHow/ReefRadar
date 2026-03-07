@@ -101,8 +101,8 @@ curl https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod/sites
       "status": "restored_mid"
     }
   ],
-  "total_sites": 8,
-  "countries": ["Australia", "Indonesia", "Philippines", "Mexico"]
+  "total_sites": 54,
+  "countries": ["Indonesia", "Australia", "Kenya", "Maldives", "Mexico", "USA", "French Polynesia"]
 }
 ```
 

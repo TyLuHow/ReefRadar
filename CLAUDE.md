@@ -34,7 +34,7 @@ ReefRadar/
 │
 ├── data/
 │   └── embeddings/             # Pre-computed reference site embeddings
-│       ├── metadata.json       # 8 sites with real 1280-dim SurfPerch embeddings (v3.0)
+│       ├── metadata.json       # 54 sites with real 1280-dim SurfPerch embeddings
 │       ├── marrs_sites.json    # All 45 MARRS sites with coordinates
 │       └── study_sites_map.kml # KML with all site coordinates
 │
@@ -95,7 +95,7 @@ User Audio Upload (+ optional lat/lon)
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | /health | Health check |
-| GET | /sites | List 8 reference sites |
+| GET | /sites | List 54 reference sites |
 | POST | /upload | Upload WAV file (returns upload_id) |
 | POST | /analyze | Start analysis with optional lat/lon (returns analysis_id) |
 | GET | /visualize/{id} | Get results (poll until complete) |
@@ -126,7 +126,7 @@ sk: "METADATA", "PREPROCESSED", "RESULT", or "ERROR"
 - Generates real SurfPerch embeddings via inference Lambda
 - Classifies using trained MLP (1280→256→64→4, ~90% test accuracy)
 - Applies geographic region detection for confidence adjustment
-- Compares to 8 reference sites via cosine similarity
+- Compares to 54 reference sites via cosine similarity
 - Categories: healthy, degraded, restored_early, restored_mid
 
 ### Geographic Region Detection
@@ -138,13 +138,14 @@ sk: "METADATA", "PREPROCESSED", "RESULT", or "ERROR"
 
 ## Reference Data
 
-8 sites with real SurfPerch embeddings (metadata.json v3.0):
-- **Healthy**: ind_H4, ind_H5, ken_H1
-- **Degraded**: ind_D2, ind_D3
-- **Restored Early**: ind_N1
-- **Restored Mid**: ind_R1, ind_R2
-
-45-site expansion tracked in `data/embeddings/marrs_sites.json`.
+54 sites across 7 countries with real SurfPerch embeddings:
+- **Indonesia**: 21 sites (South Sulawesi -- MARRS)
+- **Australia**: 7 sites (Great Barrier Reef -- MARRS)
+- **Kenya**: 5 sites (Mombasa Coast -- MARRS)
+- **Maldives**: 5 sites (North Male Atoll -- MARRS)
+- **Mexico**: 7 sites (Caribbean Coast -- MARRS)
+- **USA**: 8 sites (Florida Keys -- Hurricane Irma + NOAA SanctSound)
+- **French Polynesia**: 3 sites (Bora-Bora -- CoralSoundExplorer)
 
 ## AWS Resource Names
 

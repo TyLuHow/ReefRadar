@@ -8,7 +8,7 @@ A serverless AWS-based system for analyzing coral reef health through underwater
 
 ## Live Demo
 
-**Next.js Dashboard:** Deploy to Vercel by following the [Deployment Guide](./docs/DEPLOYMENT.md). After deployment, the dashboard will be available at your Vercel project URL (e.g., `https://reefradar-dashboard.vercel.app`).
+**Next.js Dashboard:** [FRONTEND_URL]
 
 The dashboard provides:
 - Interactive reef health analysis with audio upload
@@ -102,7 +102,7 @@ flowchart LR
    - Invokes Inference Lambda to generate real SurfPerch embeddings
    - Classifies using trained MLP (1280->256->64->4, ~90% test accuracy)
    - Detects geographic region and adjusts confidence if out-of-distribution
-   - Compares to 8 reference site embeddings via cosine similarity
+   - Compares to 54 reference site embeddings via cosine similarity
    - Stores results in DynamoDB
 
 5. **Visualize** (`GET /visualize/{analysis_id}`)
@@ -291,10 +291,15 @@ ReefRadar analyzes **biological sound activity** - the acoustic signatures produ
 
 ### Reference Data
 
-8 reference sites with real SurfPerch embeddings from the [MARRS coral reef restoration dataset](https://doi.org/10.5281/zenodo.6024203):
+54 reference sites across 7 countries with real SurfPerch embeddings from multiple open-access datasets:
 
-- **Indonesia (South Sulawesi)**: ind_H4, ind_H5 (healthy), ind_D2, ind_D3 (degraded), ind_N1 (restored early), ind_R1, ind_R2 (restored mid)
-- **Kenya (Lamu)**: ken_H1 (healthy)
+- **Indonesia (South Sulawesi)**: 21 MARRS sites (healthy, degraded, restored)
+- **Australia (Great Barrier Reef)**: 7 MARRS sites
+- **Kenya (Mombasa Coast)**: 5 MARRS sites
+- **Maldives (North Male Atoll)**: 5 MARRS sites
+- **Mexico (Caribbean Coast)**: 7 MARRS sites
+- **USA (Florida Keys)**: 8 sites (Hurricane Irma study + NOAA SanctSound)
+- **French Polynesia (Bora-Bora)**: 3 CoralSoundExplorer sites
 
 ### What It Cannot Measure
 

@@ -62,7 +62,7 @@
     | (Container, 3GB)  |                        | +-----------------+ |
     | +---------------+ |                        | | reference/      | |
     | | SurfPerch     | |                        | |  metadata.json  | |
-    | | TensorFlow    | |                        | |  (8 sites,      | |
+    | | TensorFlow    | |                        | |  (54 sites,     | |
     | | perch-hoplite | |                        | |   1280-dim)     | |
     | | 1280-dim out  | |                        | +-----------------+ |
     | +---------------+ |                        +---------------------+
@@ -187,7 +187,7 @@ Detects biogeographic region from recording coordinates and adjusts classificati
 
 | Folder | Purpose |
 |--------|---------|
-| `reference/metadata.json` | 8 reference site embeddings (v3.0) |
+| `reference/metadata.json` | 54 reference site embeddings |
 | `layers/` | Lambda layer zips |
 
 #### DynamoDB (`reefradar-2477-metadata`)
@@ -219,11 +219,14 @@ The model runs in a Lambda container via perch-hoplite. First invocation downloa
 Trained on real SurfPerch embeddings from 7 MARRS sites (ind_H4, ind_H5, ind_N1, ind_D2, ind_D3, ind_R1, ind_R2) with augmentation.
 
 #### Reference Embeddings
-8 sites with real SurfPerch embeddings (metadata.json v3.0):
-- **Healthy (3):** ind_H4, ind_H5, ken_H1
-- **Degraded (2):** ind_D2, ind_D3
-- **Restored Early (1):** ind_N1
-- **Restored Mid (2):** ind_R1, ind_R2
+54 sites across 7 countries with real SurfPerch embeddings:
+- **Indonesia**: 21 sites (healthy, degraded, restored early/mid)
+- **Australia**: 7 sites (Great Barrier Reef)
+- **Kenya**: 5 sites (Mombasa Coast)
+- **Maldives**: 5 sites (North Male Atoll)
+- **Mexico**: 7 sites (Caribbean Coast)
+- **USA**: 8 sites (Florida Keys -- Hurricane Irma + NOAA SanctSound)
+- **French Polynesia**: 3 sites (Bora-Bora -- CoralSoundExplorer)
 
 ### 6. Frontends
 

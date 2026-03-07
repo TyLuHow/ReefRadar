@@ -2,45 +2,26 @@
 
 ## Current Resource Costs
 
-### Summary (January 2026)
+### Summary (March 2026)
 
 | Service | Status | Monthly Cost |
 |---------|--------|--------------|
-| Lambda | 3 functions | ~$0 (free tier) |
+| Lambda | 4 functions (incl. container) | ~$0 (free tier) |
 | API Gateway | HTTP API | ~$0 (free tier) |
 | S3 | ~120 MB storage | ~$0.01 |
 | DynamoDB | On-demand, ~9 items | ~$0 (free tier) |
-| SageMaker | ml.m5.large running | **~$83** |
+| SageMaker | **DELETED** (2026-02-20) | $0 |
 | CloudWatch | Log storage | ~$0.10 |
-| **TOTAL** | | **~$83/month** |
+| ECR | Container image | ~$0 (free tier) |
+| **TOTAL** | | **~$0.11/month** |
 
-### Critical Cost Item: SageMaker Endpoint
+### SageMaker Endpoint (DELETED)
 
-The SageMaker endpoint is the dominant cost:
-- Instance type: ml.m5.large
-- Hourly rate: $0.115/hour
-- Daily cost: $2.76/day
-- Monthly cost: **$82.80/month**
+The SageMaker endpoint was deleted on 2026-02-20. ML inference now runs entirely on a Lambda container image (reefradar-2477-inference) with no idle costs.
 
-**The endpoint has an XLA error and isn't functional.** The system falls back to synthetic embeddings, so this cost provides no value.
-
-### Recommended Action
-
-Delete the SageMaker endpoint to save $83/month:
-
-```bash
-# Delete the endpoint
-aws sagemaker delete-endpoint \
-  --endpoint-name reefradar-2477-surfperch-endpoint \
-  --region us-east-1
-
-# Also delete the endpoint config
-aws sagemaker delete-endpoint-config \
-  --endpoint-config-name reefradar-2477-surfperch-config \
-  --region us-east-1
-
-# Model can stay (no ongoing cost)
-```
+- Previous cost: $82.80/month (ml.m5.large, $0.115/hour)
+- Current cost: $0 (Lambda container inference included in Lambda free tier)
+- Savings: $82.80/month
 
 ## Service-by-Service Breakdown
 
@@ -53,18 +34,19 @@ aws sagemaker delete-endpoint-config \
 | Compute | $0.0000166667 per GB-second |
 
 **Current Usage:**
-- Router: 256 MB × 30s max = 7.5 GB-seconds/request
-- Preprocessor: 1024 MB × 180s max = 184 GB-seconds/request
-- Classifier: 512 MB × 120s max = 61 GB-seconds/request
+- Router: 256 MB x 30s max = 7.5 GB-seconds/request
+- Preprocessor: 1024 MB x 180s max = 184 GB-seconds/request
+- Classifier: 512 MB x 120s max = 61 GB-seconds/request
+- Inference: 3008 MB x 300s max = 902 GB-seconds/request
 
-**Cost per full analysis:** ~253 GB-seconds = $0.004
+**Cost per full analysis:** ~1,155 GB-seconds = $0.019
 
 **Monthly projection:**
 | Usage | Requests | Lambda Cost |
 |-------|----------|-------------|
 | Dev (10/day) | 300 | $0 (free tier) |
-| Demo (100/day) | 3,000 | $0.01 |
-| Light prod (1000/day) | 30,000 | $1.20 |
+| Demo (100/day) | 3,000 | $0.50 |
+| Light prod (1000/day) | 30,000 | $18.00 |
 
 ### API Gateway (HTTP API)
 
@@ -114,20 +96,6 @@ aws sagemaker delete-endpoint-config \
 | Demo | 10,000 | $0.01 |
 | Light prod | 100,000 | $0.15 |
 
-### SageMaker
-
-| Instance | On-Demand Price |
-|----------|-----------------|
-| ml.t2.medium | $0.056/hour |
-| ml.m5.large | $0.115/hour |
-| ml.m5.xlarge | $0.230/hour |
-| Serverless | $0.0001/second of compute |
-
-**Alternatives:**
-1. **Delete endpoint:** $0 (use synthetic fallback)
-2. **Serverless Inference:** ~$0.10/1000 requests
-3. **Smaller instance:** ml.t2.medium = $40/month
-
 ### CloudWatch Logs
 
 | Resource | Pricing |
@@ -139,16 +107,9 @@ aws sagemaker delete-endpoint-config \
 
 ## Cost Scenarios
 
-### Scenario 1: Development/Demo (Current - No Changes)
+### Scenario 1: Development/Demo (Current)
 ```
-SageMaker endpoint running but unused: $83.00
-Everything else: $0.15
-TOTAL: $83.15/month
-```
-
-### Scenario 2: Development/Demo (Delete SageMaker)
-```
-Lambda: $0.00
+Lambda (4 functions): $0.00
 API Gateway: $0.00
 S3: $0.01
 DynamoDB: $0.00
@@ -156,22 +117,21 @@ CloudWatch: $0.10
 TOTAL: $0.11/month
 ```
 
-### Scenario 3: Light Production (1000 requests/day)
+### Scenario 2: Light Production (1000 requests/day)
 ```
-Lambda: $1.20
+Lambda: $18.00
 API Gateway: $0.10
 S3: $0.50
 DynamoDB: $0.15
 CloudWatch: $0.50
-TOTAL: $2.45/month
+TOTAL: $19.25/month
 ```
 
-### Scenario 4: Production with Working ML
-If the SageMaker XLA issue is fixed:
+### Scenario 3: Optimized Production
+If cold starts are an issue at scale:
 ```
-Option A - Real-time endpoint (ml.m5.large): $83/month base
-Option B - Serverless Inference: ~$3/month at 1000 req/day
-Option C - Lambda + local model: ~$5/month (larger Lambda memory)
+Option A - Provisioned concurrency (inference): ~$30/month base
+Option B - Current on-demand: ~$19/month (with cold starts)
 ```
 
 ## AWS Free Tier Coverage
@@ -186,30 +146,21 @@ The following free tier applies for 12 months after account creation:
 | S3 | 5 GB storage, 20K GET, 2K PUT |
 | CloudWatch | 10 custom metrics, 10 alarms |
 
-**ReefRadar fits comfortably within free tier** at demo usage levels (excluding SageMaker).
+**ReefRadar fits comfortably within free tier** at demo usage levels.
 
 ## Cost Optimization Recommendations
 
-### Immediate Actions
+### Completed Actions
 
-1. **Delete SageMaker Endpoint** - Save $83/month
-   ```bash
-   aws sagemaker delete-endpoint --endpoint-name reefradar-2477-surfperch-endpoint --region us-east-1
-   ```
-
-2. **Set Up Billing Alerts**
-   ```bash
-   aws budgets create-budget --account-id 781978598306 \
-     --budget '{"BudgetName":"ReefRadar-Monthly","BudgetLimit":{"Amount":"10","Unit":"USD"},"TimeUnit":"MONTHLY","BudgetType":"COST"}' \
-     --notifications-with-subscribers '[{"Notification":{"NotificationType":"ACTUAL","ComparisonOperator":"GREATER_THAN","Threshold":80},"Subscribers":[{"SubscriptionType":"EMAIL","Address":"your-email@example.com"}]}]'
-   ```
+1. **Deleted SageMaker Endpoint** (2026-02-20) - Saved $83/month
+   - Replaced with Lambda container inference at zero idle cost
 
 ### Future Optimizations
 
 1. **Use S3 Intelligent-Tiering** for audio files
 2. **Enable S3 Lifecycle Rules** to delete old uploads after 30 days
 3. **Use Lambda ARM64** for 20% cost reduction
-4. **Consider SageMaker Serverless** if ML is needed
+4. **Consider provisioned concurrency** for inference Lambda if cold starts are problematic
 5. **Implement caching** for repeated reference site queries
 
 ## Monitoring Costs
@@ -222,7 +173,7 @@ https://us-east-1.console.aws.amazon.com/cost-management/home#/dashboard
 ### CLI Command
 ```bash
 aws ce get-cost-and-usage \
-  --time-period Start=2026-01-01,End=2026-01-31 \
+  --time-period Start=2026-03-01,End=2026-03-31 \
   --granularity MONTHLY \
   --metrics "BlendedCost" \
   --group-by Type=DIMENSION,Key=SERVICE
