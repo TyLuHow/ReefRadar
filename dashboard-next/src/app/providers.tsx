@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useVitality } from '@/hooks/useVitality';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -15,6 +16,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       })
   );
+
+  // Start vitality animation loop -- writes --reef-* CSS variables via rAF
+  useVitality();
 
   return (
     <QueryClientProvider client={queryClient}>

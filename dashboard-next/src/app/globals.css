@@ -39,6 +39,16 @@
   --accent-glow: rgba(205, 133, 63, 0.4);
   --accent-warning: #b8860b;
   --accent-info: #a8a29e;
+
+  /* Reef vitality color system -- initial values = degraded state */
+  --reef-primary: hsl(30, 59%, 53%);
+  --reef-accent: hsl(359, 34%, 63%);
+  --reef-secondary: hsl(36, 42%, 85%);
+  --reef-highlight: hsl(43, 89%, 38%);
+  --reef-bg: hsl(30, 13%, 9%);
+  --reef-surface: hsl(24, 7%, 14%);
+  --reef-glow: hsla(30, 59%, 53%, 0.2);
+  --reef-text: hsl(36, 16%, 88%);
 }
 
 body {
