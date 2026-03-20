@@ -7,19 +7,19 @@
 
 ### Core State
 
-- [ ] **CORE-01**: Vitality score (0.0-1.0) drives all visual properties across the application
-- [ ] **CORE-02**: Vitality score transitions are lerped/eased over 300ms+ (never instant jumps)
-- [ ] **CORE-03**: Vitality score accepts multiple input sources (crossfader, ML classification, audio energy)
-- [ ] **CORE-04**: VitalityProvider React Context exposes score and derived colors to all pages
+- [x] **CORE-01**: Vitality score (0.0-1.0) drives all visual properties across the application
+- [x] **CORE-02**: Vitality score transitions are lerped/eased over 300ms+ (never instant jumps)
+- [x] **CORE-03**: Vitality score accepts multiple input sources (crossfader, ML classification, audio energy)
+- [x] **CORE-04**: VitalityProvider React Context exposes score and derived colors to all pages
 
 ### Color System
 
-- [ ] **COLR-01**: Bioluminescent palette defined (teal, magenta, blue, gold) for healthy state (vitality=1.0)
-- [ ] **COLR-02**: Degraded palette defined (charcoal-brown, muted grays, warm ochre) for vitality=0.0
-- [ ] **COLR-03**: HSL interpolation between degraded and healthy endpoints keyed to vitality score
-- [ ] **COLR-04**: CSS custom properties (--reef-primary, --reef-accent, --reef-bg, etc.) updated via CSSVariableWriter
+- [x] **COLR-01**: Bioluminescent palette defined (teal, magenta, blue, gold) for healthy state (vitality=1.0)
+- [x] **COLR-02**: Degraded palette defined (charcoal-brown, muted grays, warm ochre) for vitality=0.0
+- [x] **COLR-03**: HSL interpolation between degraded and healthy endpoints keyed to vitality score
+- [x] **COLR-04**: CSS custom properties (--reef-primary, --reef-accent, --reef-bg, etc.) updated via CSSVariableWriter
 - [ ] **COLR-05**: Tailwind config extended with CSS variable references for reef-* color tokens
-- [ ] **COLR-06**: Non-linear staggered transitions -- shrimp indicators at 0.2, fish at 0.4, complex at 0.7
+- [x] **COLR-06**: Non-linear staggered transitions -- shrimp indicators at 0.2, fish at 0.4, complex at 0.7
 
 ### Particle System
 
@@ -50,9 +50,9 @@
 
 ### Performance & Accessibility
 
-- [ ] **PERF-01**: Visual updates run at 60fps via requestAnimationFrame (not React render cycle)
-- [ ] **PERF-02**: Animation state stored in refs, not React state
-- [ ] **PERF-03**: CSS variable updates batched at 30fps in rAF callback
+- [x] **PERF-01**: Visual updates run at 60fps via requestAnimationFrame (not React render cycle)
+- [x] **PERF-02**: Animation state stored in refs, not React state
+- [x] **PERF-03**: CSS variable updates batched at 30fps in rAF callback
 - [ ] **PERF-04**: All canvas/audio components use dynamic import with { ssr: false }
 - [ ] **PERF-05**: `prefers-reduced-motion` respected -- disable particles and caustics, instant color changes
 - [ ] **PERF-06**: Nav bar and data labels use fixed high-contrast colors (not interpolated)
@@ -90,19 +90,19 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CORE-01 | Phase 1 | Pending |
-| CORE-02 | Phase 1 | Pending |
-| CORE-03 | Phase 1 | Pending |
-| CORE-04 | Phase 1 | Pending |
-| COLR-01 | Phase 1 | Pending |
-| COLR-02 | Phase 1 | Pending |
-| COLR-03 | Phase 1 | Pending |
-| COLR-04 | Phase 1 | Pending |
+| CORE-01 | Phase 1 | Complete |
+| CORE-02 | Phase 1 | Complete |
+| CORE-03 | Phase 1 | Complete |
+| CORE-04 | Phase 1 | Complete |
+| COLR-01 | Phase 1 | Complete |
+| COLR-02 | Phase 1 | Complete |
+| COLR-03 | Phase 1 | Complete |
+| COLR-04 | Phase 1 | Complete |
 | COLR-05 | Phase 1 | Pending |
-| COLR-06 | Phase 1 | Pending |
-| PERF-01 | Phase 1 | Pending |
-| PERF-02 | Phase 1 | Pending |
-| PERF-03 | Phase 1 | Pending |
+| COLR-06 | Phase 1 | Complete |
+| PERF-01 | Phase 1 | Complete |
+| PERF-02 | Phase 1 | Complete |
+| PERF-03 | Phase 1 | Complete |
 | PERF-04 | Phase 1 | Pending |
 | PART-01 | Phase 2 | Pending |
 | PART-02 | Phase 2 | Pending |
