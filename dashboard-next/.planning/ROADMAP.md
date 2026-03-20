@@ -28,11 +28,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Color transitions stagger non-linearly -- shrimp-band indicators appear at 0.2, fish at 0.4, complex ecosystem colors at 0.7
   3. CSS custom properties (--reef-primary, --reef-accent, --reef-bg, etc.) update in real time and Tailwind reef-* tokens resolve to them
   4. All animation state lives in refs with rAF-driven updates (no React re-renders), CSS variable writes batched at 30fps, and canvas/audio components use dynamic import with ssr: false
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 01-01: VitalityProvider, ColorEngine, and CSSVariableWriter
-- [ ] 01-02: Tailwind integration, staggered transitions, and performance architecture
+- [ ] 01-01-PLAN.md -- Vitality store, color engine, useVitality hook, CSS variable pipeline
+- [ ] 01-02-PLAN.md -- Tailwind reef-* token integration and visual verification checkpoint
 
 ### Phase 2: Visual Effects
 **Goal**: Users see vitality-responsive particles and underwater caustic light patterns that make the healthy state visually alive
@@ -85,7 +85,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Vitality Engine and Color System | 0/2 | Not started | - |
+| 1. Vitality Engine and Color System | 0/2 | Planning complete | - |
 | 2. Visual Effects | 0/2 | Not started | - |
 | 3. Audio-Reactive System | 0/1 | Not started | - |
 | 4. Page Integration and Polish | 0/2 | Not started | - |
