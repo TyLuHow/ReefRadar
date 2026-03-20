@@ -18,7 +18,7 @@
 - [x] **COLR-02**: Degraded palette defined (charcoal-brown, muted grays, warm ochre) for vitality=0.0
 - [x] **COLR-03**: HSL interpolation between degraded and healthy endpoints keyed to vitality score
 - [x] **COLR-04**: CSS custom properties (--reef-primary, --reef-accent, --reef-bg, etc.) updated via CSSVariableWriter
-- [ ] **COLR-05**: Tailwind config extended with CSS variable references for reef-* color tokens
+- [x] **COLR-05**: Tailwind config extended with CSS variable references for reef-* color tokens
 - [x] **COLR-06**: Non-linear staggered transitions -- shrimp indicators at 0.2, fish at 0.4, complex at 0.7
 
 ### Particle System
@@ -53,7 +53,7 @@
 - [x] **PERF-01**: Visual updates run at 60fps via requestAnimationFrame (not React render cycle)
 - [x] **PERF-02**: Animation state stored in refs, not React state
 - [x] **PERF-03**: CSS variable updates batched at 30fps in rAF callback
-- [ ] **PERF-04**: All canvas/audio components use dynamic import with { ssr: false }
+- [x] **PERF-04**: All canvas/audio components use dynamic import with { ssr: false }
 - [ ] **PERF-05**: `prefers-reduced-motion` respected -- disable particles and caustics, instant color changes
 - [ ] **PERF-06**: Nav bar and data labels use fixed high-contrast colors (not interpolated)
 
@@ -98,12 +98,12 @@
 | COLR-02 | Phase 1 | Complete |
 | COLR-03 | Phase 1 | Complete |
 | COLR-04 | Phase 1 | Complete |
-| COLR-05 | Phase 1 | Pending |
+| COLR-05 | Phase 1 | Complete |
 | COLR-06 | Phase 1 | Complete |
 | PERF-01 | Phase 1 | Complete |
 | PERF-02 | Phase 1 | Complete |
 | PERF-03 | Phase 1 | Complete |
-| PERF-04 | Phase 1 | Pending |
+| PERF-04 | Phase 1 | Complete |
 | PART-01 | Phase 2 | Pending |
 | PART-02 | Phase 2 | Pending |
 | PART-03 | Phase 2 | Pending |
