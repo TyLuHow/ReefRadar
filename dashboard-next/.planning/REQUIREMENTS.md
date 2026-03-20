@@ -7,7 +7,7 @@
 
 ### Core State
 
-- [ ] **CORE-01**: Vitality score (0.0–1.0) drives all visual properties across the application
+- [ ] **CORE-01**: Vitality score (0.0-1.0) drives all visual properties across the application
 - [ ] **CORE-02**: Vitality score transitions are lerped/eased over 300ms+ (never instant jumps)
 - [ ] **CORE-03**: Vitality score accepts multiple input sources (crossfader, ML classification, audio energy)
 - [ ] **CORE-04**: VitalityProvider React Context exposes score and derived colors to all pages
@@ -19,11 +19,11 @@
 - [ ] **COLR-03**: HSL interpolation between degraded and healthy endpoints keyed to vitality score
 - [ ] **COLR-04**: CSS custom properties (--reef-primary, --reef-accent, --reef-bg, etc.) updated via CSSVariableWriter
 - [ ] **COLR-05**: Tailwind config extended with CSS variable references for reef-* color tokens
-- [ ] **COLR-06**: Non-linear staggered transitions — shrimp indicators at 0.2, fish at 0.4, complex at 0.7
+- [ ] **COLR-06**: Non-linear staggered transitions -- shrimp indicators at 0.2, fish at 0.4, complex at 0.7
 
 ### Particle System
 
-- [ ] **PART-01**: Particle count scales with vitality (5 sparse at 0.0 → 150 dense at 1.0)
+- [ ] **PART-01**: Particle count scales with vitality (5 sparse at 0.0 -> 150 dense at 1.0)
 - [ ] **PART-02**: Particle color shifts from muted brown to teal/magenta based on vitality
 - [ ] **PART-03**: Particle speed and opacity modulated by vitality score
 - [ ] **PART-04**: Object pool pattern prevents GC pressure at high particle counts
@@ -54,7 +54,7 @@
 - [ ] **PERF-02**: Animation state stored in refs, not React state
 - [ ] **PERF-03**: CSS variable updates batched at 30fps in rAF callback
 - [ ] **PERF-04**: All canvas/audio components use dynamic import with { ssr: false }
-- [ ] **PERF-05**: `prefers-reduced-motion` respected — disable particles and caustics, instant color changes
+- [ ] **PERF-05**: `prefers-reduced-motion` respected -- disable particles and caustics, instant color changes
 - [ ] **PERF-06**: Nav bar and data labels use fixed high-contrast colors (not interpolated)
 
 ### Mobile
@@ -80,7 +80,7 @@
 
 | Feature | Reason |
 |---------|--------|
-| WebGL/3D particle effects | Canvas 2D sufficient for ≤150 particles; WebGL adds complexity |
+| WebGL/3D particle effects | Canvas 2D sufficient for <=150 particles; WebGL adds complexity |
 | Map view bioluminescence | deck.gl has separate rendering pipeline |
 | Audio synthesis | Playback only, no generation |
 | Theme toggle (dark/light) | Continuous transformation, not binary toggle |
@@ -90,13 +90,46 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (To be filled during roadmap creation) | | |
+| CORE-01 | Phase 1 | Pending |
+| CORE-02 | Phase 1 | Pending |
+| CORE-03 | Phase 1 | Pending |
+| CORE-04 | Phase 1 | Pending |
+| COLR-01 | Phase 1 | Pending |
+| COLR-02 | Phase 1 | Pending |
+| COLR-03 | Phase 1 | Pending |
+| COLR-04 | Phase 1 | Pending |
+| COLR-05 | Phase 1 | Pending |
+| COLR-06 | Phase 1 | Pending |
+| PERF-01 | Phase 1 | Pending |
+| PERF-02 | Phase 1 | Pending |
+| PERF-03 | Phase 1 | Pending |
+| PERF-04 | Phase 1 | Pending |
+| PART-01 | Phase 2 | Pending |
+| PART-02 | Phase 2 | Pending |
+| PART-03 | Phase 2 | Pending |
+| PART-04 | Phase 2 | Pending |
+| CAUS-01 | Phase 2 | Pending |
+| CAUS-02 | Phase 2 | Pending |
+| CAUS-03 | Phase 2 | Pending |
+| AUDI-01 | Phase 3 | Pending |
+| AUDI-02 | Phase 3 | Pending |
+| AUDI-03 | Phase 3 | Pending |
+| AUDI-04 | Phase 3 | Pending |
+| PAGE-01 | Phase 4 | Pending |
+| PAGE-02 | Phase 4 | Pending |
+| PAGE-03 | Phase 4 | Pending |
+| PAGE-04 | Phase 4 | Pending |
+| PERF-05 | Phase 4 | Pending |
+| PERF-06 | Phase 4 | Pending |
+| MOBL-01 | Phase 4 | Pending |
+| MOBL-02 | Phase 4 | Pending |
+| MOBL-03 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 28 total
-- Mapped to phases: 0
-- Unmapped: 28
+- Mapped to phases: 28
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-20*
-*Last updated: 2026-03-20 after initial definition*
+*Last updated: 2026-03-20 after roadmap creation*
