@@ -23,11 +23,11 @@ The visual gap between degraded and healthy reef states must be so striking that
 
 ### Active
 
-- [ ] Vitality score state system (0.0–1.0) driving all visual properties
-- [ ] Bioluminescent color palette (teal, magenta, blue, gold) for healthy state
-- [ ] Degraded color palette (charcoal-brown, muted grays) repurposing current Golden Hour
-- [ ] HSL color interpolation between degraded and healthy endpoints
-- [ ] Non-linear staggered transitions (shrimp first → fish → complex behaviors)
+- ✓ Vitality score state system (0.0–1.0) driving all visual properties — Phase 1
+- ✓ Bioluminescent color palette (teal, magenta, blue, gold) for healthy state — Phase 1
+- ✓ Degraded color palette (charcoal-brown, muted grays) repurposing current Golden Hour — Phase 1
+- ✓ HSL color interpolation between degraded and healthy endpoints — Phase 1
+- ✓ Non-linear staggered transitions (shrimp first → fish → complex behaviors) — Phase 1
 - [ ] Particle system responding to vitality score (5 sparse → 150 dense, color shift)
 - [ ] Frequency band signature colors (shrimp=teal, fish=magenta, grazing=gold, noise=red-brown)
 - [ ] Caustic light effect on background (procedural, vitality-modulated)
@@ -74,4 +74,4 @@ The visual gap between degraded and healthy reef states must be so striking that
 | Non-linear staggered transitions | Matches biology (shrimp return first, then fish, then complex behaviors) | — Pending |
 
 ---
-*Last updated: 2026-03-07 after initialization*
+*Last updated: 2026-03-20 after Phase 1 completion*
