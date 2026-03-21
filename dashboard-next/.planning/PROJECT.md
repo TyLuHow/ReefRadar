@@ -28,9 +28,9 @@ The visual gap between degraded and healthy reef states must be so striking that
 - ✓ Degraded color palette (charcoal-brown, muted grays) repurposing current Golden Hour — Phase 1
 - ✓ HSL color interpolation between degraded and healthy endpoints — Phase 1
 - ✓ Non-linear staggered transitions (shrimp first → fish → complex behaviors) — Phase 1
-- [ ] Particle system responding to vitality score (5 sparse → 150 dense, color shift)
+- ✓ Particle system responding to vitality score (5 sparse → 150 dense, color shift) — Phase 2
 - [ ] Frequency band signature colors (shrimp=teal, fish=magenta, grazing=gold, noise=red-brown)
-- [ ] Caustic light effect on background (procedural, vitality-modulated)
+- ✓ Caustic light effect on background (procedural, vitality-modulated) — Phase 2
 - [ ] Audio-reactive real-time modulation from per-band RMS energy
 - [ ] Band filter ↔ visual layer coupling (toggle bands illuminate/dim visual layers)
 - [ ] Crossfader slider visual enhancement (gradient track, thumb glow, transitioning labels)
@@ -74,4 +74,4 @@ The visual gap between degraded and healthy reef states must be so striking that
 | Non-linear staggered transitions | Matches biology (shrimp return first, then fish, then complex behaviors) | — Pending |
 
 ---
-*Last updated: 2026-03-20 after Phase 1 completion*
+*Last updated: 2026-03-21 after Phase 2 completion*
