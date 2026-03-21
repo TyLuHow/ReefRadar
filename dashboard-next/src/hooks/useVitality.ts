@@ -43,18 +43,28 @@ export function useVitality(): void {
     if (runningRef.current) return;
     runningRef.current = true;
 
+    // Accessibility: skip lerp animation for reduced-motion users
+    const prefersReducedMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)'
+    ).matches;
+
     const tick = (timestamp: number) => {
       const target = useVitalityStore.getState().target;
 
-      // Ease-out exponential approach (~300ms to 95% convergence at 60fps)
-      currentRef.current += (target - currentRef.current) * 0.08;
-
-      // Snap when close enough to avoid infinite approach
-      if (Math.abs(target - currentRef.current) < 0.001) {
+      if (prefersReducedMotion) {
+        // Instant jump: no lerp animation, but still write CSS variables
         currentRef.current = target;
+      } else {
+        // Ease-out exponential approach (~300ms to 95% convergence at 60fps)
+        currentRef.current += (target - currentRef.current) * 0.08;
+
+        // Snap when close enough to avoid infinite approach
+        if (Math.abs(target - currentRef.current) < 0.001) {
+          currentRef.current = target;
+        }
       }
 
-      // Throttle CSS writes to 30fps (every ~33ms)
+      // Still write CSS variables at 30fps -- color changes are NOT motion
       if (timestamp - lastWriteRef.current > 33) {
         const colors = computeReefColors(currentRef.current);
         writeCSSVariables(colors);

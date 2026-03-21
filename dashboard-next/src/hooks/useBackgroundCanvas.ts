@@ -82,9 +82,10 @@ function spawnParticles(
   pool: PoolParticle[],
   vitality: number,
   width: number,
-  height: number
+  height: number,
+  maxCap: number = 150
 ): void {
-  const targetCount = Math.round(lerp(5, 150, vitality));
+  const targetCount = Math.min(Math.round(lerp(5, 150, vitality)), maxCap);
 
   // Count active particles without allocation
   let activeCount = 0;
@@ -109,7 +110,8 @@ function updateParticles(
   vitality: number,
   time: number,
   width: number,
-  height: number
+  height: number,
+  maxCap: number = 150
 ): void {
   for (let i = 0; i < pool.length; i++) {
     const p = pool[i];
@@ -136,7 +138,7 @@ function updateParticles(
   }
 
   // Replenish
-  spawnParticles(pool, vitality, width, height);
+  spawnParticles(pool, vitality, width, height, maxCap);
 }
 
 function drawCaustics(
@@ -306,6 +308,22 @@ export function useBackgroundCanvas(
     // Initial size
     resizeCanvas(width, height);
 
+    // Accessibility: skip all canvas rendering for reduced-motion users
+    const prefersReducedMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)'
+    ).matches;
+
+    if (prefersReducedMotion) {
+      runningRef.current = false;
+      return () => {
+        ro.disconnect();
+        runningRef.current = false;
+      };
+    }
+
+    // Mobile optimization: cap particles, disable caustics
+    const isMobile = window.innerWidth < 768;
+
     const pool = poolRef.current;
 
     function animate() {
@@ -322,7 +340,7 @@ export function useBackgroundCanvas(
         ctx!.fillRect(0, 0, width, height);
       }
 
-      updateParticles(pool, vitality, timeRef.current, width, height);
+      updateParticles(pool, vitality, timeRef.current, width, height, isMobile ? 50 : 150);
 
       // Shrimp burst: sudden bioluminescent flash particles
       burstCooldownRef.current = Math.max(0, burstCooldownRef.current - 1);
@@ -404,9 +422,11 @@ export function useBackgroundCanvas(
         }
       }
 
-      // Layer 1: Caustics (screen blend, behind particles)
+      // Layer 1: Caustics (screen blend, behind particles) -- disabled on mobile (GPU/battery)
       const fishActive = activeBands.has('fish');
-      drawCaustics(ctx!, width, height, vitality, timeRef.current, bandEnergy.fish, fishActive);
+      if (!isMobile) {
+        drawCaustics(ctx!, width, height, vitality, timeRef.current, bandEnergy.fish, fishActive);
+      }
 
       // Layer 2: Particles (source-over, on top of caustics)
       ctx!.globalCompositeOperation = 'source-over';
