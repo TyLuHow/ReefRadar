@@ -27,6 +27,11 @@ const navItems = [
   { href: '/about', label: 'About', icon: Info },
 ];
 
+/**
+ * PERF-06: Navbar uses FIXED high-contrast colors.
+ * Do NOT add --reef-* or reef-* Tailwind tokens here.
+ * Nav must remain readable at all vitality levels.
+ */
 export function Navbar() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
