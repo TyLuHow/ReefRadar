@@ -3,6 +3,8 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import type { BandId } from '@/components/spectrogram/FrequencyBands';
 import { ALL_BANDS } from '@/components/spectrogram/FrequencyBands';
+import { useAudioVisualBridge } from '@/hooks/useAudioVisualBridge';
+import { useVitalityStore, ReefBandId } from '@/stores/vitality-store';
 
 interface DemoAudioReturn {
   isPlaying: boolean;
@@ -288,6 +290,25 @@ export function useDemoAudio(): DemoAudioReturn {
       }
     };
   }, []);
+
+  // Audio-visual bridge: extract 4-band RMS energy at ~30fps and write to store
+  useAudioVisualBridge(analyserRef, audioCtxRef, isPlaying);
+
+  // Sync 3-band audio toggles (low/mid/high) to 4-band reef biology (ambient/fish/grazing/shrimp)
+  useEffect(() => {
+    const reefBands = new Set<ReefBandId>();
+    if (activeBands.has('low')) {
+      reefBands.add('ambient');
+      reefBands.add('fish');
+    }
+    if (activeBands.has('mid')) {
+      reefBands.add('grazing');
+    }
+    if (activeBands.has('high')) {
+      reefBands.add('shrimp');
+    }
+    useVitalityStore.getState().setActiveBands(reefBands);
+  }, [activeBands]);
 
   return {
     isPlaying,
