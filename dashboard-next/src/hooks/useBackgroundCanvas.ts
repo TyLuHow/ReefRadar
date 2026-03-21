@@ -135,6 +135,65 @@ function updateParticles(
   spawnParticles(pool, vitality, width, height);
 }
 
+function drawCaustics(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  vitality: number,
+  time: number
+): void {
+  // Per user decision: invisible below 0.3 threshold
+  if (vitality <= 0.3) return;
+
+  // Ramp from 0 at vitality=0.3 to 0.15 at vitality=1.0 (CAUS-02)
+  const intensity = (vitality - 0.3) / 0.7;
+  const maxAlpha = 0.15 * intensity;
+
+  // Screen blend for additive light effect (CAUS-03)
+  ctx.globalCompositeOperation = 'screen';
+
+  // Grid-based rendering with 40px cells (Pitfall 6: not too fine)
+  const cellSize = 40;
+  const cols = Math.ceil(w / cellSize);
+  const rows = Math.ceil(h / cellSize);
+
+  // Phase shift ~0.5 deg/frame = ~0.00873 rad/frame for slow shimmer (user decision)
+  const phase = time * 0.00873;
+
+  // Pre-compute the base color string once per frame (Pitfall 5: no per-cell allocation)
+  // Teal-tinted white: hsla(180, 30%, 80%, {alpha})
+  // We'll vary alpha per cell, but bucket to reduce unique strings
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const cx = col * cellSize + cellSize / 2;
+      const cy = row * cellSize + cellSize / 2;
+
+      // 3 overlapping sine waves with different frequencies (CAUS-01)
+      // Frequencies chosen for organic, non-repeating pattern
+      const v1 = Math.sin(cx * 0.02 + cy * 0.015 + phase);
+      const v2 = Math.sin(cx * 0.013 - cy * 0.01 + phase * 1.3);
+      const v3 = Math.sin(cx * 0.009 + cy * 0.022 + phase * 0.7);
+      const combined = (v1 + v2 + v3) / 3; // -1..1
+      const brightness = (combined + 1) / 2; // 0..1
+
+      // Only draw bright patches (above 0.5 threshold for organic gaps)
+      if (brightness > 0.5) {
+        const alpha = (brightness - 0.5) * 2 * maxAlpha;
+        // Round alpha to nearest 0.01 to reduce unique string creation
+        const roundedAlpha = Math.round(alpha * 100) / 100;
+        ctx.fillStyle = `hsla(180, 30%, 80%, ${roundedAlpha})`;
+        ctx.fillRect(
+          col * cellSize,
+          row * cellSize,
+          cellSize,
+          cellSize
+        );
+      }
+    }
+  }
+}
+
 function drawParticles(ctx: CanvasRenderingContext2D, pool: PoolParticle[]): void {
   ctx.globalCompositeOperation = 'source-over';
 
@@ -237,7 +296,11 @@ export function useBackgroundCanvas(
 
       updateParticles(pool, vitality, timeRef.current, width, height);
 
-      // CAUSTIC LAYER: will be added in Plan 02
+      // Layer 1: Caustics (screen blend, behind particles)
+      drawCaustics(ctx!, width, height, vitality, timeRef.current);
+
+      // Layer 2: Particles (source-over, on top of caustics)
+      ctx!.globalCompositeOperation = 'source-over';
       drawParticles(ctx!, pool);
 
       rafId = requestAnimationFrame(animate);
