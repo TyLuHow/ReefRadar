@@ -42,11 +42,11 @@ Plans:
   1. Particle count scales from 5 sparse muted-brown particles at vitality 0.0 to 150 dense teal/magenta particles at vitality 1.0, with speed and opacity also modulated
   2. Procedural caustic light patterns appear on the background canvas, invisible at vitality 0.0 and fully visible at 1.0, composited with the particle layer
   3. Particle system maintains 60fps with no GC pauses (object pool pattern) at maximum particle count
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 02-01: Vitality-driven particle system with object pool
-- [ ] 02-02: Procedural caustic effect layer and canvas compositing
+- [ ] 02-01-PLAN.md -- Object pool particle system with vitality-driven count, color, speed, opacity on background canvas
+- [ ] 02-02-PLAN.md -- Procedural caustic sine-wave layer composited behind particles with screen blend
 
 ### Phase 3: Audio-Reactive System
 **Goal**: Live audio playback drives real-time visual micro-animations through frequency band analysis
