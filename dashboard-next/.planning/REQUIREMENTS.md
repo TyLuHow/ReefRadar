@@ -32,8 +32,8 @@
 
 - [x] **AUDI-01**: Frequency band decomposition from AnalyserNode FFT data (shrimp 2-20kHz, fish 200-2000Hz, grazing 1-4kHz, ambient <200Hz)
 - [x] **AUDI-02**: Per-band RMS energy values emitted at ~30fps
-- [ ] **AUDI-03**: Band energy drives real-time micro-animations (particle bursts, caustic shimmer)
-- [ ] **AUDI-04**: Band filter toggles illuminate/dim corresponding visual layers
+- [x] **AUDI-03**: Band energy drives real-time micro-animations (particle bursts, caustic shimmer)
+- [x] **AUDI-04**: Band filter toggles illuminate/dim corresponding visual layers
 
 ### Caustic Effects
 
@@ -113,8 +113,8 @@
 | CAUS-03 | Phase 2 | Complete |
 | AUDI-01 | Phase 3 | Complete |
 | AUDI-02 | Phase 3 | Complete |
-| AUDI-03 | Phase 3 | Pending |
-| AUDI-04 | Phase 3 | Pending |
+| AUDI-03 | Phase 3 | Complete |
+| AUDI-04 | Phase 3 | Complete |
 | PAGE-01 | Phase 4 | Pending |
 | PAGE-02 | Phase 4 | Pending |
 | PAGE-03 | Phase 4 | Pending |

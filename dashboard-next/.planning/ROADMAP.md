@@ -60,7 +60,7 @@ Plans:
 
 Plans:
 - [x] 03-01-PLAN.md -- Band energy extraction pipeline: store extension, FFT bin slicing, useAudioVisualBridge hook
-- [ ] 03-02-PLAN.md -- Visual modulation: shrimp bursts, fish caustic shimmer, grazing highlights, ambient dimming, band toggle response
+- [x] 03-02-PLAN.md -- Visual modulation: shrimp bursts, fish caustic shimmer, grazing highlights, ambient dimming, band toggle response
 
 ### Phase 4: Page Integration and Polish
 **Goal**: Every page uses vitality-driven visuals with its appropriate input source, and the experience works on mobile
