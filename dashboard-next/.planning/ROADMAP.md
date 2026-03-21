@@ -13,8 +13,8 @@ Transform the ReefRadar dashboard from a static Golden Hour palette into a livin
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Vitality Engine and Color System** - Core state management, HSL color interpolation, CSS variable pipeline, and performance architecture
-- [ ] **Phase 2: Visual Effects** - Particle system vitality response and procedural caustic light patterns
-- [ ] **Phase 3: Audio-Reactive System** - Frequency band decomposition driving real-time visual modulation
+- [x] **Phase 2: Visual Effects** - Particle system vitality response and procedural caustic light patterns
+- [x] **Phase 3: Audio-Reactive System** - Frequency band decomposition driving real-time visual modulation
 - [ ] **Phase 4: Page Integration and Polish** - Wire vitality into all pages, mobile optimization, accessibility
 
 ## Phase Details
@@ -56,7 +56,7 @@ Plans:
   1. Audio playback produces per-band RMS energy values (shrimp 2-20kHz, fish 200-2000Hz, grazing 1-4kHz, ambient <200Hz) at ~30fps
   2. Band energy triggers visible micro-animations -- particle bursts on shrimp snaps, caustic shimmer on fish calls
   3. Toggling a frequency band filter on/off illuminates or dims the corresponding visual layer in real time
-**Plans:** 1/2 plans executed
+**Plans:** 2 plans
 
 Plans:
 - [x] 03-01-PLAN.md -- Band energy extraction pipeline: store extension, FFT bin slicing, useAudioVisualBridge hook
@@ -73,11 +73,11 @@ Plans:
   4. On viewports under 768px, particle count caps at 50, caustics are disabled, and crossfader is touch-friendly
   5. Users with prefers-reduced-motion see instant color changes with no particles or caustics; nav bar and data labels maintain fixed high-contrast colors at all vitality levels
 
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 04-01: Page adapters (crossfader, experience, gallery) and crossfader enhancement
-- [ ] 04-02: Mobile optimization and accessibility
+- [ ] 04-01-PLAN.md -- Crossfader vitality wiring, gradient track + glowing thumb, ML result vitality, gallery card glow
+- [ ] 04-02-PLAN.md -- Mobile particle cap, caustic disable, reduced-motion gates, navbar high-contrast verification
 
 ## Progress
 
@@ -88,5 +88,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4
 |-------|----------------|--------|-----------|
 | 1. Vitality Engine and Color System | 2/2 | Complete | 2026-03-20 |
 | 2. Visual Effects | 2/2 | Complete | 2026-03-21 |
-| 3. Audio-Reactive System | 1/2 | In Progress|  |
+| 3. Audio-Reactive System | 2/2 | Complete | 2026-03-21 |
 | 4. Page Integration and Polish | 0/2 | Not started | - |
