@@ -29,13 +29,13 @@ The visual gap between degraded and healthy reef states must be so striking that
 - ✓ HSL color interpolation between degraded and healthy endpoints — Phase 1
 - ✓ Non-linear staggered transitions (shrimp first → fish → complex behaviors) — Phase 1
 - ✓ Particle system responding to vitality score (5 sparse → 150 dense, color shift) — Phase 2
-- [ ] Frequency band signature colors (shrimp=teal, fish=magenta, grazing=gold, noise=red-brown)
+- ✓ Frequency band signature colors (shrimp=teal, fish=magenta, grazing=gold, noise=red-brown) — Phase 3
 - ✓ Caustic light effect on background (procedural, vitality-modulated) — Phase 2
-- [ ] Audio-reactive real-time modulation from per-band RMS energy
-- [ ] Band filter ↔ visual layer coupling (toggle bands illuminate/dim visual layers)
-- [ ] Crossfader slider visual enhancement (gradient track, thumb glow, transitioning labels)
-- [ ] Sample gallery cards with static vitality hints (teal glow for healthy, muted for degraded)
-- [ ] Mobile optimization (reduced particles, no caustics on <768px)
+- ✓ Audio-reactive real-time modulation from per-band RMS energy — Phase 3
+- ✓ Band filter ↔ visual layer coupling (toggle bands illuminate/dim visual layers) — Phase 3
+- ✓ Crossfader slider visual enhancement (gradient track, thumb glow, transitioning labels) — Phase 4
+- ✓ Sample gallery cards with static vitality hints (teal glow for healthy, muted for degraded) — Phase 4
+- ✓ Mobile optimization (reduced particles, no caustics on <768px) — Phase 4
 
 ### Out of Scope
 
@@ -74,4 +74,4 @@ The visual gap between degraded and healthy reef states must be so striking that
 | Non-linear staggered transitions | Matches biology (shrimp return first, then fish, then complex behaviors) | — Pending |
 
 ---
-*Last updated: 2026-03-21 after Phase 2 completion*
+*Last updated: 2026-03-21 after Phase 4 completion — all phases complete*
