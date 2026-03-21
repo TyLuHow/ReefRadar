@@ -45,7 +45,7 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md -- Object pool particle system with vitality-driven count, color, speed, opacity on background canvas
+- [x] 02-01-PLAN.md -- Object pool particle system with vitality-driven count, color, speed, opacity on background canvas
 - [ ] 02-02-PLAN.md -- Procedural caustic sine-wave layer composited behind particles with screen blend
 
 ### Phase 3: Audio-Reactive System

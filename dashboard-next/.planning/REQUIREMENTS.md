@@ -23,10 +23,10 @@
 
 ### Particle System
 
-- [ ] **PART-01**: Particle count scales with vitality (5 sparse at 0.0 -> 150 dense at 1.0)
-- [ ] **PART-02**: Particle color shifts from muted brown to teal/magenta based on vitality
-- [ ] **PART-03**: Particle speed and opacity modulated by vitality score
-- [ ] **PART-04**: Object pool pattern prevents GC pressure at high particle counts
+- [x] **PART-01**: Particle count scales with vitality (5 sparse at 0.0 -> 150 dense at 1.0)
+- [x] **PART-02**: Particle color shifts from muted brown to teal/magenta based on vitality
+- [x] **PART-03**: Particle speed and opacity modulated by vitality score
+- [x] **PART-04**: Object pool pattern prevents GC pressure at high particle counts
 
 ### Audio Analysis
 
@@ -104,10 +104,10 @@
 | PERF-02 | Phase 1 | Complete |
 | PERF-03 | Phase 1 | Complete |
 | PERF-04 | Phase 1 | Complete |
-| PART-01 | Phase 2 | Pending |
-| PART-02 | Phase 2 | Pending |
-| PART-03 | Phase 2 | Pending |
-| PART-04 | Phase 2 | Pending |
+| PART-01 | Phase 2 | Complete |
+| PART-02 | Phase 2 | Complete |
+| PART-03 | Phase 2 | Complete |
+| PART-04 | Phase 2 | Complete |
 | CAUS-01 | Phase 2 | Pending |
 | CAUS-02 | Phase 2 | Pending |
 | CAUS-03 | Phase 2 | Pending |

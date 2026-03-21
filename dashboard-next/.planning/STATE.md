@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 01-02-PLAN.md (Phase 01 complete)
-last_updated: "2026-03-20T09:46:51.175Z"
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-03-21T04:02:21.418Z"
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 4
+  completed_plans: 3
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-07)
 
 **Core value:** The visual gap between degraded and healthy reef states must be so striking that users FEEL something about reef conservation without reading a single word.
-**Current focus:** Phase 01 — vitality-engine-and-color-system
+**Current focus:** Phase 02 — visual-effects
 
 ## Current Position
 
-Phase: 01 (vitality-engine-and-color-system) — COMPLETE
-Plan: 2 of 2 (all complete)
+Phase: 02 (visual-effects) — EXECUTING
+Plan: 2 of 2
 
 ## Performance Metrics
 
@@ -46,6 +46,7 @@ Plan: 2 of 2 (all complete)
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 02 P01 | 3min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -62,6 +63,9 @@ Recent decisions affecting current work:
 - Exponential ease-out (speed=0.08) over explicit cubic easing -- simpler, same result
 - Glow swatch uses inline style over Tailwind class to avoid double-apply with shadow-lg
 - Slider local useState instead of store subscription -- slider is source of truth
+- [Phase 02]: Direct HSL values in particle system instead of computeReefColors for per-frame efficiency
+- [Phase 02]: Alpha bucketed to 0.05 increments (20 levels) to reduce unique gradient strings
+- [Phase 02]: 3 spawns per frame cap for smooth particle ramp-up
 
 ### Pending Todos
 
@@ -73,6 +77,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-20
-Stopped at: Completed 01-02-PLAN.md (Phase 01 complete)
+Last session: 2026-03-21T04:02:21.411Z
+Stopped at: Completed 02-01-PLAN.md
 Resume file: None
