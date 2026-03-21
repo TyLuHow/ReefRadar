@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-03-21T04:02:21.418Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-03-21T04:07:15.496Z"
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State
@@ -47,6 +47,7 @@ Plan: 2 of 2
 
 *Updated after each plan completion*
 | Phase 02 P01 | 3min | 2 tasks | 3 files |
+| Phase 02 P02 | 3min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -66,6 +67,8 @@ Recent decisions affecting current work:
 - [Phase 02]: Direct HSL values in particle system instead of computeReefColors for per-frame efficiency
 - [Phase 02]: Alpha bucketed to 0.05 increments (20 levels) to reduce unique gradient strings
 - [Phase 02]: 3 spawns per frame cap for smooth particle ramp-up
+- [Phase 02]: Alpha bucketed to 0.01 for caustics (finer than particle 0.05) due to smaller alpha range
+- [Phase 02]: Explicit source-over reset between caustic and particle layers for compositing safety
 
 ### Pending Todos
 
@@ -77,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T04:02:21.411Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-03-21T04:07:15.489Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None

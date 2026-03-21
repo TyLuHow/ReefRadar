@@ -37,9 +37,9 @@
 
 ### Caustic Effects
 
-- [ ] **CAUS-01**: Procedural caustic light pattern rendered on Canvas 2D background layer
-- [ ] **CAUS-02**: Caustic intensity modulated by vitality score (invisible at 0, full at 1)
-- [ ] **CAUS-03**: Caustics composited with particle canvas via globalCompositeOperation
+- [x] **CAUS-01**: Procedural caustic light pattern rendered on Canvas 2D background layer
+- [x] **CAUS-02**: Caustic intensity modulated by vitality score (invisible at 0, full at 1)
+- [x] **CAUS-03**: Caustics composited with particle canvas via globalCompositeOperation
 
 ### Page Integration
 
@@ -108,9 +108,9 @@
 | PART-02 | Phase 2 | Complete |
 | PART-03 | Phase 2 | Complete |
 | PART-04 | Phase 2 | Complete |
-| CAUS-01 | Phase 2 | Pending |
-| CAUS-02 | Phase 2 | Pending |
-| CAUS-03 | Phase 2 | Pending |
+| CAUS-01 | Phase 2 | Complete |
+| CAUS-02 | Phase 2 | Complete |
+| CAUS-03 | Phase 2 | Complete |
 | AUDI-01 | Phase 3 | Pending |
 | AUDI-02 | Phase 3 | Pending |
 | AUDI-03 | Phase 3 | Pending |
