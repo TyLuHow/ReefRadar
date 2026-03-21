@@ -1,7 +1,8 @@
 import { RefObject, useEffect, useRef } from 'react';
 import { useVitalityStore } from '@/stores/vitality-store';
+import type { ReefBandId } from '@/stores/vitality-store';
 
-const MAX_PARTICLES = 150;
+const MAX_PARTICLES = 200;
 
 interface PoolParticle {
   active: boolean;
@@ -17,6 +18,7 @@ interface PoolParticle {
   hue: number;
   saturation: number;
   lightness: number;
+  band: ReefBandId | null;
 }
 
 function createPool(size: number): PoolParticle[] {
@@ -36,6 +38,7 @@ function createPool(size: number): PoolParticle[] {
       hue: 0,
       saturation: 0,
       lightness: 0,
+      band: null,
     };
   }
   return pool;
@@ -61,6 +64,7 @@ function resetParticle(
   p.alpha = 0;
   p.life = 0;
   p.maxLife = 120 + Math.random() * 180;
+  p.band = null;
 
   // Color: degraded = muted ochre-brown, healthy = teal/magenta
   if (vitality < 0.3) {
@@ -140,7 +144,9 @@ function drawCaustics(
   w: number,
   h: number,
   vitality: number,
-  time: number
+  time: number,
+  fishEnergy: number,
+  fishActive: boolean
 ): void {
   // Per user decision: invisible below 0.3 threshold
   if (vitality <= 0.3) return;
@@ -157,8 +163,9 @@ function drawCaustics(
   const cols = Math.ceil(w / cellSize);
   const rows = Math.ceil(h / cellSize);
 
-  // Phase shift ~0.5 deg/frame = ~0.00873 rad/frame for slow shimmer (user decision)
-  const phase = time * 0.00873;
+  // Fish energy modulates shimmer speed: 1x-4x when active, near-frozen when OFF
+  const fishRate = fishActive ? (1 + fishEnergy * 3) : 0.01;
+  const phase = time * 0.00873 * fishRate;
 
   // Pre-compute the base color string once per frame (Pitfall 5: no per-cell allocation)
   // Teal-tinted white: hsla(180, 30%, 80%, {alpha})
@@ -194,7 +201,11 @@ function drawCaustics(
   }
 }
 
-function drawParticles(ctx: CanvasRenderingContext2D, pool: PoolParticle[]): void {
+function drawParticles(
+  ctx: CanvasRenderingContext2D,
+  pool: PoolParticle[],
+  activeBands: Set<ReefBandId>
+): void {
   ctx.globalCompositeOperation = 'source-over';
 
   for (let i = 0; i < pool.length; i++) {
@@ -203,7 +214,13 @@ function drawParticles(ctx: CanvasRenderingContext2D, pool: PoolParticle[]): voi
 
     // Bucket alpha to nearest 0.05 to reduce unique color strings
     const bucketedAlpha = Math.round(p.alpha * 20) / 20;
-    if (bucketedAlpha <= 0) continue;
+
+    // Band toggle dimming: 20% opacity when band is OFF (ghost-like)
+    let finalAlpha = bucketedAlpha;
+    if (p.band !== null && !activeBands.has(p.band)) {
+      finalAlpha = bucketedAlpha * 0.2;
+    }
+    if (finalAlpha <= 0) continue;
 
     const gradient = ctx.createRadialGradient(
       p.x,
@@ -215,7 +232,7 @@ function drawParticles(ctx: CanvasRenderingContext2D, pool: PoolParticle[]): voi
     );
     gradient.addColorStop(
       0,
-      `hsla(${p.hue}, ${Math.round(p.saturation)}%, ${Math.round(p.lightness)}%, ${bucketedAlpha})`
+      `hsla(${p.hue}, ${Math.round(p.saturation)}%, ${Math.round(p.lightness)}%, ${finalAlpha})`
     );
     gradient.addColorStop(1, `hsla(${p.hue}, ${p.saturation}%, ${p.lightness}%, 0)`);
 
@@ -229,7 +246,9 @@ function drawParticles(ctx: CanvasRenderingContext2D, pool: PoolParticle[]): voi
 /**
  * Drives the full-viewport particle background.
  * Reads vitality from zustand store via getState() (no React subscription).
- * Uses a pre-allocated object pool of 150 particles for zero GC pressure.
+ * Uses a pre-allocated object pool of 200 particles for zero GC pressure.
+ * Audio-reactive: reads bandEnergy and activeBands to drive shrimp bursts,
+ * fish caustic modulation, grazing gold highlights, and ambient dimming.
  */
 export function useBackgroundCanvas(
   canvasRef: RefObject<HTMLCanvasElement | null>
@@ -237,6 +256,7 @@ export function useBackgroundCanvas(
   const poolRef = useRef<PoolParticle[]>(createPool(MAX_PARTICLES));
   const timeRef = useRef(0);
   const runningRef = useRef(false);
+  const burstCooldownRef = useRef(0);
 
   useEffect(() => {
     // Guard against double-start (React StrictMode)
@@ -289,19 +309,108 @@ export function useBackgroundCanvas(
     const pool = poolRef.current;
 
     function animate() {
-      const vitality = useVitalityStore.getState().target;
+      const { target: vitality, bandEnergy, activeBands } = useVitalityStore.getState();
       timeRef.current += 1;
 
+      // Clear canvas
       ctx!.clearRect(0, 0, width, height);
+
+      // Ambient dimming: overlay dark fill when ambient noise is high
+      if (bandEnergy.ambient > 0.5) {
+        const dimAlpha = (bandEnergy.ambient - 0.5) * 0.3; // max ~0.15
+        ctx!.fillStyle = `rgba(0, 0, 0, ${Math.round(dimAlpha * 100) / 100})`;
+        ctx!.fillRect(0, 0, width, height);
+      }
 
       updateParticles(pool, vitality, timeRef.current, width, height);
 
+      // Shrimp burst: sudden bioluminescent flash particles
+      burstCooldownRef.current = Math.max(0, burstCooldownRef.current - 1);
+      if (bandEnergy.shrimp > 0.4 && burstCooldownRef.current <= 0) {
+        const burstCount = Math.round(lerp(5, 10, bandEnergy.shrimp));
+        let spawned = 0;
+        // Prefer reserved audio slots (150-199), then fall back to 0-149
+        for (let i = 150; i < pool.length && spawned < burstCount; i++) {
+          if (!pool[i].active) {
+            const p = pool[i];
+            p.active = true;
+            p.x = Math.random() * width;
+            p.y = Math.random() * height;
+            p.hue = 175; // teal
+            p.saturation = 80;
+            p.lightness = 55;
+            p.maxAlpha = 0.9;
+            p.alpha = 0;
+            p.life = 0;
+            p.maxLife = 40 + Math.random() * 20; // short burst: 40-60 frames
+            p.size = lerp(3, 7, Math.random());
+            p.vy = -(1 + Math.random()); // fast upward
+            p.vx = (Math.random() - 0.5) * 2;
+            p.band = 'shrimp';
+            spawned++;
+          }
+        }
+        // Fall back to lower pool slots if needed
+        for (let i = 0; i < 150 && spawned < burstCount; i++) {
+          if (!pool[i].active) {
+            const p = pool[i];
+            p.active = true;
+            p.x = Math.random() * width;
+            p.y = Math.random() * height;
+            p.hue = 175;
+            p.saturation = 80;
+            p.lightness = 55;
+            p.maxAlpha = 0.9;
+            p.alpha = 0;
+            p.life = 0;
+            p.maxLife = 40 + Math.random() * 20;
+            p.size = lerp(3, 7, Math.random());
+            p.vy = -(1 + Math.random());
+            p.vx = (Math.random() - 0.5) * 2;
+            p.band = 'shrimp';
+            spawned++;
+          }
+        }
+        burstCooldownRef.current = 12; // ~200ms at 60fps
+      }
+
+      // Grazing gold highlights: sparse, warm-colored, short life
+      if (bandEnergy.grazing > 0.2 && timeRef.current % 5 === 0) {
+        // Find one inactive slot, prefer 150-199 range
+        let slot: PoolParticle | null = null;
+        for (let i = 150; i < pool.length; i++) {
+          if (!pool[i].active) { slot = pool[i]; break; }
+        }
+        if (!slot) {
+          for (let i = 0; i < 150; i++) {
+            if (!pool[i].active) { slot = pool[i]; break; }
+          }
+        }
+        if (slot) {
+          slot.active = true;
+          slot.x = Math.random() * width;
+          slot.y = height * (0.5 + Math.random() * 0.4); // mid-to-bottom
+          slot.hue = 45; // gold
+          slot.saturation = 80;
+          slot.lightness = 60;
+          slot.maxAlpha = lerp(0.3, 0.7, bandEnergy.grazing);
+          slot.alpha = 0;
+          slot.life = 0;
+          slot.maxLife = 60 + Math.random() * 30; // 60-90 frames
+          slot.size = lerp(2, 5, Math.random());
+          slot.vy = -(0.3 + Math.random() * 0.5); // slow drift up
+          slot.vx = (Math.random() - 0.5) * 0.5;
+          slot.band = 'grazing';
+        }
+      }
+
       // Layer 1: Caustics (screen blend, behind particles)
-      drawCaustics(ctx!, width, height, vitality, timeRef.current);
+      const fishActive = activeBands.has('fish');
+      drawCaustics(ctx!, width, height, vitality, timeRef.current, bandEnergy.fish, fishActive);
 
       // Layer 2: Particles (source-over, on top of caustics)
       ctx!.globalCompositeOperation = 'source-over';
-      drawParticles(ctx!, pool);
+      drawParticles(ctx!, pool, activeBands);
 
       rafId = requestAnimationFrame(animate);
     }
