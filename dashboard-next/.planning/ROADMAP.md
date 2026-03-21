@@ -77,7 +77,7 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md -- Crossfader vitality wiring, gradient track + glowing thumb, ML result vitality, gallery card glow
-- [ ] 04-02-PLAN.md -- Mobile particle cap, caustic disable, reduced-motion gates, navbar high-contrast verification
+- [x] 04-02-PLAN.md -- Mobile particle cap, caustic disable, reduced-motion gates, navbar high-contrast verification
 
 ## Progress
 

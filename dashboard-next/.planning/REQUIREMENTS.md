@@ -54,14 +54,14 @@
 - [x] **PERF-02**: Animation state stored in refs, not React state
 - [x] **PERF-03**: CSS variable updates batched at 30fps in rAF callback
 - [x] **PERF-04**: All canvas/audio components use dynamic import with { ssr: false }
-- [ ] **PERF-05**: `prefers-reduced-motion` respected -- disable particles and caustics, instant color changes
-- [ ] **PERF-06**: Nav bar and data labels use fixed high-contrast colors (not interpolated)
+- [x] **PERF-05**: `prefers-reduced-motion` respected -- disable particles and caustics, instant color changes
+- [x] **PERF-06**: Nav bar and data labels use fixed high-contrast colors (not interpolated)
 
 ### Mobile
 
-- [ ] **MOBL-01**: Particle count reduced to max 50 on viewports < 768px
-- [ ] **MOBL-02**: Caustic effects disabled on viewports < 768px
-- [ ] **MOBL-03**: Touch-friendly crossfader with touch-action: none
+- [x] **MOBL-01**: Particle count reduced to max 50 on viewports < 768px
+- [x] **MOBL-02**: Caustic effects disabled on viewports < 768px
+- [x] **MOBL-03**: Touch-friendly crossfader with touch-action: none
 
 ## v2 Requirements
 
@@ -119,11 +119,11 @@
 | PAGE-02 | Phase 4 | Complete |
 | PAGE-03 | Phase 4 | Complete |
 | PAGE-04 | Phase 4 | Complete |
-| PERF-05 | Phase 4 | Pending |
-| PERF-06 | Phase 4 | Pending |
-| MOBL-01 | Phase 4 | Pending |
-| MOBL-02 | Phase 4 | Pending |
-| MOBL-03 | Phase 4 | Pending |
+| PERF-05 | Phase 4 | Complete |
+| PERF-06 | Phase 4 | Complete |
+| MOBL-01 | Phase 4 | Complete |
+| MOBL-02 | Phase 4 | Complete |
+| MOBL-03 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 28 total

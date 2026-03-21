@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-21T07:04:18.730Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-21T07:14:23.015Z"
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 8
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -51,6 +51,7 @@ Plan: 2 of 2
 | Phase 03 P01 | 3min | 2 tasks | 3 files |
 | Phase 03 P02 | 2min | 2 tasks | 1 files |
 | Phase 04 P01 | 5min | 2 tasks | 4 files |
+| Phase 04 P02 | 7min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Fish caustic rate 0.01 when OFF for near-frozen but not fully static appearance
 - [Phase 04]: Hardcoded hsla(175) for gallery card glow to avoid global vitality CSS variable interference
 - [Phase 04]: Linear interpolation between left/right track vitality values for crossfader-to-vitality mapping
+- [Phase 04]: matchMedia checked once at init for reduced-motion/mobile gating (not ref/listener)
+- [Phase 04]: Canvas fully skipped for reduced-motion (not just fewer particles); CSS color writes preserved
 
 ### Pending Todos
 
@@ -89,6 +92,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T07:04:18.720Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-03-21T07:14:23.007Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
