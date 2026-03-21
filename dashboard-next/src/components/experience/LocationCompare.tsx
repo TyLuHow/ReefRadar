@@ -1,11 +1,13 @@
 'use client';
 
+import { useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Play, Pause, ArrowLeft, MapPin } from 'lucide-react';
 import { GlassPanel, GlassButton } from '@/components/ui/glass';
 import { BANDS, BAND_IDS } from '@/components/spectrogram/FrequencyBands';
 import { CaveatsFooter } from './CaveatsFooter';
 import { useLocationAudio, HealthStatus } from './useLocationAudio';
+import { useVitalityStore } from '@/stores/vitality-store';
 
 const SpectrogramCanvas = dynamic(
   () => import('@/components/spectrogram/SpectrogramCanvas'),
@@ -38,6 +40,23 @@ const STATUS_COLORS: Record<HealthStatus, string> = {
   healthy: '#cd853f',
 };
 
+const VITALITY_MAP: Record<HealthStatus, number> = {
+  healthy: 1.0,
+  restored_mid: 0.7,
+  restored_early: 0.4,
+  degraded: 0.0,
+};
+
+function crossfadeToVitality(
+  crossfade: number,
+  leftTrack: HealthStatus,
+  rightTrack: HealthStatus
+): number {
+  const leftV = VITALITY_MAP[leftTrack];
+  const rightV = VITALITY_MAP[rightTrack];
+  return leftV + (rightV - leftV) * crossfade;
+}
+
 /** Ordered from degraded to healthy for the state selector bar */
 const STATUS_ORDER: HealthStatus[] = [
   'degraded',
@@ -61,6 +80,22 @@ function formatTime(s: number): string {
 
 export function LocationCompare({ onGoLanding, onGoDemo }: LocationCompareProps) {
   const audio = useLocationAudio();
+  const setVitality = useVitalityStore(s => s.setVitality);
+
+  // Set vitality when tracks change (reflects initial crossfade=0 state)
+  useEffect(() => {
+    setVitality(
+      crossfadeToVitality(audio.crossfade, audio.leftTrack, audio.rightTrack),
+      'crossfader'
+    );
+  }, [audio.leftTrack, audio.rightTrack, setVitality]);
+
+  // Reset vitality on unmount
+  useEffect(() => {
+    return () => {
+      useVitalityStore.getState().setVitality(0, 'default');
+    };
+  }, []);
 
   return (
     <div className="relative min-h-screen flex flex-col">
@@ -211,8 +246,8 @@ export function LocationCompare({ onGoLanding, onGoDemo }: LocationCompareProps)
           <div className="space-y-2">
             <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>Crossfade</p>
             <div className="flex items-center gap-3">
-              <span className="text-xs min-w-0 truncate" style={{ color: STATUS_COLORS[audio.leftTrack] }}>
-                {STATUS_SHORT[audio.leftTrack]}
+              <span className="text-xs min-w-[80px] text-right" style={{ color: STATUS_COLORS[audio.leftTrack], opacity: 0.4 + 0.6 * (1 - audio.crossfade) }}>
+                {STATUS_LABELS[audio.leftTrack]}
               </span>
               <input
                 type="range"
@@ -220,16 +255,19 @@ export function LocationCompare({ onGoLanding, onGoDemo }: LocationCompareProps)
                 max="1"
                 step="0.01"
                 value={audio.crossfade}
-                onChange={(e) => audio.setCrossfade(parseFloat(e.target.value))}
-                className="flex-1 accent-ochre"
+                onChange={(e) => {
+                  const v = parseFloat(e.target.value);
+                  audio.setCrossfade(v);
+                  setVitality(
+                    crossfadeToVitality(v, audio.leftTrack, audio.rightTrack),
+                    'crossfader'
+                  );
+                }}
+                className="flex-1 vitality-slider"
               />
-              <span className="text-xs min-w-0 truncate" style={{ color: STATUS_COLORS[audio.rightTrack] }}>
-                {STATUS_SHORT[audio.rightTrack]}
+              <span className="text-xs min-w-[80px]" style={{ color: STATUS_COLORS[audio.rightTrack], opacity: 0.4 + 0.6 * audio.crossfade }}>
+                {STATUS_LABELS[audio.rightTrack]}
               </span>
-            </div>
-            <div className="flex justify-between text-[10px]" style={{ color: 'var(--text-dim)' }}>
-              <span>{STATUS_LABELS[audio.leftTrack]}</span>
-              <span>{STATUS_LABELS[audio.rightTrack]}</span>
             </div>
           </div>
 

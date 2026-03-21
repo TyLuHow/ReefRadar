@@ -231,3 +231,52 @@ input[type="file"]:disabled {
   from { transform: rotate(360deg); }
   to { transform: rotate(0deg); }
 }
+
+/* Vitality crossfader slider */
+input[type=range].vitality-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  height: 20px;
+  touch-action: none;
+}
+
+/* Track: gradient from brown (degraded) to teal (healthy) */
+input[type=range].vitality-slider::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, hsl(30, 59%, 53%), hsl(175, 80%, 50%));
+  height: 6px;
+  border-radius: 3px;
+}
+input[type=range].vitality-slider::-moz-range-track {
+  background: linear-gradient(to right, hsl(30, 59%, 53%), hsl(175, 80%, 50%));
+  height: 6px;
+  border-radius: 3px;
+}
+
+/* Thumb: glowing circle matching reef-primary */
+input[type=range].vitality-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--reef-primary, hsl(30, 59%, 53%));
+  box-shadow: 0 0 12px 4px var(--reef-glow, hsla(30, 59%, 53%, 0.2));
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  margin-top: -7px;
+  animation: thumb-pulse 2s ease-in-out infinite;
+}
+input[type=range].vitality-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--reef-primary, hsl(30, 59%, 53%));
+  box-shadow: 0 0 12px 4px var(--reef-glow, hsla(30, 59%, 53%, 0.2));
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  animation: thumb-pulse 2s ease-in-out infinite;
+}
+
+@keyframes thumb-pulse {
+  0%, 100% { box-shadow: 0 0 12px 4px var(--reef-glow, hsla(30, 59%, 53%, 0.2)); }
+  50% { box-shadow: 0 0 18px 6px var(--reef-glow, hsla(30, 59%, 53%, 0.2)); }
+}
