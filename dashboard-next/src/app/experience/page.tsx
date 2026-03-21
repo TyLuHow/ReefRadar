@@ -1,10 +1,10 @@
 'use client';
 
-import { useReducer, useEffect, useRef, useState, Suspense } from 'react';
+import { useReducer, useEffect, useRef, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, Upload } from 'lucide-react';
+import { ArrowLeft, Upload, Play, Pause } from 'lucide-react';
 import { GlassPanel, GlassButton } from '@/components/ui/glass';
 import { ProcessingOverlay } from '@/components/experience/ProcessingOverlay';
 import { CoordinateModal } from '@/components/experience/CoordinateModal';
@@ -14,7 +14,10 @@ import { CaveatsFooter } from '@/components/experience/CaveatsFooter';
 import { DemoState } from '@/components/experience/DemoState';
 import { LocationCompare } from '@/components/experience/LocationCompare';
 import { validateWavFile } from '@/lib/utils';
-import type { AnalysisResult } from '@/types';
+import { api } from '@/lib/api';
+import { FALLBACK_SAMPLES } from '@/lib/samples';
+import { useVitalityStore } from '@/stores/vitality-store';
+import type { AnalysisResult, Sample } from '@/types';
 
 const SpectrogramCanvas = dynamic(
   () => import('@/components/spectrogram/SpectrogramCanvas'),
@@ -29,6 +32,7 @@ type ExperienceState =
   | { type: 'landing' }
   | { type: 'demo' }
   | { type: 'compare' }
+  | { type: 'sample'; sampleId: string }
   | { type: 'uploading'; file: File }
   | { type: 'processing'; analysisId: string }
   | { type: 'results'; data: AnalysisResult; audioUrl?: string }
@@ -38,6 +42,7 @@ type ExperienceAction =
   | { type: 'GO_LANDING' }
   | { type: 'GO_DEMO' }
   | { type: 'GO_COMPARE' }
+  | { type: 'GO_SAMPLE'; sampleId: string }
   | { type: 'FILE_SELECTED'; file: File }
   | { type: 'START_PROCESSING'; analysisId: string }
   | { type: 'RESULTS_READY'; data: AnalysisResult; audioUrl?: string }
@@ -51,6 +56,8 @@ function reducer(_state: ExperienceState, action: ExperienceAction): ExperienceS
       return { type: 'demo' };
     case 'GO_COMPARE':
       return { type: 'compare' };
+    case 'GO_SAMPLE':
+      return { type: 'sample', sampleId: action.sampleId };
     case 'FILE_SELECTED':
       return { type: 'uploading', file: action.file };
     case 'START_PROCESSING':
@@ -74,9 +81,14 @@ function ExperienceInner() {
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
-    const mode = searchParams.get('mode');
-    if (mode === 'demo') dispatch({ type: 'GO_DEMO' });
-    else if (mode === 'compare') dispatch({ type: 'GO_COMPARE' });
+    const sampleId = searchParams.get('sample');
+    if (sampleId) {
+      dispatch({ type: 'GO_SAMPLE', sampleId });
+    } else {
+      const mode = searchParams.get('mode');
+      if (mode === 'demo') dispatch({ type: 'GO_DEMO' });
+      else if (mode === 'compare') dispatch({ type: 'GO_COMPARE' });
+    }
   }, [searchParams]);
 
   const content = (() => {
@@ -97,6 +109,14 @@ function ExperienceInner() {
             key="compare"
             onGoLanding={() => dispatch({ type: 'GO_LANDING' })}
             onGoDemo={() => dispatch({ type: 'GO_DEMO' })}
+          />
+        );
+      case 'sample':
+        return (
+          <SamplePlaybackState
+            key={`sample-${state.sampleId}`}
+            sampleId={state.sampleId}
+            dispatch={dispatch}
           />
         );
       case 'uploading':
@@ -378,6 +398,17 @@ function ResultsState({
   data: AnalysisResult;
   dispatch: React.Dispatch<ExperienceAction>;
 }) {
+  // Drive vitality from ML classification result
+  useEffect(() => {
+    if (data.classification?.label) {
+      const v = ML_TO_VITALITY[data.classification.label] ?? 0;
+      useVitalityStore.getState().setVitality(v, 'ml');
+    }
+    return () => {
+      useVitalityStore.getState().setVitality(0, 'default');
+    };
+  }, [data.classification?.label]);
+
   return (
     <motion.div
       className="relative min-h-screen flex flex-col"
@@ -472,6 +503,230 @@ function ErrorState({
             Try Again
           </GlassButton>
         </GlassPanel>
+      </div>
+    </motion.div>
+  );
+}
+
+// --- Sample playback state ---------------------------------------------------
+
+const ML_TO_VITALITY: Record<string, number> = {
+  healthy: 1.0,
+  restored_mid: 0.7,
+  restored_early: 0.4,
+  degraded: 0.0,
+};
+
+const STATUS_BADGE: Record<string, { label: string; color: string }> = {
+  healthy: { label: 'Healthy', color: 'var(--status-healthy)' },
+  degraded: { label: 'Degraded', color: 'var(--status-degraded)' },
+  restored_early: { label: 'Early Restoration', color: 'var(--status-restoring-early)' },
+  restored_mid: { label: 'Mid Restoration', color: 'var(--status-restoring-mid)' },
+};
+
+function SamplePlaybackState({
+  sampleId,
+  dispatch,
+}: {
+  sampleId: string;
+  dispatch: React.Dispatch<ExperienceAction>;
+}) {
+  const [sample, setSample] = useState<Sample | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Load sample metadata
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const data = await api.getSamples();
+        const found = data.samples.find((s) => s.id === sampleId);
+        if (!cancelled && found) setSample(found);
+        else if (!cancelled) {
+          // Try fallback
+          const fallback = FALLBACK_SAMPLES.find((s) => s.id === sampleId);
+          if (fallback) setSample(fallback);
+          else dispatch({ type: 'ERROR', message: `Sample "${sampleId}" not found` });
+        }
+      } catch {
+        if (!cancelled) {
+          const fallback = FALLBACK_SAMPLES.find((s) => s.id === sampleId);
+          if (fallback) setSample(fallback);
+          else dispatch({ type: 'ERROR', message: `Could not load sample "${sampleId}"` });
+        }
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [sampleId, dispatch]);
+
+  const togglePlay = useCallback(() => {
+    if (!sample?.audio_url) return;
+    if (!audioRef.current) {
+      const audio = new Audio(sample.audio_url);
+      audio.crossOrigin = 'anonymous';
+      audioRef.current = audio;
+      audio.addEventListener('timeupdate', () => {
+        if (audio.duration) setProgress(audio.currentTime / audio.duration);
+      });
+      audio.addEventListener('ended', () => {
+        setProgress(0);
+        setIsPlaying(false);
+      });
+    }
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+  }, [sample, isPlaying]);
+
+  // Drive vitality from sample category
+  useEffect(() => {
+    if (sample) {
+      const v = ML_TO_VITALITY[sample.category] ?? 0;
+      useVitalityStore.getState().setVitality(v, 'ml');
+    }
+    return () => {
+      useVitalityStore.getState().setVitality(0, 'default');
+    };
+  }, [sample]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  if (!sample) {
+    return (
+      <motion.div
+        className="relative min-h-screen flex items-center justify-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+      >
+        <div className="absolute inset-0 z-0">
+          <SpectrogramCanvas state="idle" opacity={0.1} />
+        </div>
+        <p className="relative z-10 text-sm" style={{ color: 'var(--text-muted)' }}>
+          Loading sample...
+        </p>
+      </motion.div>
+    );
+  }
+
+  const badge = STATUS_BADGE[sample.category] || { label: sample.category, color: 'var(--text-muted)' };
+
+  return (
+    <motion.div
+      className="relative min-h-screen flex flex-col"
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ duration: 0.5, ease: 'easeInOut' }}
+    >
+      <div className="absolute inset-0 z-0">
+        <SpectrogramCanvas state={isPlaying ? 'playing' : 'idle'} opacity={0.2} />
+      </div>
+
+      {/* Top bar */}
+      <div className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-4">
+        <GlassButton variant="ghost" href="/">
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Gallery
+        </GlassButton>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-light text-bone">ReefRadar</span>
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: badge.color }} />
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="relative z-10 flex-1 flex items-center justify-center px-4">
+        <div className="max-w-xl w-full">
+          <GlassPanel className="p-8 space-y-6">
+            {/* Badge + country */}
+            <div className="flex items-center justify-between">
+              <span
+                className="text-[10px] uppercase tracking-widest font-medium px-2.5 py-1 rounded-full border"
+                style={{ color: badge.color, borderColor: badge.color + '40' }}
+              >
+                {badge.label}
+              </span>
+              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                {sample.country}
+              </span>
+            </div>
+
+            {/* Title + description */}
+            <div>
+              <h2 className="text-xl font-light text-bone mb-2">{sample.name}</h2>
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                {sample.description}
+              </p>
+            </div>
+
+            {/* Play button + progress */}
+            {sample.audio_url && (
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={togglePlay}
+                  className="flex items-center justify-center w-14 h-14 rounded-full border-2 transition-colors"
+                  style={{ borderColor: badge.color, color: badge.color }}
+                  aria-label={isPlaying ? 'Pause' : 'Play'}
+                >
+                  {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-0.5" />}
+                </button>
+                <div className="flex-1">
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--glass-bg)' }}>
+                    <div
+                      className="h-full rounded-full transition-[width] duration-200"
+                      style={{ width: `${progress * 100}%`, background: badge.color }}
+                    />
+                  </div>
+                  <p className="text-[10px] font-mono mt-1" style={{ color: 'var(--text-dim)' }}>
+                    {sample.duration_seconds} seconds
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Frequency highlights */}
+            <div className="flex flex-wrap gap-2">
+              {sample.frequency_highlights.map((h) => (
+                <span
+                  key={h}
+                  className="text-[10px] px-2.5 py-1 rounded-full"
+                  style={{ background: 'var(--glass-bg)', color: 'var(--text-muted)' }}
+                >
+                  {h}
+                </span>
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <GlassButton onClick={() => dispatch({ type: 'GO_LANDING' })}>
+                Upload Your Own
+              </GlassButton>
+              <GlassButton variant="ghost" onClick={() => dispatch({ type: 'GO_DEMO' })}>
+                Compare Healthy vs Degraded
+              </GlassButton>
+            </div>
+          </GlassPanel>
+        </div>
+      </div>
+
+      <div className="relative z-10 px-4 sm:px-6">
+        <CaveatsFooter />
       </div>
     </motion.div>
   );
