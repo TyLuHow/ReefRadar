@@ -2,18 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import {
-  Waves,
-  Server,
-  Database,
-  Cloud,
-  Cpu,
-  ArrowRight,
-  CheckCircle,
-  AlertTriangle,
-  Github,
-  ExternalLink,
-} from 'lucide-react';
+import { Waves, Server, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ArchitectureDiagram } from '@/components/about/ArchitectureDiagram';
 
 export default function AboutPage() {
   const { data: health } = useQuery({
@@ -92,134 +82,11 @@ export default function AboutPage() {
 
         {/* Architecture Diagram */}
         <div className="glass-panel p-8 mb-8">
-          <h2 className="text-2xl font-bold mb-6" style={{ color: 'var(--text-primary)' }}>System Architecture</h2>
-
-          {/* Flow Diagram */}
-          <div className="overflow-x-auto">
-            <div className="min-w-[600px] flex items-center justify-between py-8">
-              {/* User */}
-              <div className="flex flex-col items-center">
-                <div
-                  className="w-16 h-16 rounded-xl flex items-center justify-center"
-                  style={{ background: 'rgba(205, 133, 63, 0.15)' }}
-                >
-                  <Waves className="w-8 h-8 text-ochre" />
-                </div>
-                <span className="text-sm font-medium mt-2" style={{ color: 'var(--text-primary)' }}>User</span>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Dashboard</span>
-              </div>
-
-              <ArrowRight className="w-6 h-6" style={{ color: 'var(--text-dim)' }} />
-
-              {/* API Gateway */}
-              <div className="flex flex-col items-center">
-                <div
-                  className="w-16 h-16 rounded-xl flex items-center justify-center"
-                  style={{ background: 'rgba(139, 115, 85, 0.2)' }}
-                >
-                  <Cloud className="w-8 h-8 text-muted-tan" />
-                </div>
-                <span className="text-sm font-medium mt-2" style={{ color: 'var(--text-primary)' }}>API Gateway</span>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>AWS</span>
-              </div>
-
-              <ArrowRight className="w-6 h-6" style={{ color: 'var(--text-dim)' }} />
-
-              {/* Lambda Functions */}
-              <div className="flex flex-col items-center">
-                <div
-                  className="w-16 h-16 rounded-xl flex items-center justify-center"
-                  style={{ background: 'rgba(139, 115, 85, 0.2)' }}
-                >
-                  <Server className="w-8 h-8 text-muted-tan" />
-                </div>
-                <span className="text-sm font-medium mt-2" style={{ color: 'var(--text-primary)' }}>Lambda</span>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Router/Processor</span>
-              </div>
-
-              <ArrowRight className="w-6 h-6" style={{ color: 'var(--text-dim)' }} />
-
-              {/* ML Inference */}
-              <div className="flex flex-col items-center">
-                <div
-                  className="w-16 h-16 rounded-xl flex items-center justify-center"
-                  style={{ background: 'rgba(192, 128, 129, 0.2)' }}
-                >
-                  <Cpu className="w-8 h-8 text-dusty-rose" />
-                </div>
-                <span className="text-sm font-medium mt-2" style={{ color: 'var(--text-primary)' }}>Inference</span>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>SurfPerch</span>
-              </div>
-
-              <ArrowRight className="w-6 h-6" style={{ color: 'var(--text-dim)' }} />
-
-              {/* Storage */}
-              <div className="flex flex-col items-center">
-                <div
-                  className="w-16 h-16 rounded-xl flex items-center justify-center"
-                  style={{ background: 'rgba(233, 220, 201, 0.15)' }}
-                >
-                  <Database className="w-8 h-8 text-pale-gold" />
-                </div>
-                <span className="text-sm font-medium mt-2" style={{ color: 'var(--text-primary)' }}>Storage</span>
-                <span className="text-xs" style={{ color: 'var(--text-muted)' }}>S3/DynamoDB</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Service Details */}
-          <div className="grid md:grid-cols-2 gap-6 mt-8">
-            <div>
-              <h3 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>AWS Services</h3>
-              <ul className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                <li className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-status-healthy" />
-                  <span>API Gateway - HTTP API endpoint</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-status-healthy" />
-                  <span>Lambda - 4 serverless functions</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-status-healthy" />
-                  <span>S3 - Audio and embedding storage</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-status-healthy" />
-                  <span>DynamoDB - Metadata tracking</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-status-healthy" />
-                  <span>ECR - Container image registry</span>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Processing Pipeline</h3>
-              <ul className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                <li className="flex items-center space-x-2">
-                  <span className="w-4 h-4 rounded-full bg-ochre text-white text-xs flex items-center justify-center">1</span>
-                  <span>Upload WAV audio file</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <span className="w-4 h-4 rounded-full bg-ochre text-white text-xs flex items-center justify-center">2</span>
-                  <span>Resample to 32kHz mono</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <span className="w-4 h-4 rounded-full bg-ochre text-white text-xs flex items-center justify-center">3</span>
-                  <span>Segment into 5.0s windows</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <span className="w-4 h-4 rounded-full bg-ochre text-white text-xs flex items-center justify-center">4</span>
-                  <span>Generate 1280-dim embeddings</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <span className="w-4 h-4 rounded-full bg-ochre text-white text-xs flex items-center justify-center">5</span>
-                  <span>Classify via trained MLP model</span>
-                </li>
-              </ul>
-            </div>
-          </div>
+          <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>System Architecture</h2>
+          <p className="text-sm mb-6" style={{ color: 'var(--text-muted)' }}>
+            Fully serverless on AWS · us-east-1 · 12 resources
+          </p>
+          <ArchitectureDiagram />
         </div>
 
         {/* Technology Stack */}
