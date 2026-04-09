@@ -14,13 +14,6 @@ const STATUS_BADGE: Record<ReefStatus, { label: string; color: string }> = {
   unknown: { label: 'Unknown', color: 'var(--text-muted)' },
 };
 
-const CATEGORY_GLOW: Record<ReefStatus, string> = {
-  healthy: '0 0 8px 2px hsla(175, 80%, 50%, 0.4)',
-  restored_mid: '0 0 8px 2px hsla(175, 80%, 50%, 0.24)',
-  restored_early: '0 0 8px 2px hsla(175, 80%, 50%, 0.12)',
-  degraded: 'none',
-  unknown: 'none',
-};
 
 interface SampleCardProps {
   sample: Sample;
@@ -67,7 +60,6 @@ export function SampleCard({ sample, playingId, onPlay, onPause }: SampleCardPro
   return (
     <GlassPanel
       className="p-5 flex flex-col gap-3 w-72 flex-shrink-0 hover:border-[var(--glass-border-bright)]"
-      style={{ boxShadow: CATEGORY_GLOW[sample.category] }}
     >
       {/* Header: badge + country */}
       <div className="flex items-center justify-between">
