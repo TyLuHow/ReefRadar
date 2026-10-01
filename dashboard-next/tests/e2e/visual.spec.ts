@@ -56,12 +56,15 @@ for (const state of STATES) {
       await page.goto(state.path, { waitUntil: 'load' });
       await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
 
+      // Hide (not mask) nondeterministic canvases/maps: a mask paints an opaque block
+      // over the whole element, and the fixed full-viewport background canvas would
+      // then hide the page content above it. visibility:hidden keeps layout intact.
+      await page.addStyleTag({
+        content: 'canvas, .maplibregl-map, .leaflet-container { visibility: hidden !important; }',
+      });
+
       await expect(page).toHaveScreenshot(`${state.name}-${w.label}.png`, {
         fullPage: true,
-        // Hide (not mask) nondeterministic canvases/maps: a mask paints an opaque block
-        // over the whole element, and the fixed full-viewport background canvas would
-        // then hide the page content above it. visibility:hidden keeps layout intact.
-        style: 'canvas, .maplibregl-map, .leaflet-container { visibility: hidden !important; }',
       });
     });
   }
