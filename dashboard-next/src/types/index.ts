@@ -23,6 +23,33 @@ export interface SitesResponse {
   version?: string;
 }
 
+// recovered from the deployed bundle (module 63181) on 2026-10-01 per D-02 — field set
+// derived from SampleCard.tsx's existing usage and the live GET /samples response shape.
+export interface Sample {
+  id: string;
+  site_id: string;
+  name: string;
+  country: string;
+  country_code: string;
+  category: ReefStatus;
+  description: string;
+  duration_seconds: number;
+  audio_url: string;
+  frequency_highlights: string[];
+  coordinates: { lat: number; lng: number };
+}
+
+export interface SampleStory {
+  title: string;
+  subtitle: string;
+  sample_ids: string[];
+}
+
+export interface SamplesResponse {
+  samples: Sample[];
+  stories: Record<string, SampleStory>;
+}
+
 export interface HealthResponse {
   status: string;
   timestamp: string;

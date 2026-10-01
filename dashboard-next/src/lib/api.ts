@@ -8,6 +8,7 @@ import {
   AnalysisResult,
   StatusResponse,
   ApiError,
+  SamplesResponse,
 } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod';
@@ -57,6 +58,13 @@ class ApiClient {
   // Get reference sites
   async getSites(): Promise<SitesResponse> {
     return this.request<SitesResponse>('/sites');
+  }
+
+  // Get gallery samples + stories
+  // recovered from the deployed bundle (module 92800) on 2026-10-01 per D-02 —
+  // this method already exists in the live deployed api.ts; git's api.ts did not have it.
+  async getSamples(): Promise<SamplesResponse> {
+    return this.request<SamplesResponse>('/samples');
   }
 
   // Upload audio file
