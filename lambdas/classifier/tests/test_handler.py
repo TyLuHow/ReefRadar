@@ -295,3 +295,80 @@ def test_classifier_package_includes_shared_members():
         "site_provenance.py",
         "site_label_provenance.json",
     }
+
+
+# --- WR-03: one authoritative outcome, no async-retry fighting the UI ---------
+
+
+def _get_item(module, analysis_id, sk):
+    table = module.dynamodb.Table(METADATA_TABLE)
+    return table.get_item(Key={"pk": f"ANALYSIS#{analysis_id}", "sk": sk}).get("Item")
+
+
+def test_inference_failure_records_error_and_returns_normally(classifier_handler):
+    def _failing(segments, sample_rate, analysis_id, request_id):
+        raise classifier_handler.InferenceError(
+            "boom", error_type="TIMEOUT", retry_count=3, request_id="req-1"
+        )
+
+    classifier_handler.invoke_inference_with_retry = _failing
+    event = {
+        "upload_id": "upload-f1",
+        "analysis_id": "analysis-f1",
+        "segments_key": "segments/analysis-1.json",
+        "num_segments": 2,
+    }
+
+    # Must NOT raise: raising would trigger Lambda's async retries.
+    result = classifier_handler.handler(event, context=None)
+    assert result["statusCode"] == 500
+
+    err = _get_item(classifier_handler, "analysis-f1", "ERROR")
+    assert err["error_code"] == "TIMEOUT"
+    assert err["stage"] == "inference"
+    assert err["request_id"] == "req-1"
+    assert _get_item(classifier_handler, "analysis-f1", "RESULT") is None
+
+
+def test_unexpected_failure_records_error_and_returns_normally(classifier_handler):
+    event = {
+        "upload_id": "upload-f2",
+        "analysis_id": "analysis-f2",
+        "segments_key": "segments/does-not-exist.json",
+        "num_segments": 2,
+    }
+    result = classifier_handler.handler(event, context=None)
+    assert result["statusCode"] == 500
+    err = _get_item(classifier_handler, "analysis-f2", "ERROR")
+    assert err["error_code"] == "CLASSIFICATION_FAILED"
+    assert err["stage"] == "classification"
+
+
+def test_duplicate_delivery_does_not_redo_work_or_overwrite_result(classifier_handler):
+    event = {
+        "upload_id": "upload-d1",
+        "analysis_id": "analysis-d1",
+        "segments_key": "segments/analysis-1.json",
+        "num_segments": 2,
+    }
+    assert classifier_handler.handler(event, context=None)["statusCode"] == 200
+    first = _get_item(classifier_handler, "analysis-d1", "RESULT")
+
+    def _must_not_run(*args, **kwargs):
+        raise AssertionError("inference must not run for a duplicate delivery")
+
+    classifier_handler.invoke_inference_with_retry = _must_not_run
+    result = classifier_handler.handler(event, context=None)
+    assert result["statusCode"] == 200
+    assert _get_item(classifier_handler, "analysis-d1", "RESULT") == first
+    assert _get_item(classifier_handler, "analysis-d1", "ERROR") is None
+
+
+def test_late_failure_never_contradicts_stored_result(classifier_handler):
+    table = classifier_handler.dynamodb.Table(METADATA_TABLE)
+    table.put_item(Item={"pk": "ANALYSIS#analysis-l1", "sk": "RESULT", "status": "complete"})
+    out = classifier_handler._record_failure(
+        table, "analysis-l1", "upload-l1", {"error_code": "X", "error": "late", "stage": "inference"}
+    )
+    assert out["statusCode"] == 200
+    assert _get_item(classifier_handler, "analysis-l1", "ERROR") is None

@@ -72,6 +72,16 @@ def handler(event, context):
     table = dynamodb.Table(METADATA_TABLE)
     request_id = context.aws_request_id if context else str(uuid.uuid4())
 
+    # Idempotency (WR-03): this function is invoked asynchronously, so Lambda
+    # may deliver the same event more than once. A terminal RESULT or ERROR
+    # item is the single authoritative outcome -- never redo the work.
+    if _terminal_outcome_exists(table, analysis_id):
+        print(f"Analysis {analysis_id} already has a terminal outcome; skipping duplicate delivery")
+        return {
+            'statusCode': 200,
+            'body': json.dumps({'analysis_id': analysis_id, 'status': 'duplicate_delivery_ignored'})
+        }
+
     try:
         # Load segments
         response = s3.get_object(Bucket=AUDIO_BUCKET, Key=segments_key)
@@ -125,8 +135,27 @@ def handler(event, context):
             'completed_at': datetime.utcnow().isoformat(),
             'caveats': region_result['caveat']
         }
-        # Convert floats to Decimal for DynamoDB
-        table.put_item(Item=convert_floats(result_item))
+        # Convert floats to Decimal for DynamoDB. Conditional write: a RESULT is
+        # written at most once per analysis (a concurrent duplicate delivery
+        # must not overwrite it).
+        try:
+            table.put_item(
+                Item=convert_floats(result_item),
+                ConditionExpression='attribute_not_exists(pk)'
+            )
+        except table.meta.client.exceptions.ConditionalCheckFailedException:
+            print(f"Analysis {analysis_id}: RESULT already written by another delivery")
+            return {
+                'statusCode': 200,
+                'body': json.dumps({'analysis_id': analysis_id, 'status': 'duplicate_delivery_ignored'})
+            }
+
+        # A stale ERROR (e.g. from an earlier failed delivery) must not
+        # contradict the RESULT that now exists.
+        try:
+            table.delete_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': 'ERROR'})
+        except Exception as cleanup_err:  # best effort: the role may not grant DeleteItem
+            print(f"WARN could not clear stale ERROR item: {type(cleanup_err).__name__}")
 
         # Update upload record
         table.update_item(
@@ -146,56 +175,78 @@ def handler(event, context):
         }
 
     except InferenceError as e:
-        # ML inference failed - store detailed error and propagate
-        error_details = {
-            'pk': f'ANALYSIS#{analysis_id}',
-            'sk': 'ERROR',
-            'upload_id': upload_id,
+        # ML inference failed - record ONE terminal ERROR and return normally.
+        # Re-raising would make Lambda's async-invoke machinery retry the whole
+        # classification (up to 2 more times, each doing up to 3 inference
+        # attempts per batch) after /status already told the client "failed".
+        print(f"ERROR analysis {analysis_id}: {e.error_type}: {e}")
+        return _record_failure(table, analysis_id, upload_id, {
             'error_code': e.error_type,
             'error': str(e),
-            'status': 'failed',
             'stage': 'inference',
             'retry_count': e.retry_count,
             'request_id': e.request_id or request_id,
             'suggestion': get_error_suggestion(e.error_type),
-            'timestamp': datetime.utcnow().isoformat()
-        }
-        table.put_item(Item=error_details)
-
-        # Update upload status
-        table.update_item(
-            Key={'pk': f'UPLOAD#{upload_id}', 'sk': 'METADATA'},
-            UpdateExpression='SET #status = :status',
-            ExpressionAttributeNames={'#status': 'status'},
-            ExpressionAttributeValues={':status': 'failed'}
-        )
-
-        # Re-raise to return proper error
-        raise
+        })
 
     except Exception as e:
         # Other errors (not inference-related)
-        table.put_item(Item={
-            'pk': f'ANALYSIS#{analysis_id}',
-            'sk': 'ERROR',
-            'upload_id': upload_id,
+        print(f"ERROR analysis {analysis_id}: CLASSIFICATION_FAILED: {type(e).__name__}: {e}")
+        return _record_failure(table, analysis_id, upload_id, {
             'error_code': 'CLASSIFICATION_FAILED',
             'error': str(e),
-            'status': 'failed',
             'stage': 'classification',
             'request_id': request_id,
-            'timestamp': datetime.utcnow().isoformat()
+            'suggestion': get_error_suggestion('CLASSIFICATION_FAILED'),
         })
 
-        # Update upload status
-        table.update_item(
-            Key={'pk': f'UPLOAD#{upload_id}', 'sk': 'METADATA'},
-            UpdateExpression='SET #status = :status',
-            ExpressionAttributeNames={'#status': 'status'},
-            ExpressionAttributeValues={':status': 'failed'}
-        )
 
-        raise
+def _terminal_outcome_exists(table, analysis_id):
+    """True if a RESULT or ERROR item already exists for this analysis."""
+    for sk in ('RESULT', 'ERROR'):
+        if 'Item' in table.get_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': sk}):
+            return True
+    return False
+
+
+def _record_failure(table, analysis_id, upload_id, fields):
+    """Write the terminal ERROR item (unless a RESULT already exists), mark the
+    upload failed, and return a normal (non-raising) response so Lambda does
+    not retry the async invocation."""
+    error_item = {
+        'pk': f'ANALYSIS#{analysis_id}',
+        'sk': 'ERROR',
+        'upload_id': upload_id,
+        'status': 'failed',
+        'timestamp': datetime.utcnow().isoformat(),
+    }
+    error_item.update(fields)
+
+    # Never let a late failure contradict a RESULT that was already stored.
+    if 'Item' in table.get_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': 'RESULT'}):
+        return {
+            'statusCode': 200,
+            'body': json.dumps({'analysis_id': analysis_id, 'status': 'complete'})
+        }
+    try:
+        table.put_item(Item=error_item, ConditionExpression='attribute_not_exists(pk)')
+    except table.meta.client.exceptions.ConditionalCheckFailedException:
+        pass  # an ERROR was already recorded: keep the first terminal outcome
+
+    table.update_item(
+        Key={'pk': f'UPLOAD#{upload_id}', 'sk': 'METADATA'},
+        UpdateExpression='SET #status = :status',
+        ExpressionAttributeNames={'#status': 'status'},
+        ExpressionAttributeValues={':status': 'failed'}
+    )
+    return {
+        'statusCode': 500,
+        'body': json.dumps({
+            'analysis_id': analysis_id,
+            'status': 'failed',
+            'error_code': fields.get('error_code'),
+        })
+    }
 
 
 def invoke_inference_with_retry(segments, sample_rate, analysis_id, request_id):
