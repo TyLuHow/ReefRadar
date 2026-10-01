@@ -10,7 +10,9 @@ import io
 import json
 import boto3
 import os
+from botocore.exceptions import ClientError, ConnectTimeoutError, EndpointConnectionError, ReadTimeoutError
 import numpy as np
+import random
 import uuid
 import time
 from datetime import datetime
@@ -59,6 +61,8 @@ _label_provenance = None
 # Retry configuration
 MAX_RETRIES = 3
 RETRY_DELAYS = [1, 2, 4]  # Exponential backoff in seconds
+# Throttling needs a longer wait than a transient error to clear the window.
+THROTTLE_RETRY_DELAYS = [3, 8, 15]
 BATCH_SIZE = 10  # Segments per batch to avoid payload limits
 
 
@@ -69,6 +73,40 @@ class InferenceError(Exception):
         self.error_type = error_type
         self.retry_count = retry_count
         self.request_id = request_id
+
+
+class _InferenceCallError(Exception):
+    """A failed inference call whose error_type is already known (not retry-classified by text)."""
+    def __init__(self, message, error_type='INFERENCE_FAILED'):
+        super().__init__(message)
+        self.error_type = error_type
+
+
+def classify_inference_exception(e):
+    """Map an exception from the inference call to an error_type.
+
+    Uses structured information (our own typed error, botocore ClientError
+    codes, botocore timeout classes) rather than substring-matching the message,
+    so unrelated text containing e.g. "timeout" cannot mislabel an error.
+    """
+    if isinstance(e, _InferenceCallError):
+        return e.error_type
+    if isinstance(e, ClientError):
+        code = e.response.get('Error', {}).get('Code', '')
+        if code == 'ResourceNotFoundException':
+            return 'LAMBDA_NOT_FOUND'
+        if code in ('TooManyRequestsException', 'ThrottlingException', 'Throttling', 'RequestLimitExceeded'):
+            return 'THROTTLED'
+        if code in ('ServiceException', 'ServiceUnavailableException', 'EC2ThrottledException'):
+            return 'SERVICE_ERROR'
+        if code in ('RequestTimeout', 'RequestTimeoutException'):
+            return 'TIMEOUT'
+        return 'INFERENCE_FAILED'
+    if isinstance(e, (ReadTimeoutError, ConnectTimeoutError)):
+        return 'TIMEOUT'
+    if isinstance(e, EndpointConnectionError):
+        return 'SERVICE_ERROR'
+    return 'INFERENCE_FAILED'
 
 
 def handler(event, context):
@@ -338,6 +376,7 @@ def invoke_inference_batch(s3_bucket, s3_key, batch_idx, total_batches, request_
         InferenceError: If batch fails after all retries
     """
     last_error = None
+    last_error_type = 'INFERENCE_FAILED'
 
     for attempt in range(MAX_RETRIES):
         try:
@@ -356,7 +395,15 @@ def invoke_inference_batch(s3_bucket, s3_key, batch_idx, total_batches, request_
             if 'FunctionError' in inference_response:
                 response_payload = json.loads(inference_response['Payload'].read().decode())
                 error_msg = response_payload.get('errorMessage', str(response_payload))
-                raise Exception(f"Lambda function error: {error_msg}")
+                # The inference function's own runtime reports a timeout structurally.
+                timed_out = (
+                    response_payload.get('errorType') == 'Sandbox.Timedout'
+                    or 'Task timed out' in str(error_msg)
+                )
+                raise _InferenceCallError(
+                    f"Lambda function error: {error_msg}",
+                    error_type='TIMEOUT' if timed_out else 'INFERENCE_FAILED'
+                )
 
             # Parse response
             response_payload = json.loads(inference_response['Payload'].read().decode())
@@ -372,7 +419,7 @@ def invoke_inference_batch(s3_bucket, s3_key, batch_idx, total_batches, request_
                     print(f"Batch {batch_idx + 1}: received {len(embeddings)} embeddings")
                     return embeddings
                 else:
-                    raise Exception("Inference returned empty embeddings")
+                    raise _InferenceCallError("Inference returned empty embeddings")
 
             elif response_payload.get('statusCode') == 400:
                 # Client error - don't retry
@@ -393,7 +440,7 @@ def invoke_inference_batch(s3_bucket, s3_key, batch_idx, total_batches, request_
                 if isinstance(body, str):
                     body = json.loads(body)
                 error_msg = body.get('error', f"Status code: {response_payload.get('statusCode')}")
-                raise Exception(f"Inference failed: {error_msg}")
+                raise _InferenceCallError(f"Inference failed: {error_msg}")
 
         except InferenceError:
             # Don't retry client errors
@@ -403,19 +450,11 @@ def invoke_inference_batch(s3_bucket, s3_key, batch_idx, total_batches, request_
             last_error = e
             error_str = str(e)
 
-            # Categorize error for better messaging
-            if 'Timeout' in error_str or 'timeout' in error_str:
-                error_type = 'TIMEOUT'
-            elif 'ResourceNotFoundException' in error_str:
-                error_type = 'LAMBDA_NOT_FOUND'
-            elif 'ServiceException' in error_str:
-                error_type = 'SERVICE_ERROR'
-            elif 'TooManyRequestsException' in error_str:
-                error_type = 'THROTTLED'
-            else:
-                error_type = 'INFERENCE_FAILED'
+            # Categorize error from structured information (not message text)
+            error_type = classify_inference_exception(e)
+            last_error_type = error_type
 
-            print(f"Batch {batch_idx + 1} attempt {attempt + 1} failed: {error_str}")
+            print(f"Batch {batch_idx + 1} attempt {attempt + 1} failed ({error_type}): {error_str}")
 
             # Check if we should retry
             if attempt < MAX_RETRIES - 1:
@@ -423,8 +462,11 @@ def invoke_inference_batch(s3_bucket, s3_key, batch_idx, total_batches, request_
                     # Don't retry infrastructure errors
                     break
 
-                delay = RETRY_DELAYS[attempt]
-                print(f"Retrying in {delay}s...")
+                if error_type == 'THROTTLED':
+                    delay = THROTTLE_RETRY_DELAYS[attempt] + random.uniform(0, attempt + 1)
+                else:
+                    delay = RETRY_DELAYS[attempt]
+                print(f"Retrying in {delay:.1f}s...")
                 time.sleep(delay)
             else:
                 # Final attempt failed
@@ -435,10 +477,10 @@ def invoke_inference_batch(s3_bucket, s3_key, batch_idx, total_batches, request_
                     request_id=request_id
                 )
 
-    # If we broke out of loop early (non-retryable error)
+    # If we broke out of loop early (non-retryable error): keep the real error type
     raise InferenceError(
         f"Inference failed for batch {batch_idx + 1}: {str(last_error)}",
-        error_type='INFERENCE_FAILED',
+        error_type=last_error_type,
         retry_count=attempt + 1,
         request_id=request_id
     )

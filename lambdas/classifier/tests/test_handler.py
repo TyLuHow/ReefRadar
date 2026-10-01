@@ -500,3 +500,59 @@ def test_handler_stores_similar_sites_error_note(classifier_handler):
     item = _get_result_item(classifier_handler, "analysis-s1")
     assert item["similar_sites"] == []
     assert "unavailable" in item["similar_sites_error"]
+
+
+# --- WR-06: structured inference error types ---------------------------------
+
+
+class _FakeLambdaClient:
+    def __init__(self, exc):
+        self.exc = exc
+        self.calls = 0
+
+    def invoke(self, **kwargs):
+        self.calls += 1
+        raise self.exc
+
+
+def _client_error(code):
+    from botocore.exceptions import ClientError
+    return ClientError({"Error": {"Code": code, "Message": "x"}}, "Invoke")
+
+
+def _run_batch(module, exc, monkeypatch):
+    fake = _FakeLambdaClient(exc)
+    module.lambda_client = fake
+    sleeps = []
+    monkeypatch.setattr(module.time, "sleep", lambda d: sleeps.append(d))
+    with pytest.raises(module.InferenceError) as info:
+        module.invoke_inference_batch("b", "k", 0, 1, "req")
+    return info.value, fake, sleeps
+
+
+def test_lambda_not_found_keeps_its_error_type_and_is_not_retried(classifier_handler, monkeypatch):
+    err, fake, sleeps = _run_batch(classifier_handler, _client_error("ResourceNotFoundException"), monkeypatch)
+    assert err.error_type == "LAMBDA_NOT_FOUND"
+    assert fake.calls == 1
+    assert sleeps == []
+    assert "not deployed" in classifier_handler.get_error_suggestion(err.error_type)
+
+
+def test_throttling_retries_with_longer_backoff(classifier_handler, monkeypatch):
+    err, fake, sleeps = _run_batch(classifier_handler, _client_error("TooManyRequestsException"), monkeypatch)
+    assert err.error_type == "THROTTLED"
+    assert fake.calls == classifier_handler.MAX_RETRIES
+    assert len(sleeps) == classifier_handler.MAX_RETRIES - 1
+    assert all(d >= classifier_handler.THROTTLE_RETRY_DELAYS[i] for i, d in enumerate(sleeps))
+
+
+def test_message_text_does_not_decide_the_error_type(classifier_handler, monkeypatch):
+    err, _, _ = _run_batch(classifier_handler, RuntimeError("the word timeout appears here"), monkeypatch)
+    assert err.error_type == "INFERENCE_FAILED"
+
+
+def test_read_timeout_is_classified_as_timeout(classifier_handler, monkeypatch):
+    from botocore.exceptions import ReadTimeoutError
+    exc = ReadTimeoutError(endpoint_url="https://lambda.example")
+    err, _, _ = _run_batch(classifier_handler, exc, monkeypatch)
+    assert err.error_type == "TIMEOUT"
