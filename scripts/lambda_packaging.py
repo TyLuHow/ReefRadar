@@ -43,18 +43,36 @@ class SpecError(ValueError):
     """Raised for an unknown function name, missing/invalid spec, or unreadable input."""
 
 
-def load_spec(function_name: str) -> dict:
+def spec_repo_path(function_name: str) -> str:
+    """Repo-relative (forward-slash) path of a function's package spec."""
+    if function_name not in VALID_FUNCTIONS:
+        raise SpecError(
+            f"Unknown function {function_name!r}; expected one of {VALID_FUNCTIONS}"
+        )
+    return f"infrastructure/lambda-packages/{function_name}.json"
+
+
+def load_spec(function_name: str, spec_text: Optional[str] = None) -> dict:
     """Load and parse infrastructure/lambda-packages/<function_name>.json.
 
     Only the four known function names are accepted -- this is also the
     allowlist drift-check.py and deploy-lambdas.py use to validate
     --function, so no script ever interpolates an arbitrary name into a
     filesystem path or shell command.
+
+    `spec_text`, when given, is the already-read JSON text of the spec (for
+    example `git show <ref>:<spec path>` on the --ref rollback path), so the
+    member list comes from that commit rather than the working tree.
     """
     if function_name not in VALID_FUNCTIONS:
         raise SpecError(
             f"Unknown function {function_name!r}; expected one of {VALID_FUNCTIONS}"
         )
+    if spec_text is not None:
+        try:
+            return json.loads(spec_text)
+        except json.JSONDecodeError as e:
+            raise SpecError(f"Could not parse spec for {function_name}: {e}") from e
     spec_path = PACKAGE_DIR / f"{function_name}.json"
     if not spec_path.is_file():
         raise SpecError(f"Spec file not found: {spec_path}")

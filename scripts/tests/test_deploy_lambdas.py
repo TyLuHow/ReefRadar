@@ -368,3 +368,50 @@ def test_build_inference_source_zip_is_deterministic_and_flat(deploy_lambdas, gi
     assert a == b
     manifest = pkg.manifest_from_zip(a)
     assert set(manifest) == {"Dockerfile", "requirements.txt", "inference.py", "buildspec.yml"}
+
+
+# --- CR-03: package spec is part of the "clean committed tree" -----------------
+
+
+def test_dirty_package_spec_refused_without_ref(deploy_lambdas, git_repo):
+    spec_path = git_repo / "infrastructure" / "lambda-packages" / "router.json"
+    spec = json.loads(spec_path.read_text())
+    spec["members"].append({"source": "lambdas/router/handler.py", "archive_path": "extra.py"})
+    spec_path.write_text(json.dumps(spec))
+
+    def factory(service):
+        raise AssertionError("client factory must not be invoked on a dirty-spec refusal")
+
+    code = deploy_lambdas.main(
+        ["--function", "router", "--confirm", "--repo-root", str(git_repo)],
+        client_factory=factory,
+    )
+    assert code == 2
+
+
+def test_ref_build_reads_package_spec_from_ref_not_working_tree(deploy_lambdas, git_repo, capsys):
+    head = _git(["rev-parse", "HEAD"], git_repo).strip()
+    committed_sha = pkg.code_sha256(pkg.build_package(pkg.load_spec("router"), git_repo))
+
+    # Working-tree spec now lists a member that does not exist at the ref.
+    spec_path = git_repo / "infrastructure" / "lambda-packages" / "router.json"
+    spec = json.loads(spec_path.read_text())
+    spec["members"].append({"source": "lambdas/router/new_member.json", "archive_path": "new_member.json"})
+    spec_path.write_text(json.dumps(spec))
+
+    code = deploy_lambdas.main(
+        ["--function", "router", "--dry-run", "--ref", head, "--repo-root", str(git_repo)]
+    )
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "1 member(s)" in out
+    assert committed_sha in out
+
+
+def test_ref_without_package_spec_exits_two(deploy_lambdas, git_repo):
+    _git(["rm", "-q", "infrastructure/lambda-packages/router.json"], git_repo)
+    _git(["commit", "-q", "-m", "drop spec"], git_repo)
+    code = deploy_lambdas.main(
+        ["--function", "router", "--dry-run", "--ref", "HEAD", "--repo-root", str(git_repo)]
+    )
+    assert code == 2

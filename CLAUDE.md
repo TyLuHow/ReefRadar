@@ -185,7 +185,8 @@ py -3.12 scripts/deploy-lambdas.py --function classifier --confirm
 # Repeatable --function for multiple at once
 py -3.12 scripts/deploy-lambdas.py --function router --function preprocessor --confirm
 
-# Rollback: redeploy exactly what a past commit contained (working tree can be dirty)
+# Rollback: redeploy what a past commit contained -- members AND package spec are read
+# from that commit (working tree can be dirty; the ref must contain the package specs)
 py -3.12 scripts/deploy-lambdas.py --function router --ref <commit> --confirm
 ```
 

@@ -4,7 +4,11 @@ D-04: Single scripted Lambda deploy path.
 
 Builds every function deterministically from the committed git tree (or,
 with --ref, from a past commit -- the rollback path) and refuses to
-deploy from a dirty working tree. This is the only path allowed to touch
+deploy from a dirty working tree. The dirty check covers the member
+sources, the package spec(s) and scripts/lambda_packaging.py; with --ref
+both the members and the package spec are read from that commit (the
+packaging code itself, scripts/lambda_packaging.py, is always the current
+one). This is the only path allowed to touch
 reefradar-2477-* Lambda code; no console edits (CLAUDE.md "Deployment").
 
 Non-dry-run calls require --confirm; without it the script only prints
@@ -90,6 +94,25 @@ def git_show_reader(ref: str):
         return pkg.normalize_text_bytes(result.stdout)
 
     return reader
+
+
+def git_show_spec_text(ref: str, function_name: str, repo_root) -> str:
+    """The package spec for `function_name` exactly as committed at `ref`.
+
+    A --ref rollback must use the member list that commit actually shipped,
+    not whatever the working-tree spec says today (REVIEW CR-03)."""
+    spec_path = pkg.spec_repo_path(function_name)
+    result = subprocess.run(
+        ["git", "show", f"{ref}:{spec_path}"], cwd=str(repo_root), capture_output=True
+    )
+    if result.returncode != 0:
+        raise DeployError(
+            f"cannot read package spec {spec_path} at {ref}: "
+            f"{result.stderr.decode(errors='replace').strip()} "
+            "(this commit predates the scripted-deploy package specs; "
+            "roll back with a ref that contains them)"
+        )
+    return result.stdout.decode("utf-8")
 
 
 def build_inference_source_zip(repo_root, reader=None) -> bytes:
@@ -187,19 +210,26 @@ def main(argv=None, client_factory=None) -> int:
     repo_root = args.repo_root
 
     try:
-        specs = {fn: pkg.load_spec(fn) for fn in args.functions}
-
         if args.ref is not None:
             resolved_ref = resolve_ref(args.ref, repo_root)
             reader = git_show_reader(resolved_ref)
             git_sha = resolved_ref
             # Dirty-tree check intentionally skipped: --ref builds read committed
-            # history via `git show`, never the working tree.
+            # history via `git show`, never the working tree. That includes the
+            # package spec (member list), which is read from the ref too (CR-03).
+            specs = {
+                fn: pkg.load_spec(fn, spec_text=git_show_spec_text(resolved_ref, fn, repo_root))
+                for fn in args.functions
+            }
         else:
+            specs = {fn: pkg.load_spec(fn) for fn in args.functions}
             reader = None
             git_sha = head_sha(repo_root)
             if args.confirm and not args.dry_run:
-                deploy_paths = set()
+                # The spec files and the packaging library decide what goes into
+                # the zip, so they must be committed too (not just the members).
+                deploy_paths = {"scripts/lambda_packaging.py"}
+                deploy_paths.update(pkg.spec_repo_path(fn) for fn in args.functions)
                 for spec in specs.values():
                     if spec["kind"] == "zip":
                         deploy_paths.update(m["source"] for m in spec["members"])
