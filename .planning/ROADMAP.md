@@ -166,7 +166,46 @@ Plans:
   4. A URL or result pinned to a contract version resolves exactly that version even after a newer version is published as latest, and the analysis-result schema carries dataset, model and preprocessing version stamps.
   5. The app runs end to end against committed contract fixtures with no dependency on ingestion or ML jobs.
 
-**Plans**: TBD
+**Plans**: 12 plans (8 waves)
+
+Plans:
+
+**Wave 1**
+
+- [ ] 02-01-PLAN.md — Contract schemas + v1 sites/manifest/model/preprocessing/stamp bundle (builder, checker)
+- [ ] 02-02-PLAN.md — AWS: $25 budget alarm, private contract bucket, OAC + CloudFront
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 02-03-PLAN.md — Embeddings + honest PCA projection; fixtures v2/pointers, parity corpus, additive/immutability CI checks
+- [ ] 02-05-PLAN.md — Classifier/router result version stamps (code + tests, no deploy)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 02-04-PLAN.md — Publisher (immutable, pointer-last, rollback, budget gate) + live verifier
+- [ ] 02-07-PLAN.md — Web contract module tracer: verified fetch, hooks, legacy adapter, /dashboard repoint, Zod parity
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 02-06-PLAN.md — Publish contract v1 to CloudFront (one-way, approval) and verify live
+- [ ] 02-08-PLAN.md — ?cv= version pinning and latest-flip pickup (unit + browser proof)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 02-09-PLAN.md — Repoint all legacy site consumers, delete hard-coded table, sites baselines
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 02-10-PLAN.md — Result contract stamp display + ESLint/CI fetch fence
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 02-11-PLAN.md — Deploy stamped classifier/router, serial live verification, drift match
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 02-12-PLAN.md — Exit gate: live browser proof against CloudFront, CI green, PHASE-2-EXIT.md
+
 **UI hint**: no
 
 ### Phase 3: Platform Upgrade & Stack Consolidation
