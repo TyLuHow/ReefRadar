@@ -372,3 +372,78 @@ def test_late_failure_never_contradicts_stored_result(classifier_handler):
     )
     assert out["statusCode"] == 200
     assert _get_item(classifier_handler, "analysis-l1", "ERROR") is None
+
+
+# --- WR-04: model load-time validation and refresh ---------------------------
+
+
+def _load_local_model(dirname):
+    base = _REPO_ROOT / dirname
+    config = json.loads((base / "model_config.json").read_text(encoding="utf-8"))
+    with np.load(base / "reef_classifier_weights.npz") as npz:
+        weights = {k: npz[k] for k in npz.files}
+    return weights, config
+
+
+@pytest.mark.parametrize("model_dir", ["models/interim-real-only", "models"])
+def test_validate_model_accepts_published_and_archived_models(classifier_handler, model_dir):
+    # The live interim (3-class) model and the archived v2.0 (4-class) model
+    # must both keep loading.
+    weights, config = _load_local_model(model_dir)
+    classifier_handler.validate_model(weights, config)
+
+
+def test_validate_model_rejects_class_count_mismatch(classifier_handler):
+    weights, config = _load_local_model("models")  # 4 outputs
+    config = dict(config)
+    config["idx_to_label"] = {"0": "degraded", "1": "healthy", "2": "restored_early"}
+    config["num_classes"] = 3
+    with pytest.raises(ValueError):
+        classifier_handler.validate_model(weights, config)
+
+
+def test_validate_model_rejects_missing_label_map(classifier_handler):
+    weights, config = _load_local_model("models")
+    config = {k: v for k, v in config.items() if k != "idx_to_label"}
+    with pytest.raises(ValueError):
+        classifier_handler.validate_model(weights, config)
+
+
+def test_load_rejects_weights_sha_mismatch(classifier_handler):
+    s3 = boto3.client("s3", region_name="us-east-1")
+    s3.put_object(
+        Bucket=EMBEDDINGS_BUCKET,
+        Key="models/model_config.json",
+        Body=json.dumps({
+            "version": "x", "idx_to_label": IDX_TO_LABEL, "num_classes": 3,
+            "weights_sha256": "0" * 64,
+        }),
+    )
+    with pytest.raises(Exception, match="sha256"):
+        classifier_handler.load_classifier_model()
+
+
+def test_warm_container_reloads_when_model_objects_change(classifier_handler):
+    s3 = boto3.client("s3", region_name="us-east-1")
+    _, config1 = classifier_handler.load_classifier_model()
+    assert config1["version"] == "interim-real-only-test"
+
+    s3.put_object(
+        Bucket=EMBEDDINGS_BUCKET,
+        Key="models/model_config.json",
+        Body=json.dumps({"version": "v-next", "idx_to_label": IDX_TO_LABEL, "num_classes": 3}),
+    )
+    # Within the refresh window the cached model is served ...
+    _, cached = classifier_handler.load_classifier_model()
+    assert cached["version"] == "interim-real-only-test"
+    # ... and once it elapses the changed ETag triggers a reload.
+    classifier_handler._model_checked_at = 0.0
+    _, config2 = classifier_handler.load_classifier_model()
+    assert config2["version"] == "v-next"
+
+
+def test_classify_probabilities_sum_to_one(classifier_handler):
+    rng = np.random.RandomState(5)
+    out = classifier_handler.classify_embedding(rng.normal(size=EMBEDDING_DIM))
+    assert sum(out["probabilities"].values()) == pytest.approx(1.0, abs=1e-9)
+    assert set(out["probabilities"]) == set(IDX_TO_LABEL.values())

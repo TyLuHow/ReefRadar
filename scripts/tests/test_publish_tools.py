@@ -205,6 +205,34 @@ def test_archive_aborts_before_overwrite_when_archive_hash_differs(s3, model_set
     assert _get(s3, publish_model.WEIGHTS_KEY) == old_w
 
 
+def test_rollback_restores_archived_model_verified_against_lock(s3, model_setup):
+    argv, (old_cfg, old_w, new_cfg, new_w), _ = model_setup
+    assert publish_model.main(["--confirm", *argv], s3_client=s3) == 0
+    assert _get(s3, publish_model.CONFIG_KEY) == new_cfg
+
+    prefix = "models/archive/2.0-20261001/"
+    assert publish_model.main(["--rollback", prefix, "--dry-run", *argv], s3_client=s3) == 0
+    assert _get(s3, publish_model.CONFIG_KEY) == new_cfg  # dry-run writes nothing
+
+    assert publish_model.main(["--rollback", prefix, "--confirm", *argv], s3_client=s3) == 0
+    assert _get(s3, publish_model.CONFIG_KEY) == old_cfg
+    assert _get(s3, publish_model.WEIGHTS_KEY) == old_w
+
+
+def test_rollback_refuses_archive_that_does_not_match_lock(s3, model_setup, capsys):
+    argv, (old_cfg, old_w, new_cfg, new_w), _ = model_setup
+    assert publish_model.main(["--confirm", *argv], s3_client=s3) == 0
+    s3.put_object(Bucket=EMB_BUCKET, Key="models/archive/2.0-20261001/reef_classifier_weights.npz", Body=b"tampered")
+    assert publish_model.main(["--rollback", "models/archive/2.0-20261001/", "--confirm", *argv], s3_client=s3) == 1
+    assert _get(s3, publish_model.WEIGHTS_KEY) == new_w  # live model untouched
+
+
+def test_rollback_rejects_prefix_outside_archive(s3, model_setup):
+    argv, *_ = model_setup
+    assert publish_model.main(["--rollback", "models/", "--confirm", *argv], s3_client=s3) == 1
+    assert publish_model.main(["--rollback", "models/archive/../x/", "--confirm", *argv], s3_client=s3) == 1
+
+
 # ---------------------------------------------------------------- verify_live_truth
 
 MODEL_CARD = {"model_version": "interim-real-only", "classes": ["degraded", "healthy", "restored_early"]}

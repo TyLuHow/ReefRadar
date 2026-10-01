@@ -19,6 +19,13 @@ models/reef_classifier_weights.npz. This script:
 
   --dry-run   print the plan (read-only S3 GETs only)
   --confirm   perform the archive + publish
+  --rollback <archive-prefix>
+              restore the archived (audited) model from e.g.
+              models/archive/2.0-20261001/ back to models/. The archive copies
+              must hash-equal the lock's recorded hashes before anything is
+              overwritten, and the restored live objects are re-verified.
+              Warm classifier containers pick the change up within
+              MODEL_REFRESH_SECONDS (they re-check the objects' ETags).
 
 Never prints presigned URLs or credentials; boto3 only, no shell.
 
@@ -121,6 +128,21 @@ def publish_artifacts(s3, bucket, artifacts: dict) -> list[dict]:
     return published
 
 
+def rollback_model(s3, bucket, prefix, expected: dict) -> list[dict]:
+    """Restore models/ from an archive prefix. Both archive objects are read and
+    verified against `expected` (the lock's audited hashes) BEFORE the live
+    objects are touched, then the live objects are re-downloaded and verified."""
+    if not prefix.startswith(ARCHIVE_ROOT) or ".." in prefix or not prefix.endswith("/"):
+        raise PublishError(f"--rollback prefix must look like {ARCHIVE_ROOT}<version>-<date>/ (got {prefix!r})")
+    sources = {}
+    for name, key in (("config", CONFIG_KEY), ("weights", WEIGHTS_KEY)):
+        src = f"{prefix}{key.rsplit('/', 1)[-1]}"
+        body = _get_bytes(s3, bucket, src)
+        verify_hash(f"archive object {src}", body, expected[name])
+        sources[name] = body
+    return publish_artifacts(s3, bucket, sources)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("--dry-run", action="store_true")
@@ -130,6 +152,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--region", default="us-east-1")
     p.add_argument("--lock", type=pathlib.Path, default=REPO_ROOT / "docs" / "model" / "deployed-model.lock.json")
     p.add_argument("--source", type=pathlib.Path, default=REPO_ROOT / "models" / "interim-real-only")
+    p.add_argument(
+        "--rollback", metavar="ARCHIVE_PREFIX", default=None,
+        help="Restore the audited model from this archive prefix (e.g. models/archive/2.0-20261001/)",
+    )
     p.add_argument("--date", default=None, help="YYYYMMDD stamp for the archive prefix (default: today, UTC)")
     return p
 
@@ -151,6 +177,21 @@ def main(argv=None, s3_client=None) -> int:
             print("interim model not required by the audit; nothing to publish")
             return 0
         locked = locked_hashes(lock)
+
+        if args.rollback is not None:
+            s3 = s3_client if s3_client is not None else _s3_client(args.profile, args.region)
+            print(f"plan: restore models/ from s3://{args.bucket}/{args.rollback} (verified against the lock)")
+            if not write:
+                for name, key in (("config", CONFIG_KEY), ("weights", WEIGHTS_KEY)):
+                    src = f"{args.rollback}{key.rsplit('/', 1)[-1]}"
+                    verify_hash(f"archive object {src}", _get_bytes(s3, args.bucket, src), locked[name])
+                print("archive verified against the lock")
+                print("[dry-run] no S3 write made" if args.dry_run else "[no --confirm] no S3 write made")
+                return 0
+            published = rollback_model(s3, args.bucket, args.rollback, locked)
+            print(json.dumps({"action": "rollback_model", "bucket": args.bucket, "restored": published}))
+            return 0
+
         artifacts = local_artifacts(args.source)
         interim = {name: sha256_hex(data) for name, data in artifacts.items()}
 

@@ -5,6 +5,8 @@ Uses the SurfPerch inference Lambda (container-based) for real ML embeddings.
 NEVER falls back to synthetic embeddings - fails with clear error instead.
 """
 
+import hashlib
+import io
 import json
 import boto3
 import os
@@ -39,9 +41,18 @@ INFERENCE_FUNCTION = os.environ.get('INFERENCE_FUNCTION', 'reefradar-2477-infere
 
 CATEGORIES = ['healthy', 'degraded', 'restored_early', 'restored_mid']
 
+MODEL_WEIGHTS_KEY = 'models/reef_classifier_weights.npz'
+MODEL_CONFIG_KEY = 'models/model_config.json'
+# How often a warm container re-checks the S3 ETags of the model objects, so a
+# model publish or rollback is picked up without waiting for a recycle.
+MODEL_REFRESH_SECONDS = 60
+REQUIRED_WEIGHT_KEYS = ('w1', 'b1', 'w2', 'b2', 'w3', 'b3')
+
 # Caches for warm Lambda invocations
 _model_weights = None
 _model_config = None
+_model_etags = None
+_model_checked_at = 0.0
 _reference_embeddings = None
 _label_provenance = None
 
@@ -100,13 +111,15 @@ def handler(event, context):
         embeddings = np.array(embeddings)
         mean_embedding = embeddings.mean(axis=0)
 
-        # Load reference embeddings and classify
-        classification = classify_embedding(mean_embedding)
+        # Load the model ONCE per invocation so the probabilities and the
+        # training-site list always come from the same model version.
+        model = load_classifier_model()
+        classification = classify_embedding(mean_embedding, model=model)
 
         # Apply geographic region detection (D-12: no confidence/probability
         # scaling -- region is reported honestly, separately, from the
         # classifier's actual (audited) training sites).
-        _, model_config = load_classifier_model()
+        _, model_config = model
         training_sites = model_config.get('training_sites') or DEFAULT_TRAINING_SITES
         region_result = detect_region(latitude, longitude, training_sites=training_sites)
         classification = adjust_classification(classification, region_result)
@@ -445,43 +458,96 @@ def get_error_suggestion(error_type):
     return suggestions.get(error_type, 'An error occurred. Please retry later.')
 
 
-def load_classifier_model():
-    """Load trained classifier weights from S3.
+def validate_model(weights, config):
+    """Raise ValueError unless weights and config describe one consistent model.
 
-    Caches model in memory for warm Lambda invocations.
-    Also caches to /tmp for cold starts within same container.
+    Guards the core "probabilities sum to 100%" truth: with a 4-class softmax
+    and a 3-class label map, classify_embedding would emit a subset of the
+    distribution (sum < 1). Accepts any class count K as long as the weight
+    shapes, the label map and (when declared) `num_classes` all agree, so both
+    the interim 3-class and the archived 4-class models load.
     """
-    global _model_weights, _model_config
+    missing = [k for k in REQUIRED_WEIGHT_KEYS if k not in weights]
+    if missing:
+        raise ValueError(f"model weights missing arrays: {missing}")
 
-    # Return cached model if available
+    idx_to_label = config.get('idx_to_label')
+    if not isinstance(idx_to_label, dict) or not idx_to_label:
+        raise ValueError("model config has no idx_to_label mapping")
+    try:
+        indices = sorted(int(k) for k in idx_to_label)
+    except (TypeError, ValueError):
+        raise ValueError("model config idx_to_label keys must be integer strings")
+
+    num_out = int(weights['w3'].shape[1])
+    if indices != list(range(num_out)):
+        raise ValueError(
+            f"model config idx_to_label covers classes {indices} but weights have {num_out} outputs"
+        )
+    if int(weights['b3'].shape[0]) != num_out:
+        raise ValueError("model weights b3/w3 output sizes disagree")
+    declared = config.get('num_classes')
+    if declared is not None and int(declared) != num_out:
+        raise ValueError(f"model config num_classes={declared} but weights have {num_out} outputs")
+    input_dim = config.get('input_dim')
+    if input_dim is not None and int(input_dim) != int(weights['w1'].shape[0]):
+        raise ValueError("model config input_dim does not match weights")
+    if len(set(idx_to_label.values())) != len(idx_to_label):
+        raise ValueError("model config idx_to_label has duplicate labels")
+
+
+def _head_etags():
+    """(weights_etag, config_etag) from S3, or None if unavailable."""
+    try:
+        w = s3.head_object(Bucket=EMBEDDINGS_BUCKET, Key=MODEL_WEIGHTS_KEY)['ETag']
+        c = s3.head_object(Bucket=EMBEDDINGS_BUCKET, Key=MODEL_CONFIG_KEY)['ETag']
+        return (w, c)
+    except Exception:
+        return None
+
+
+def load_classifier_model():
+    """Load trained classifier weights from S3 -> (weights, config).
+
+    Validated at load time (see validate_model) and, when the config declares a
+    `weights_sha256`, checked against the downloaded weights so a half-published
+    model (new weights with old config or vice versa) is rejected rather than
+    served. Cached in memory for warm invocations, but the S3 ETags of both
+    objects are re-checked every MODEL_REFRESH_SECONDS so a publish or rollback
+    is picked up by warm containers. Nothing is cached on /tmp.
+    """
+    global _model_weights, _model_config, _model_etags, _model_checked_at
+
+    now = time.time()
     if _model_weights is not None and _model_config is not None:
-        return _model_weights, _model_config
+        if now - _model_checked_at < MODEL_REFRESH_SECONDS:
+            return _model_weights, _model_config
+        _model_checked_at = now
+        etags = _head_etags()
+        if etags is None or etags == _model_etags:
+            return _model_weights, _model_config
+        print("Model objects changed in S3; reloading")
 
-    weights_cache = '/tmp/reef_classifier_weights.npz'
-    config_cache = '/tmp/model_config.json'
-
-    # Try to load from /tmp cache
-    if os.path.exists(weights_cache) and os.path.exists(config_cache):
-        print("Loading model from /tmp cache")
-        _model_weights = dict(np.load(weights_cache))
-        with open(config_cache, 'r') as f:
-            _model_config = json.load(f)
-        return _model_weights, _model_config
-
-    # Download from S3
     print("Downloading model from S3")
     try:
-        # Download weights
-        s3.download_file(EMBEDDINGS_BUCKET, 'models/reef_classifier_weights.npz', weights_cache)
-        _model_weights = dict(np.load(weights_cache))
+        etags_before = _head_etags()
+        weights_bytes = s3.get_object(Bucket=EMBEDDINGS_BUCKET, Key=MODEL_WEIGHTS_KEY)['Body'].read()
+        config = json.loads(
+            s3.get_object(Bucket=EMBEDDINGS_BUCKET, Key=MODEL_CONFIG_KEY)['Body'].read().decode()
+        )
 
-        # Download config
-        response = s3.get_object(Bucket=EMBEDDINGS_BUCKET, Key='models/model_config.json')
-        _model_config = json.loads(response['Body'].read().decode())
-        with open(config_cache, 'w') as f:
-            json.dump(_model_config, f)
+        expected_sha = config.get('weights_sha256')
+        if expected_sha and hashlib.sha256(weights_bytes).hexdigest() != expected_sha:
+            raise ValueError("weights sha256 does not match model config (half-published model?)")
 
-        print(f"Model loaded: version={_model_config.get('version')}, accuracy={_model_config.get('test_accuracy')}")
+        with np.load(io.BytesIO(weights_bytes)) as npz:
+            weights = {k: npz[k] for k in npz.files}
+        validate_model(weights, config)
+
+        _model_weights, _model_config = weights, config
+        _model_etags = etags_before
+        _model_checked_at = now
+        print(f"Model loaded: version={config.get('version')}, accuracy={config.get('test_accuracy')}")
         return _model_weights, _model_config
 
     except Exception as e:
@@ -489,14 +555,15 @@ def load_classifier_model():
         raise Exception(f"Trained classifier model not available: {e}")
 
 
-def classify_embedding(embedding):
+def classify_embedding(embedding, model=None):
     """
     Classify embedding using trained MLP classifier.
 
     Uses pure NumPy inference with pre-trained weights.
-    Returns label, confidence, and probability distribution.
+    Returns label, confidence, and probability distribution. `model` may be a
+    (weights, config) tuple already loaded for this invocation.
     """
-    weights, config = load_classifier_model()
+    weights, config = model if model is not None else load_classifier_model()
 
     x = np.array(embedding, dtype=np.float32)
 
@@ -505,22 +572,27 @@ def classify_embedding(embedding):
     x = np.maximum(0, x @ weights['w2'] + weights['b2'])  # ReLU
     logits = x @ weights['w3'] + weights['b3']
 
-    # Softmax for probabilities
+    # Softmax for probabilities (float64 so the distribution sums to 1)
+    logits = logits.astype(np.float64)
     exp_logits = np.exp(logits - np.max(logits))
     probs = exp_logits / exp_logits.sum()
 
-    # Get label mapping from config
-    idx_to_label = config.get('idx_to_label', {'0': 'degraded', '1': 'healthy', '2': 'restored_early'})
+    # Label mapping from config (validated: covers every output exactly once)
+    idx_to_label = config['idx_to_label']
 
     # Find predicted class
     pred_idx = int(np.argmax(probs))
-    label = idx_to_label.get(str(pred_idx), 'unknown')
+    label = idx_to_label[str(pred_idx)]
     confidence = float(probs[pred_idx])
 
     # Build probability dict
     probabilities = {}
     for idx_str, lbl in idx_to_label.items():
         probabilities[lbl] = float(probs[int(idx_str)])
+
+    total = sum(probabilities.values())
+    if abs(total - 1.0) > 1e-6:
+        raise ValueError(f"classifier probabilities sum to {total}, expected 1")
 
     return {
         'label': label,
