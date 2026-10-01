@@ -69,17 +69,32 @@ export interface AnalyzeResponse {
   status: string;
 }
 
+// D-12 (TRUTH-06): region status is a separate, honest fact about where the
+// recording is and what the classifier was actually trained on -- it never
+// implies a probability was scaled. The new fields come from the 01-11
+// classifier contract; the two `_distribution`/`_adjusted` fields are kept
+// optional so an older API response (pre-01-11/14 deploy) still renders.
 export interface RegionInfo {
   detected: string;
   name: string;
-  in_training_distribution: boolean;
-  confidence_adjusted: boolean;
+  scope?: 'specific' | 'broad' | null;
+  coordinates_provided?: boolean;
+  in_training_region?: boolean;
+  training_sites_in_region?: number;
+  training_countries?: string[];
+  // legacy fields, kept for backward compatibility with older API responses
+  in_training_distribution?: boolean;
+  confidence_adjusted?: boolean;
 }
 
 export interface Classification {
   label: ReefStatus;
   confidence: number;
-  probabilities: Record<ReefStatus, number>;
+  // Partial: the deployed model may not have every ReefStatus class (an
+  // interim 3-class model has no restored_mid key at all) -- see
+  // src/lib/probabilities.ts.
+  probabilities: Partial<Record<ReefStatus, number>>;
+  model_version?: string;
   region?: RegionInfo;
 }
 
@@ -88,6 +103,10 @@ export interface SimilarSite {
   country: string;
   status: ReefStatus;
   similarity: number;
+  // Dataset label provenance (D-17/TRUTH-09) -- present when the backend
+  // overlays apply_label_provenance(); absent on older API responses.
+  label_source?: string;
+  label_original?: string;
 }
 
 export interface VisualizationCoordinates {

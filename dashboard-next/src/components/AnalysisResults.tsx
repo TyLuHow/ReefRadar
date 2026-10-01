@@ -4,7 +4,8 @@ import dynamic from 'next/dynamic';
 import { AnalysisResult, STATUS_COLORS, ReefStatus } from '@/types';
 import { formatStatus, formatPercent, cn, getStatusBgColor } from '@/lib/utils';
 import { ProbabilityBars } from '@/components/charts';
-import { Check, TrendingUp, MapPin, Map, AlertTriangle, Globe } from 'lucide-react';
+import { toIntegerPercentages } from '@/lib/probabilities';
+import { Check, TrendingUp, MapPin, Map } from 'lucide-react';
 
 // Dynamic import for MiniMap to avoid SSR issues with Leaflet
 const MiniMap = dynamic(
@@ -41,6 +42,8 @@ export function AnalysisResults({ result }: AnalysisResultsProps) {
   }
 
   const statusColor = STATUS_COLORS[classification.label] || '#666';
+  const integerPercentages = toIntegerPercentages(classification.probabilities);
+  const topPercentage = integerPercentages[classification.label] ?? 0;
 
   return (
     <div className="space-y-6">
@@ -53,53 +56,28 @@ export function AnalysisResults({ result }: AnalysisResultsProps) {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-white/80 text-sm font-medium uppercase tracking-wide">
-                Health Classification
+                Result
               </p>
               <h2 className="text-3xl font-bold mt-1">
-                {formatStatus(classification.label)}
+                Most similar to {formatStatus(classification.label)} reference recordings
               </h2>
+              {classification.model_version && (
+                <p className="text-white/70 text-xs mt-1">
+                  Model: {classification.model_version}
+                </p>
+              )}
             </div>
             <div className="text-right">
-              <p className="text-white/80 text-sm">Confidence</p>
+              <p className="text-white/80 text-sm">Model probability</p>
               <p className="text-4xl font-bold">
-                {formatPercent(classification.confidence)}
+                {topPercentage}%
               </p>
             </div>
           </div>
         </div>
 
-        {/* Region Detection Warning */}
-        {classification.region && !classification.region.in_training_distribution && (
-          <div
-            className="mx-6 mt-4 p-3 rounded-lg flex items-start space-x-2"
-            style={{ background: 'rgba(184, 134, 11, 0.1)', border: '1px solid rgba(184, 134, 11, 0.3)' }}
-          >
-            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#b8860b' }} />
-            <div>
-              <p className="text-sm font-medium" style={{ color: '#b8860b' }}>Geographic Limitation</p>
-              <p className="text-xs mt-1" style={{ color: 'rgba(184, 134, 11, 0.85)' }}>
-                Recording is from {classification.region.name}, which is outside the model{"'"}s
-                training distribution. Confidence has been reduced.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Region Info */}
-        {classification.region && (
-          <div className="mx-6 mt-3 flex items-center text-sm" style={{ color: 'var(--text-muted)' }}>
-            <Globe className="w-4 h-4 mr-1" />
-            <span>Region: {classification.region.name}</span>
-            {classification.region.confidence_adjusted && (
-              <span
-                className="ml-2 text-xs px-2 py-0.5 rounded-full"
-                style={{ background: 'rgba(184, 134, 11, 0.15)', color: '#b8860b' }}
-              >
-                Confidence adjusted
-              </span>
-            )}
-          </div>
-        )}
+        {/* Region status is shown as a separate note by RegionWarning
+            (rendered at the page level) -- not duplicated here. */}
 
         {/* Animated Probability Distribution */}
         <div className="p-6">

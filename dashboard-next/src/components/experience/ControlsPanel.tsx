@@ -8,6 +8,7 @@ import type { BandId } from '@/components/spectrogram/FrequencyBands';
 import type { AnalysisResult } from '@/types';
 import { formatStatus } from '@/lib/utils';
 import { STATUS_COLORS } from '@/types';
+import { toIntegerPercentages } from '@/lib/probabilities';
 
 interface AudioPlaybackControls {
   play: () => void;
@@ -41,7 +42,8 @@ export function ControlsPanel({
   if (!classification) return null;
 
   const statusColor = STATUS_COLORS[classification.label] || '#a8a29e';
-  const confidence = (classification.confidence * 100).toFixed(1);
+  const integerPercentages = toIntegerPercentages(classification.probabilities);
+  const topPercentage = integerPercentages[classification.label] ?? 0;
 
   return (
     <GlassPanel className="p-6 space-y-6">
@@ -52,10 +54,10 @@ export function ControlsPanel({
           className="text-3xl font-light"
           style={{ color: statusColor }}
         >
-          {formatStatus(classification.label)}
+          Most similar to {formatStatus(classification.label)} reference recordings
         </h2>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          {confidence}% confidence
+          {topPercentage}% model probability
         </p>
       </div>
 

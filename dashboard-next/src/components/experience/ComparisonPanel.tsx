@@ -5,12 +5,18 @@ import { GlassPanel, GlassButton } from '@/components/ui/glass';
 import { STATUS_COLORS } from '@/types';
 import type { AnalysisResult, ReefStatus } from '@/types';
 import { formatStatus } from '@/lib/utils';
+import { toIntegerPercentages, presentClasses } from '@/lib/probabilities';
 
 interface ComparisonPanelProps {
   analysisData: AnalysisResult;
 }
 
-const CATEGORY_ORDER: ReefStatus[] = ['healthy', 'degraded', 'restored_early', 'restored_mid'];
+const CANONICAL_STATUS_ORDER: readonly ReefStatus[] = [
+  'healthy',
+  'degraded',
+  'restored_early',
+  'restored_mid',
+];
 
 const CATEGORY_LABELS: Record<ReefStatus, string> = {
   healthy: 'Healthy',
@@ -20,20 +26,39 @@ const CATEGORY_LABELS: Record<ReefStatus, string> = {
   unknown: 'Unknown',
 };
 
+function labelSourceName(labelSource: string): string {
+  switch (labelSource) {
+    case 'marrs':
+      return 'MARRS';
+    case 'coralsoundexplorer':
+      return 'CoralSoundExplorer';
+    default:
+      return labelSource;
+  }
+}
+
 export function ComparisonPanel({ analysisData }: ComparisonPanelProps) {
   const classification = analysisData.classification;
   const similarSites = analysisData.similar_sites;
   const region = classification?.region;
+  const inTrainingRegion = region
+    ? region.in_training_region ?? region.in_training_distribution ?? false
+    : false;
+
+  const classes = presentClasses(classification?.probabilities, CANONICAL_STATUS_ORDER);
+  const integerPercentages: Partial<Record<ReefStatus, number>> = classification?.probabilities
+    ? toIntegerPercentages(classification.probabilities)
+    : {};
 
   return (
     <GlassPanel className="p-6 space-y-6">
-      {/* Similarity bars */}
+      {/* Class probabilities */}
       {classification?.probabilities && (
         <div className="space-y-3">
-          <p className="mono">Health Similarity</p>
-          {CATEGORY_ORDER.map((status) => {
+          <p className="mono">Class probabilities (model output)</p>
+          {classes.map((status) => {
             const value = classification.probabilities[status] ?? 0;
-            const pct = (value * 100).toFixed(1);
+            const pct = integerPercentages[status] ?? 0;
             const color = STATUS_COLORS[status];
             return (
               <div key={status} className="space-y-1">
@@ -66,19 +91,17 @@ export function ComparisonPanel({ analysisData }: ComparisonPanelProps) {
           <div
             className="text-sm rounded-lg p-3"
             style={{
-              background: region.in_training_distribution
+              background: inTrainingRegion
                 ? 'rgba(205, 133, 63, 0.1)'
                 : 'rgba(184, 134, 11, 0.1)',
-              borderLeft: `3px solid ${
-                region.in_training_distribution ? '#cd853f' : '#b8860b'
-              }`,
+              borderLeft: `3px solid ${inTrainingRegion ? '#cd853f' : '#b8860b'}`,
             }}
           >
             <p className="font-medium text-bone">{region.name}</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-              {region.in_training_distribution
-                ? 'Within training distribution -- full confidence'
-                : 'Outside training distribution -- confidence adjusted'}
+              {inTrainingRegion
+                ? 'The classifier has real training sites in this region'
+                : 'The classifier has no training sites in this region -- probabilities are unmodified'}
             </p>
           </div>
         </div>
@@ -104,6 +127,11 @@ export function ComparisonPanel({ analysisData }: ComparisonPanelProps) {
                 <span className="text-xs" style={{ color: 'var(--text-dim)' }}>
                   {site.country}
                 </span>
+                {site.label_source && site.label_original && (
+                  <span className="text-xs" style={{ color: 'var(--text-dim)' }}>
+                    label: {site.label_original} ({labelSourceName(site.label_source)})
+                  </span>
+                )}
               </div>
               <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
                 {(site.similarity * 100).toFixed(0)}%
