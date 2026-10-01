@@ -270,6 +270,14 @@ def test_check_analysis_flags_each_violation():
     assert verify_live_truth.check_analysis(_good_analysis(True), MODEL_CARD, False)  # coords reported when none sent
 
 
+def test_check_analysis_probability_sum_tolerance_absorbs_six_decimal_rounding():
+    body = _good_analysis()
+    body["classification"]["probabilities"] = {"degraded": 0.333333, "healthy": 0.333333, "restored_early": 0.333333}
+    assert verify_live_truth.check_analysis(body, MODEL_CARD, expect_coordinates=True) == []
+    body["classification"]["probabilities"] = {"degraded": 0.3, "healthy": 0.3, "restored_early": 0.3}
+    assert any("sum to" in f for f in verify_live_truth.check_analysis(body, MODEL_CARD, expect_coordinates=True))
+
+
 def test_check_sites():
     sites = [{"site_id": f"ind_{i}", "label_source": "marrs", "status": "healthy"} for i in range(52)]
     sites += [{"site_id": "borabora_tourist", "label_source": "x", "status": "unknown"},

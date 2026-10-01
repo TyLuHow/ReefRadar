@@ -39,7 +39,13 @@ DEFAULT_API = "https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod"
 EXPECTED_SITE_COUNT = 54
 UNKNOWN_STATUS_PREFIXES = ("borabora_", "irma_")
 ANALYSIS_SITE = "ind_H1"
-PROBABILITY_TOLERANCE = 1e-6
+# The classifier stores probabilities rounded to 9 decimals (sum error ~1e-9),
+# but analyses stored by an older classifier build were rounded to 6 decimals,
+# where the summed rounding error of 3-4 classes can reach ~2e-6 (so a 1e-6
+# tolerance flakes on a correct deployment). 1e-5 absorbs that while still
+# catching any real defect (a missing class or a scaled distribution is off by
+# orders of magnitude more than this).
+PROBABILITY_TOLERANCE = 1e-5
 
 
 # --------------------------------------------------------------------------

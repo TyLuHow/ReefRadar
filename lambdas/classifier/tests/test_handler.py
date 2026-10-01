@@ -556,3 +556,23 @@ def test_read_timeout_is_classified_as_timeout(classifier_handler, monkeypatch):
     exc = ReadTimeoutError(endpoint_url="https://lambda.example")
     err, _, _ = _run_batch(classifier_handler, exc, monkeypatch)
     assert err.error_type == "TIMEOUT"
+
+
+# --- WR-08: stored probabilities keep the "sums to 1" property ----------------
+
+
+def test_stored_probabilities_sum_to_one_within_1e8(classifier_handler):
+    event = {
+        "upload_id": "upload-p1",
+        "analysis_id": "analysis-p1",
+        "segments_key": "segments/analysis-1.json",
+        "num_segments": 2,
+    }
+    assert classifier_handler.handler(event, context=None)["statusCode"] == 200
+    item = _get_result_item(classifier_handler, "analysis-p1")
+    probs = [_to_float(v) for v in item["classification"]["probabilities"].values()]
+    assert sum(probs) == pytest.approx(1.0, abs=1e-8)
+
+
+def test_convert_floats_keeps_nine_decimals(classifier_handler):
+    assert classifier_handler.convert_floats(0.123456789123) == Decimal("0.123456789")

@@ -25,10 +25,16 @@ lambda_client = boto3.client('lambda')
 dynamodb = boto3.resource('dynamodb')
 
 
+# Stored floats are rounded to this many decimals. 9 (not 6) so the stored class
+# probabilities still sum to 1 to within ~1e-8: rounding 3-4 values to 6 decimals
+# let the sum drift by up to ~2e-6 (REVIEW WR-08).
+STORED_FLOAT_DECIMALS = 9
+
+
 def convert_floats(obj):
     """Convert floats to Decimal for DynamoDB compatibility."""
     if isinstance(obj, float):
-        return Decimal(str(round(obj, 6)))
+        return Decimal(str(round(obj, STORED_FLOAT_DECIMALS)))
     elif isinstance(obj, dict):
         return {k: convert_floats(v) for k, v in obj.items()}
     elif isinstance(obj, list):
