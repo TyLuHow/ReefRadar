@@ -14,6 +14,7 @@ import time
 from datetime import datetime
 from decimal import Decimal
 from region_detection import detect_region, adjust_classification, DEFAULT_TRAINING_SITES
+from site_provenance import load_provenance, apply_label_provenance
 
 s3 = boto3.client('s3')
 lambda_client = boto3.client('lambda')
@@ -42,6 +43,7 @@ CATEGORIES = ['healthy', 'degraded', 'restored_early', 'restored_mid']
 _model_weights = None
 _model_config = None
 _reference_embeddings = None
+_label_provenance = None
 
 # Retry configuration
 MAX_RETRIES = 3
@@ -100,7 +102,6 @@ def handler(event, context):
         classification = adjust_classification(classification, region_result)
 
         similar_sites = find_similar_sites(mean_embedding)
-        viz_coords = generate_visualization(mean_embedding)
 
         # Store results - synthetic is ALWAYS false now
         result_item = {
@@ -111,7 +112,6 @@ def handler(event, context):
             'status': 'complete',
             'classification': classification,
             'similar_sites': similar_sites,
-            'visualization': viz_coords,
             'embedding_summary': {
                 'dimension': int(len(mean_embedding)),
                 'num_segments': num_segments,
@@ -509,13 +509,35 @@ def load_reference_embeddings():
         return []
 
 
+def get_label_provenance():
+    """Load and cache data/site-label-provenance.json (or bundled copy).
+
+    D-17: this is the single place that decides which dataset assigned a
+    reference site's label and what that label actually means, so the
+    classifier can never invent a health status for a non-MARRS site.
+    """
+    global _label_provenance
+    if _label_provenance is None:
+        _label_provenance = load_provenance()
+    return _label_provenance
+
+
 def find_similar_sites(embedding, top_k=3):
-    """Find most similar reference sites using cosine similarity."""
+    """Find most similar reference sites using cosine similarity.
+
+    Each result carries its label provenance (D-17): `label_source` names
+    the dataset that assigned the status, and `label_original` is that
+    dataset's own term for it. Non-MARRS sites (e.g. CoralSoundExplorer's
+    disturbance-context recordings) never carry an invented health label
+    -- their `status` is whatever apply_label_provenance resolves to
+    (typically "unknown"), not a value this function makes up.
+    """
     reference_data = load_reference_embeddings()
 
     if not reference_data:
         raise Exception("No reference embeddings available for similarity comparison")
 
+    prov = get_label_provenance()
     similarities = []
     status_map = {'H': 'healthy', 'D': 'degraded', 'R': 'restored_early', 'N': 'restored_early'}
 
@@ -525,11 +547,14 @@ def find_similar_sites(embedding, top_k=3):
             sim = cosine_similarity(embedding, ref_embedding)
             # Use 'status' field directly if available (new format), else map from site_type
             status = ref.get('status') or status_map.get(ref.get('site_type', 'U'), 'unknown')
+            labeled = apply_label_provenance({'site_id': ref.get('site_id', 'unknown'), 'status': status}, prov)
             similarities.append({
-                'site_id': ref.get('site_id', 'unknown'),
+                'site_id': labeled['site_id'],
                 'similarity': float(sim),
                 'country': ref.get('country', 'Unknown'),
-                'status': status
+                'status': labeled['status'],
+                'label_source': labeled['label_source'],
+                'label_original': labeled['label_original'],
             })
 
     # Sort by similarity and return top_k
@@ -547,35 +572,3 @@ def cosine_similarity(a, b):
     if norm_a == 0 or norm_b == 0:
         return 0.0
     return dot_product / (norm_a * norm_b)
-
-
-def generate_visualization(embedding):
-    """Generate 2D coordinates for visualization using simple projection."""
-    # Simple projection: split embedding and take means for x/y
-    mid = len(embedding) // 2
-    x = float(np.mean(embedding[:mid]))
-    y = float(np.mean(embedding[mid:]))
-
-    # Load reference sites for context
-    reference_data = load_reference_embeddings()
-    ref_points = []
-    status_map = {'H': 'healthy', 'D': 'degraded', 'R': 'restored_early', 'N': 'restored_early'}
-
-    for ref in reference_data[:10]:  # Limit to 10 reference points
-        ref_emb = ref.get('mean_embedding', [])
-        if ref_emb:
-            mid = len(ref_emb) // 2
-            # Use 'status' field directly if available (new format), else map from site_type
-            status = ref.get('status') or status_map.get(ref.get('site_type', 'U'), 'unknown')
-            ref_points.append({
-                'site_id': ref.get('site_id', 'unknown'),
-                'x': float(np.mean(ref_emb[:mid])),
-                'y': float(np.mean(ref_emb[mid:])),
-                'status': status
-            })
-
-    return {
-        'type': 'projection_2d',
-        'coordinates': {'x': x, 'y': y},
-        'reference_sites': ref_points
-    }

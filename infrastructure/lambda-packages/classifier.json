@@ -3,6 +3,8 @@
   "kind": "zip",
   "members": [
     {"source": "lambdas/classifier/handler.py", "archive_path": "handler.py"},
-    {"source": "lambdas/classifier/region_detection.py", "archive_path": "region_detection.py"}
+    {"source": "lambdas/classifier/region_detection.py", "archive_path": "region_detection.py"},
+    {"source": "lambdas/shared/site_provenance.py", "archive_path": "site_provenance.py"},
+    {"source": "data/site-label-provenance.json", "archive_path": "site_label_provenance.json"}
   ]
 }

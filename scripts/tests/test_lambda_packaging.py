@@ -163,7 +163,14 @@ def test_load_spec_loads_real_router_spec():
 def test_load_spec_loads_real_classifier_spec_with_region_detection():
     spec = pkg.load_spec("classifier")
     archive_paths = {m["archive_path"] for m in spec["members"]}
-    assert archive_paths == {"handler.py", "region_detection.py"}
+    # Plan 01-11 (D-17) adds the shared label-provenance members the
+    # classifier handler now imports alongside region_detection.py.
+    assert archive_paths == {
+        "handler.py",
+        "region_detection.py",
+        "site_provenance.py",
+        "site_label_provenance.json",
+    }
 
 
 def test_load_spec_loads_real_inference_container_spec():
