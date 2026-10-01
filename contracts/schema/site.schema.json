@@ -53,6 +53,60 @@
           "doi_note"
         ]
       }
+    },
+    {
+      "description": "An acoustic reference site has an embedding row and a projection point.",
+      "if": {
+        "properties": {
+          "reference_role": {
+            "const": "acoustic_reference"
+          }
+        },
+        "required": [
+          "reference_role"
+        ]
+      },
+      "then": {
+        "properties": {
+          "embedding_row": {
+            "type": "integer"
+          },
+          "projection": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "embedding_row",
+          "projection"
+        ]
+      }
+    },
+    {
+      "description": "A location-only site has no embedding, so both fields are null.",
+      "if": {
+        "properties": {
+          "reference_role": {
+            "const": "location_only"
+          }
+        },
+        "required": [
+          "reference_role"
+        ]
+      },
+      "then": {
+        "properties": {
+          "embedding_row": {
+            "type": "null"
+          },
+          "projection": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "embedding_row",
+          "projection"
+        ]
+      }
     }
   ],
   "description": "One reference site in the ReefRadar data contract, with the provenance of its location, dataset, licence and label. Additive-only: new optional properties may appear in later contract versions.",
@@ -83,6 +137,14 @@
     "doi_note": {
       "type": [
         "string",
+        "null"
+      ]
+    },
+    "embedding_row": {
+      "description": "Row of this site in v<N>/embeddings.f32 (index into the manifest's row_site_ids); null for a location-only site.",
+      "minimum": 0,
+      "type": [
+        "integer",
         "null"
       ]
     },
@@ -143,6 +205,25 @@
         "null"
       ]
     },
+    "projection": {
+      "description": "This site's coordinates on the published 2-D PCA plane (projection.json); null for a location-only site. The plane shows only part of the variance; plane distances are not embedding distances.",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "type": [
+        "object",
+        "null"
+      ]
+    },
     "reference_role": {
       "enum": [
         "acoustic_reference",
@@ -199,7 +280,9 @@
     "status_basis",
     "period",
     "label_note",
-    "synthetic"
+    "synthetic",
+    "embedding_row",
+    "projection"
   ],
   "title": "Site",
   "type": "object"

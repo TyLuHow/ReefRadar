@@ -59,6 +59,64 @@
       "pattern": "^(contract|v[0-9]+)/(?!.*\\.\\.)[A-Za-z0-9_./-]+$",
       "type": "string"
     },
+    "embeddings_artifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifact"
+        }
+      ],
+      "description": "Row-major little-endian float32 reference embeddings; row i belongs to row_site_ids[i].",
+      "properties": {
+        "count": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "dim": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "dtype": {
+          "const": "float32-le"
+        },
+        "row_site_ids": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "dtype",
+        "dim",
+        "count",
+        "row_site_ids"
+      ]
+    },
+    "projection_artifact": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/artifact"
+        }
+      ],
+      "description": "The 2-D PCA projection of the reference embeddings.",
+      "properties": {
+        "explained_variance_ratio": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "method": {
+          "const": "pca"
+        }
+      },
+      "required": [
+        "method",
+        "explained_variance_ratio"
+      ]
+    },
     "version_string": {
       "pattern": "^[a-z0-9][a-z0-9.+-]*$",
       "type": "string"
@@ -82,11 +140,17 @@
         "detections": {
           "$ref": "#/$defs/artifact_or_absent"
         },
+        "embeddings": {
+          "$ref": "#/$defs/embeddings_artifact"
+        },
         "model_version": {
           "$ref": "#/$defs/artifact_or_absent"
         },
         "preprocessing_spec": {
           "$ref": "#/$defs/artifact_or_absent"
+        },
+        "projection": {
+          "$ref": "#/$defs/projection_artifact"
         },
         "schemas": {
           "additionalProperties": {
@@ -109,7 +173,9 @@
         "schemas",
         "aggregates_diel",
         "aggregates_effort",
-        "detections"
+        "detections",
+        "embeddings",
+        "projection"
       ],
       "type": "object"
     },

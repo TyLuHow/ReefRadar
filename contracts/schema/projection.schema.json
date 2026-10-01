@@ -1,0 +1,103 @@
+{
+  "$id": "urn:reefradar:contract:projection",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The published 2-D PCA of the reference embeddings: enough (mean and both components) for a later phase to project an upload onto the same plane. Array lengths are verified by scripts/check_contract.py, not by this schema. The plane shows only part of the variance and plane distances are not embedding distances.",
+  "properties": {
+    "components": {
+      "items": {
+        "items": {
+          "type": "number"
+        },
+        "type": "array"
+      },
+      "type": "array"
+    },
+    "coordinates": {
+      "items": {
+        "properties": {
+          "site_id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "site_id",
+          "x",
+          "y"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "cumulative_explained_variance_ratio": {
+      "maximum": 1,
+      "minimum": 0,
+      "type": "number"
+    },
+    "explained_variance": {
+      "items": {
+        "type": "number"
+      },
+      "type": "array"
+    },
+    "explained_variance_ratio": {
+      "items": {
+        "type": "number"
+      },
+      "type": "array"
+    },
+    "input_uri": {
+      "pattern": "^v[0-9]+/[A-Za-z0-9_./-]+$",
+      "type": "string"
+    },
+    "mean": {
+      "items": {
+        "type": "number"
+      },
+      "type": "array"
+    },
+    "method": {
+      "const": "pca"
+    },
+    "note": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "sign_rule": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "site_ids": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "method",
+    "input_uri",
+    "site_ids",
+    "mean",
+    "components",
+    "explained_variance",
+    "explained_variance_ratio",
+    "cumulative_explained_variance_ratio",
+    "coordinates",
+    "sign_rule",
+    "note"
+  ],
+  "title": "Projection",
+  "type": "object"
+}

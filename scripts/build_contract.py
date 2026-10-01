@@ -23,8 +23,19 @@ Provenance rules (never relaxed):
   - A value the source does not have is published as null together with the
     source's stated reason; nothing is invented.
 
+Reference embeddings and projection:
+  - v<N>/embeddings.f32 is taken once from reference/metadata_v6.json (key "embedding"
+    only; its statuses, DOIs and citations are stale and ignored) after its sha256 matched
+    the pinned value. Without --reference-metadata the committed file is reused, so CI
+    rebuilds need no AWS access.
+  - v<N>/projection.json is a mean-centred 2-D PCA of those rows. It is only recomputed
+    with --recompute-projection, because numpy builds differ in the last bits and rounding
+    could otherwise flip a digit and break the byte-level --check; check_contract.py
+    verifies the committed projection numerically instead.
+
 Usage:
     py -3.12 scripts/build_contract.py --version 1 --frozen-at 2026-10-01T22:00:00Z
+    py -3.12 scripts/build_contract.py --version 1 --reference-metadata <local copy of metadata_v6.json> --recompute-projection
     py -3.12 scripts/build_contract.py --version 1            # rebuild, reuses the committed frozen_at
     py -3.12 scripts/build_contract.py --version 1 --check    # exit 1 if any committed file differs
     py -3.12 scripts/build_contract.py --freeze-legacy-coordinates   # one-time
@@ -39,6 +50,8 @@ import pathlib
 import re
 import sys
 from typing import Optional
+
+import numpy as np
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "lambdas" / "shared"))
@@ -74,10 +87,12 @@ SCHEMA_STEM_TO_KEY = {
     "contract-pointer": "contract_pointer",
     "model-version": "model_version",
     "preprocessing-spec": "preprocessing_spec",
+    "projection": "projection",
     "site": "site",
 }
 
 JSON_CONTENT_TYPE = "application/json"
+BINARY_CONTENT_TYPE = "application/octet-stream"
 
 
 # ---------------------------------------------------------------------------
@@ -232,17 +247,157 @@ def _schema_sources(schema_dir: pathlib.Path) -> dict[str, bytes]:
     return sources
 
 
-def build_bundle(version: int, frozen_at: str, contracts_dir: pathlib.Path) -> dict[str, bytes]:
+def load_reference_rows(
+    metadata_path: pathlib.Path,
+    acoustic_ids: list[str],
+    expected_sha256: str = contract_lib.REFERENCE_METADATA_SHA256,
+) -> np.ndarray:
+    """Float32 rows (one per acoustic_reference site, sorted by site_id) from metadata_v6.
+
+    The raw bytes are hashed exactly as downloaded (never text-normalised) and must match
+    the pinned sha256. Only each site's "embedding" key is read: the statuses, DOIs,
+    citations and counts in that object are stale and are ignored. The set of ids that
+    carry an embedding must equal the acoustic_reference set, and every embedding must
+    have 1280 finite values.
+    """
+    raw = pathlib.Path(metadata_path).read_bytes()
+    digest = contract_lib.sha256_hex(raw)
+    if digest != expected_sha256:
+        raise ContractError(
+            f"reference metadata sha256 {digest} != pinned {expected_sha256}; "
+            "refusing to build embeddings from an unverified source"
+        )
+    document = json.loads(raw.decode("utf-8"))
+    entries = document.get("sites") if isinstance(document, dict) else None
+    if not isinstance(entries, list):
+        raise ContractError("reference metadata has no sites list")
+    embeddings: dict[str, list] = {}
+    for entry in entries:
+        vector = entry.get("embedding") if isinstance(entry, dict) else None
+        if vector is None:
+            continue
+        site_id = entry.get("site_id")
+        if site_id in embeddings:
+            raise ContractError(f"reference metadata lists {site_id} twice")
+        if not isinstance(vector, list) or len(vector) != contract_lib.EMBEDDING_DIM:
+            raise ContractError(
+                f"{site_id}: embedding must be a list of {contract_lib.EMBEDDING_DIM} values"
+            )
+        embeddings[site_id] = vector
+    expected = sorted(acoustic_ids)
+    if sorted(embeddings) != expected:
+        extra = sorted(set(embeddings) - set(expected))
+        missing = sorted(set(expected) - set(embeddings))
+        raise ContractError(
+            "sites carrying an embedding differ from the acoustic_reference sites: "
+            f"extra {extra}, missing {missing}"
+        )
+    rows = np.asarray([embeddings[site_id] for site_id in expected], dtype=np.float32)
+    if not np.all(np.isfinite(rows)):
+        raise ContractError("reference embeddings contain a non-finite value")
+    return rows
+
+
+def build_projection(embeddings_bytes: bytes, row_site_ids: list[str], prefix: str) -> dict:
+    """The projection.json document, computed from the published float32 rows."""
+    rows = contract_lib.unpack_float32_rows(embeddings_bytes, contract_lib.EMBEDDING_DIM)
+    if rows.shape[0] != len(row_site_ids):
+        raise ContractError(f"{rows.shape[0]} embedding rows for {len(row_site_ids)} sites")
+    mean, components, coords, variance, ratio = contract_lib.pca_2d(rows)
+    cumulative = float(np.sum(ratio))
+    return {
+        "schema_version": 1,
+        "method": "pca",
+        "input_uri": f"{prefix}/embeddings.f32",
+        "site_ids": list(row_site_ids),
+        "mean": [round(float(v), 9) for v in mean],
+        "components": [[round(float(v), 9) for v in row] for row in components],
+        "explained_variance": [round(float(v), 8) for v in variance],
+        "explained_variance_ratio": [round(float(v), 8) for v in ratio],
+        "cumulative_explained_variance_ratio": round(cumulative, 8),
+        "coordinates": [
+            {"site_id": site_id, "x": round(float(x), 6), "y": round(float(y), 6)}
+            for site_id, (x, y) in zip(row_site_ids, coords)
+        ],
+        "sign_rule": contract_lib.PCA_SIGN_RULE,
+        "note": contract_lib.projection_note(cumulative),
+    }
+
+
+def attach_projection(sites: list[dict], row_site_ids: list[str], projection: dict) -> None:
+    """Set embedding_row and projection on every site (null for location_only sites)."""
+    coords = {c["site_id"]: {"x": c["x"], "y": c["y"]} for c in projection["coordinates"]}
+    for site in sites:
+        site_id = site["site_id"]
+        if site["reference_role"] == "acoustic_reference":
+            site["embedding_row"] = row_site_ids.index(site_id)
+            site["projection"] = dict(coords[site_id])
+        else:
+            site["embedding_row"] = None
+            site["projection"] = None
+
+
+def build_bundle(
+    version: int,
+    frozen_at: str,
+    contracts_dir: pathlib.Path,
+    reference_metadata: Optional[pathlib.Path] = None,
+    recompute_projection: bool = False,
+) -> dict[str, bytes]:
     """Return {path relative to contracts/ (posix): file bytes} for contract version `version`."""
     inputs = load_inputs()
     sites = build_sites(inputs["snapshot"], inputs["provenance"], inputs["citations"])
     prefix = f"v{version}"
     files: dict[str, bytes] = {}
+    schema_dir = contracts_dir / "schema"
+    committed_dir = contracts_dir / "bucket" / prefix
 
+    row_site_ids = sorted(s["site_id"] for s in sites if s["reference_role"] == "acoustic_reference")
+    embeddings_path = committed_dir / "embeddings.f32"
+    if reference_metadata is not None:
+        embeddings_bytes = contract_lib.pack_float32_rows(
+            load_reference_rows(reference_metadata, row_site_ids)
+        )
+        if (
+            not recompute_projection
+            and embeddings_path.exists()
+            and embeddings_path.read_bytes() != embeddings_bytes
+        ):
+            raise ContractError(
+                "the embeddings differ from the committed file; re-run with --recompute-projection"
+            )
+    elif embeddings_path.exists():
+        embeddings_bytes = embeddings_path.read_bytes()  # binary: never normalised
+    else:
+        raise ContractError(
+            f"{embeddings_path} is missing; pass --reference-metadata <local copy of "
+            f"{contract_lib.REFERENCE_METADATA_KEY}> to create it"
+        )
+    expected_size = len(row_site_ids) * contract_lib.EMBEDDING_DIM * 4
+    if len(embeddings_bytes) != expected_size:
+        raise ContractError(
+            f"embeddings.f32 is {len(embeddings_bytes)} bytes, expected {expected_size} "
+            f"({len(row_site_ids)} rows x {contract_lib.EMBEDDING_DIM} float32)"
+        )
+
+    projection_path = committed_dir / "projection.json"
+    if recompute_projection:
+        projection = build_projection(embeddings_bytes, row_site_ids, prefix)
+    elif projection_path.exists():
+        projection = json.loads(projection_path.read_text(encoding="utf-8"))
+        if projection.get("site_ids") != row_site_ids:
+            raise ContractError("the committed projection.json lists different sites; use --recompute-projection")
+    else:
+        raise ContractError(f"{projection_path} is missing; use --recompute-projection to create it")
+    contract_lib.validate(projection, "projection", schema_dir)
+    projection_bytes = contract_lib.canonical_json_bytes(projection)
+    files[f"bucket/{prefix}/embeddings.f32"] = embeddings_bytes
+    files[f"bucket/{prefix}/projection.json"] = projection_bytes
+
+    attach_projection(sites, row_site_ids, projection)
     sites_bytes = contract_lib.canonical_json_bytes({"schema_version": 1, "sites": sites})
     files[f"bucket/{prefix}/sites.json"] = sites_bytes
 
-    schema_dir = contracts_dir / "schema"
     model = build_model_version()
     spec = build_preprocessing_spec()
     stamp = build_stamp(version, model)
@@ -264,6 +419,21 @@ def build_bundle(version: int, frozen_at: str, contracts_dir: pathlib.Path) -> d
 
     artifacts = {
         "sites": artifact_entry(f"{prefix}/sites.json", sites_bytes, count=len(sites)),
+        "embeddings": artifact_entry(
+            f"{prefix}/embeddings.f32",
+            embeddings_bytes,
+            content_type=BINARY_CONTENT_TYPE,
+            dtype=contract_lib.EMBEDDING_DTYPE,
+            dim=contract_lib.EMBEDDING_DIM,
+            count=len(row_site_ids),
+            row_site_ids=row_site_ids,
+        ),
+        "projection": artifact_entry(
+            f"{prefix}/projection.json",
+            projection_bytes,
+            method=projection["method"],
+            explained_variance_ratio=projection["explained_variance_ratio"],
+        ),
         "model_version": artifact_entry(f"{prefix}/model_version.json", model_bytes),
         "preprocessing_spec": artifact_entry(f"{prefix}/preprocessing_spec.json", spec_bytes),
         "stamp": artifact_entry(f"{prefix}/stamp.json", stamp_bytes),
@@ -281,6 +451,11 @@ def build_bundle(version: int, frozen_at: str, contracts_dir: pathlib.Path) -> d
         "artifacts": artifacts,
         "datasets": build_datasets(inputs["provenance"], inputs["citations"]),
         "sources": {
+            "reference_metadata": {
+                "bucket": contract_lib.REFERENCE_METADATA_BUCKET,
+                "key": contract_lib.REFERENCE_METADATA_KEY,
+                "sha256": contract_lib.REFERENCE_METADATA_SHA256,
+            },
             "snapshot": {
                 "path": _repo_rel(SNAPSHOT_PATH),
                 "sha256": inputs["snapshot_sha"],
@@ -574,6 +749,15 @@ def main(argv=None) -> int:
     parser.add_argument("--version", type=int, help="contract version N to build")
     parser.add_argument("--frozen-at", help="UTC second, e.g. 2026-10-01T22:00:00Z (first build only)")
     parser.add_argument("--check", action="store_true", help="rebuild in memory; exit 1 if any committed file differs")
+    parser.add_argument(
+        "--reference-metadata",
+        help="local copy of reference/metadata_v6.json; (re)writes embeddings.f32 after a sha256 check",
+    )
+    parser.add_argument(
+        "--recompute-projection",
+        action="store_true",
+        help="recompute projection.json (otherwise the committed one is reused)",
+    )
     parser.add_argument("--freeze-legacy-coordinates", action="store_true")
     parser.add_argument("--format-schemas", action="store_true")
     args = parser.parse_args(argv)
@@ -590,7 +774,13 @@ def main(argv=None) -> int:
 
         version = args.version
         frozen_at = _resolve_frozen_at(version, args.frozen_at, contracts_dir)
-        files = build_bundle(version, frozen_at, contracts_dir)
+        files = build_bundle(
+            version,
+            frozen_at,
+            contracts_dir,
+            reference_metadata=pathlib.Path(args.reference_metadata) if args.reference_metadata else None,
+            recompute_projection=args.recompute_projection,
+        )
 
         if args.check:
             problems = []

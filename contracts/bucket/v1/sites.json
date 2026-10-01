@@ -8,6 +8,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 0,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Comparable to restored sites prior to restoration (rubble).",
       "label_note": null,
@@ -19,6 +20,10 @@
       "location_label": "Great Barrier Reef, Australia",
       "longitude": 146.22907,
       "period": null,
+      "projection": {
+        "x": -0.162614,
+        "y": 0.872352
+      },
       "reference_role": "acoustic_reference",
       "region": "Great Barrier Reef",
       "site_id": "aus_D1",
@@ -33,6 +38,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 1,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Comparable to restored sites prior to restoration (rubble).",
       "label_note": null,
@@ -44,6 +50,10 @@
       "location_label": "Great Barrier Reef, Australia",
       "longitude": 146.22946,
       "period": null,
+      "projection": {
+        "x": -0.312669,
+        "y": 0.474483
+      },
       "reference_role": "acoustic_reference",
       "region": "Great Barrier Reef",
       "site_id": "aus_D2",
@@ -58,6 +68,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 2,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Comparable to restored sites prior to restoration (rubble).",
       "label_note": null,
@@ -69,6 +80,10 @@
       "location_label": "Great Barrier Reef, Australia",
       "longitude": 146.22975,
       "period": null,
+      "projection": {
+        "x": -0.238566,
+        "y": 0.536251
+      },
       "reference_role": "acoustic_reference",
       "region": "Great Barrier Reef",
       "site_id": "aus_D3",
@@ -83,6 +98,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 3,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Least disturbed reef habitat in the local area.",
       "label_note": null,
@@ -94,6 +110,10 @@
       "location_label": "Great Barrier Reef, Australia",
       "longitude": 146.22839,
       "period": null,
+      "projection": {
+        "x": 0.118439,
+        "y": 0.599425
+      },
       "reference_role": "acoustic_reference",
       "region": "Great Barrier Reef",
       "site_id": "aus_H1",
@@ -108,6 +128,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 4,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Least disturbed reef habitat in the local area.",
       "label_note": null,
@@ -119,6 +140,10 @@
       "location_label": "Great Barrier Reef, Australia",
       "longitude": 146.22798,
       "period": null,
+      "projection": {
+        "x": 0.565057,
+        "y": 0.318383
+      },
       "reference_role": "acoustic_reference",
       "region": "Great Barrier Reef",
       "site_id": "aus_H2",
@@ -133,6 +158,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 5,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Least disturbed reef habitat in the local area.",
       "label_note": null,
@@ -144,6 +170,10 @@
       "location_label": "Great Barrier Reef, Australia",
       "longitude": 146.22653,
       "period": null,
+      "projection": {
+        "x": -0.044113,
+        "y": 0.763532
+      },
       "reference_role": "acoustic_reference",
       "region": "Great Barrier Reef",
       "site_id": "aus_H3",
@@ -158,6 +188,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 6,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Restored 32 to 53 months before recording.",
       "label_note": null,
@@ -169,6 +200,10 @@
       "location_label": "Great Barrier Reef, Australia",
       "longitude": 146.22866,
       "period": null,
+      "projection": {
+        "x": -0.291227,
+        "y": 0.588309
+      },
       "reference_role": "acoustic_reference",
       "region": "Great Barrier Reef",
       "site_id": "aus_R1",
@@ -183,6 +218,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 10,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Comparable to restored sites prior to restoration (rubble).",
       "label_note": null,
@@ -194,6 +230,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.316541,
       "period": null,
+      "projection": {
+        "x": 0.380506,
+        "y": -0.033743
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_D1",
@@ -208,6 +248,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 11,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Comparable to restored sites prior to restoration (rubble).",
       "label_note": null,
@@ -219,6 +260,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.318815,
       "period": null,
+      "projection": {
+        "x": 0.422202,
+        "y": -0.165049
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_D2",
@@ -233,6 +278,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 12,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Comparable to restored sites prior to restoration (rubble).",
       "label_note": null,
@@ -244,6 +290,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.316119,
       "period": null,
+      "projection": {
+        "x": 0.139017,
+        "y": 0.43909
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_D3",
@@ -258,6 +308,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 13,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Comparable to restored sites prior to restoration (rubble).",
       "label_note": null,
@@ -269,6 +320,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.316612,
       "period": null,
+      "projection": {
+        "x": 0.448009,
+        "y": 0.440322
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_D4",
@@ -283,6 +338,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 14,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Comparable to restored sites prior to restoration (rubble).",
       "label_note": null,
@@ -294,6 +350,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.31646,
       "period": null,
+      "projection": {
+        "x": 0.085956,
+        "y": 0.549349
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_D5",
@@ -308,6 +368,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 15,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Comparable to restored sites prior to restoration (rubble).",
       "label_note": null,
@@ -319,6 +380,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.318102,
       "period": null,
+      "projection": {
+        "x": 0.432979,
+        "y": -0.4707
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_D6",
@@ -333,6 +398,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 16,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Least disturbed reef habitat in the local area.",
       "label_note": null,
@@ -344,6 +410,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.316922,
       "period": null,
+      "projection": {
+        "x": 0.799523,
+        "y": -0.204784
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_H1",
@@ -358,6 +428,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 17,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Least disturbed reef habitat in the local area.",
       "label_note": null,
@@ -369,6 +440,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.316719,
       "period": null,
+      "projection": {
+        "x": 0.623737,
+        "y": -0.260852
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_H2",
@@ -383,6 +458,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 18,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Least disturbed reef habitat in the local area.",
       "label_note": null,
@@ -394,6 +470,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.317384,
       "period": null,
+      "projection": {
+        "x": 0.090758,
+        "y": 0.159824
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_H3",
@@ -408,6 +488,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 19,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Least disturbed reef habitat in the local area.",
       "label_note": null,
@@ -419,6 +500,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.316792,
       "period": null,
+      "projection": {
+        "x": 0.186855,
+        "y": -0.452142
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_H4",
@@ -433,6 +518,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 20,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Least disturbed reef habitat in the local area.",
       "label_note": null,
@@ -444,6 +530,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.317739,
       "period": null,
+      "projection": {
+        "x": 0.285646,
+        "y": 0.029728
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_H5",
@@ -458,6 +548,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 21,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Least disturbed reef habitat in the local area.",
       "label_note": null,
@@ -469,6 +560,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.32009,
       "period": null,
+      "projection": {
+        "x": 0.383133,
+        "y": -0.31971
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_H6",
@@ -483,6 +578,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 22,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Reef stars installed less than 3 months before recording.",
       "label_note": null,
@@ -494,6 +590,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.3159127,
       "period": null,
+      "projection": {
+        "x": -0.015503,
+        "y": 0.161421
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_N1",
@@ -508,6 +608,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 23,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Reef stars installed less than 3 months before recording.",
       "label_note": null,
@@ -519,6 +620,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.3162828,
       "period": null,
+      "projection": {
+        "x": -0.154044,
+        "y": 0.093322
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_N2",
@@ -533,6 +638,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 24,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Reef stars installed less than 3 months before recording.",
       "label_note": null,
@@ -544,6 +650,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.3163365,
       "period": null,
+      "projection": {
+        "x": -0.37045,
+        "y": 0.585049
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_N3",
@@ -558,6 +668,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 25,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Restored 32 to 53 months before recording.",
       "label_note": null,
@@ -569,6 +680,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.317036,
       "period": null,
+      "projection": {
+        "x": 0.780898,
+        "y": -0.252728
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_R1",
@@ -583,6 +698,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 26,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Restored 32 to 53 months before recording.",
       "label_note": null,
@@ -594,6 +710,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.316267,
       "period": null,
+      "projection": {
+        "x": 0.508276,
+        "y": 0.738173
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_R2",
@@ -608,6 +728,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 27,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Restored 32 to 53 months before recording.",
       "label_note": null,
@@ -619,6 +740,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.317245,
       "period": null,
+      "projection": {
+        "x": 0.794129,
+        "y": -0.127856
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_R3",
@@ -633,6 +758,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 28,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Restored 32 to 53 months before recording.",
       "label_note": null,
@@ -644,6 +770,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.315882,
       "period": null,
+      "projection": {
+        "x": 0.744991,
+        "y": 0.196395
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_R4",
@@ -658,6 +788,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 29,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Restored 32 to 53 months before recording.",
       "label_note": null,
@@ -669,6 +800,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.315775,
       "period": null,
+      "projection": {
+        "x": 0.500448,
+        "y": -0.162725
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_R5",
@@ -683,6 +818,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 30,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Restored 32 to 53 months before recording.",
       "label_note": null,
@@ -694,6 +830,10 @@
       "location_label": "South Sulawesi, Indonesia",
       "longitude": 119.316127,
       "period": null,
+      "projection": {
+        "x": -0.031896,
+        "y": 0.440919
+      },
       "reference_role": "acoustic_reference",
       "region": "South Sulawesi",
       "site_id": "ind_R6",
@@ -708,6 +848,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 32,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Comparable to restored sites prior to restoration (rubble).",
       "label_note": null,
@@ -719,6 +860,10 @@
       "location_label": "Mombasa Coast, Kenya",
       "longitude": 41.014101,
       "period": null,
+      "projection": {
+        "x": 0.709916,
+        "y": -0.46139
+      },
       "reference_role": "acoustic_reference",
       "region": "Mombasa Coast",
       "site_id": "ken_D1",
@@ -733,6 +878,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": null,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Comparable to restored sites prior to restoration (rubble).",
       "label_note": "The upstream MARRS audio archive for this location is named ken_D2 (11,917 files); the MARRS site-map KML labels the same point 'D3'. No audio has been ingested for either name at this site.",
@@ -744,6 +890,7 @@
       "location_label": "Mombasa Coast, Kenya",
       "longitude": 41.019482,
       "period": null,
+      "projection": null,
       "reference_role": "location_only",
       "region": "Mombasa Coast",
       "site_id": "ken_D3",
@@ -758,6 +905,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 33,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Least disturbed reef habitat in the local area.",
       "label_note": null,
@@ -769,6 +917,10 @@
       "location_label": "Mombasa Coast, Kenya",
       "longitude": 41.013482,
       "period": null,
+      "projection": {
+        "x": 0.683507,
+        "y": -0.542825
+      },
       "reference_role": "acoustic_reference",
       "region": "Mombasa Coast",
       "site_id": "ken_H1",
@@ -783,6 +935,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 34,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Least disturbed reef habitat in the local area.",
       "label_note": null,
@@ -794,6 +947,10 @@
       "location_label": "Mombasa Coast, Kenya",
       "longitude": 41.016132,
       "period": null,
+      "projection": {
+        "x": 0.595917,
+        "y": -0.466191
+      },
       "reference_role": "acoustic_reference",
       "region": "Mombasa Coast",
       "site_id": "ken_H2",
@@ -808,6 +965,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 35,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Reef stars installed less than 3 months before recording.",
       "label_note": null,
@@ -819,6 +977,10 @@
       "location_label": "Mombasa Coast, Kenya",
       "longitude": 41.017986,
       "period": null,
+      "projection": {
+        "x": 0.56633,
+        "y": 0.356115
+      },
       "reference_role": "acoustic_reference",
       "region": "Mombasa Coast",
       "site_id": "ken_N1",
@@ -833,6 +995,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 36,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Comparable to restored sites prior to restoration (rubble).",
       "label_note": null,
@@ -844,6 +1007,10 @@
       "location_label": "North Male Atoll, Maldives",
       "longitude": 72.9360995,
       "period": null,
+      "projection": {
+        "x": -0.761598,
+        "y": -0.810895
+      },
       "reference_role": "acoustic_reference",
       "region": "North Male Atoll",
       "site_id": "mal_D1",
@@ -858,6 +1025,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 37,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Comparable to restored sites prior to restoration (rubble).",
       "label_note": null,
@@ -869,6 +1037,10 @@
       "location_label": "North Male Atoll, Maldives",
       "longitude": 72.9349,
       "period": null,
+      "projection": {
+        "x": -0.321793,
+        "y": -1.020616
+      },
       "reference_role": "acoustic_reference",
       "region": "North Male Atoll",
       "site_id": "mal_D2",
@@ -883,6 +1055,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 38,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Least disturbed reef habitat in the local area.",
       "label_note": null,
@@ -894,6 +1067,10 @@
       "location_label": "North Male Atoll, Maldives",
       "longitude": 72.9278,
       "period": null,
+      "projection": {
+        "x": -0.652912,
+        "y": -1.067837
+      },
       "reference_role": "acoustic_reference",
       "region": "North Male Atoll",
       "site_id": "mal_H1",
@@ -908,6 +1085,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 39,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Least disturbed reef habitat in the local area.",
       "label_note": null,
@@ -919,6 +1097,10 @@
       "location_label": "North Male Atoll, Maldives",
       "longitude": 72.9239,
       "period": null,
+      "projection": {
+        "x": -0.588048,
+        "y": -0.728463
+      },
       "reference_role": "acoustic_reference",
       "region": "North Male Atoll",
       "site_id": "mal_H2",
@@ -933,6 +1115,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 40,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Reef stars installed less than 3 months before recording.",
       "label_note": null,
@@ -944,6 +1127,10 @@
       "location_label": "North Male Atoll, Maldives",
       "longitude": 72.9251649,
       "period": null,
+      "projection": {
+        "x": -0.121128,
+        "y": -1.073309
+      },
       "reference_role": "acoustic_reference",
       "region": "North Male Atoll",
       "site_id": "mal_N1",
@@ -958,6 +1145,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 41,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Comparable to restored sites prior to restoration (rubble).",
       "label_note": null,
@@ -969,6 +1157,10 @@
       "location_label": "Caribbean Coast, Mexico",
       "longitude": -87.8075489,
       "period": null,
+      "projection": {
+        "x": -0.780762,
+        "y": -0.088916
+      },
       "reference_role": "acoustic_reference",
       "region": "Caribbean Coast",
       "site_id": "mex_D1",
@@ -983,6 +1175,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 42,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Comparable to restored sites prior to restoration (rubble).",
       "label_note": null,
@@ -994,6 +1187,10 @@
       "location_label": "Caribbean Coast, Mexico",
       "longitude": -87.825105,
       "period": null,
+      "projection": {
+        "x": -0.967275,
+        "y": -0.069998
+      },
       "reference_role": "acoustic_reference",
       "region": "Caribbean Coast",
       "site_id": "mex_D2",
@@ -1008,6 +1205,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 43,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Least disturbed reef habitat in the local area.",
       "label_note": null,
@@ -1019,6 +1217,10 @@
       "location_label": "Caribbean Coast, Mexico",
       "longitude": -87.8074022,
       "period": null,
+      "projection": {
+        "x": -0.975494,
+        "y": 0.214146
+      },
       "reference_role": "acoustic_reference",
       "region": "Caribbean Coast",
       "site_id": "mex_H1",
@@ -1033,6 +1235,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 44,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Least disturbed reef habitat in the local area.",
       "label_note": null,
@@ -1044,6 +1247,10 @@
       "location_label": "Caribbean Coast, Mexico",
       "longitude": -87.825753,
       "period": null,
+      "projection": {
+        "x": -0.70067,
+        "y": -0.013074
+      },
       "reference_role": "acoustic_reference",
       "region": "Caribbean Coast",
       "site_id": "mex_H2",
@@ -1058,6 +1265,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 45,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Least disturbed reef habitat in the local area.",
       "label_note": null,
@@ -1069,6 +1277,10 @@
       "location_label": "Caribbean Coast, Mexico",
       "longitude": -87.8255695,
       "period": null,
+      "projection": {
+        "x": -0.537285,
+        "y": -0.062828
+      },
       "reference_role": "acoustic_reference",
       "region": "Caribbean Coast",
       "site_id": "mex_H3",
@@ -1083,6 +1295,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 46,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Reef stars installed less than 3 months before recording.",
       "label_note": null,
@@ -1094,6 +1307,10 @@
       "location_label": "Caribbean Coast, Mexico",
       "longitude": -87.825671,
       "period": null,
+      "projection": {
+        "x": -0.160753,
+        "y": 0.037273
+      },
       "reference_role": "acoustic_reference",
       "region": "Caribbean Coast",
       "site_id": "mex_N1",
@@ -1108,6 +1325,7 @@
       "dataset_url": "https://doi.org/10.5522/04/29958062",
       "doi": "10.5522/04/29958062",
       "doi_note": null,
+      "embedding_row": 47,
       "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
       "label_definition": "Restored 32 to 53 months before recording.",
       "label_note": null,
@@ -1119,6 +1337,10 @@
       "location_label": "Caribbean Coast, Mexico",
       "longitude": -87.807348,
       "period": null,
+      "projection": {
+        "x": 0.145442,
+        "y": -0.302649
+      },
       "reference_role": "acoustic_reference",
       "region": "Caribbean Coast",
       "site_id": "mex_R1",
@@ -1133,6 +1355,7 @@
       "dataset_url": "https://zenodo.org/records/14577064",
       "doi": "10.5281/zenodo.14577064",
       "doi_note": null,
+      "embedding_row": 9,
       "label_assigned_by": "ENES Bioacoustic Lab (Rouch et al. 2024)",
       "label_definition": "CoralSoundExplorer recording-point category describing a comparatively undisturbed use/disturbance context, not a coral-condition assessment.",
       "label_note": null,
@@ -1144,6 +1367,10 @@
       "location_label": "Bora-Bora, French Polynesia",
       "longitude": -151.7415,
       "period": null,
+      "projection": {
+        "x": -0.689771,
+        "y": 0.158617
+      },
       "reference_role": "acoustic_reference",
       "region": "Society Islands",
       "site_id": "borabora_undisturbed",
@@ -1158,6 +1385,7 @@
       "dataset_url": "https://zenodo.org/records/14577064",
       "doi": "10.5281/zenodo.14577064",
       "doi_note": null,
+      "embedding_row": 8,
       "label_assigned_by": "ENES Bioacoustic Lab (Rouch et al. 2024)",
       "label_definition": "CoralSoundExplorer use/disturbance context category (tourist-zone recording point), not a coral-condition assessment.",
       "label_note": null,
@@ -1169,6 +1397,10 @@
       "location_label": "Bora-Bora, French Polynesia",
       "longitude": -151.7256,
       "period": null,
+      "projection": {
+        "x": -0.703496,
+        "y": 0.077242
+      },
       "reference_role": "acoustic_reference",
       "region": "Society Islands",
       "site_id": "borabora_tourist",
@@ -1183,6 +1415,7 @@
       "dataset_url": "https://zenodo.org/records/14577064",
       "doi": "10.5281/zenodo.14577064",
       "doi_note": null,
+      "embedding_row": 7,
       "label_assigned_by": "ENES Bioacoustic Lab (Rouch et al. 2024)",
       "label_definition": "CoralSoundExplorer use/disturbance context category (boat-channel recording point), not a coral-condition assessment.",
       "label_note": null,
@@ -1194,6 +1427,10 @@
       "location_label": "Bora-Bora, French Polynesia",
       "longitude": -151.7589,
       "period": null,
+      "projection": {
+        "x": -0.467177,
+        "y": 0.202578
+      },
       "reference_role": "acoustic_reference",
       "region": "Society Islands",
       "site_id": "borabora_boat_traffic",
@@ -1208,6 +1445,7 @@
       "dataset_url": "https://datadryad.org/dataset/doi:10.5061/dryad.5tb2rbp38",
       "doi": "10.5061/dryad.5tb2rbp38",
       "doi_note": null,
+      "embedding_row": null,
       "label_assigned_by": "Simmons, Bohnenstiehl & Eggleston (NC State)",
       "label_definition": null,
       "label_note": null,
@@ -1219,6 +1457,7 @@
       "location_label": "Florida Keys, USA",
       "longitude": -81.6625,
       "period": null,
+      "projection": null,
       "reference_role": "location_only",
       "region": "Florida Keys",
       "site_id": "irma_eastern_sambo",
@@ -1233,6 +1472,7 @@
       "dataset_url": "https://datadryad.org/dataset/doi:10.5061/dryad.5tb2rbp38",
       "doi": "10.5061/dryad.5tb2rbp38",
       "doi_note": null,
+      "embedding_row": 31,
       "label_assigned_by": "Simmons, Bohnenstiehl & Eggleston (NC State)",
       "label_definition": null,
       "label_note": null,
@@ -1244,6 +1484,10 @@
       "location_label": "Florida Keys, USA",
       "longitude": -81.9275,
       "period": "This site's embedding is built from recordings made in October 2017, after Hurricane Irma made landfall in the Florida Keys on 10 September 2017.",
+      "projection": {
+        "x": -0.942431,
+        "y": 0.126984
+      },
       "reference_role": "acoustic_reference",
       "region": "Florida Keys",
       "site_id": "irma_western_dry_rocks",
@@ -1258,6 +1502,7 @@
       "dataset_url": "https://sanctsound.ioos.us/",
       "doi": null,
       "doi_note": "SanctSound issues per-site, per-detection-type DOIs at NCEI (e.g. 10.25921/PF0H-SQ72) rather than one collection-level DOI — confirmed live this session against the NCEI passive-acoustic-data page. No single DOI exists for the project as a whole, so doi is recorded null and the project landing page is used as the canonical url. Underlying archive filenames (NOAA-Navy-SanctSound_*) show the U.S. Navy as a co-contributing data partner alongside NOAA ONMS.",
+      "embedding_row": null,
       "label_assigned_by": "NOAA Office of National Marine Sanctuaries",
       "label_definition": null,
       "label_note": null,
@@ -1269,6 +1514,7 @@
       "location_label": "Florida Keys, USA",
       "longitude": -81.4044,
       "period": null,
+      "projection": null,
       "reference_role": "location_only",
       "region": "Florida Keys",
       "site_id": "sanctsound_fk01",
@@ -1283,6 +1529,7 @@
       "dataset_url": "https://sanctsound.ioos.us/",
       "doi": null,
       "doi_note": "SanctSound issues per-site, per-detection-type DOIs at NCEI (e.g. 10.25921/PF0H-SQ72) rather than one collection-level DOI — confirmed live this session against the NCEI passive-acoustic-data page. No single DOI exists for the project as a whole, so doi is recorded null and the project landing page is used as the canonical url. Underlying archive filenames (NOAA-Navy-SanctSound_*) show the U.S. Navy as a co-contributing data partner alongside NOAA ONMS.",
+      "embedding_row": null,
       "label_assigned_by": "NOAA Office of National Marine Sanctuaries",
       "label_definition": null,
       "label_note": null,
@@ -1294,6 +1541,7 @@
       "location_label": "Florida Keys, USA",
       "longitude": -81.5192,
       "period": null,
+      "projection": null,
       "reference_role": "location_only",
       "region": "Florida Keys",
       "site_id": "sanctsound_fk02",
@@ -1308,6 +1556,7 @@
       "dataset_url": "https://sanctsound.ioos.us/",
       "doi": null,
       "doi_note": "SanctSound issues per-site, per-detection-type DOIs at NCEI (e.g. 10.25921/PF0H-SQ72) rather than one collection-level DOI — confirmed live this session against the NCEI passive-acoustic-data page. No single DOI exists for the project as a whole, so doi is recorded null and the project landing page is used as the canonical url. Underlying archive filenames (NOAA-Navy-SanctSound_*) show the U.S. Navy as a co-contributing data partner alongside NOAA ONMS.",
+      "embedding_row": null,
       "label_assigned_by": "NOAA Office of National Marine Sanctuaries",
       "label_definition": null,
       "label_note": null,
@@ -1319,6 +1568,7 @@
       "location_label": "Florida Keys, USA",
       "longitude": -81.1067,
       "period": null,
+      "projection": null,
       "reference_role": "location_only",
       "region": "Florida Keys",
       "site_id": "sanctsound_fk03",
@@ -1333,6 +1583,7 @@
       "dataset_url": "https://sanctsound.ioos.us/",
       "doi": null,
       "doi_note": "SanctSound issues per-site, per-detection-type DOIs at NCEI (e.g. 10.25921/PF0H-SQ72) rather than one collection-level DOI — confirmed live this session against the NCEI passive-acoustic-data page. No single DOI exists for the project as a whole, so doi is recorded null and the project landing page is used as the canonical url. Underlying archive filenames (NOAA-Navy-SanctSound_*) show the U.S. Navy as a co-contributing data partner alongside NOAA ONMS.",
+      "embedding_row": null,
       "label_assigned_by": "NOAA Office of National Marine Sanctuaries",
       "label_definition": null,
       "label_note": null,
@@ -1344,6 +1595,7 @@
       "location_label": "Florida Keys, USA",
       "longitude": -81.7858,
       "period": null,
+      "projection": null,
       "reference_role": "location_only",
       "region": "Florida Keys",
       "site_id": "sanctsound_fk04",

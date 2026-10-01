@@ -95,7 +95,7 @@ const SELF_FILE = 'scripts/check-citations.mjs';
 // Binary / non-text extensions that should never be grepped as citation text.
 const BINARY_EXTENSIONS = new Set([
   '.wav', '.mp3', '.flac', '.zip', '.png', '.jpg', '.jpeg', '.gif', '.webp',
-  '.ico', '.pdf', '.npz', '.npy', '.woff', '.woff2', '.ttf', '.eot', '.otf',
+  '.ico', '.pdf', '.npz', '.npy', '.f32', '.woff', '.woff2', '.ttf', '.eot', '.otf',
   '.mp4', '.mov', '.pyc', '.so', '.dll', '.exe',
 ]);
 

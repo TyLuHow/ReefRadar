@@ -11,9 +11,15 @@ Phase 2 (CONTRACT-01): integrity and schema check of every committed contract bu
   - every JSON file is LF-only and equals the canonical serialisation of its own
     parsed value (so a CRLF checkout or a hand edit is caught);
   - sites.json items validate against site.schema.json; the model, preprocessing
-    spec and stamp validate against their schemas; the stamp equals the version
-    fields of the manifest; the coverage counts equal counts recomputed from
-    sites.json; each schema copy equals its contracts/schema source.
+    spec, projection and stamp validate against their schemas; the stamp equals the
+    version fields of the manifest; the coverage counts equal counts recomputed from
+    sites.json; each schema copy equals its contracts/schema source;
+  - embeddings.f32 is exactly rows x dim x 4 bytes with row_site_ids equal to the sorted
+    acoustic_reference ids, and the committed projection.json equals a PCA recomputed from
+    those float32 rows (components 1e-8, coordinates 2e-6, explained variance 1e-6), so a
+    different numpy build cannot break the check, while an edited number does;
+  - every site's embedding_row and projection equal the row and projection coordinates
+    published for it.
 
 Exit 0 when everything passes; exit 1 with one line per failure otherwise.
 
@@ -29,6 +35,8 @@ import json
 import pathlib
 import re
 import sys
+
+import numpy as np
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -102,6 +110,8 @@ def check_manifest(manifest_path: pathlib.Path, contracts_dir: pathlib.Path) -> 
             problems.append(f"{uri}: sha256 {contract_lib.sha256_hex(data)} != manifest {entry.get('sha256')}")
         if len(data) != entry.get("bytes"):
             problems.append(f"{uri}: {len(data)} bytes != manifest {entry.get('bytes')}")
+        if uri.endswith(".f32"):
+            loaded[label] = data
         if uri.endswith(".json"):
             file_problems = _json_file_problems(uri, data)
             problems += file_problems
@@ -143,9 +153,12 @@ def _semantic_problems(manifest: dict, artifacts: dict, loaded: dict, schema_dir
                         f"coverage.{key}: manifest says {coverage.get(key)!r}, sites.json has {value}"
                     )
 
+    problems += _embedding_problems(manifest, artifacts, loaded)
+
     for label, stem in (
         ("model_version", "model-version"),
         ("preprocessing_spec", "preprocessing-spec"),
+        ("projection", "projection"),
         ("stamp", "analysis-result"),
     ):
         if label in loaded:
@@ -167,6 +180,106 @@ def _semantic_problems(manifest: dict, artifacts: dict, loaded: dict, schema_dir
     spec = loaded.get("preprocessing_spec")
     if isinstance(spec, dict) and spec.get("spec_version") != manifest.get("preprocessing_spec_version"):
         problems.append("preprocessing_spec artifact: spec_version differs from manifest preprocessing_spec_version")
+    return problems
+
+
+def _embedding_problems(manifest: dict, artifacts: dict, loaded: dict) -> list[str]:
+    """Length, row-order and numeric checks for embeddings.f32 and projection.json."""
+    problems = []
+    entry = artifacts.get("embeddings") if isinstance(artifacts.get("embeddings"), dict) else None
+    data = loaded.get("embeddings")
+    sites_doc = loaded.get("sites")
+    sites = sites_doc.get("sites") if isinstance(sites_doc, dict) else None
+    if entry is None or not isinstance(data, bytes):
+        return problems
+    dim = entry.get("dim")
+    row_ids = entry.get("row_site_ids")
+    if not isinstance(dim, int) or not isinstance(row_ids, list):
+        return problems
+    expected_size = len(row_ids) * dim * 4
+    if len(data) != expected_size:
+        problems.append(
+            f"embeddings.f32: {len(data)} bytes != {len(row_ids)} rows x {dim} x 4 = {expected_size}"
+        )
+        return problems
+    if entry.get("count") != len(row_ids):
+        problems.append(f"embeddings.f32: manifest count {entry.get('count')} != {len(row_ids)} row_site_ids")
+    if isinstance(sites, list):
+        acoustic = sorted(s.get("site_id") for s in sites if s.get("reference_role") == "acoustic_reference")
+        if row_ids != acoustic:
+            problems.append("embeddings.f32: row_site_ids are not the sorted acoustic_reference site ids")
+
+    projection = loaded.get("projection")
+    if not isinstance(projection, dict):
+        return problems
+    if projection.get("site_ids") != row_ids:
+        problems.append("projection.json: site_ids differ from the embeddings row_site_ids")
+        return problems
+    if projection.get("input_uri") != entry.get("uri"):
+        problems.append(f"projection.json: input_uri {projection.get('input_uri')!r} is not {entry.get('uri')!r}")
+    try:
+        rows = contract_lib.unpack_float32_rows(data, dim)
+        mean, components, coords, variance, ratio = contract_lib.pca_2d(rows)
+    except contract_lib.ContractError as exc:
+        return problems + [f"projection.json: cannot recompute from embeddings.f32 ({exc})"]
+
+    def differs(name, committed, fresh, atol):
+        try:
+            array = np.array(committed, dtype=np.float64)
+        except (TypeError, ValueError):
+            return [f"projection.json: {name} is not numeric"]
+        if array.shape != fresh.shape:
+            return [f"projection.json: {name} has shape {array.shape}, a recomputation gives {fresh.shape}"]
+        worst = float(np.max(np.abs(array - fresh))) if array.size else 0.0
+        if not worst <= atol:
+            return [f"projection.json: {name} differs from a PCA of embeddings.f32 by {worst:.3g} (tolerance {atol:g})"]
+        return []
+
+    problems += differs("mean", projection.get("mean"), mean, contract_lib.PCA_COMPONENT_ATOL)
+    problems += differs("components", projection.get("components"), components, contract_lib.PCA_COMPONENT_ATOL)
+    problems += differs(
+        "explained_variance_ratio", projection.get("explained_variance_ratio"), ratio, contract_lib.PCA_RATIO_ATOL
+    )
+    problems += differs("explained_variance", projection.get("explained_variance"), variance, 1e-7)
+    listed = projection.get("coordinates")
+    coord_by_id = {}
+    if isinstance(listed, list) and all(isinstance(c, dict) for c in listed):
+        coord_by_id = {c.get("site_id"): c for c in listed}
+        if [c.get("site_id") for c in listed] != row_ids:
+            problems.append("projection.json: coordinates are not in embeddings row order")
+        else:
+            problems += differs(
+                "coordinates",
+                [[c.get("x"), c.get("y")] for c in listed],
+                coords,
+                contract_lib.PCA_COORDINATE_ATOL,
+            )
+    else:
+        problems.append("projection.json: coordinates is not a list of objects")
+    cumulative = projection.get("cumulative_explained_variance_ratio")
+    if not isinstance(cumulative, (int, float)) or abs(cumulative - float(np.sum(ratio))) > contract_lib.PCA_RATIO_ATOL:
+        problems.append("projection.json: cumulative_explained_variance_ratio is not the sum of the ratios")
+    note = projection.get("note")
+    percent = f"{float(np.sum(ratio)) * 100:.1f}%"
+    if not isinstance(note, str) or percent not in note:
+        problems.append(f"projection.json: note must state the variance shown ({percent})")
+    elif "plane distances are not embedding distances" not in note:
+        problems.append("projection.json: note must say that plane distances are not embedding distances")
+    projection_entry = artifacts.get("projection") if isinstance(artifacts.get("projection"), dict) else {}
+    if projection_entry.get("explained_variance_ratio") != projection.get("explained_variance_ratio"):
+        problems.append("manifest projection.explained_variance_ratio differs from projection.json")
+
+    if isinstance(sites, list):
+        for site in sites:
+            site_id = site.get("site_id")
+            if site.get("reference_role") != "acoustic_reference":
+                continue
+            row = row_ids.index(site_id) if site_id in row_ids else None
+            if site.get("embedding_row") != row:
+                problems.append(f"sites.json[{site_id}]: embedding_row {site.get('embedding_row')!r} != {row!r}")
+            published = coord_by_id.get(site_id)
+            if published is None or site.get("projection") != {"x": published.get("x"), "y": published.get("y")}:
+                problems.append(f"sites.json[{site_id}]: projection differs from projection.json")
     return problems
 
 

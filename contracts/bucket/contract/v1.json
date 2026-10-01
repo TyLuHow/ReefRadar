@@ -9,6 +9,65 @@
     "detections": {
       "present": false
     },
+    "embeddings": {
+      "bytes": 245760,
+      "content_type": "application/octet-stream",
+      "count": 48,
+      "dim": 1280,
+      "dtype": "float32-le",
+      "row_site_ids": [
+        "aus_D1",
+        "aus_D2",
+        "aus_D3",
+        "aus_H1",
+        "aus_H2",
+        "aus_H3",
+        "aus_R1",
+        "borabora_boat_traffic",
+        "borabora_tourist",
+        "borabora_undisturbed",
+        "ind_D1",
+        "ind_D2",
+        "ind_D3",
+        "ind_D4",
+        "ind_D5",
+        "ind_D6",
+        "ind_H1",
+        "ind_H2",
+        "ind_H3",
+        "ind_H4",
+        "ind_H5",
+        "ind_H6",
+        "ind_N1",
+        "ind_N2",
+        "ind_N3",
+        "ind_R1",
+        "ind_R2",
+        "ind_R3",
+        "ind_R4",
+        "ind_R5",
+        "ind_R6",
+        "irma_western_dry_rocks",
+        "ken_D1",
+        "ken_H1",
+        "ken_H2",
+        "ken_N1",
+        "mal_D1",
+        "mal_D2",
+        "mal_H1",
+        "mal_H2",
+        "mal_N1",
+        "mex_D1",
+        "mex_D2",
+        "mex_H1",
+        "mex_H2",
+        "mex_H3",
+        "mex_N1",
+        "mex_R1"
+      ],
+      "sha256": "f73ab3a45422d43227ba0006d229fd801a541b3c36138012b42ccb40517816ec",
+      "uri": "v1/embeddings.f32"
+    },
     "model_version": {
       "bytes": 1651,
       "content_type": "application/json",
@@ -21,6 +80,17 @@
       "sha256": "4b02ca76c6fa5ff7c3032641ad59d52f15b579b6278f902e1b30b472ea0711e9",
       "uri": "v1/preprocessing_spec.json"
     },
+    "projection": {
+      "bytes": 77509,
+      "content_type": "application/json",
+      "explained_variance_ratio": [
+        0.18310361,
+        0.14682953
+      ],
+      "method": "pca",
+      "sha256": "da2ab7cc4142e36e3ff2dccfd10e135d3328f2a10635e63cd77d7046ea026c14",
+      "uri": "v1/projection.json"
+    },
     "schemas": {
       "analysis_result": {
         "bytes": 1733,
@@ -29,9 +99,9 @@
         "uri": "v1/schema/analysis-result.schema.json"
       },
       "contract_manifest": {
-        "bytes": 5990,
+        "bytes": 7470,
         "content_type": "application/json",
-        "sha256": "54d54860269c87f9c076753a3cb339fca8d0a0bafb5b67da575092849f1ccd4d",
+        "sha256": "ffbe3072befcf2a40aee62ea26b8592cc711e0b8875b153f206d679488292a5b",
         "uri": "v1/schema/contract-manifest.schema.json"
       },
       "contract_pointer": {
@@ -52,18 +122,24 @@
         "sha256": "df569d3867ddd604380304e1684e9d0f24445e187c652cc7107a8647097075f1",
         "uri": "v1/schema/preprocessing-spec.schema.json"
       },
-      "site": {
-        "bytes": 3945,
+      "projection": {
+        "bytes": 2241,
         "content_type": "application/json",
-        "sha256": "6bec9ebaf42fe518339e79a946f2b2b04d7a701ae282fd187d782e6bb7dcae0d",
+        "sha256": "2c493734705abbd2bc24a10a8c411b375258007ebfb57a0e265f64fc0438ff22",
+        "uri": "v1/schema/projection.schema.json"
+      },
+      "site": {
+        "bytes": 5882,
+        "content_type": "application/json",
+        "sha256": "7961edb8f6d26eceaf04af39f94fda019916d6a865519d08af6972343cb1f79a",
         "uri": "v1/schema/site.schema.json"
       }
     },
     "sites": {
-      "bytes": 54081,
+      "bytes": 59384,
       "content_type": "application/json",
       "count": 54,
-      "sha256": "10a4e0567107c76b4e6b788fdcc6792f5b18302a05f7354d3672169f7b321406",
+      "sha256": "26325470e84fc51dd1a6cabd43c9a0100bb0358bf386ede855f8cf8902352661",
       "uri": "v1/sites.json"
     },
     "stamp": {
@@ -141,6 +217,11 @@
       "path": "data/site-label-provenance.json",
       "schema_version": 1,
       "sha256": "c44128d61fa1088cac2b81cac8d70fddfcd979edb50de9713945266c90cff109"
+    },
+    "reference_metadata": {
+      "bucket": "reefradar-2477-embeddings",
+      "key": "reference/metadata_v6.json",
+      "sha256": "5adc487d3f25d1037fdb2145ca5c56474459d7b32ec3c914a00f2c47719ca2e3"
     },
     "snapshot": {
       "path": "data/snapshots/api-sites.json",
