@@ -68,6 +68,15 @@ def handler(event, context):
     if not path:
         path = '/'
 
+    # CORS preflight. The API's single $default route forwards OPTIONS here, so
+    # API Gateway's own CORS config never answers it; without this the browser
+    # blocks every POST /upload and /analyze from the dashboard.
+    if http_method == 'OPTIONS':
+        preflight = response(204, {})
+        preflight['body'] = ''
+        preflight['headers']['Access-Control-Max-Age'] = '600'
+        return preflight
+
     routes = {
         ('POST', '/upload'): handle_upload,
         ('POST', '/analyze'): handle_analyze,

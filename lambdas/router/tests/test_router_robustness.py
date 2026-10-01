@@ -266,3 +266,16 @@ def test_upload_limit_fits_in_a_lambda_sync_event(upload_env):
     # 4 MiB of WAV, base64-encoded (x4/3), must stay under the 6 MB sync payload cap.
     encoded = upload_env.MAX_UPLOAD_BYTES * 4 / 3
     assert encoded + 20_000 < 6 * 1024 * 1024
+
+
+@pytest.mark.parametrize("path", ["/upload", "/analyze", "/status/abc", "/visualize/abc"])
+def test_cors_preflight_is_answered(router, path):
+    # The $default route sends browser preflights to the router; they must
+    # succeed or every POST from the dashboard is blocked by CORS.
+    event = {"requestContext": {"http": {"method": "OPTIONS"}, "stage": ""}, "rawPath": path}
+    result = router.handler(event, context=None)
+    assert result["statusCode"] == 204
+    headers = {k.lower(): v for k, v in result["headers"].items()}
+    assert headers["access-control-allow-origin"] == "*"
+    assert "POST" in headers["access-control-allow-methods"]
+    assert "x-filename" in headers["access-control-allow-headers"].lower()
