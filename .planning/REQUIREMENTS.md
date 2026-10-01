@@ -213,13 +213,125 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (filled by roadmapper) | | |
+| TRUTH-01 | Phase 1 | Pending |
+| TRUTH-02 | Phase 1 | Pending |
+| TRUTH-03 | Phase 1 | Pending |
+| TRUTH-04 | Phase 1 | Pending |
+| TRUTH-05 | Phase 1 | Pending |
+| TRUTH-06 | Phase 1 | Pending |
+| TRUTH-07 | Phase 1 | Pending |
+| TRUTH-08 | Phase 1 | Pending |
+| TRUTH-09 | Phase 1 | Pending |
+| TRUTH-10 | Phase 1 | Pending |
+| CONTRACT-01 | Phase 2 | Pending |
+| CONTRACT-02 | Phase 2 | Pending |
+| CONTRACT-03 | Phase 2 | Pending |
+| CONTRACT-04 | Phase 2 | Pending |
+| CONTRACT-05 | Phase 2 | Pending |
+| DATA-01 | Phase 8 | Pending |
+| DATA-02 | Phase 8 | Pending |
+| DATA-03 | Phase 8 | Pending |
+| DATA-04 | Phase 8 | Pending |
+| DATA-05 | Phase 8 | Pending |
+| DATA-06 | Phase 8 | Pending |
+| DATA-07 | Phase 11 | Pending |
+| DATA-08 | Phase 11 | Pending |
+| DATA-09 | Phase 11 | Pending |
+| ML-01 | Phase 5 | Pending |
+| ML-02 | Phase 5 | Pending |
+| ML-03 | Phase 5 | Pending |
+| ML-04 | Phase 12 | Pending |
+| ML-05 | Phase 12 | Pending |
+| ML-06 | Phase 5 | Pending |
+| ML-07 | Phase 12 | Pending |
+| ML-08 | Phase 5 | Pending |
+| PLAT-01 | Phase 3 | Pending |
+| PLAT-02 | Phase 3 | Pending |
+| PLAT-03 | Phase 3 | Pending |
+| PLAT-04 | Phase 1 | Pending |
+| PLAT-05 | Phase 10 | Pending |
+| PLAT-06 | Phase 10 | Pending |
+| PLAT-07 | Phase 10 | Pending |
+| PLAT-08 | Phase 16 | Pending |
+| PLAT-09 | Phase 3 | Pending |
+| PLAT-10 | Phase 3 | Pending |
+| DS-01 | Phase 4 | Pending |
+| DS-02 | Phase 4 | Pending |
+| DS-03 | Phase 4 | Pending |
+| DS-04 | Phase 4 | Pending |
+| DS-05 | Phase 4 | Pending |
+| DS-06 | Phase 4 | Pending |
+| DS-07 | Phase 3 | Pending |
+| DS-08 | Phase 4 | Pending |
+| LISTEN-01 | Phase 7 | Pending |
+| LISTEN-02 | Phase 7 | Pending |
+| LISTEN-03 | Phase 7 | Pending |
+| LISTEN-04 | Phase 7 | Pending |
+| LISTEN-05 | Phase 7 | Pending |
+| LISTEN-06 | Phase 7 | Pending |
+| LISTEN-07 | Phase 7 | Pending |
+| LISTEN-08 | Phase 7 | Pending |
+| LISTEN-09 | Phase 7 | Pending |
+| TIME-01 | Phase 9 | Pending |
+| TIME-02 | Phase 14 | Pending |
+| TIME-03 | Phase 14 | Pending |
+| TIME-04 | Phase 14 | Pending |
+| TIME-05 | Phase 14 | Pending |
+| TIME-06 | Phase 14 | Pending |
+| TIME-07 | Phase 14 | Pending |
+| ANLZ-01 | Phase 10 | Pending |
+| ANLZ-02 | Phase 10 | Pending |
+| ANLZ-03 | Phase 10 | Pending |
+| ANLZ-04 | Phase 9 | Pending |
+| ANLZ-05 | Phase 9 | Pending |
+| ANLZ-06 | Phase 9 | Pending |
+| ANLZ-07 | Phase 9 | Pending |
+| ANLZ-08 | Phase 10 | Pending |
+| ANLZ-09 | Phase 9 | Pending |
+| ANLZ-10 | Phase 10 | Pending |
+| ANLZ-11 | Phase 10 | Pending |
+| ANLZ-12 | Phase 9 | Pending |
+| ATLAS-01 | Phase 6 | Pending |
+| ATLAS-02 | Phase 6 | Pending |
+| ATLAS-03 | Phase 6 | Pending |
+| ATLAS-04 | Phase 6 | Pending |
+| ATLAS-05 | Phase 6 | Pending |
+| ATLAS-06 | Phase 6 | Pending |
+| ATLAS-07 | Phase 6 | Pending |
+| ATLAS-08 | Phase 6 | Pending |
+| ATLAS-09 | Phase 15 | Pending |
+| EVID-01 | Phase 13 | Pending |
+| EVID-02 | Phase 13 | Pending |
+| EVID-03 | Phase 13 | Pending |
+| EVID-04 | Phase 13 | Pending |
+| EVID-05 | Phase 13 | Pending |
+| EVID-06 | Phase 13 | Pending |
+| EVID-07 | Phase 13 | Pending |
+| PERSIST-01 | Phase 6 | Pending |
+| PERSIST-02 | Phase 9 | Pending |
+| PERSIST-03 | Phase 13 | Pending |
+| PERSIST-04 | Phase 15 | Pending |
+| PERSIST-05 | Phase 15 | Pending |
+| PERSIST-06 | Phase 10 | Pending |
+| FRONT-01 | Phase 15 | Pending |
+| FRONT-02 | Phase 15 | Pending |
+| FRONT-03 | Phase 15 | Pending |
+| A11Y-01 | Phase 16 | Pending |
+| A11Y-02 | Phase 7 | Pending |
+| A11Y-03 | Phase 16 | Pending |
+| A11Y-04 | Phase 16 | Pending |
+| A11Y-05 | Phase 16 | Pending |
+| A11Y-06 | Phase 16 | Pending |
+| A11Y-07 | Phase 16 | Pending |
+| MIGR-01 | Phase 17 | Pending |
+| MIGR-02 | Phase 17 | Pending |
+| MIGR-03 | Phase 17 | Pending |
 
 **Coverage:**
 - v1 requirements: 113 total
-- Mapped to phases: 0
-- Unmapped: 113 ⚠️
+- Mapped to phases: 113
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-09-30*
-*Last updated: 2026-09-30 after initialization*
+*Last updated: 2026-09-30 after roadmap creation (traceability mapped to 17 phases)*
