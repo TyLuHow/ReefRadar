@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 01
 current_phase_name: Truth & Reproducibility
 status: executing
-stopped_at: Completed 01-11-PLAN.md
-last_updated: "2026-10-01T08:41:04.061Z"
+stopped_at: Completed 01-12-PLAN.md
+last_updated: "2026-10-01T08:48:50.599Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 01 execution started
-state_head: dc301d04be12915b99e48fd95ea8c782a812d580
+state_head: 851b044075239ae83e5732e2edf4d56e0e193a9f
 progress:
   total_phases: 17
   completed_phases: 0
   total_plans: 20
-  completed_plans: 11
+  completed_plans: 12
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 01 (Truth & Reproducibility) — EXECUTING
-Plan: 12 of 20
+Plan: 13 of 20
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 01 execution started
 
@@ -71,6 +71,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P09 | 25min | 3 tasks | 3 files |
 | Phase 01 P10 | 45min | 2 tasks | 4 files |
 | Phase 01 P11 | 50min | 2 tasks | 6 files |
+| Phase 01-truth-reproducibility P12 | 35min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,8 @@ Recent decisions affecting current work:
 - [Phase 01]: [Phase 01] 5 real training sites confirmed (ind_D2, ind_D3, ind_H4, ind_N1, ken_H1 — Indonesia and Kenya only) for plan 01-11's region-coverage fix
 - [Phase 01]: [Phase 01] D-12 fix: training_countries is a global property of training_sites (not scoped to the matched region); in_training_region requires scope=='specific' AND a training site inside the matched box
 - [Phase 01]: [Phase 01] D-13/D-17: generate_visualization() deleted entirely (legacy UI already handles its absence); find_similar_sites() routes every match through the shared apply_label_provenance()
+- [Phase 01]: Deleted CURATED_SAMPLES/SAMPLE_STORIES outright instead of keeping as fallback -- missing audio manifest now returns 500 SAMPLES_UNAVAILABLE per D-05/D-09
+- [Phase 01]: router.json's 3 new bundled members (site_provenance.py, site_label_provenance.json, audio_manifest.json) added incrementally, one task's worth per commit
 
 ### Pending Todos
 
@@ -130,6 +133,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T08:41:04.042Z
-Stopped at: Completed 01-11-PLAN.md
+Last session: 2026-10-01T08:48:50.579Z
+Stopped at: Completed 01-12-PLAN.md
 Resume file: None
