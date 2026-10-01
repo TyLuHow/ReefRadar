@@ -52,6 +52,8 @@ export interface LocationAudioReturn {
   rightTrack: HealthStatus;
   setLeftTrack: (s: HealthStatus) => void;
   setRightTrack: (s: HealthStatus) => void;
+  /** Atomically set both tracks (use for swaps; avoids stale-closure races). */
+  setTracks: (left: HealthStatus, right: HealthStatus) => void;
 }
 
 // --- Filter constants (same as useDemoAudio) ---------------------------------
@@ -81,6 +83,13 @@ export function useLocationAudio(): LocationAudioReturn {
   const analyserRef = useRef<AnalyserNode | null>(null);
   const startTimeRef = useRef(0);
   const rafRef = useRef<number | null>(null);
+
+  // Mirrors `isPlaying` so callbacks never act on a stale render closure, and a
+  // monotonically increasing token that lets a superseded buffer load be discarded
+  // (REVIEW CR-02: rapid track swaps must never play audio that does not match
+  // the labels on screen, nor leave orphaned looping sources).
+  const isPlayingRef = useRef(false);
+  const loadTokenRef = useRef(0);
 
   // Filter nodes -- parallel branches for each frequency band
   const lowFilterRef = useRef<BiquadFilterNode | null>(null);
@@ -238,6 +247,7 @@ export function useLocationAudio(): LocationAudioReturn {
     left: HealthStatus,
     right: HealthStatus,
   ) => {
+    const token = ++loadTokenRef.current;
     setLoadState('loading');
     try {
       const ctx = ensureAudioGraph();
@@ -256,12 +266,15 @@ export function useLocationAudio(): LocationAudioReturn {
         ctx.decodeAudioData(await lRes.arrayBuffer()),
         ctx.decodeAudioData(await rRes.arrayBuffer()),
       ]);
+      // A newer load (track swap / location change) superseded this one: discard.
+      if (token !== loadTokenRef.current) return false;
       leftBufRef.current = lBuf;
       rightBufRef.current = rBuf;
       setDuration(lBuf.duration);
       setLoadState('ready');
       return true;
     } catch {
+      if (token !== loadTokenRef.current) return false;
       setLoadState('error');
       return false;
     }
@@ -274,6 +287,7 @@ export function useLocationAudio(): LocationAudioReturn {
     try { rightSourceRef.current?.stop(); } catch { /* noop */ }
     leftSourceRef.current = null;
     rightSourceRef.current = null;
+    isPlayingRef.current = false;
     setIsPlaying(false);
     setCurrentTime(0);
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -288,6 +302,11 @@ export function useLocationAudio(): LocationAudioReturn {
     if (!ctx || !lBuf || !rBuf || !lGain || !rGain) return;
 
     if (ctx.state === 'suspended') ctx.resume();
+
+    // Idempotent: never leave a previous pair of looping sources running.
+    try { leftSourceRef.current?.stop(); } catch { /* noop */ }
+    try { rightSourceRef.current?.stop(); } catch { /* noop */ }
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
 
     const lSource = ctx.createBufferSource();
     lSource.buffer = lBuf;
@@ -324,6 +343,7 @@ export function useLocationAudio(): LocationAudioReturn {
     startTimeRef.current = ctx.currentTime;
     lSource.start(0);
     rSource.start(0);
+    isPlayingRef.current = true;
     setIsPlaying(true);
 
     const tick = () => {
@@ -336,7 +356,7 @@ export function useLocationAudio(): LocationAudioReturn {
   }, []);
 
   const handlePlayPause = useCallback(async () => {
-    if (isPlaying) {
+    if (isPlayingRef.current) {
       stopPlayback();
       return;
     }
@@ -346,15 +366,12 @@ export function useLocationAudio(): LocationAudioReturn {
     // If buffers not loaded or load state is idle/error, load them
     if (loadState !== 'ready') {
       const ok = await loadBuffers(selectedLocation, leftTrack, rightTrack);
-      if (ok) {
-        // Start playback after a micro-delay to let state settle
-        setTimeout(() => startPlayback(), 0);
-      }
+      if (ok) startPlayback();
       return;
     }
 
     startPlayback();
-  }, [isPlaying, selectedLocation, loadState, leftTrack, rightTrack, stopPlayback, startPlayback, loadBuffers]);
+  }, [selectedLocation, loadState, leftTrack, rightTrack, stopPlayback, startPlayback, loadBuffers]);
 
   // --- Crossfade control -----------------------------------------------------
 
@@ -408,9 +425,9 @@ export function useLocationAudio(): LocationAudioReturn {
     const loc = locations.find((l) => l.id === id);
     if (!loc) return;
 
-    // Stop current playback
-    const wasPlaying = isPlaying;
-    if (wasPlaying) stopPlayback();
+    // Stop current playback and invalidate any in-flight buffer load
+    loadTokenRef.current += 1;
+    if (isPlayingRef.current) stopPlayback();
 
     setSelectedLocationState(loc);
 
@@ -432,43 +449,39 @@ export function useLocationAudio(): LocationAudioReturn {
     setLoadState('idle');
     leftBufRef.current = null;
     rightBufRef.current = null;
-  }, [locations, isPlaying, stopPlayback, setCrossfade]);
+  }, [locations, stopPlayback, setCrossfade]);
 
   // --- Track selection -------------------------------------------------------
 
-  const setLeftTrack = useCallback((s: HealthStatus) => {
-    if (s === leftTrack) return;
-    const wasPlaying = isPlaying;
-    if (wasPlaying) stopPlayback();
-    setLeftTrackState(s);
+  // Single atomic action: both tracks change together, so a swap can never
+  // observe (or load) a half-updated pair.
+  const setTracks = useCallback((left: HealthStatus, right: HealthStatus) => {
+    if (left === leftTrack && right === rightTrack) return;
+    const wasPlaying = isPlayingRef.current;
+    stopPlayback();
+    setLeftTrackState(left);
+    setRightTrackState(right);
     setLoadState('idle');
     leftBufRef.current = null;
     rightBufRef.current = null;
+    // Invalidate any load still in flight for the previous pair.
+    loadTokenRef.current += 1;
 
-    // If was playing, auto-reload and restart
+    // If was playing, auto-reload and restart with exactly (left, right)
     if (wasPlaying && selectedLocation) {
-      loadBuffers(selectedLocation, s, rightTrack).then((ok) => {
-        if (ok) setTimeout(() => startPlayback(), 0);
+      loadBuffers(selectedLocation, left, right).then((ok) => {
+        if (ok) startPlayback();
       });
     }
-  }, [leftTrack, rightTrack, isPlaying, selectedLocation, stopPlayback, loadBuffers, startPlayback]);
+  }, [leftTrack, rightTrack, selectedLocation, stopPlayback, loadBuffers, startPlayback]);
+
+  const setLeftTrack = useCallback((s: HealthStatus) => {
+    setTracks(s, rightTrack);
+  }, [rightTrack, setTracks]);
 
   const setRightTrack = useCallback((s: HealthStatus) => {
-    if (s === rightTrack) return;
-    const wasPlaying = isPlaying;
-    if (wasPlaying) stopPlayback();
-    setRightTrackState(s);
-    setLoadState('idle');
-    leftBufRef.current = null;
-    rightBufRef.current = null;
-
-    // If was playing, auto-reload and restart
-    if (wasPlaying && selectedLocation) {
-      loadBuffers(selectedLocation, leftTrack, s).then((ok) => {
-        if (ok) setTimeout(() => startPlayback(), 0);
-      });
-    }
-  }, [leftTrack, rightTrack, isPlaying, selectedLocation, stopPlayback, loadBuffers, startPlayback]);
+    setTracks(leftTrack, s);
+  }, [leftTrack, setTracks]);
 
   // --- Cleanup ---------------------------------------------------------------
 
@@ -501,5 +514,6 @@ export function useLocationAudio(): LocationAudioReturn {
     rightTrack,
     setLeftTrack,
     setRightTrack,
+    setTracks,
   };
 }

@@ -180,8 +180,7 @@ export function LocationCompare({ onGoLanding, onGoDemo }: LocationCompareProps)
                         if (!available) return;
                         if (isLeft || isRight) return; // Already selected
                         // Shift: right becomes left, new becomes right
-                        audio.setLeftTrack(audio.rightTrack);
-                        audio.setRightTrack(status);
+                        audio.setTracks(audio.rightTrack, status);
                       }}
                       className={`flex-1 px-2 py-2 rounded-lg text-xs text-center transition-all ${
                         !available

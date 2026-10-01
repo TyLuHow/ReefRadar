@@ -45,6 +45,10 @@ export function useDemoAudio(): DemoAudioReturn {
   const startTimeRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const pendingPlayRef = useRef(false);
+  // Synchronous guard: `loadState` is a render-closure value and is stale for a
+  // second click that lands before React re-renders, which would build a second
+  // AudioContext and graph (REVIEW CR-02, same stale-closure pattern).
+  const initStartedRef = useRef(false);
 
   // Filter nodes -- parallel branches for each frequency band
   const lowFilterRef = useRef<BiquadFilterNode | null>(null);
@@ -68,7 +72,8 @@ export function useDemoAudio(): DemoAudioReturn {
   const [activeBands, setActiveBands] = useState<Set<BandId>>(() => new Set(ALL_BANDS));
 
   const initAudio = useCallback(async () => {
-    if (loadState !== 'idle') return;
+    if (initStartedRef.current) return;
+    initStartedRef.current = true;
     setLoadState('loading');
     try {
       const AudioContextClass =
@@ -171,7 +176,7 @@ export function useDemoAudio(): DemoAudioReturn {
     } catch {
       setLoadState('error');
     }
-  }, [loadState]);
+  }, []);
 
   const startPlayback = useCallback(() => {
     const ctx = audioCtxRef.current;
@@ -182,6 +187,11 @@ export function useDemoAudio(): DemoAudioReturn {
     if (!ctx || !hBuf || !dBuf || !hGain || !dGain) return;
 
     if (ctx.state === 'suspended') ctx.resume();
+
+    // Idempotent: never leave a previous pair of looping sources running.
+    try { healthySourceRef.current?.stop(); } catch { /* noop */ }
+    try { degradedSourceRef.current?.stop(); } catch { /* noop */ }
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
 
     const hSource = ctx.createBufferSource();
     hSource.buffer = hBuf;
