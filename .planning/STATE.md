@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 01
 current_phase_name: Truth & Reproducibility
 status: executing
-stopped_at: Completed 01-04-PLAN.md
-last_updated: "2026-10-01T06:43:09.202Z"
+stopped_at: Completed 01-05-PLAN.md
+last_updated: "2026-10-01T07:04:13.628Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 01 execution started
-state_head: 78ebacfec9415000d37c8ae4883f0e9b90e4151e
+state_head: 58ceb450fe514547e1232eabd18ad6335095a1bd
 progress:
   total_phases: 17
   completed_phases: 0
   total_plans: 20
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 01 (Truth & Reproducibility) — EXECUTING
-Plan: 5 of 20
+Plan: 6 of 20
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 01 execution started
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P02 | 15min | 3 tasks | 12 files |
 | Phase 01 P03 | 35min | 2 tasks | 15 files |
 | Phase 01 P04 | 12min | 2 tasks | 48 files |
+| Phase 01 P05 | 14min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,8 @@ Recent decisions affecting current work:
 - [Phase 01]: .gitignore marrs WAV exception added in Task 1 (not Task 2 as planned) since Task 1's done-criteria requires a committed WAV
 - [Phase 01]: Captured pre-truth baseline (TRUTH-10) from the live production deployment, not a local build, since repo HEAD cannot build until plan 01-07 restores the gallery source
 - [Phase 01]: Redaction of presigned-S3 query strings applies unconditionally to every axe report, not just gallery-adjacent routes, closing any gap in the T-01-04-01 mitigation
+- [Phase 01]: normalize_text_bytes() (CRLF->LF) added to every lambda_packaging.py reader after discovering Windows core.autocrlf checkouts differ byte-for-byte from committed git blobs, which would have broken D-03/D-04's cross-platform build-determinism guarantee
+- [Phase 01]: Fixed a conftest.py bare-module-name collision in lambdas/classifier/tests/test_load_lambda.py (plan 01-01) surfaced by adding scripts/tests/conftest.py, by loading lambdas/conftest.py via explicit importlib path
 
 ### Pending Todos
 
@@ -110,6 +113,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T06:43:09.182Z
-Stopped at: Completed 01-04-PLAN.md
+Last session: 2026-10-01T07:04:13.611Z
+Stopped at: Completed 01-05-PLAN.md
 Resume file: None

@@ -10,7 +10,7 @@
 ### Truth & Reproducibility (TRUTH)
 
 - [ ] **TRUTH-01**: A fresh clone of the repository builds and runs the dashboard without any uncommitted local files (gallery and samples sources committed) [CAP-13, CAP-14]
-- [ ] **TRUTH-02**: Every deployed Lambda (including the `/samples` route) is built from source in the repository, and a drift check confirms deployed code matches git
+- [x] **TRUTH-02**: Every deployed Lambda (including the `/samples` route) is built from source in the repository, and a drift check confirms deployed code matches git
 - [x] **TRUTH-03**: No synthetic audio is served anywhere in the product; every playable clip is a real recording from a cited dataset
 - [x] **TRUTH-04**: No sample or site references a location absent from the reference dataset (e.g. `phl_D1` removed), and sample labels match site labels (e.g. `aus_R1`)
 - [ ] **TRUTH-05**: The deployed classifier's version, classes and training data are verified and recorded; any class trained on synthetic audio is removed from the live model until retrained on real data
@@ -214,7 +214,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | TRUTH-01 | Phase 1 | Pending |
-| TRUTH-02 | Phase 1 | Pending |
+| TRUTH-02 | Phase 1 | Complete |
 | TRUTH-03 | Phase 1 | Complete |
 | TRUTH-04 | Phase 1 | Complete |
 | TRUTH-05 | Phase 1 | Pending |
