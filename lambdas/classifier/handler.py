@@ -130,14 +130,17 @@ def handler(event, context):
     # Idempotency (WR-03): this function is invoked asynchronously, so Lambda
     # may deliver the same event more than once. A terminal RESULT or ERROR
     # item is the single authoritative outcome -- never redo the work.
-    if _terminal_outcome_exists(table, analysis_id):
-        print(f"Analysis {analysis_id} already has a terminal outcome; skipping duplicate delivery")
-        return {
-            'statusCode': 200,
-            'body': json.dumps({'analysis_id': analysis_id, 'status': 'duplicate_delivery_ignored'})
-        }
-
     try:
+        # The guard runs inside the try so a transient DynamoDB read failure
+        # is recorded as CLASSIFICATION_FAILED instead of leaving the analysis
+        # stuck in "classifying".
+        if _terminal_outcome_exists(table, analysis_id):
+            print(f"Analysis {analysis_id} already has a terminal outcome; skipping duplicate delivery")
+            return {
+                'statusCode': 200,
+                'body': json.dumps({'analysis_id': analysis_id, 'status': 'duplicate_delivery_ignored'})
+            }
+
         # Load segments
         response = s3.get_object(Bucket=AUDIO_BUCKET, Key=segments_key)
         segments_data = json.loads(response['Body'].read().decode())
@@ -259,12 +262,21 @@ def handler(event, context):
         })
 
 
+# Classifier-authored ERROR items carry one of these stages. The preprocessor's
+# ERROR items carry no stage and are retryable (it re-raises, so Lambda's async
+# retry can re-run it successfully and then invoke this function).
+_CLASSIFIER_ERROR_STAGES = ('inference', 'classification')
+
+
 def _terminal_outcome_exists(table, analysis_id):
-    """True if a RESULT or ERROR item already exists for this analysis."""
-    for sk in ('RESULT', 'ERROR'):
-        if 'Item' in table.get_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': sk}):
-            return True
-    return False
+    """True if this analysis already has a terminal outcome: a RESULT, or an
+    ERROR written by the classifier itself. A stale preprocessor ERROR is NOT
+    terminal -- the pipeline has demonstrably recovered if we were invoked."""
+    pk = f'ANALYSIS#{analysis_id}'
+    if 'Item' in table.get_item(Key={'pk': pk, 'sk': 'RESULT'}):
+        return True
+    err = table.get_item(Key={'pk': pk, 'sk': 'ERROR'}).get('Item')
+    return bool(err) and err.get('stage') in _CLASSIFIER_ERROR_STAGES
 
 
 def _record_failure(table, analysis_id, upload_id, fields):
@@ -287,9 +299,15 @@ def _record_failure(table, analysis_id, upload_id, fields):
             'body': json.dumps({'analysis_id': analysis_id, 'status': 'complete'})
         }
     try:
-        table.put_item(Item=error_item, ConditionExpression='attribute_not_exists(pk)')
+        # Keep the first classifier terminal outcome, but let this ERROR
+        # supersede a stale preprocessor ERROR (which has no 'stage').
+        table.put_item(
+            Item=error_item,
+            ConditionExpression='attribute_not_exists(pk) OR attribute_not_exists(#stage)',
+            ExpressionAttributeNames={'#stage': 'stage'},
+        )
     except table.meta.client.exceptions.ConditionalCheckFailedException:
-        pass  # an ERROR was already recorded: keep the first terminal outcome
+        pass  # a classifier ERROR was already recorded: keep the first terminal outcome
 
     table.update_item(
         Key={'pk': f'UPLOAD#{upload_id}', 'sk': 'METADATA'},

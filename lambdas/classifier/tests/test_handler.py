@@ -365,6 +365,64 @@ def test_duplicate_delivery_does_not_redo_work_or_overwrite_result(classifier_ha
     assert _get_item(classifier_handler, "analysis-d1", "ERROR") is None
 
 
+def test_stale_preprocessor_error_does_not_block_classification(classifier_handler):
+    """REVIEW iter-2 WR-01: a preprocessor ERROR (no 'stage') from a failed
+    first attempt that a Lambda async retry then recovered must not wedge the
+    analysis; the classifier produces a RESULT and clears the stale ERROR."""
+    table = classifier_handler.dynamodb.Table(METADATA_TABLE)
+    table.put_item(Item={
+        "pk": "ANALYSIS#analysis-s1", "sk": "ERROR",
+        "error_code": "PROCESSING_FAILED", "status": "failed",
+    })
+    event = {
+        "upload_id": "upload-s1",
+        "analysis_id": "analysis-s1",
+        "segments_key": "segments/analysis-1.json",
+        "num_segments": 2,
+    }
+    assert classifier_handler.handler(event, context=None)["statusCode"] == 200
+    assert _get_item(classifier_handler, "analysis-s1", "RESULT") is not None
+    assert _get_item(classifier_handler, "analysis-s1", "ERROR") is None
+
+
+def test_classifier_error_supersedes_stale_preprocessor_error(classifier_handler):
+    table = classifier_handler.dynamodb.Table(METADATA_TABLE)
+    table.put_item(Item={
+        "pk": "ANALYSIS#analysis-s2", "sk": "ERROR",
+        "error_code": "PROCESSING_FAILED", "status": "failed",
+    })
+    classifier_handler._record_failure(
+        table, "analysis-s2", "upload-s2",
+        {"error_code": "TIMEOUT", "error": "boom", "stage": "inference"},
+    )
+    err = _get_item(classifier_handler, "analysis-s2", "ERROR")
+    assert err["error_code"] == "TIMEOUT"
+    assert err["stage"] == "inference"
+    # ... and a second classifier failure keeps the first terminal outcome.
+    classifier_handler._record_failure(
+        table, "analysis-s2", "upload-s2",
+        {"error_code": "OTHER", "error": "later", "stage": "classification"},
+    )
+    assert _get_item(classifier_handler, "analysis-s2", "ERROR")["error_code"] == "TIMEOUT"
+
+
+def test_idempotency_guard_read_failure_is_recorded_not_raised(classifier_handler, monkeypatch):
+    def _boom(table, analysis_id):
+        raise RuntimeError("dynamodb unavailable")
+
+    monkeypatch.setattr(classifier_handler, "_terminal_outcome_exists", _boom)
+    event = {
+        "upload_id": "upload-s3",
+        "analysis_id": "analysis-s3",
+        "segments_key": "segments/analysis-1.json",
+        "num_segments": 2,
+    }
+    result = classifier_handler.handler(event, context=None)
+    assert result["statusCode"] == 500
+    err = _get_item(classifier_handler, "analysis-s3", "ERROR")
+    assert err["error_code"] == "CLASSIFICATION_FAILED"
+
+
 def test_late_failure_never_contradicts_stored_result(classifier_handler):
     table = classifier_handler.dynamodb.Table(METADATA_TABLE)
     table.put_item(Item={"pk": "ANALYSIS#analysis-l1", "sk": "RESULT", "status": "complete"})
