@@ -438,6 +438,10 @@ def test_late_failure_never_contradicts_stored_result(classifier_handler):
 
 def _load_local_model(dirname):
     base = _REPO_ROOT / dirname
+    if not (base / "model_config.json").exists():
+        # models/ (the archived v2.0 artifacts) is gitignored; only the
+        # committed interim model is guaranteed in a clean clone / CI.
+        pytest.skip(f"{dirname}/model_config.json not present in this checkout")
     config = json.loads((base / "model_config.json").read_text(encoding="utf-8"))
     with np.load(base / "reef_classifier_weights.npz") as npz:
         weights = {k: npz[k] for k in npz.files}
@@ -453,16 +457,16 @@ def test_validate_model_accepts_published_and_archived_models(classifier_handler
 
 
 def test_validate_model_rejects_class_count_mismatch(classifier_handler):
-    weights, config = _load_local_model("models")  # 4 outputs
+    weights, config = _load_local_model("models/interim-real-only")  # 3 outputs
     config = dict(config)
-    config["idx_to_label"] = {"0": "degraded", "1": "healthy", "2": "restored_early"}
-    config["num_classes"] = 3
+    config["idx_to_label"] = {"0": "degraded", "1": "healthy", "2": "restored_early", "3": "restored_mid"}
+    config["num_classes"] = 4
     with pytest.raises(ValueError):
         classifier_handler.validate_model(weights, config)
 
 
 def test_validate_model_rejects_missing_label_map(classifier_handler):
-    weights, config = _load_local_model("models")
+    weights, config = _load_local_model("models/interim-real-only")
     config = {k: v for k, v in config.items() if k != "idx_to_label"}
     with pytest.raises(ValueError):
         classifier_handler.validate_model(weights, config)
