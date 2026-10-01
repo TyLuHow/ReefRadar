@@ -7,3 +7,5 @@ boto3==1.43.106
 numpy==1.26.4
 # Already used by scripts/ (e.g. download_marrs_samples.py, figshare API calls)
 requests
+# Phase 2 contract validation (JSON Schema draft 2020-12); owner standing approval 2026-10-01
+jsonschema==4.26.0
