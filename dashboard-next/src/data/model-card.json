@@ -1,0 +1,18 @@
+{
+  "model_version": "interim-real-only",
+  "classes": [
+    "degraded",
+    "healthy",
+    "restored_early"
+  ],
+  "num_classes": 3,
+  "training_rows": 100,
+  "training_sites_count": 5,
+  "training_countries": [
+    "Indonesia",
+    "Kenya"
+  ],
+  "evaluation_note": "Accuracy is from a random per-window split; windows from the same site appear in train and test, so it is not an estimate of performance on new sites or regions. Grouped leave-one-site-out evaluation is Phase 5; retraining on more real data is Phase 12.",
+  "synthetic_history": "An earlier 4-class model (v2.0) included a restored_mid class trained entirely on synthetically generated audio, not real recordings; see docs/model/DEPLOYED-MODEL-AUDIT.md. This model retrains on the real rows only and drops that class.",
+  "source": "models/interim-real-only/model_config.json"
+}

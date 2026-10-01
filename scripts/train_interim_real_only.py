@@ -416,7 +416,12 @@ def main():
     real_samples, excluded_counts = filter_real_rows(samples)
     real_samples = [s for s in real_samples if s["label"] in interim_classes]
 
-    dropped_classes = sorted(set(s["label"] for s in samples) - interim_classes)
+    # Classes dropped relative to the *deployed* model's class set (not
+    # merely what happens to appear in the training file(s) passed in --
+    # a dropped class like restored_mid never had real rows anywhere,
+    # including in the training files, so it wouldn't show up there).
+    deployed_classes = set(lock.get("artifacts", {}).get("idx_to_label", {}).values())
+    dropped_classes = sorted(deployed_classes - interim_classes)
 
     X = np.array([s["embedding"] for s in real_samples], dtype=np.float32)
     labels = [s["label"] for s in real_samples]

@@ -1,0 +1,73 @@
+{
+  "version": "interim-real-only",
+  "created": "2026-10-01T08:53:41.793280+00:00",
+  "input_dim": 1280,
+  "hidden_dims": [
+    256,
+    64
+  ],
+  "num_classes": 3,
+  "label_to_idx": {
+    "degraded": 0,
+    "healthy": 1,
+    "restored_early": 2
+  },
+  "idx_to_label": {
+    "0": "degraded",
+    "1": "healthy",
+    "2": "restored_early"
+  },
+  "training_samples": 100,
+  "training_sites": [
+    {
+      "site_id": "ind_D2",
+      "country": "Indonesia",
+      "latitude": -4.9401,
+      "longitude": 119.318815,
+      "rows": 20
+    },
+    {
+      "site_id": "ind_D3",
+      "country": "Indonesia",
+      "latitude": -4.930635,
+      "longitude": 119.316119,
+      "rows": 20
+    },
+    {
+      "site_id": "ind_H4",
+      "country": "Indonesia",
+      "latitude": -4.929463,
+      "longitude": 119.316792,
+      "rows": 20
+    },
+    {
+      "site_id": "ind_N1",
+      "country": "Indonesia",
+      "latitude": -4.9310799,
+      "longitude": 119.3159127,
+      "rows": 20
+    },
+    {
+      "site_id": "ken_H1",
+      "country": "Kenya",
+      "latitude": -2.215614,
+      "longitude": 41.013482,
+      "rows": 20
+    }
+  ],
+  "training_countries": [
+    "Indonesia",
+    "Kenya"
+  ],
+  "synthetic_rows_excluded": 0,
+  "source_training_files": [
+    {
+      "key": "training/training_test_20.json",
+      "sha256": "e18c133ef1d640014fc77d4083d66f9cafe0773f509c738fe953a4d5e346ca7a"
+    }
+  ],
+  "split_accuracy": 1.0,
+  "seed": 42,
+  "trainer": "scripts/train_interim_real_only.py (pure NumPy MLP: Glorot init, Adam, mini-batch 32, early stopping, no sklearn/torch)",
+  "evaluation_note": "Accuracy is from a random per-window split; windows from the same site appear in train and test, so it is not an estimate of performance on new sites or regions. Grouped leave-one-site-out evaluation is Phase 5; retraining on more real data is Phase 12."
+}
