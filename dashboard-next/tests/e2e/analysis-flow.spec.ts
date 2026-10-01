@@ -67,6 +67,12 @@ test.describe('/dashboard/analyze -- real /status stages (D-15)', () => {
     await expect(page.getByRole('button', { name: /analyze another file/i })).toBeVisible({ timeout: 20000 });
 
     await expect(page.getByText(/%\s*complete/i)).toHaveCount(0);
+
+    // D-13 (UI half): the meaningless "Acoustic Embedding Space" scatter
+    // (EmbeddingChart.tsx, deleted in 01-16 task 3) must not be present --
+    // neither its heading/copy nor its recharts scatter-chart markup.
+    await expect(page.getByText(/acoustic embedding space/i)).toHaveCount(0);
+    await expect(page.locator('.recharts-wrapper')).toHaveCount(0);
   });
 
   test('shows the API message, suggestion and request id on a failed analysis', async ({ page }) => {

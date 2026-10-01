@@ -4,7 +4,6 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { FileUpload } from '@/components/FileUpload';
 import { AnalysisProgress } from '@/components/AnalysisProgress';
 import { AnalysisResults } from '@/components/AnalysisResults';
-import { EmbeddingChart } from '@/components/EmbeddingChart';
 import { SpectrogramCanvas } from '@/components/audio/SpectrogramCanvas';
 import { CaveatsBanner } from '@/components/dashboard/CaveatsBanner';
 import { RegionWarning } from '@/components/dashboard/RegionWarning';
@@ -438,7 +437,6 @@ export default function EnhancedAnalyzePage() {
                 )}
 
               <AnalysisResults result={analysisResult} />
-              <EmbeddingChart result={analysisResult} />
 
               {/* Caveats */}
               <CaveatsBanner defaultExpanded={false} />
