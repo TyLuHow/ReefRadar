@@ -5,11 +5,11 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 01
 current_phase_name: Truth & Reproducibility
 status: executing
-stopped_at: Completed 01-19-PLAN.md
-last_updated: "2026-10-01T10:07:58.970Z"
+stopped_at: "Phase 1: 18/20 plans done; 01-14 (prod deploy) blocked by safety classifier, 01-20 waits on it"
+last_updated: "2026-10-01T10:08:32.453Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 01 execution started
-state_head: e4072f78978c4e549dfcc6375933f80b9ea70765
+state_head: 8c539c8a074ff60e31d3b056753a7469fa2e7581
 progress:
   total_phases: 17
   completed_phases: 0
@@ -139,6 +139,7 @@ None yet.
 - [Phase 8]: Owner must set the AWS spend ceiling before any transfer or compute job; MARRS filename timezone unverified (correctness gate for diel features).
 - [Phase 11/12]: GPU vs CPU embedding throughput, Spot pricing and the Perch 2.0 Kaggle handle need re-verification before committing budget; calibration method at 5–10 real sites per class unresolved.
 - [Phase 14/16/17]: If the Data & ML track stalls (budget, credentials), Phase 14 cannot complete, which holds Phases 16 and 17.
+- Plan 01-14 (production deploy of Phase 1 backend truth fixes: router+classifier Lambdas, interim real-only model, real audio to S3 samples/marrs/, synthetic clips to retired/) was blocked by the Claude Code auto-mode safety classifier despite owner pre-approval. Owner must run it (or allow it): /gsd-execute-phase 1 then approve, or run scripts/deploy-lambdas.py per 01-14-PLAN.md. 01-20 (exit gate) depends on it.
 
 ## Deferred Items
 
@@ -150,6 +151,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T10:07:58.950Z
-Stopped at: Completed 01-19-PLAN.md
-Resume file: None
+Last session: 2026-10-01T10:08:32.433Z
+Stopped at: Phase 1: 18/20 plans done; 01-14 (prod deploy) blocked by safety classifier, 01-20 waits on it
+Resume file: .planning/phases/01-truth-reproducibility/01-14-PLAN.md
