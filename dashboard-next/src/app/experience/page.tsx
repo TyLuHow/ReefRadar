@@ -502,6 +502,7 @@ function SamplePlaybackState({
 }) {
   const [sample, setSample] = useState<Sample | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playError, setPlayError] = useState(false);
   const [progress, setProgress] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -549,8 +550,17 @@ function SamplePlaybackState({
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play();
-      setIsPlaying(true);
+      // Only report "playing" once play() resolves (it rejects for an expired
+      // presigned URL, CORS failure or autoplay policy).
+      setPlayError(false);
+      audioRef.current
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch(() => {
+          audioRef.current?.pause();
+          setIsPlaying(false);
+          setPlayError(true);
+        });
     }
   }, [sample, isPlaying]);
 
@@ -627,7 +637,7 @@ function SamplePlaybackState({
             <div className="flex items-center justify-between gap-2">
               <span
                 className="text-[10px] font-medium px-2.5 py-1 rounded-full border bg-transparent"
-                style={{ color: badgeColor, borderColor: badgeColor + '80' }}
+                style={{ color: badgeColor, borderColor: `color-mix(in srgb, ${badgeColor} 50%, transparent)` }}
                 title="A reference label assigned by the dataset, not a model output"
               >
                 Reference label: {referenceLabel} &middot; assigned by MARRS
@@ -669,6 +679,11 @@ function SamplePlaybackState({
                   <p className="text-[10px] font-mono mt-1" style={{ color: 'var(--text-dim)' }}>
                     {sample.duration_seconds} seconds
                   </p>
+                  {playError && (
+                    <p className="text-[10px] mt-1" role="alert" style={{ color: 'var(--text-muted)' }}>
+                      This recording could not be played (the link may have expired). Reload the page to try again.
+                    </p>
+                  )}
                 </div>
               </div>
             )}

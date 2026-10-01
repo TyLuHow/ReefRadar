@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { Play, Pause } from 'lucide-react';
 import { GlassPanel } from '@/components/ui/glass';
@@ -43,6 +43,7 @@ interface SampleCardProps {
 export function SampleCard({ sample, playingId, onPlay, onPause }: SampleCardProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [progress, setProgress] = useState(0);
+  const [playError, setPlayError] = useState(false);
   const isPlaying = playingId === sample.id;
   const badgeColor = STATUS_COLOR[sample.category] || STATUS_COLOR.unknown;
   const referenceLabel = referenceLabelFor(sample);
@@ -65,15 +66,36 @@ export function SampleCard({ sample, playingId, onPlay, onPause }: SampleCardPro
       audioRef.current.pause();
       onPause();
     } else {
-      audioRef.current.play();
-      onPlay(sample.id);
+      // play() returns a promise that rejects for an expired presigned URL,
+      // CORS failure or autoplay policy: only report "playing" once it resolves.
+      setPlayError(false);
+      audioRef.current
+        .play()
+        .then(() => onPlay(sample.id))
+        .catch(() => {
+          audioRef.current?.pause();
+          setPlayError(true);
+          onPause();
+        });
     }
   }, [isPlaying, sample.audio_url, sample.id, onPlay, onPause]);
 
-  // Pause when another card starts playing
-  if (!isPlaying && audioRef.current && !audioRef.current.paused) {
-    audioRef.current.pause();
-  }
+  // Pause when another card starts playing (an effect, not a side effect in render)
+  useEffect(() => {
+    if (!isPlaying && audioRef.current && !audioRef.current.paused) {
+      audioRef.current.pause();
+    }
+  }, [isPlaying]);
+
+  // Stop and release the element if the card unmounts mid-playback
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   return (
     <GlassPanel
@@ -83,7 +105,12 @@ export function SampleCard({ sample, playingId, onPlay, onPause }: SampleCardPro
       <div className="flex items-center justify-between gap-2">
         <span
           className="text-[10px] font-medium px-2 py-0.5 rounded-full border bg-transparent"
-          style={{ color: badgeColor, borderColor: badgeColor + '80' }}
+          style={{
+            color: badgeColor,
+            // badgeColor is a var(--status-...) reference, so appending a hex
+            // alpha would produce invalid CSS; mix with transparent instead.
+            borderColor: `color-mix(in srgb, ${badgeColor} 50%, transparent)`,
+          }}
           title="A reference label assigned by the dataset, not a model output"
         >
           Reference label: {referenceLabel} &middot; assigned by MARRS
@@ -129,6 +156,11 @@ export function SampleCard({ sample, playingId, onPlay, onPause }: SampleCardPro
           {sample.duration_seconds}s
         </span>
       </div>
+      {playError && (
+        <p className="text-[10px]" role="alert" style={{ color: 'var(--text-muted)' }}>
+          This recording could not be played (the link may have expired). Reload the page to try again.
+        </p>
+      )}
 
       {/* Analyze CTA */}
       <Link
