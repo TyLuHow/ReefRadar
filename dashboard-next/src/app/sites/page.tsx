@@ -8,6 +8,7 @@ import { SiteCard, SiteCardSkeleton } from '@/components/SiteCard';
 import { SiteFilters } from '@/components/sites';
 import { STATUS_COLORS, Site } from '@/types';
 import { formatStatus } from '@/lib/utils';
+import { deriveSiteStats, formatList } from '@/lib/site-stats';
 import { Map, AlertCircle, Globe, Activity, Layers } from 'lucide-react';
 
 // Dynamic import for map to avoid SSR issues with Leaflet
@@ -44,14 +45,12 @@ export default function SitesPage() {
     queryFn: () => api.getSites(),
   });
 
-  // Calculate statistics
+  // D-18/TRUTH-07: every count on this page is derived from /sites, not
+  // hard-coded.
   const sites = sitesData?.sites || [];
   const displaySites = filteredSites.length > 0 || sites.length === 0 ? filteredSites : sites;
-
-  const statusCounts = sites.reduce((acc, site) => {
-    acc[site.status] = (acc[site.status] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const stats = deriveSiteStats(sitesData);
+  const statusCounts = stats.byStatus;
 
   const handleFilteredSitesChange = useCallback((filtered: Site[]) => {
     setFilteredSites(filtered);
@@ -87,15 +86,16 @@ export default function SitesPage() {
           </p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {/* Stats Cards -- every count derived from /sites (D-18); these cards
+            (excluding Total) sum to Total, Unknown included. */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           <div className="glass-panel p-6">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'rgba(205, 133, 63, 0.15)' }}>
                 <Globe className="w-5 h-5 text-ochre" />
               </div>
               <div>
-                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{sites.length}</p>
+                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.total}</p>
                 <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Total Sites</p>
               </div>
             </div>
@@ -136,9 +136,37 @@ export default function SitesPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                  {(statusCounts.restored_early || 0) + (statusCounts.restored_mid || 0)}
+                  {statusCounts.restored_early || 0}
                 </p>
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Restored</p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Restored (Early)</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-panel p-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'rgba(192, 128, 129, 0.15)' }}>
+                <Activity className="w-5 h-5 text-status-restoring-mid" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                  {statusCounts.restored_mid || 0}
+                </p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Restored (Mid)</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-panel p-6">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'rgba(168, 162, 158, 0.15)' }}>
+                <Activity className="w-5 h-5" style={{ color: 'var(--text-dim)' }} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                  {statusCounts.unknown || 0}
+                </p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Unknown</p>
               </div>
             </div>
           </div>
@@ -174,7 +202,10 @@ export default function SitesPage() {
           {/* Map Legend */}
           <div className="mt-4 pt-4" style={{ borderTop: '1px solid rgba(229, 225, 219, 0.1)' }}>
             <p className="text-sm text-center" style={{ color: 'var(--text-muted)' }}>
-              Click on a marker to view site details. Reference sites span 5 countries: Indonesia, Australia, Kenya, Maldives, and Mexico.
+              Click on a marker to view site details.{' '}
+              {sitesData
+                ? `Reference sites span ${stats.countryCount} countries: ${formatList(stats.countries)}.`
+                : 'Loading reference sites...'}
             </p>
           </div>
         </div>
@@ -286,18 +317,13 @@ export default function SitesPage() {
           </div>
         </div>
 
-        {/* Data Source */}
+        {/* Data Source -- names every dataset actually present, not MARRS-only (D-18) */}
         <div className="mt-12 glass-panel p-6">
           <h3 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Data Source</h3>
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Reference site data comes from the{' '}
-            <strong>MARRS (Mars Assisted Reef Restoration System)</strong> dataset,
-            featuring underwater acoustic recordings from coral reefs across
-            Indonesia, Australia, Kenya, Maldives, and Mexico. These recordings
-            capture the unique soundscapes of reefs at different health stages.
-          </p>
-          <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-            Source: UCL Figshare (DOI: 10.5522/04/29958062)
+            {sitesData && stats.datasetNames.length > 0
+              ? `Reference site data combines ${formatList(stats.datasetNames)} -- underwater acoustic recordings labelled by each dataset's own researchers.`
+              : 'Loading reference site data sources...'}
           </p>
         </div>
       </div>

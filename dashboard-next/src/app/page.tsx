@@ -2,6 +2,9 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/lib/api';
+import { deriveSiteStats } from '@/lib/site-stats';
 import { SampleGallery } from '@/components/gallery/SampleGallery';
 
 const SpectrogramCanvas = dynamic(
@@ -15,6 +18,13 @@ const VitalityDebugPanel = dynamic(
 );
 
 export default function LandingPage() {
+  const { data: sitesData } = useQuery({
+    queryKey: ['sites'],
+    queryFn: () => api.getSites(),
+    staleTime: 60_000,
+  });
+  const stats = deriveSiteStats(sitesData);
+
   return (
     <div className="relative min-h-screen bg-abyss">
       {/* Background spectrogram */}
@@ -31,9 +41,9 @@ export default function LandingPage() {
             className="text-sm tracking-wide text-center max-w-md"
             style={{ color: 'var(--text-secondary)' }}
           >
-            Listen to the invisible reef. Explore real underwater recordings, hear the
-            difference between healthy and degraded ecosystems, and analyze reef health
-            with AI.
+            Listen to real underwater recordings from reference reefs labelled by the
+            researchers who recorded them, compare sites recorded at the same location,
+            and see which reference recordings your own recording most resembles.
           </p>
 
           {/* Quick nav */}
@@ -42,7 +52,7 @@ export default function LandingPage() {
               Skip to analyzer
             </Link>
             <Link href="/dashboard/map" className="hover:text-bone transition-colors">
-              Explore 54 sites
+              Explore the reference sites{sitesData ? ` (${stats.total})` : ' (—)'}
             </Link>
             <Link href="/about" className="hover:text-bone transition-colors">
               About
