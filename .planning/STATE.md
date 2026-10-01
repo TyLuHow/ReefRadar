@@ -5,11 +5,11 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 01
 current_phase_name: Truth & Reproducibility
 status: executing
-stopped_at: "Phase 1: 18/20 plans done; 01-14 (prod deploy) blocked by safety classifier, 01-20 waits on it"
-last_updated: "2026-10-01T10:08:32.453Z"
+stopped_at: Plan 01-14 attempt 1 rolled back after 503 during live verification; prod restored
+last_updated: "2026-10-01T15:41:36.435Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 01 execution started
-state_head: 8c539c8a074ff60e31d3b056753a7469fa2e7581
+state_head: d1a4473f82334ed64a3903e81a25264f625d9fce
 progress:
   total_phases: 17
   completed_phases: 0
@@ -140,6 +140,7 @@ None yet.
 - [Phase 11/12]: GPU vs CPU embedding throughput, Spot pricing and the Perch 2.0 Kaggle handle need re-verification before committing budget; calibration method at 5–10 real sites per class unresolved.
 - [Phase 14/16/17]: If the Data & ML track stalls (budget, credentials), Phase 14 cannot complete, which holds Phases 16 and 17.
 - Plan 01-14 (production deploy of Phase 1 backend truth fixes: router+classifier Lambdas, interim real-only model, real audio to S3 samples/marrs/, synthetic clips to retired/) was blocked by the Claude Code auto-mode safety classifier despite owner pre-approval. Owner must run it (or allow it): /gsd-execute-phase 1 then approve, or run scripts/deploy-lambdas.py per 01-14-PLAN.md. 01-20 (exit gate) depends on it.
+- Plan 01-14 attempt 1 (2026-10-01): deployed router+classifier+interim model; verify_live_truth passed /sites and /samples but whole API returned 503 during analysis checks; rolled back (deploy-lambdas --ref 26b3e61 + archived model copied back), prod restored. Root cause unknown (account concurrency saturation vs code). Check concurrency limit + CloudWatch before retry. See docs/deploy/DEPLOY-LOG.md. Real audio in samples/marrs/ and model archive remain in S3.
 
 ## Deferred Items
 
@@ -151,6 +152,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T13:00:00.000Z
-Stopped at: Session resumed, proceeding to /gsd-autonomous (01-14 prod deploy first, needs owner-approved permission)
-Resume file: .planning/phases/01-truth-reproducibility/01-14-PLAN.md
+Last session: 2026-10-01T15:41:36.410Z
+Stopped at: Plan 01-14 attempt 1 rolled back after 503 during live verification; prod restored
+Resume file: docs/deploy/DEPLOY-LOG.md
