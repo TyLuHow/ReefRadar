@@ -15,7 +15,8 @@
 //   --scope docs|all   Schema check, then scan git-tracked text files for
 //                       banned (known-wrong) citation patterns.
 //                       docs: excludes .planning/, prompts/, dashboard-next/src/,
-//                             node_modules and lockfiles.
+//                             dashboard-next/tests/baseline/, node_modules and
+//                             lockfiles.
 //                       all:  docs scope + dashboard-next/src/.
 //   --paths <files...> Restrict the --scope scan to exactly these files
 //                       (still schema-checks citations.json first).
@@ -74,7 +75,18 @@ const BANNED_PATTERNS = [
 ];
 
 // --- Scope exclusions for --scope docs -------------------------------------
-const DOCS_SCOPE_EXCLUDE_DIRS = ['.planning/', 'prompts/', 'dashboard-next/src/', 'node_modules/'];
+const DOCS_SCOPE_EXCLUDE_DIRS = [
+  '.planning/',
+  'prompts/',
+  'dashboard-next/src/',
+  // Frozen pre-redesign regression baseline (D-20, TRUTH-10): screenshots,
+  // axe reports and route captures taken verbatim from the live production
+  // deployment at a point in time. Referenced, never regenerated — it is
+  // historical evidence of what WAS live (including its citation errors),
+  // not live documentation this checker should hold to current standards.
+  'dashboard-next/tests/baseline/',
+  'node_modules/',
+];
 const LOCKFILE_NAMES = new Set(['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml']);
 // This checker's own source necessarily contains the banned substrings as
 // pattern *definitions* (BANNED_PATTERNS above) — exclude it from the scan
@@ -238,7 +250,7 @@ function renderMarkdown(data) {
   lines.push('');
   lines.push('## Scope and exclusions');
   lines.push('');
-  lines.push('The citation checker (`scripts/check-citations.mjs --scope docs`) scans every git-tracked text file for known-wrong citation patterns, excluding `.planning/`, `prompts/`, `dashboard-next/src/`, `node_modules/`, lockfiles, and its own source file (which legitimately contains the banned substrings as pattern definitions). `prompts/` holds historical task logs and is excluded by design — those files describe past (sometimes since-corrected) planning intent and are not live product documentation. `dashboard-next/src/` is included only at `--scope all`, run once the UI consumes this module directly (Phase 1 plans 01-17/01-18/01-19).');
+  lines.push('The citation checker (`scripts/check-citations.mjs --scope docs`) scans every git-tracked text file for known-wrong citation patterns, excluding `.planning/`, `prompts/`, `dashboard-next/src/`, `dashboard-next/tests/baseline/`, `node_modules/`, lockfiles, and its own source file (which legitimately contains the banned substrings as pattern definitions). `prompts/` holds historical task logs and is excluded by design — those files describe past (sometimes since-corrected) planning intent and are not live product documentation. `dashboard-next/tests/baseline/` is a frozen pre-redesign regression baseline (D-20) captured verbatim from the live deployment and is never regenerated, so it legitimately preserves whatever citation errors were live at capture time. `dashboard-next/src/` is included only at `--scope all`, run once the UI consumes this module directly (Phase 1 plans 01-17/01-18/01-19).');
   lines.push('');
 
   return lines.join('\n') + '\n';

@@ -65,3 +65,25 @@ jobs:
           name: playwright-report
           path: dashboard-next/playwright-report
           retention-days: 7
+
+  python:
+    name: python (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - run: pytest
+
+  citations:
+    name: citations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/check-citations.mjs --check-md
+      - run: node scripts/check-citations.mjs --scope docs
