@@ -4,8 +4,296 @@
     "path": "/",
     "width": 1440,
     "file": "landing-1440.jpg",
-    "captured_at": "2026-10-01T06:37:35.770Z",
+    "captured_at": "2026-10-01T06:38:17.996Z",
     "base_url": "https://dashboard-next-indol-nu.vercel.app",
-    "repo_head": "0106d20c197655dccce0be863e13ee81c19d913e"
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "landing",
+    "path": "/",
+    "width": 1024,
+    "file": "landing-1024.jpg",
+    "captured_at": "2026-10-01T06:38:22.697Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "landing",
+    "path": "/",
+    "width": 390,
+    "file": "landing-390.jpg",
+    "captured_at": "2026-10-01T06:38:26.277Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "about",
+    "path": "/about/",
+    "width": 1440,
+    "file": "about-1440.jpg",
+    "captured_at": "2026-10-01T06:38:30.222Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "about",
+    "path": "/about/",
+    "width": 1024,
+    "file": "about-1024.jpg",
+    "captured_at": "2026-10-01T06:38:34.790Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "about",
+    "path": "/about/",
+    "width": 390,
+    "file": "about-390.jpg",
+    "captured_at": "2026-10-01T06:38:38.327Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "sites",
+    "path": "/sites/",
+    "width": 1440,
+    "file": "sites-1440.jpg",
+    "captured_at": "2026-10-01T06:38:43.485Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "sites",
+    "path": "/sites/",
+    "width": 1024,
+    "file": "sites-1024.jpg",
+    "captured_at": "2026-10-01T06:38:50.474Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "sites",
+    "path": "/sites/",
+    "width": 390,
+    "file": "sites-390.jpg",
+    "captured_at": "2026-10-01T06:38:54.931Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "dashboard",
+    "path": "/dashboard/",
+    "width": 1440,
+    "file": "dashboard-1440.jpg",
+    "captured_at": "2026-10-01T06:38:58.611Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "dashboard",
+    "path": "/dashboard/",
+    "width": 1024,
+    "file": "dashboard-1024.jpg",
+    "captured_at": "2026-10-01T06:39:02.645Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "dashboard",
+    "path": "/dashboard/",
+    "width": 390,
+    "file": "dashboard-390.jpg",
+    "captured_at": "2026-10-01T06:39:05.926Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "analyze",
+    "path": "/dashboard/analyze/",
+    "width": 1440,
+    "file": "analyze-1440.jpg",
+    "captured_at": "2026-10-01T06:39:09.548Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "analyze",
+    "path": "/dashboard/analyze/",
+    "width": 1024,
+    "file": "analyze-1024.jpg",
+    "captured_at": "2026-10-01T06:39:13.643Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "analyze",
+    "path": "/dashboard/analyze/",
+    "width": 390,
+    "file": "analyze-390.jpg",
+    "captured_at": "2026-10-01T06:39:16.983Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "compare",
+    "path": "/dashboard/compare/",
+    "width": 1440,
+    "file": "compare-1440.jpg",
+    "captured_at": "2026-10-01T06:39:20.564Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "compare",
+    "path": "/dashboard/compare/",
+    "width": 1024,
+    "file": "compare-1024.jpg",
+    "captured_at": "2026-10-01T06:39:24.775Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "compare",
+    "path": "/dashboard/compare/",
+    "width": 390,
+    "file": "compare-390.jpg",
+    "captured_at": "2026-10-01T06:39:28.122Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "map",
+    "path": "/dashboard/map/",
+    "width": 1440,
+    "file": "map-1440.jpg",
+    "captured_at": "2026-10-01T06:39:34.305Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "map",
+    "path": "/dashboard/map/",
+    "width": 1024,
+    "file": "map-1024.jpg",
+    "captured_at": "2026-10-01T06:39:40.752Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "map",
+    "path": "/dashboard/map/",
+    "width": 390,
+    "file": "map-390.jpg",
+    "captured_at": "2026-10-01T06:39:47.702Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "experience",
+    "path": "/experience/",
+    "width": 1440,
+    "file": "experience-1440.jpg",
+    "captured_at": "2026-10-01T06:39:51.142Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "experience",
+    "path": "/experience/",
+    "width": 1024,
+    "file": "experience-1024.jpg",
+    "captured_at": "2026-10-01T06:39:54.873Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "experience",
+    "path": "/experience/",
+    "width": 390,
+    "file": "experience-390.jpg",
+    "captured_at": "2026-10-01T06:39:58.142Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "experience-demo",
+    "path": "/experience/?mode=demo",
+    "width": 1440,
+    "file": "experience-demo-1440.jpg",
+    "captured_at": "2026-10-01T06:40:02.106Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "experience-demo",
+    "path": "/experience/?mode=demo",
+    "width": 1024,
+    "file": "experience-demo-1024.jpg",
+    "captured_at": "2026-10-01T06:40:06.556Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "experience-demo",
+    "path": "/experience/?mode=demo",
+    "width": 390,
+    "file": "experience-demo-390.jpg",
+    "captured_at": "2026-10-01T06:40:09.876Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "experience-compare",
+    "path": "/experience/?mode=compare",
+    "width": 1440,
+    "file": "experience-compare-1440.jpg",
+    "captured_at": "2026-10-01T06:40:13.564Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "experience-compare",
+    "path": "/experience/?mode=compare",
+    "width": 1024,
+    "file": "experience-compare-1024.jpg",
+    "captured_at": "2026-10-01T06:40:17.745Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "experience-compare",
+    "path": "/experience/?mode=compare",
+    "width": 390,
+    "file": "experience-compare-390.jpg",
+    "captured_at": "2026-10-01T06:40:21.434Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "experience-sample",
+    "path": "/experience/?sample=idn_healthy_dawn",
+    "width": 1440,
+    "file": "experience-sample-1440.jpg",
+    "captured_at": "2026-10-01T06:40:25.317Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "experience-sample",
+    "path": "/experience/?sample=idn_healthy_dawn",
+    "width": 1024,
+    "file": "experience-sample-1024.jpg",
+    "captured_at": "2026-10-01T06:40:29.790Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
+  },
+  {
+    "state": "experience-sample",
+    "path": "/experience/?sample=idn_healthy_dawn",
+    "width": 390,
+    "file": "experience-sample-390.jpg",
+    "captured_at": "2026-10-01T06:40:33.646Z",
+    "base_url": "https://dashboard-next-indol-nu.vercel.app",
+    "repo_head": "43c197bf677bdffd693a0bd769cbbc9cbcd20230"
   }
 ]

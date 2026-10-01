@@ -1,0 +1,87 @@
+{
+  "about": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "nodes": 1
+    }
+  ],
+  "analyze": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "nodes": 1
+    },
+    {
+      "id": "label",
+      "impact": "critical",
+      "nodes": 1
+    }
+  ],
+  "compare": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "nodes": 1
+    }
+  ],
+  "dashboard": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "nodes": 5
+    }
+  ],
+  "experience": [],
+  "experience-compare": [
+    {
+      "id": "label",
+      "impact": "critical",
+      "nodes": 1
+    }
+  ],
+  "experience-demo": [
+    {
+      "id": "label",
+      "impact": "critical",
+      "nodes": 1
+    }
+  ],
+  "experience-sample": [],
+  "landing": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "nodes": 41
+    }
+  ],
+  "map": [
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "nodes": 1
+    },
+    {
+      "id": "select-name",
+      "impact": "critical",
+      "nodes": 1
+    }
+  ],
+  "sites": [
+    {
+      "id": "aria-command-name",
+      "impact": "serious",
+      "nodes": 54
+    },
+    {
+      "id": "color-contrast",
+      "impact": "serious",
+      "nodes": 38
+    },
+    {
+      "id": "target-size",
+      "impact": "serious",
+      "nodes": 2
+    }
+  ]
+}

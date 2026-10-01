@@ -30,11 +30,27 @@ interface WidthDef {
   height: number;
 }
 
-// Task 1 (tracer): landing only, to prove the pipeline end to end. Task 2
-// extends this to the full 11-state x 3-width matrix.
-const STATES: StateDef[] = [{ name: 'landing', path: '/' }];
+// Full 11-state x 3-width matrix (Task 1 tracer proved the pipeline on
+// "landing" @ 1440 alone).
+const STATES: StateDef[] = [
+  { name: 'landing', path: '/' },
+  { name: 'about', path: '/about/' },
+  { name: 'sites', path: '/sites/' },
+  { name: 'dashboard', path: '/dashboard/' },
+  { name: 'analyze', path: '/dashboard/analyze/' },
+  { name: 'compare', path: '/dashboard/compare/' },
+  { name: 'map', path: '/dashboard/map/', extraWaitMs: 4000 },
+  { name: 'experience', path: '/experience/' },
+  { name: 'experience-demo', path: '/experience/?mode=demo' },
+  { name: 'experience-compare', path: '/experience/?mode=compare' },
+  { name: 'experience-sample', path: '/experience/?sample=idn_healthy_dawn' },
+];
 
-const WIDTHS: WidthDef[] = [{ label: '1440', width: 1440, height: 900 }];
+const WIDTHS: WidthDef[] = [
+  { label: '1440', width: 1440, height: 900 },
+  { label: '1024', width: 1024, height: 768 },
+  { label: '390', width: 390, height: 844 },
+];
 
 const BASELINE_DIR = path.join(__dirname, '..', 'baseline', 'pre-truth');
 const SCREENSHOTS_DIR = path.join(BASELINE_DIR, 'screenshots');
