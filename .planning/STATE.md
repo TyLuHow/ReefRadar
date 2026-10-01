@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 01
 current_phase_name: Truth & Reproducibility
 status: executing
-stopped_at: Completed 01-15-PLAN.md
-last_updated: "2026-10-01T09:09:15.427Z"
+stopped_at: Completed 01-16-PLAN.md
+last_updated: "2026-10-01T09:26:40.010Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 01 execution started
-state_head: 7189c4608c2416e666a8f088aadff67d5213c6d0
+state_head: a4de7c9eb9b28e7c0fb59c2e8a32c6e8a520bd2f
 progress:
   total_phases: 17
   completed_phases: 0
   total_plans: 20
-  completed_plans: 14
+  completed_plans: 15
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 01 (Truth & Reproducibility) — EXECUTING
-Plan: 15 of 20
+Plan: 16 of 20
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 01 execution started
 
@@ -74,6 +74,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-truth-reproducibility P12 | 35min | 2 tasks | 4 files |
 | Phase 01 P13 | 20min | 2 tasks | 7 files |
 | Phase 01 P15 | 55min | 3 tasks | 14 files |
+| Phase 01-truth-reproducibility P16 | 70min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -115,6 +116,8 @@ Recent decisions affecting current work:
 - [Phase 01]: D-11 interim model: trained interim-real-only 3-class MLP (degraded, healthy, restored_early) on the 100 real rows in training_test_20.json, dropping restored_mid (zero real rows); weights proven byte-compatible with the deployed classifier's forward pass
 - [Phase 01]: [Phase 01] vitest.setup.ts needed an explicit afterEach(cleanup) -- vitest.config.ts has no test.globals, so Testing Library's auto-cleanup detection never fired and multi-render component tests leaked DOM across tests in the same file
 - [Phase 01]: [Phase 01] 01-15 D-12 UI half: toIntegerPercentages renormalises by the input's own sum (not assumed 1) so legacy multiplied probability payloads still render the correct percentages
+- [Phase 01]: pollAnalysis reads request_id from GET /visualize's error payload (not /status's, which omits it) when an analysis fails
+- [Phase 01]: AnalysisProgress error-step highlighting: 'uploading' marked complete, 'analyzing' marked as the errored step (fixes pre-existing dead error-branch bug)
 
 ### Pending Todos
 
@@ -138,6 +141,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T09:09:15.408Z
-Stopped at: Completed 01-15-PLAN.md
+Last session: 2026-10-01T09:26:39.991Z
+Stopped at: Completed 01-16-PLAN.md
 Resume file: None

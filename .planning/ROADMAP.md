@@ -132,7 +132,7 @@ Plans:
 
 - [ ] 01-14-PLAN.md — Owner-approved production deploy, live verification, synthetic clips retired
 - [x] 01-15-PLAN.md — Results UI: integer probabilities summing to 100, region note, honest caveats
-- [ ] 01-16-PLAN.md — Real /status stages, polling fix, embedding scatter removed
+- [x] 01-16-PLAN.md — Real /status stages, polling fix, embedding scatter removed
 
 **Wave 9** *(blocked on Wave 8 completion)*
 
