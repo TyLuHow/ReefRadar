@@ -68,9 +68,28 @@ def load_spec(function_name: str) -> dict:
 def _default_reader(repo_root: pathlib.Path, source: str) -> bytes:
     path = pathlib.Path(repo_root) / source
     try:
-        return path.read_bytes()
+        data = path.read_bytes()
     except OSError as e:
         raise SpecError(f"Could not read member source {path}: {e}") from e
+    return normalize_text_bytes(data)
+
+
+def normalize_text_bytes(data: bytes) -> bytes:
+    """Normalize CRLF -> LF.
+
+    Every member these specs ever reference is a text/source file
+    (handler.py, region_detection.py, inference.py, Dockerfile,
+    requirements.txt, buildspec.yml), never a binary asset, so this is
+    always safe. Without it, build_package's output would depend on the
+    local checkout's line-ending style: a Windows working tree with
+    core.autocrlf=true checks files out with CRLF, while the git blob
+    itself -- what a fresh Linux clone or `git show <ref>:<path>` both
+    return -- is LF. That would silently break this module's core
+    promise (building twice from the same git content yields
+    byte-identical zips) across machines, exactly the kind of drift
+    D-03/D-04 exist to prevent.
+    """
+    return data.replace(b"\r\n", b"\n")
 
 
 def build_package(

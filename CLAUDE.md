@@ -168,20 +168,31 @@ Note: SageMaker resources have been deleted (endpoint, config, model).
 
 ## Deployment
 
-### Standard Lambda Functions
+**No console edits; deploys only from a clean committed tree.** All four `reefradar-2477-*`
+Lambdas (router, preprocessor, classifier, inference) are deployed through one scripted path
+(D-04), which builds a deterministic package from git and refuses to run against a dirty
+working tree. Package specs live in `infrastructure/lambda-packages/*.json`; the packaging
+library is `scripts/lambda_packaging.py`.
+
+### Deploy (zip functions and the inference container)
 ```bash
-# Classifier requires both handler.py and region_detection.py
-cd lambdas/classifier && zip -r function.zip handler.py region_detection.py
-aws lambda update-function-code --function-name reefradar-2477-classifier --zip-file fileb://function.zip
+# Plan only (no AWS call) -- always run this first
+py -3.12 scripts/deploy-lambdas.py --function router --dry-run
+
+# Real deploy (requires --confirm; refuses if the tree is dirty)
+py -3.12 scripts/deploy-lambdas.py --function classifier --confirm
+
+# Repeatable --function for multiple at once
+py -3.12 scripts/deploy-lambdas.py --function router --function preprocessor --confirm
+
+# Rollback: redeploy exactly what a past commit contained (working tree can be dirty)
+py -3.12 scripts/deploy-lambdas.py --function router --ref <commit> --confirm
 ```
 
-### Inference Lambda (Container via CodeBuild)
+### Drift check (D-03)
 ```bash
-# Package source and trigger CodeBuild
-cd infrastructure/lambda_container
-zip -r /tmp/inference-source.zip Dockerfile requirements.txt inference.py buildspec.yml
-aws s3 cp /tmp/inference-source.zip s3://reefradar-2477-codebuild-artifacts/inference-source.zip
-aws codebuild start-build --project-name reefradar-2477-inference-build
+# Confirms every deployed function was actually built from the committed git tree
+py -3.12 scripts/drift-check.py --function all
 ```
 
 ### Testing

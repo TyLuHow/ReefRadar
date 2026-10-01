@@ -108,11 +108,18 @@ def test_fixture_zip_different_timestamps_and_perms_same_content_matches(fixture
     local = pkg.build_package(ROUTER_SPEC, fixture_repo)
     local_manifest = pkg.manifest_from_zip(local)
 
+    # Same underlying text content as the local build (normalized the same way
+    # build_package's default reader normalizes it -- see normalize_text_bytes),
+    # packaged with different zip metadata, simulating an independently-built
+    # deployed zip.
+    content = pkg.normalize_text_bytes(
+        (fixture_repo / "lambdas" / "router" / "handler.py").read_bytes()
+    )
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
         info = zipfile.ZipInfo("handler.py", date_time=(2024, 6, 1, 12, 0, 0))
         info.external_attr = 0o100755 << 16
-        zf.writestr(info, (fixture_repo / "lambdas" / "router" / "handler.py").read_bytes())
+        zf.writestr(info, content)
     deployed_manifest = pkg.manifest_from_zip(buf.getvalue())
 
     report = pkg.compare_manifests(local_manifest, deployed_manifest)
