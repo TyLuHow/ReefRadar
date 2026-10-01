@@ -59,6 +59,8 @@ export const BANNED: BannedPhrase[] = [
   { phrase: 'reduced by 40%', why: 'confidence-reduction sentence; multiplier removed (AUDIT 0.3)' },
   { phrase: 'confidence is reduced', why: 'confidence-reduction sentence; multiplier removed (AUDIT 0.3)' },
   { phrase: 'confidence reduced', why: 'confidence-reduction sentence; multiplier removed (AUDIT 0.3)' },
+  { phrase: 'confidence adjustment', why: 'region no longer adjusts probabilities (D-12; REVIEW CR-01)' },
+  { phrase: 'adjusts confidence', why: 'region no longer adjusts probabilities (D-12; REVIEW CR-01)' },
   // False processing claims.
   { phrase: 'real-time processing', why: 'false claim; analysis is asynchronous (AUDIT 4.8)' },
   { phrase: 'real time processing', why: 'false claim; analysis is asynchronous (AUDIT 4.8)' },

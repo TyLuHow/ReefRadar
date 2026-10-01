@@ -467,7 +467,7 @@ with tab1:
 
                 # Optional coordinates for region detection
             with st.expander("Recording Location (optional)", expanded=False):
-                st.caption("Providing coordinates enables geographic region detection and confidence adjustment.")
+                st.caption("Coordinates let us report whether your recording is in a region the classifier was trained on. They do not change the probabilities.")
                 coord_col1, coord_col2 = st.columns(2)
                 with coord_col1:
                     user_lat = st.number_input("Latitude", value=None, min_value=-90.0, max_value=90.0, step=0.001, format="%.6f", key="lat_input")

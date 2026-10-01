@@ -350,8 +350,8 @@ export default function EnhancedAnalyzePage() {
                   </span>
                 </div>
                 <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-                  Providing coordinates enables geographic region detection and
-                  confidence adjustment.
+                  Coordinates let us report whether your recording is in a region the
+                  classifier was trained on. They do not change the probabilities.
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   <input
