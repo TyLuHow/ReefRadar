@@ -676,12 +676,28 @@ REFERENCE_KEYS = (
 )
 
 
+def _site_embedding(site):
+    """Return a reference site's embedding vector, or None.
+
+    The published reference objects (metadata_v6.json / metadata.json) store
+    the per-site vector under `embedding`; older fixtures used
+    `mean_embedding`. Accept both so the similarity step reads what is
+    actually published.
+    """
+    if not isinstance(site, dict):
+        return None
+    vec = site.get('embedding')
+    if not vec:
+        vec = site.get('mean_embedding')
+    return vec or None
+
+
 def load_reference_sites():
     """Load reference sites (with mean embeddings) from S3.
 
     Uses the SAME key order as the router's /sites (v6 -> v5 -> legacy
     metadata.json) and takes the first object that parses and contains at
-    least one site with a `mean_embedding`, so the sites a user sees listed
+    least one site with an embedding (`embedding`, or legacy `mean_embedding`), so the sites a user sees listed
     and the sites the similarity step compares against come from one source.
     Returns (sites, source_key). Only successful loads are cached; failures
     are logged and raised, never swallowed into an empty list.
@@ -708,7 +724,7 @@ def load_reference_sites():
         else:
             sites = []
 
-        if any(isinstance(s, dict) and s.get('mean_embedding') for s in sites):
+        if any(_site_embedding(s) for s in sites):
             _reference_embeddings = (sites, key)
             return _reference_embeddings
         errors.append(f"{key}: no sites with embeddings")
@@ -757,7 +773,7 @@ def find_similar_sites_with_status(embedding, top_k=3):
     status_map = {'H': 'healthy', 'D': 'degraded', 'R': 'restored_early', 'N': 'restored_early'}
 
     for ref in reference_data:
-        ref_embedding = np.array(ref.get('mean_embedding') or [])
+        ref_embedding = np.array(_site_embedding(ref) or [])
         if len(ref_embedding) != len(embedding):
             skipped_dim += 1
             continue

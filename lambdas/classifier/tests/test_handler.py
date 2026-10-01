@@ -532,6 +532,23 @@ def test_similar_sites_reports_reason_when_reference_cannot_load(classifier_hand
     assert "could not be loaded" in note
 
 
+def test_similar_sites_reads_published_embedding_key(classifier_handler):
+    # The live reference objects store vectors under `embedding` (not
+    # `mean_embedding`); the lookup must find them.
+    s3 = boto3.client("s3", region_name="us-east-1")
+    rng = np.random.RandomState(3)
+    s3.put_object(
+        Bucket=EMBEDDINGS_BUCKET,
+        Key="reference/metadata_v6.json",
+        Body=json.dumps({"sites": [{"site_id": "ind_H4", "country": "Indonesia", "status": "healthy",
+                                    "has_embedding": True,
+                                    "embedding": rng.normal(size=EMBEDDING_DIM).tolist()}]}),
+    )
+    sites, note = classifier_handler.find_similar_sites_with_status(np.ones(EMBEDDING_DIM))
+    assert note is None
+    assert [s["site_id"] for s in sites] == ["ind_H4"]
+
+
 def test_reference_lookup_prefers_router_key_order(classifier_handler):
     s3 = boto3.client("s3", region_name="us-east-1")
     rng = np.random.RandomState(1)
