@@ -12,6 +12,11 @@ Flags a clip when:
     more than 85% of in-band (50 Hz-Nyquist) energy sits in the 50 loudest
     FFT bins -- both conditions together, not either alone.
 
+The 16 kHz rule is a MARRS-specific heuristic, not a general test of realness:
+a real recording at another sample rate is flagged, and a 16 kHz synthetic clip
+could pass. The authoritative control is the sha256 comparison against the
+audio manifest (verify_live_truth.py); this script is a corroborating screen.
+
 Computation is numpy-only: a hand-rolled Welch-averaged power spectrum
 (nfft=4096, Hann window, 50% overlap).
 
@@ -42,7 +47,6 @@ result, since the currently-served clips are synthetic).
 import argparse
 import io
 import sys
-import tempfile
 import wave
 from pathlib import Path
 
@@ -203,15 +207,21 @@ def run_self_test():
 def run_live_samples_check():
     import requests
 
-    resp = requests.get(LIVE_SAMPLES_URL, timeout=30)
-    resp.raise_for_status()
-    samples = resp.json().get("samples", [])
+    # Only the exception TYPE is ever printed: requests' messages include the
+    # full URL, and presigned audio URLs (with Signature=) are bearer tokens.
+    try:
+        resp = requests.get(LIVE_SAMPLES_URL, timeout=30)
+        resp.raise_for_status()
+        samples = resp.json().get("samples", [])
+    except (requests.RequestException, ValueError) as e:
+        print(f"ERROR: could not fetch the live /samples listing ({type(e).__name__})", file=sys.stderr)
+        return 2
     if not samples:
         print("No samples returned from the live /samples endpoint", file=sys.stderr)
         return 2
 
     any_flagged = False
-    tmpdir = Path(tempfile.gettempdir())
+    any_error = False
     for s in samples:
         sample_id = s.get("id", "<unknown>")
         site_id = s.get("site_id", "<unknown>")
@@ -220,30 +230,38 @@ def run_live_samples_check():
             print(f"SKIP {sample_id} ({site_id}): no audio_url")
             continue
 
-        # Downloaded outside the repo, deleted immediately after checking --
-        # presigned URLs (bearer tokens) are never written to the repo or logged.
-        tmp_path = tmpdir / f"reefradar_check_{sample_id}.wav"
+        # Checked in memory: nothing is written to disk (so a remote-controlled
+        # sample id is never used in a file name) and presigned URLs (bearer
+        # tokens) are never written anywhere or logged -- only the exception
+        # type is printed on failure.
         try:
             r = requests.get(audio_url, timeout=60)
             r.raise_for_status()
-            tmp_path.write_bytes(r.content)
-            result = check_file(str(tmp_path))
-            status = "FLAGGED" if result["flagged"] else "OK"
-            print(
-                f"{status} {sample_id} ({site_id}): sample_rate={result['sample_rate']} "
-                f"spectral_flatness={result['spectral_flatness']} "
-                f"top50_bin_energy_fraction={result['top50_bin_energy_fraction']} "
-                f"rms_dbfs={result['rms_dbfs']}"
-            )
-            for reason in result["reasons"]:
-                print(f"    - {reason}")
-            if result["flagged"]:
-                any_flagged = True
-        finally:
-            if tmp_path.exists():
-                tmp_path.unlink()
+            result = check_file(io.BytesIO(r.content))
+        except requests.RequestException as e:
+            print(f"ERROR {sample_id} ({site_id}): download failed ({type(e).__name__})", file=sys.stderr)
+            any_error = True
+            continue
+        except Exception as e:  # noqa: BLE001 -- unreadable/invalid WAV
+            print(f"ERROR {sample_id} ({site_id}): not a readable WAV ({type(e).__name__})", file=sys.stderr)
+            any_error = True
+            continue
 
-    return 1 if any_flagged else 0
+        status = "FLAGGED" if result["flagged"] else "OK"
+        print(
+            f"{status} {sample_id} ({site_id}): sample_rate={result['sample_rate']} "
+            f"spectral_flatness={result['spectral_flatness']} "
+            f"top50_bin_energy_fraction={result['top50_bin_energy_fraction']} "
+            f"rms_dbfs={result['rms_dbfs']}"
+        )
+        for reason in result["reasons"]:
+            print(f"    - {reason}")
+        if result["flagged"]:
+            any_flagged = True
+
+    if any_flagged:
+        return 1
+    return 2 if any_error else 0
 
 
 def main():

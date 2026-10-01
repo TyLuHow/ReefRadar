@@ -50,3 +50,31 @@ def test_check_audio_real_committed_excerpts_are_not_flagged():
         path = REPO_ROOT / entry["path"]
         result = car.check_file(str(path))
         assert not result["flagged"], f"{entry['excerpt_id']}: {result['reasons']}"
+
+
+# --- WR-11: --from-live-samples never leaks presigned URLs ------------------------
+
+
+def test_live_samples_download_failure_prints_type_only(monkeypatch, capsys):
+    import requests
+
+    secret_url = "https://bucket.s3.amazonaws.com/samples/x.wav?X-Amz-Signature=TOPSECRET"
+
+    class _ListResp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"samples": [{"id": "../evil", "site_id": "ind_H1", "audio_url": secret_url}]}
+
+    def fake_get(url, timeout=None):
+        if url == car.LIVE_SAMPLES_URL:
+            return _ListResp()
+        raise requests.ConnectionError(f"HTTPSConnectionPool: Max retries exceeded with url: {url}")
+
+    monkeypatch.setattr(requests, "get", fake_get)
+    code = car.run_live_samples_check()
+    out = capsys.readouterr()
+    assert code == 2
+    assert "ConnectionError" in out.err
+    assert "TOPSECRET" not in out.err and "TOPSECRET" not in out.out
