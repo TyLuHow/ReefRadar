@@ -26,6 +26,7 @@ import io
 import json
 import os
 import sys
+import zipfile
 from decimal import Decimal
 from pathlib import Path
 
@@ -295,7 +296,56 @@ def test_classifier_package_includes_shared_members():
         "region_detection.py",
         "site_provenance.py",
         "site_label_provenance.json",
+        "contract_stamp.py",
+        "contract_stamp.json",
     }
+    # CONTRACT-04: the packaged stamp is the committed contracts/bucket/v1/stamp.json
+    # (LF-normalised, so the package is identical on Windows and Linux checkouts).
+    committed = (_REPO_ROOT / "contracts" / "bucket" / "v1" / "stamp.json").read_bytes()
+    committed = committed.replace(b"\r\n", b"\n")
+    zf = zipfile.ZipFile(io.BytesIO(zip_bytes))
+    assert zf.read("contract_stamp.json") == committed
+
+
+def test_stale_stamp_is_nulled_when_the_loaded_model_differs(classifier_handler):
+    """T-02-05-01: the fixture model's version ('interim-real-only-test') is not the
+    bundled stamp's model, so the contract fields are guarded to null while
+    model_version still reports the running model."""
+    result = classifier_handler.handler(
+        {
+            "upload_id": "upload-s1",
+            "analysis_id": "analysis-s1",
+            "segments_key": "segments/analysis-1.json",
+            "num_segments": 2,
+        },
+        context=None,
+    )
+    assert result["statusCode"] == 200
+    item = _get_result_item(classifier_handler, "analysis-s1")
+    assert item["model_version"] == "interim-real-only-test"
+    assert item["contract_version"] is None
+    assert item["dataset_version"] is None
+    assert item["preprocessing_spec_version"] is None
+
+
+def test_unloadable_stamp_writes_nulls_and_does_not_fail_the_analysis(classifier_handler):
+    def _broken():
+        raise FileNotFoundError("contract_stamp.json missing")
+
+    classifier_handler.get_contract_stamp = _broken
+    result = classifier_handler.handler(
+        {
+            "upload_id": "upload-s2",
+            "analysis_id": "analysis-s2",
+            "segments_key": "segments/analysis-1.json",
+            "num_segments": 2,
+        },
+        context=None,
+    )
+    assert result["statusCode"] == 200
+    item = _get_result_item(classifier_handler, "analysis-s2")
+    for key in ("contract_version", "dataset_version", "model_version", "preprocessing_spec_version"):
+        assert item[key] is None
 
 
 # --- WR-03: one authoritative outcome, no async-retry fighting the UI ---------

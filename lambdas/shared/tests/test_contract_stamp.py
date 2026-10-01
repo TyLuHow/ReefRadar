@@ -78,3 +78,53 @@ def test_stamp_for_model_returns_a_new_dict(repo_stamp):
     out = cs.stamp_for_model(repo_stamp["model_version"], repo_stamp)
     out["dataset_version"] = "mutated"
     assert repo_stamp["dataset_version"] != "mutated"
+
+
+# --- staleness guard (T-02-05-01) ----------------------------------------------
+
+
+def test_matching_model_gets_the_bundled_values(repo_stamp):
+    out = cs.stamp_for_model("interim-real-only", repo_stamp)
+    assert out == repo_stamp
+
+
+def test_other_model_keeps_its_own_version_and_nulls_the_rest(repo_stamp):
+    out = cs.stamp_for_model("some-other-model", repo_stamp)
+    assert out == {
+        "contract_version": None,
+        "dataset_version": None,
+        "model_version": "some-other-model",
+        "preprocessing_spec_version": None,
+    }
+
+
+def test_missing_model_version_is_not_covered_by_the_contract(repo_stamp):
+    out = cs.stamp_for_model(None, repo_stamp)
+    assert all(out[k] is None for k in cs.STAMP_KEYS)
+
+
+# --- schema validation ----------------------------------------------------------
+
+
+def test_matching_and_mismatched_stamps_validate(repo_stamp):
+    contract_lib.validate(cs.stamp_for_model(repo_stamp["model_version"], repo_stamp), "analysis-result")
+    contract_lib.validate(cs.stamp_for_model("some-other-model", repo_stamp), "analysis-result")
+
+
+def test_the_bundled_stamp_itself_validates(repo_stamp):
+    contract_lib.validate(repo_stamp, "analysis-result")
+
+
+def test_all_null_stamp_validates():
+    contract_lib.validate({k: None for k in cs.STAMP_KEYS}, "analysis-result")
+
+
+def test_null_contract_with_a_dataset_version_is_rejected():
+    bad = {
+        "contract_version": None,
+        "dataset_version": "reefradar-reference-2026.10.0",
+        "model_version": "interim-real-only",
+        "preprocessing_spec_version": None,
+    }
+    with pytest.raises(contract_lib.ContractError):
+        contract_lib.validate(bad, "analysis-result")
