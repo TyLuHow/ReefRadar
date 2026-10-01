@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "decisions": [
+    "D-17 explicitly reclassifies borabora_tourist and borabora_boat_traffic from 'degraded' to 'unknown' because CoralSoundExplorer's own framing for these is a human-use/disturbance context, not a coral-condition assessment. Applying that same reasoning to the third Bora-Bora site, borabora_undisturbed, is Claude's discretion (not explicit in D-17): 'undisturbed' sounds like a health claim, but CoralSoundExplorer frames all three Bora-Bora recording points as one disturbance-gradient study (undisturbed / tourist / boat-traffic zones), not a MARRS-style coral-condition survey, so none of the three should carry a ReefRadar-invented health status. The owner can revert this one choice by deleting the 'borabora_undisturbed' entry from `sites` below; that site would then fall back to the CoralSoundExplorer source default (no status override, no label_original/label_definition), which still returns a true label_source/label_assigned_by via apply_label_provenance but leaves its original status untouched."
+  ],
+  "sources": {
+    "marrs": {
+      "display_name": "MARRS (Mars Assisted Reef Restoration System)",
+      "assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
+      "site_id_prefixes": ["aus_", "ind_", "ken_", "mal_", "mex_"],
+      "definitions": {
+        "healthy": "Least disturbed reef habitat in the local area.",
+        "degraded": "Comparable to restored sites prior to restoration (rubble).",
+        "restored_early": "Reef stars installed less than 3 months before recording.",
+        "restored_mid": "Restored 32 to 53 months before recording."
+      },
+      "original_terms": {
+        "healthy": "Healthy (H)",
+        "degraded": "Degraded (D)",
+        "restored_early": "Early Restoration (N / KML: ER)",
+        "restored_mid": "Mid Restoration (R / KML: MR)"
+      }
+    },
+    "coralsoundexplorer": {
+      "display_name": "CoralSoundExplorer",
+      "assigned_by": "ENES Bioacoustic Lab (Rouch et al. 2024)",
+      "site_id_prefixes": ["borabora_"]
+    },
+    "irma": {
+      "display_name": "Hurricane Irma Dataset",
+      "assigned_by": "Simmons, Bohnenstiehl & Eggleston (NC State)",
+      "site_id_prefixes": ["irma_"]
+    },
+    "sanctsound": {
+      "display_name": "NOAA SanctSound",
+      "assigned_by": "NOAA Office of National Marine Sanctuaries",
+      "site_id_prefixes": ["sanctsound_"]
+    }
+  },
+  "sites": {
+    "borabora_undisturbed": {
+      "status_override": "unknown",
+      "label_original": "undisturbed",
+      "label_definition": "CoralSoundExplorer recording-point category describing a comparatively undisturbed use/disturbance context, not a coral-condition assessment.",
+      "status_basis": "ReefRadar's discretion: part of a disturbance-gradient study (undisturbed/tourist/boat-traffic), not a MARRS-style health assessment. See top-level 'decisions'."
+    },
+    "borabora_tourist": {
+      "status_override": "unknown",
+      "label_original": "tourist",
+      "label_definition": "CoralSoundExplorer use/disturbance context category (tourist-zone recording point), not a coral-condition assessment.",
+      "status_basis": "Disturbance context (tourist activity), not a health assessment."
+    },
+    "borabora_boat_traffic": {
+      "status_override": "unknown",
+      "label_original": "boat traffic",
+      "label_definition": "CoralSoundExplorer use/disturbance context category (boat-channel recording point), not a coral-condition assessment.",
+      "status_basis": "Disturbance context (boat traffic), not a health assessment."
+    },
+    "irma_eastern_sambo": {
+      "status_override": "unknown",
+      "status_basis": "Hurricane Irma Dataset (Simmons, Bohnenstiehl & Eggleston) assigns no health status to its recording sites upstream."
+    },
+    "irma_western_dry_rocks": {
+      "status_override": "unknown",
+      "status_basis": "Hurricane Irma Dataset (Simmons, Bohnenstiehl & Eggleston) assigns no health status to its recording sites upstream.",
+      "period": "This site's embedding is built from recordings made in October 2017, after Hurricane Irma made landfall in the Florida Keys on 10 September 2017."
+    },
+    "sanctsound_fk01": {
+      "status_override": "unknown",
+      "label_original": null,
+      "status_basis": "NOAA SanctSound assigns no health status to its monitoring sites upstream."
+    },
+    "sanctsound_fk02": {
+      "status_override": "unknown",
+      "label_original": null,
+      "status_basis": "NOAA SanctSound assigns no health status to its monitoring sites upstream."
+    },
+    "sanctsound_fk03": {
+      "status_override": "unknown",
+      "label_original": null,
+      "status_basis": "NOAA SanctSound assigns no health status to its monitoring sites upstream."
+    },
+    "sanctsound_fk04": {
+      "status_override": "unknown",
+      "label_original": null,
+      "status_basis": "NOAA SanctSound assigns no health status to its monitoring sites upstream."
+    },
+    "ken_D3": {
+      "label_note": "The upstream MARRS audio archive for this location is named ken_D2 (11,917 files); the MARRS site-map KML labels the same point 'D3'. No audio has been ingested for either name at this site."
+    }
+  }
+}
