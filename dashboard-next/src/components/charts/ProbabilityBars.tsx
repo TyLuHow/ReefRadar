@@ -3,9 +3,17 @@
 import { useEffect, useState } from 'react';
 import { ReefStatus, STATUS_COLORS } from '@/types';
 import { formatStatus, cn } from '@/lib/utils';
+import { toIntegerPercentages, presentClasses } from '@/lib/probabilities';
+
+const CANONICAL_STATUS_ORDER: readonly ReefStatus[] = [
+  'healthy',
+  'degraded',
+  'restored_early',
+  'restored_mid',
+];
 
 interface ProbabilityBarsProps {
-  probabilities: Record<ReefStatus, number>;
+  probabilities: Partial<Record<ReefStatus, number>>;
   highlightedStatus?: ReefStatus;
   animated?: boolean;
   showLabels?: boolean;
@@ -23,28 +31,35 @@ export function ProbabilityBars({
 }: ProbabilityBarsProps) {
   const [animatedWidths, setAnimatedWidths] = useState<Record<string, number>>({});
 
-  // Sort probabilities by value (highest first)
-  const sortedProbabilities = Object.entries(probabilities)
-    .sort(([, a], [, b]) => b - a)
-    .map(([status, probability]) => ({
-      status: status as ReefStatus,
-      probability,
+  // Integer percentages (summing to exactly 100) for the model's own
+  // classes only -- a class absent from the response (e.g. restored_mid
+  // on a 3-class interim model) is never rendered.
+  const integerPercentages = toIntegerPercentages(probabilities);
+  const classes = presentClasses(probabilities, CANONICAL_STATUS_ORDER);
+
+  // Sort by raw probability (highest first) for display order.
+  const sortedProbabilities = classes
+    .map((status) => ({
+      status,
+      probability: probabilities[status] ?? 0,
+      percentage: integerPercentages[status] ?? 0,
       isHighlighted: status === highlightedStatus,
-    }));
+    }))
+    .sort((a, b) => b.probability - a.probability);
 
   // Animate bars on mount
   useEffect(() => {
     if (animated) {
       // Start with 0 width
       setAnimatedWidths(
-        Object.fromEntries(Object.keys(probabilities).map((k) => [k, 0]))
+        Object.fromEntries(classes.map((k) => [k, 0]))
       );
 
       // Animate to full width after a delay
       const timer = setTimeout(() => {
         setAnimatedWidths(
           Object.fromEntries(
-            Object.entries(probabilities).map(([k, v]) => [k, v * 100])
+            classes.map((k) => [k, (probabilities[k] ?? 0) * 100])
           )
         );
       }, 100);
@@ -53,15 +68,16 @@ export function ProbabilityBars({
     } else {
       setAnimatedWidths(
         Object.fromEntries(
-          Object.entries(probabilities).map(([k, v]) => [k, v * 100])
+          classes.map((k) => [k, (probabilities[k] ?? 0) * 100])
         )
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [probabilities, animated]);
 
   return (
     <div className={cn('space-y-3', className)}>
-      {sortedProbabilities.map(({ status, probability, isHighlighted }) => {
+      {sortedProbabilities.map(({ status, percentage, isHighlighted }) => {
         const color = STATUS_COLORS[status] || '#888';
         const width = animatedWidths[status] ?? 0;
 
@@ -105,8 +121,9 @@ export function ProbabilityBars({
                   style={{
                     color: isHighlighted ? 'var(--text-primary)' : 'var(--text-secondary)',
                   }}
+                  title={`${percentage}%`}
                 >
-                  {(probability * 100).toFixed(1)}%
+                  {percentage}%
                 </span>
               </div>
             )}
@@ -136,6 +153,7 @@ export function ProbabilityBars({
               <div
                 className="absolute inset-0 flex items-center px-2 pointer-events-none"
                 style={{ zIndex: 1 }}
+                title={`${formatStatus(status)}: ${percentage}%`}
               >
                 <span className="text-xs font-medium text-white drop-shadow-sm">
                   {formatStatus(status)}
@@ -155,19 +173,23 @@ export function ProbabilityStackedBar({
   highlightedStatus,
   className = '',
 }: Pick<ProbabilityBarsProps, 'probabilities' | 'highlightedStatus' | 'className'>) {
-  const sortedProbabilities = Object.entries(probabilities)
-    .sort(([, a], [, b]) => b - a)
-    .map(([status, probability]) => ({
-      status: status as ReefStatus,
-      probability,
+  const integerPercentages = toIntegerPercentages(probabilities);
+  const classes = presentClasses(probabilities, CANONICAL_STATUS_ORDER);
+
+  const sortedProbabilities = classes
+    .map((status) => ({
+      status,
+      probability: probabilities[status] ?? 0,
+      percentage: integerPercentages[status] ?? 0,
       isHighlighted: status === highlightedStatus,
-    }));
+    }))
+    .sort((a, b) => b.probability - a.probability);
 
   return (
     <div className={className}>
       {/* Stacked bar */}
       <div className="h-6 rounded-full overflow-hidden flex">
-        {sortedProbabilities.map(({ status, probability }) => {
+        {sortedProbabilities.map(({ status, probability, percentage }) => {
           const color = STATUS_COLORS[status] || '#888';
           return (
             <div
@@ -177,7 +199,7 @@ export function ProbabilityStackedBar({
                 width: `${probability * 100}%`,
                 backgroundColor: color,
               }}
-              title={`${formatStatus(status)}: ${(probability * 100).toFixed(1)}%`}
+              title={`${formatStatus(status)}: ${percentage}%`}
             />
           );
         })}
@@ -185,7 +207,7 @@ export function ProbabilityStackedBar({
 
       {/* Legend */}
       <div className="flex flex-wrap justify-center gap-4 mt-3">
-        {sortedProbabilities.map(({ status, probability, isHighlighted }) => {
+        {sortedProbabilities.map(({ status, percentage, isHighlighted }) => {
           const color = STATUS_COLORS[status] || '#888';
           return (
             <div key={status} className="flex items-center space-x-1.5">
@@ -203,7 +225,7 @@ export function ProbabilityStackedBar({
                   fontWeight: isHighlighted ? 600 : 400,
                 }}
               >
-                {formatStatus(status)} ({(probability * 100).toFixed(0)}%)
+                {formatStatus(status)} ({percentage}%)
               </span>
             </div>
           );

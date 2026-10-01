@@ -1,0 +1,52 @@
+{
+  "analysis_id": "fixture-3class-in-region",
+  "status": "complete",
+  "classification": {
+    "label": "degraded",
+    "confidence": 0.49,
+    "probabilities": {
+      "healthy": 0.22,
+      "degraded": 0.49,
+      "restored_early": 0.29
+    },
+    "model_version": "interim-real-only",
+    "region": {
+      "detected": "INDONESIA",
+      "name": "Indonesia",
+      "scope": "specific",
+      "coordinates_provided": true,
+      "in_training_region": true,
+      "training_sites_in_region": 4,
+      "training_countries": ["Indonesia", "Kenya"],
+      "in_training_distribution": true,
+      "confidence_adjusted": false
+    }
+  },
+  "similar_sites": [
+    {
+      "site_id": "ind_D2",
+      "country": "Indonesia",
+      "status": "degraded",
+      "similarity": 0.89,
+      "label_source": "marrs",
+      "label_original": "degraded"
+    },
+    {
+      "site_id": "ind_H4",
+      "country": "Indonesia",
+      "status": "healthy",
+      "similarity": 0.77,
+      "label_source": "marrs",
+      "label_original": "healthy"
+    },
+    {
+      "site_id": "ken_H1",
+      "country": "Kenya",
+      "status": "healthy",
+      "similarity": 0.63,
+      "label_source": "marrs",
+      "label_original": "healthy"
+    }
+  ],
+  "caveats": "This recording's coordinates fall within a region containing 4 of the classifier's 5 real training sites (Indonesia, Kenya). Probabilities shown are the model's raw, unmodified output. Classification reflects acoustic similarity to training data, not a definitive health diagnosis."
+}
