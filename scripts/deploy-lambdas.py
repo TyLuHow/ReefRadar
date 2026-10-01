@@ -22,8 +22,10 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import re
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 
 import lambda_packaging as pkg
@@ -37,8 +39,13 @@ INFERENCE_SOURCE_MEMBERS = [
     "infrastructure/lambda_container/buildspec.yml",
 ]
 CODEBUILD_BUCKET = "reefradar-2477-codebuild-artifacts"
-CODEBUILD_KEY = "inference-source.zip"
+CODEBUILD_KEY_PREFIX = "inference-source/"
 CODEBUILD_PROJECT = "reefradar-2477-inference-build"
+ECR_REPOSITORY = "reefradar-2477-inference"
+INFERENCE_IMAGE_TAG = "latest"
+BUILD_TERMINAL_STATES = {"SUCCEEDED", "FAILED", "FAULT", "STOPPED", "TIMED_OUT"}
+BUILD_POLL_INTERVAL_S = 15
+BUILD_TIMEOUT_S = 1800
 
 
 class DeployError(RuntimeError):
@@ -159,14 +166,64 @@ def deploy_zip_function(spec, repo_root, reader, factory, confirm, dry_run):
     return plan, deployed_sha
 
 
-def deploy_inference_function(spec, repo_root, reader, factory, confirm, dry_run):
+def inference_source_key(git_sha: str) -> str:
+    """Immutable, per-commit S3 key for the CodeBuild source zip.
+
+    A single shared key let two overlapping deploys overwrite each other, so
+    the commit recorded for a deploy might not be what CodeBuild built."""
+    if not re.fullmatch(r"[0-9a-f]{7,64}", git_sha):
+        raise DeployError(f"refusing to build an S3 key from a non-hex git sha: {git_sha!r}")
+    return f"{CODEBUILD_KEY_PREFIX}{git_sha}.zip"
+
+
+def wait_for_build(codebuild_client, build_id, poll_interval=BUILD_POLL_INTERVAL_S,
+                   timeout_s=BUILD_TIMEOUT_S, sleep=time.sleep, clock=time.monotonic) -> str:
+    """Poll the CodeBuild build to a terminal state; raise unless it SUCCEEDED."""
+    deadline = clock() + timeout_s
+    while True:
+        builds = codebuild_client.batch_get_builds(ids=[build_id]).get("builds", [])
+        status = builds[0].get("buildStatus") if builds else None
+        if status in BUILD_TERMINAL_STATES:
+            if status != "SUCCEEDED":
+                raise DeployError(f"CodeBuild {build_id} finished with status {status}")
+            return status
+        if clock() >= deadline:
+            raise DeployError(f"CodeBuild {build_id} did not finish within {timeout_s}s (last status {status})")
+        sleep(poll_interval)
+
+
+def resolve_inference_image(factory, function_name):
+    """(ecr_digest, lambda_resolved_image_uri) after a build; raises on mismatch.
+
+    The source-zip sha256 is NOT what Lambda runs -- the image digest is. This
+    resolves the freshly pushed image and checks the inference function is
+    actually running it."""
+    ecr = factory("ecr")
+    details = ecr.describe_images(
+        repositoryName=ECR_REPOSITORY, imageIds=[{"imageTag": INFERENCE_IMAGE_TAG}]
+    ).get("imageDetails", [])
+    if not details:
+        raise DeployError(f"ECR image {ECR_REPOSITORY}:{INFERENCE_IMAGE_TAG} not found after build")
+    digest = details[0]["imageDigest"]
+    resolved = factory("lambda").get_function(FunctionName=function_name)["Code"].get("ResolvedImageUri", "")
+    if digest not in resolved:
+        raise DeployError(
+            f"{function_name} is running {resolved or 'an unknown image'}, not the freshly built {digest}"
+        )
+    return digest, resolved
+
+
+def deploy_inference_function(spec, repo_root, reader, factory, confirm, dry_run,
+                              git_sha=None, wait=True, poll_interval=BUILD_POLL_INTERVAL_S,
+                              timeout_s=BUILD_TIMEOUT_S, sleep=time.sleep):
     source_bytes = build_inference_source_zip(repo_root, reader=reader)
     local_sha = pkg.code_sha256(source_bytes)
+    key = inference_source_key(git_sha if git_sha is not None else head_sha(repo_root))
     plan = {
         "function": spec["function_name"],
         "members": len(INFERENCE_SOURCE_MEMBERS),
         "code_sha256": local_sha,
-        "s3_key": f"s3://{CODEBUILD_BUCKET}/{CODEBUILD_KEY}",
+        "s3_key": f"s3://{CODEBUILD_BUCKET}/{key}",
         "codebuild_project": CODEBUILD_PROJECT,
     }
 
@@ -174,12 +231,21 @@ def deploy_inference_function(spec, repo_root, reader, factory, confirm, dry_run
         return plan, None
 
     s3_client = factory("s3")
-    s3_client.put_object(Bucket=CODEBUILD_BUCKET, Key=CODEBUILD_KEY, Body=source_bytes)
+    s3_client.put_object(Bucket=CODEBUILD_BUCKET, Key=key, Body=source_bytes)
 
     codebuild_client = factory("codebuild")
-    build_resp = codebuild_client.start_build(projectName=CODEBUILD_PROJECT)
+    build_resp = codebuild_client.start_build(
+        projectName=CODEBUILD_PROJECT,
+        sourceLocationOverride=f"{CODEBUILD_BUCKET}/{key}",
+    )
     build_id = build_resp["build"]["id"]
     print(f"  started CodeBuild: {build_id}")
+    if wait:
+        wait_for_build(codebuild_client, build_id, poll_interval=poll_interval,
+                       timeout_s=timeout_s, sleep=sleep)
+        digest, _ = resolve_inference_image(factory, spec["function_name"])
+        plan["image_digest"] = digest
+        print(f"  build succeeded; image digest {digest}")
     return plan, build_id
 
 
@@ -194,6 +260,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Repeatable. One of router, preprocessor, classifier, inference.",
     )
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--no-wait", action="store_true",
+        help="inference only: start the CodeBuild build and return without waiting for it / verifying the image digest",
+    )
     parser.add_argument(
         "--ref", default=None, help="Deploy from this past commit instead of the working tree (rollback)"
     )
@@ -259,7 +329,8 @@ def main(argv=None, client_factory=None) -> int:
                 plan, result = deploy_zip_function(spec, repo_root, reader, factory, args.confirm, args.dry_run)
             else:
                 plan, result = deploy_inference_function(
-                    spec, repo_root, reader, factory, args.confirm, args.dry_run
+                    spec, repo_root, reader, factory, args.confirm, args.dry_run,
+                    git_sha=git_sha, wait=not args.no_wait,
                 )
         except DeployError as e:
             print(f"error: {e}", file=sys.stderr)
@@ -286,6 +357,9 @@ def main(argv=None, client_factory=None) -> int:
         }
         if spec["kind"] == "container":
             record["codebuild_build_id"] = result
+            record["source_s3_key"] = plan["s3_key"]
+            if "image_digest" in plan:
+                record["image_digest"] = plan["image_digest"]
         print(json.dumps(record))
 
     return exit_code

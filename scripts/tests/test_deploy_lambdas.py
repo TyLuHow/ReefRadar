@@ -350,13 +350,17 @@ def test_confirmed_inference_deploy_uploads_source_and_starts_build(deploy_lambd
             return {"s3": s3, "codebuild": codebuild}[service]
 
         code = deploy_lambdas.main(
-            ["--function", "inference", "--confirm", "--repo-root", str(git_repo)],
+            ["--function", "inference", "--confirm", "--no-wait", "--repo-root", str(git_repo)],
             client_factory=factory,
         )
         assert code == 0
 
-        obj = s3.get_object(Bucket="reefradar-2477-codebuild-artifacts", Key="inference-source.zip")
+        head = _git(["rev-parse", "HEAD"], git_repo).strip()
+        obj = s3.get_object(Bucket="reefradar-2477-codebuild-artifacts", Key=f"inference-source/{head}.zip")
         assert len(obj["Body"].read()) > 0
+        # the shared, overwritable key is no longer written
+        listed = s3.list_objects_v2(Bucket="reefradar-2477-codebuild-artifacts").get("Contents", [])
+        assert [o["Key"] for o in listed] == [f"inference-source/{head}.zip"]
 
 
 # --- build_inference_source_zip: deterministic, flat member names --------------
@@ -415,3 +419,92 @@ def test_ref_without_package_spec_exits_two(deploy_lambdas, git_repo):
         ["--function", "router", "--dry-run", "--ref", "HEAD", "--repo-root", str(git_repo)]
     )
     assert code == 2
+
+
+# --- WR-09: inference deploy uses a versioned key, waits and verifies the image ---
+
+
+class _FakeS3:
+    def __init__(self):
+        self.puts = []
+
+    def put_object(self, **kwargs):
+        self.puts.append(kwargs)
+
+
+class _FakeCodeBuild:
+    def __init__(self, statuses):
+        self.statuses = list(statuses)
+        self.started = None
+
+    def start_build(self, **kwargs):
+        self.started = kwargs
+        return {"build": {"id": "reefradar-2477-inference-build:abc"}}
+
+    def batch_get_builds(self, ids):
+        status = self.statuses.pop(0) if len(self.statuses) > 1 else self.statuses[0]
+        return {"builds": [{"id": ids[0], "buildStatus": status}]}
+
+
+class _FakeEcr:
+    def __init__(self, digest="sha256:" + "a" * 64):
+        self.digest = digest
+
+    def describe_images(self, **kwargs):
+        return {"imageDetails": [{"imageDigest": self.digest}]}
+
+
+class _FakeLambda:
+    def __init__(self, resolved):
+        self.resolved = resolved
+
+    def get_function(self, FunctionName):
+        return {"Code": {"ResolvedImageUri": self.resolved}}
+
+
+def _inference_factory(statuses, resolved_digest="sha256:" + "a" * 64):
+    clients = {
+        "s3": _FakeS3(),
+        "codebuild": _FakeCodeBuild(statuses),
+        "ecr": _FakeEcr(),
+        "lambda": _FakeLambda(f"781978598306.dkr.ecr.us-east-1.amazonaws.com/x@{resolved_digest}"),
+    }
+    return clients, (lambda service: clients[service])
+
+
+def test_inference_deploy_waits_for_build_and_verifies_image(deploy_lambdas, git_repo, capsys, monkeypatch):
+    monkeypatch.setattr(deploy_lambdas.time, "sleep", lambda s: None)
+    clients, factory = _inference_factory(["IN_PROGRESS", "SUCCEEDED"])
+    head = _git(["rev-parse", "HEAD"], git_repo).strip()
+
+    code = deploy_lambdas.main(
+        ["--function", "inference", "--confirm", "--repo-root", str(git_repo)], client_factory=factory
+    )
+    assert code == 0
+    assert clients["s3"].puts[0]["Key"] == f"inference-source/{head}.zip"
+    assert clients["codebuild"].started["sourceLocationOverride"].endswith(f"inference-source/{head}.zip")
+    out = capsys.readouterr().out
+    record = json.loads([l for l in out.splitlines() if l.startswith("{")][-1])
+    assert record["image_digest"] == "sha256:" + "a" * 64
+    assert record["source_s3_key"].endswith(f"{head}.zip")
+
+
+def test_inference_deploy_fails_when_build_fails(deploy_lambdas, git_repo):
+    _, factory = _inference_factory(["FAILED"])
+    code = deploy_lambdas.main(
+        ["--function", "inference", "--confirm", "--repo-root", str(git_repo)], client_factory=factory
+    )
+    assert code == 1
+
+
+def test_inference_deploy_fails_when_lambda_runs_a_different_image(deploy_lambdas, git_repo):
+    _, factory = _inference_factory(["SUCCEEDED"], resolved_digest="sha256:" + "b" * 64)
+    code = deploy_lambdas.main(
+        ["--function", "inference", "--confirm", "--repo-root", str(git_repo)], client_factory=factory
+    )
+    assert code == 1
+
+
+def test_inference_source_key_rejects_non_hex_sha(deploy_lambdas):
+    with pytest.raises(deploy_lambdas.DeployError):
+        deploy_lambdas.inference_source_key("../../etc/passwd")
