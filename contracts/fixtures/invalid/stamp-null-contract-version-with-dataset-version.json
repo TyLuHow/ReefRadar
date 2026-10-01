@@ -1,0 +1,10 @@
+{
+  "instance": {
+    "contract_version": null,
+    "dataset_version": "reefradar-reference-2026.10.0",
+    "model_version": "interim-real-only",
+    "preprocessing_spec_version": "preproc-2026.10.0-as-deployed"
+  },
+  "reason": "A pre-contract stamp (contract_version null) must not claim a dataset version.",
+  "schema": "analysis-result"
+}

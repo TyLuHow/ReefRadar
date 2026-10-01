@@ -1,0 +1,31 @@
+{
+  "instance": {
+    "country": "USA",
+    "dataset_id": "sanctsound",
+    "dataset_name": "NOAA SanctSound",
+    "dataset_url": "https://sanctsound.ioos.us/",
+    "doi": null,
+    "doi_note": null,
+    "embedding_row": null,
+    "label_assigned_by": "NOAA Office of National Marine Sanctuaries",
+    "label_definition": null,
+    "label_note": null,
+    "label_original": null,
+    "label_source_name": "NOAA SanctSound",
+    "latitude": 24.5575,
+    "licence": "Public domain (U.S. Government work)",
+    "licence_url": null,
+    "location_label": "Florida Keys, USA",
+    "longitude": -81.4044,
+    "period": null,
+    "projection": null,
+    "reference_role": "location_only",
+    "region": "Florida Keys",
+    "site_id": "sanctsound_fk01",
+    "status": "unknown",
+    "status_basis": "NOAA SanctSound assigns no health status to its monitoring sites upstream.",
+    "synthetic": false
+  },
+  "reason": "A null DOI must carry the dataset's own stated reason in doi_note.",
+  "schema": "site"
+}

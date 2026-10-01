@@ -76,6 +76,8 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
       - run: pytest
+      - run: python scripts/build_contract.py --version 1 --check
+      - run: python scripts/check_contract.py --check --additive
       - run: python scripts/build_audio_consumers.py --check
       - run: python scripts/build_api_fixtures.py --check
       - run: python scripts/validate_audio_manifest.py

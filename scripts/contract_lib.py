@@ -102,22 +102,52 @@ def load_registry(schema_dir: Optional[pathlib.Path] = None) -> Registry:
     return registry
 
 
-def validation_errors(
-    instance: Any, stem: str, schema_dir: Optional[pathlib.Path] = None
-) -> list[str]:
-    """Return one 'path: message' line per schema violation (empty list when valid)."""
+def make_validator(stem: str, schema_dir: Optional[pathlib.Path] = None):
+    """A function instance -> list of 'path: message' lines, built once for many instances."""
     schema = load_schema(stem, schema_dir)
     Draft202012Validator.check_schema(schema)
     validator = Draft202012Validator(schema, registry=load_registry(schema_dir))
-    errors = sorted(
-        validator.iter_errors(instance),
-        key=lambda e: [str(part) for part in e.absolute_path],
+
+    def errors_for(instance: Any) -> list[str]:
+        errors = sorted(
+            validator.iter_errors(instance),
+            key=lambda e: [str(part) for part in e.absolute_path],
+        )
+        lines = []
+        for err in errors:
+            where = "/".join(str(part) for part in err.absolute_path) or "<root>"
+            lines.append(f"{where}: {err.message}")
+        return lines
+
+    return errors_for
+
+
+_VALIDATOR_CACHE: dict = {}
+
+
+def _schema_fingerprint(directory: pathlib.Path) -> tuple:
+    return tuple(
+        (path.name, path.stat().st_mtime_ns, path.stat().st_size)
+        for path in sorted(directory.glob(f"*{SCHEMA_SUFFIX}"))
     )
-    lines = []
-    for err in errors:
-        where = "/".join(str(part) for part in err.absolute_path) or "<root>"
-        lines.append(f"{where}: {err.message}")
-    return lines
+
+
+def validation_errors(
+    instance: Any, stem: str, schema_dir: Optional[pathlib.Path] = None
+) -> list[str]:
+    """Return one 'path: message' line per schema violation (empty list when valid).
+
+    The validator for each (schema directory, stem) is built once and reused until a schema
+    file changes (checked by name, mtime and size), so validating hundreds of instances does
+    not re-read and re-parse every schema each time.
+    """
+    directory = pathlib.Path(schema_dir or SCHEMA_DIR)
+    key = (str(directory.resolve()), stem, _schema_fingerprint(directory))
+    validator = _VALIDATOR_CACHE.get(key)
+    if validator is None:
+        validator = make_validator(stem, directory)
+        _VALIDATOR_CACHE[key] = validator
+    return validator(instance)
 
 
 def validate(instance: Any, stem: str, schema_dir: Optional[pathlib.Path] = None) -> None:

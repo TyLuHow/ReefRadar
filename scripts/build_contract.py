@@ -12,6 +12,13 @@ can be rebuilt and diffed in CI:
   contracts/bucket/v<N>/model_version.json       honest ModelVersion (no accuracy figure)
   contracts/bucket/v<N>/preprocessing_spec.json  what production does today + known gaps
   contracts/bucket/v<N>/stamp.json               the version stamp bundled into the classifier
+  contracts/bucket/v<N>/embeddings.f32           48 x 1280 float32 reference embeddings
+  contracts/bucket/v<N>/projection.json          2-D PCA of those rows, with its explained variance
+
+Test fixtures (--fixtures, never published; the publisher refuses fixture manifests):
+  contracts/fixtures/bucket/contract/v<N+1>.json   v<N> manifest + fixture true + one flipped flag
+  contracts/fixtures/latest-v<N>.json, latest-v<N+1>.json   pointers with the manifests' sha256
+  contracts/fixtures/invalid/*.json                curated schema-invariant violations
 
 Provenance rules (never relaxed):
   - Statuses and every label field come ONLY from
@@ -37,6 +44,7 @@ Usage:
     py -3.12 scripts/build_contract.py --version 1 --frozen-at 2026-10-01T22:00:00Z
     py -3.12 scripts/build_contract.py --version 1 --reference-metadata <local copy of metadata_v6.json> --recompute-projection
     py -3.12 scripts/build_contract.py --version 1            # rebuild, reuses the committed frozen_at
+    py -3.12 scripts/build_contract.py --version 1 --fixtures # write the offline UI-test fixtures
     py -3.12 scripts/build_contract.py --version 1 --check    # exit 1 if any committed file differs
     py -3.12 scripts/build_contract.py --freeze-legacy-coordinates   # one-time
     py -3.12 scripts/build_contract.py --format-schemas              # canonicalise contracts/schema/*
@@ -45,6 +53,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import pathlib
 import re
@@ -488,6 +497,131 @@ def build_bundle(
 
 
 # ---------------------------------------------------------------------------
+# Offline test fixtures (never published)
+# ---------------------------------------------------------------------------
+
+FIXTURE_FLIPPED_FLAG = "has_diel"
+
+
+def _first_site(sites: list[dict], predicate) -> dict:
+    return copy.deepcopy(next(site for site in sites if predicate(site)))
+
+
+def build_invalid_cases(sites: list[dict], manifest: dict, stamp: dict, pointer: dict) -> dict[str, dict]:
+    """Curated schema-invariant violations: {file stem: {schema, instance, reason}}.
+
+    Each starts from a committed valid instance and breaks exactly one invariant, so a
+    UI or schema-parity test can assert that the violation is rejected.
+    """
+    cases: dict[str, dict] = {}
+
+    degraded = _first_site(
+        sites,
+        lambda s: s["status"] == "degraded" and s["label_definition"] is not None
+        and s["reference_role"] == "acoustic_reference",
+    )
+    degraded["label_definition"] = None
+    cases["site-null-label-definition-with-degraded-status"] = {
+        "schema": "site",
+        "instance": degraded,
+        "reason": "A site whose dataset gives no label definition must have status unknown, not degraded.",
+    }
+
+    no_doi = _first_site(sites, lambda s: s["doi"] is None)
+    no_doi["doi_note"] = None
+    cases["site-null-doi-without-note"] = {
+        "schema": "site",
+        "instance": no_doi,
+        "reason": "A null DOI must carry the dataset's own stated reason in doi_note.",
+    }
+
+    no_projection = _first_site(sites, lambda s: s["reference_role"] == "acoustic_reference")
+    no_projection["projection"] = None
+    cases["site-acoustic-reference-null-projection"] = {
+        "schema": "site",
+        "instance": no_projection,
+        "reason": "An acoustic reference site must have a projection point.",
+    }
+
+    stray_row = _first_site(sites, lambda s: s["reference_role"] == "location_only")
+    stray_row["embedding_row"] = 0
+    cases["site-location-only-with-embedding-row"] = {
+        "schema": "site",
+        "instance": stray_row,
+        "reason": "A location-only site has no embedding, so embedding_row must be null.",
+    }
+
+    pre_contract = copy.deepcopy(stamp)
+    pre_contract["contract_version"] = None
+    cases["stamp-null-contract-version-with-dataset-version"] = {
+        "schema": "analysis-result",
+        "instance": pre_contract,
+        "reason": "A pre-contract stamp (contract_version null) must not claim a dataset version.",
+    }
+
+    no_effort = copy.deepcopy(manifest)
+    del no_effort["coverage"]["has_effort"]
+    cases["manifest-missing-coverage-has-effort"] = {
+        "schema": "contract-manifest",
+        "instance": no_effort,
+        "reason": "Every coverage flag is required so a UI never guesses whether data exists.",
+    }
+
+    traversal = copy.deepcopy(pointer)
+    traversal["manifest_uri"] = "contract/../v1.json"
+    cases["pointer-manifest-uri-with-dot-dot"] = {
+        "schema": "contract-pointer",
+        "instance": traversal,
+        "reason": "A pointer may only name contract/v<N>.json, never a path that climbs out of the bucket.",
+    }
+
+    absolute = copy.deepcopy(manifest)
+    absolute["artifacts"]["sites"]["uri"] = "https://example.invalid/v1/sites.json"
+    cases["manifest-artifact-uri-with-https-scheme"] = {
+        "schema": "contract-manifest",
+        "instance": absolute,
+        "reason": "Artifact uris are relative bucket paths; an absolute URL would let a manifest redirect the app.",
+    }
+    return cases
+
+
+def build_fixture_files(version: int, files: dict[str, bytes]) -> dict[str, bytes]:
+    """Fixture files (paths relative to contracts/) derived from the built bundle of `version`.
+
+    v<N+1> reuses every v<N> artifact uri (immutable bytes are addressed by path), so a
+    fixture adds one small manifest, not another copy of the data.
+    """
+    base_bytes = files[f"bucket/contract/v{version}.json"]
+    base = json.loads(base_bytes.decode("utf-8"))
+    flipped = copy.deepcopy(base)
+    flipped["contract_version"] = version + 1
+    flipped["fixture"] = True
+    if flipped["coverage"][FIXTURE_FLIPPED_FLAG] is not False:
+        raise ContractError(f"v{version} already has coverage.{FIXTURE_FLIPPED_FLAG} true; nothing to flip")
+    flipped["coverage"][FIXTURE_FLIPPED_FLAG] = True
+    flipped_bytes = contract_lib.canonical_json_bytes(flipped)
+
+    def pointer(n: int, data: bytes) -> dict:
+        return {
+            "contract_version": n,
+            "manifest_uri": f"contract/v{n}.json",
+            "manifest_sha256": contract_lib.sha256_hex(data),
+        }
+
+    base_pointer = pointer(version, base_bytes)
+    out = {
+        f"fixtures/bucket/contract/v{version + 1}.json": flipped_bytes,
+        f"fixtures/latest-v{version}.json": contract_lib.canonical_json_bytes(base_pointer),
+        f"fixtures/latest-v{version + 1}.json": contract_lib.canonical_json_bytes(pointer(version + 1, flipped_bytes)),
+    }
+    sites = json.loads(files[f"bucket/v{version}/sites.json"].decode("utf-8"))["sites"]
+    stamp = json.loads(files[f"bucket/v{version}/stamp.json"].decode("utf-8"))
+    for name, case in build_invalid_cases(sites, base, stamp, base_pointer).items():
+        out[f"fixtures/invalid/{name}.json"] = contract_lib.canonical_json_bytes(case)
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Model, preprocessing spec and version stamp
 # ---------------------------------------------------------------------------
 
@@ -759,6 +893,11 @@ def main(argv=None) -> int:
         help="recompute projection.json (otherwise the committed one is reused)",
     )
     parser.add_argument("--freeze-legacy-coordinates", action="store_true")
+    parser.add_argument(
+        "--fixtures",
+        action="store_true",
+        help="also write the offline test fixtures (flipped-flag manifest, pointers, invalid cases)",
+    )
     parser.add_argument("--format-schemas", action="store_true")
     args = parser.parse_args(argv)
 
@@ -773,6 +912,16 @@ def main(argv=None) -> int:
             parser.error("--version N (N >= 1) is required")
 
         version = args.version
+        if args.check and str(version) in _published_versions(contracts_dir):
+            # A published version is frozen: its schema copies keep the schemas of the day while
+            # contracts/schema may since have grown (additively). A rebuild would legitimately
+            # differ, so immutability is enforced by check_contract.py (manifest sha256 vs
+            # PUBLISHED.json) and the structural --additive check instead.
+            print(
+                f"OK: v{version} is published; skipping the rebuild comparison "
+                "(check_contract.py guards its bytes against contracts/PUBLISHED.json)"
+            )
+            return 0
         frozen_at = _resolve_frozen_at(version, args.frozen_at, contracts_dir)
         files = build_bundle(
             version,
@@ -782,9 +931,10 @@ def main(argv=None) -> int:
             recompute_projection=args.recompute_projection,
         )
 
+        fixture_files = build_fixture_files(version, files)
         if args.check:
             problems = []
-            for rel, data in sorted(files.items()):
+            for rel, data in sorted({**files, **fixture_files}.items()):
                 path = contracts_dir / rel
                 if not path.exists():
                     problems.append(f"{rel}: missing")
@@ -794,16 +944,22 @@ def main(argv=None) -> int:
                 print(f"FAIL {line}")
             if problems:
                 return 1
-            print(f"OK: contract v{version} ({len(files)} files) matches a fresh build")
+            print(f"OK: contract v{version} ({len(files)} files) and {len(fixture_files)} fixture files match a fresh build")
             return 0
 
-        if str(version) in _published_versions(contracts_dir):
-            raise ContractError(f"v{version} is listed in contracts/PUBLISHED.json; published versions are immutable")
-        for rel, data in sorted(files.items()):
+        if args.fixtures and not args.reference_metadata and not args.recompute_projection:
+            to_write = fixture_files  # fixtures only: never touches a (possibly published) bundle
+        else:
+            if str(version) in _published_versions(contracts_dir):
+                raise ContractError(
+                    f"v{version} is listed in contracts/PUBLISHED.json; published versions are immutable"
+                )
+            to_write = {**files, **(fixture_files if args.fixtures else {})}
+        for rel, data in sorted(to_write.items()):
             path = contracts_dir / rel
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(data)
-        print(f"OK: wrote contract v{version} ({len(files)} files) under {contracts_dir / 'bucket'}")
+        print(f"OK: wrote {len(to_write)} file(s) for contract v{version} under {contracts_dir}")
         return 0
     except ContractError as exc:
         print(f"FAIL {exc}", file=sys.stderr)

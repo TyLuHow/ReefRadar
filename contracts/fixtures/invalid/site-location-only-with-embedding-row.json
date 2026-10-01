@@ -1,0 +1,31 @@
+{
+  "instance": {
+    "country": "Kenya",
+    "dataset_id": "marrs",
+    "dataset_name": "MARRS",
+    "dataset_url": "https://doi.org/10.5522/04/29958062",
+    "doi": "10.5522/04/29958062",
+    "doi_note": null,
+    "embedding_row": 0,
+    "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
+    "label_definition": "Comparable to restored sites prior to restoration (rubble).",
+    "label_note": "The upstream MARRS audio archive for this location is named ken_D2 (11,917 files); the MARRS site-map KML labels the same point 'D3'. No audio has been ingested for either name at this site.",
+    "label_original": "Degraded (D)",
+    "label_source_name": "MARRS (Mars Assisted Reef Restoration System)",
+    "latitude": -2.213638,
+    "licence": "CC BY 4.0",
+    "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+    "location_label": "Mombasa Coast, Kenya",
+    "longitude": 41.019482,
+    "period": null,
+    "projection": null,
+    "reference_role": "location_only",
+    "region": "Mombasa Coast",
+    "site_id": "ken_D3",
+    "status": "degraded",
+    "status_basis": null,
+    "synthetic": false
+  },
+  "reason": "A location-only site has no embedding, so embedding_row must be null.",
+  "schema": "site"
+}

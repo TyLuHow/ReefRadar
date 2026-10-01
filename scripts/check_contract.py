@@ -21,16 +21,43 @@ Phase 2 (CONTRACT-01): integrity and schema check of every committed contract bu
   - every site's embedding_row and projection equal the row and projection coordinates
     published for it.
 
+`--check` also verifies the offline fixtures and the immutability guard:
+
+  - contracts/fixtures/bucket/contract/v*.json are marked "fixture": true, resolve their
+    artifacts against contracts/bucket, and nothing else lives under fixtures/bucket;
+    a manifest marked fixture anywhere under contracts/bucket fails;
+  - contracts/fixtures/latest-v*.json validate against the pointer schema and their
+    manifest_sha256 equals the sha256 of the manifest bytes they name;
+  - every contracts/fixtures/invalid/*.json case ({schema, instance, reason}) is rejected
+    by the schema it names;
+  - contracts/fixtures/parity-corpus.json equals a fresh regeneration (see --write-corpus);
+  - when contracts/PUBLISHED.json lists a version, that version's manifest bytes still hash
+    to the recorded manifest_sha256 ("published version N modified" otherwise).
+
+`--additive` guards schema evolution:
+
+  - behavioural: every manifest in contracts/bucket and contracts/fixtures, and every
+    artifact they name, still validates against the CURRENT contracts/schema/*;
+  - structural: every property name and enum value found in the schema copies bundled
+    under contracts/bucket/v*/schema still exists in the current schema of the same name.
+
+`--write-corpus` regenerates contracts/fixtures/parity-corpus.json: the Python jsonschema
+verdict for every committed instance and for mechanically generated invalid mutants. The
+Zod mirror (plan 02-07) must reach the same verdict for every entry.
+
 Exit 0 when everything passes; exit 1 with one line per failure otherwise.
 
 Usage:
     py -3.12 scripts/check_contract.py --check
+    py -3.12 scripts/check_contract.py --check --additive
+    py -3.12 scripts/check_contract.py --write-corpus
     py -3.12 scripts/check_contract.py --check --contracts-dir <copy of contracts/>
 """
 
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import pathlib
 import re
@@ -74,7 +101,30 @@ def _schema_problems(rel: str, instance, stem: str, schema_dir: pathlib.Path) ->
     return [f"{rel}: schema {stem}: {line}" for line in contract_lib.validation_errors(instance, stem, schema_dir)]
 
 
-def check_manifest(manifest_path: pathlib.Path, contracts_dir: pathlib.Path) -> list[str]:
+def published_versions(contracts_dir: pathlib.Path) -> set[str]:
+    """Versions listed in contracts/PUBLISHED.json (empty when the file does not exist)."""
+    path = pathlib.Path(contracts_dir) / "PUBLISHED.json"
+    if not path.is_file():
+        return set()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return set()
+    return {str(key) for key in data} if isinstance(data, dict) else set()
+
+
+def check_manifest(
+    manifest_path: pathlib.Path,
+    contracts_dir: pathlib.Path,
+    fixture: bool = False,
+    copies_must_match: bool = True,
+) -> list[str]:
+    """Check one manifest. A fixture manifest must say so, and artifacts always resolve in contracts/bucket.
+
+    copies_must_match: each bundled schema copy must equal its contracts/schema source. That holds
+    while a version is unpublished; once published the copy is frozen and the source may only grow
+    (--additive checks that instead), so the equality is not required.
+    """
     bucket = contracts_dir / "bucket"
     schema_dir = contracts_dir / "schema"
     rel_manifest = manifest_path.relative_to(contracts_dir).as_posix()
@@ -85,7 +135,10 @@ def check_manifest(manifest_path: pathlib.Path, contracts_dir: pathlib.Path) -> 
     except (UnicodeDecodeError, json.JSONDecodeError):
         return problems
     problems += _schema_problems(rel_manifest, manifest, "contract-manifest", schema_dir)
-    if manifest.get("fixture") is True:
+    if fixture:
+        if manifest.get("fixture") is not True:
+            problems.append(f"{rel_manifest}: a fixture manifest must be marked fixture true")
+    elif manifest.get("fixture") is True:
         problems.append(f"{rel_manifest}: manifest is marked fixture true and must never be in the bucket bundle")
 
     artifacts = manifest.get("artifacts") if isinstance(manifest.get("artifacts"), dict) else {}
@@ -119,14 +172,16 @@ def check_manifest(manifest_path: pathlib.Path, contracts_dir: pathlib.Path) -> 
                 loaded[label] = json.loads(data.decode("utf-8"))
                 if label.startswith("schemas."):
                     source = schema_dir / pathlib.PurePosixPath(uri).name
-                    if source.is_file() and contract_lib.read_text_input_bytes(source) != data:
+                    if copies_must_match and source.is_file() and contract_lib.read_text_input_bytes(source) != data:
                         problems.append(f"{uri}: schema copy differs from {source.relative_to(contracts_dir).as_posix()}")
 
-    problems += _semantic_problems(manifest, artifacts, loaded, schema_dir)
+    problems += _semantic_problems(manifest, artifacts, loaded, schema_dir, fixture)
     return problems
 
 
-def _semantic_problems(manifest: dict, artifacts: dict, loaded: dict, schema_dir: pathlib.Path) -> list[str]:
+def _semantic_problems(
+    manifest: dict, artifacts: dict, loaded: dict, schema_dir: pathlib.Path, fixture: bool = False
+) -> list[str]:
     problems = []
 
     sites_doc = loaded.get("sites")
@@ -167,6 +222,8 @@ def _semantic_problems(manifest: dict, artifacts: dict, loaded: dict, schema_dir
     stamp = loaded.get("stamp")
     if isinstance(stamp, dict):
         for key in ("contract_version", "dataset_version", "model_version", "preprocessing_spec_version"):
+            if fixture and key == "contract_version":
+                continue  # a fixture reuses the base version's stamp bytes by design
             if stamp.get(key) != manifest.get(key):
                 problems.append(
                     f"stamp.{key}: {stamp.get(key)!r} differs from manifest {manifest.get(key)!r}"
@@ -283,14 +340,345 @@ def _embedding_problems(manifest: dict, artifacts: dict, loaded: dict) -> list[s
     return problems
 
 
+def _read_json(path: pathlib.Path):
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _fixture_manifests(contracts_dir: pathlib.Path) -> list[pathlib.Path]:
+    return sorted((contracts_dir / "fixtures" / "bucket" / "contract").glob("v*.json"))
+
+
+def fixture_problems(contracts_dir: pathlib.Path) -> list[str]:
+    """Placement, pointer, manifest and invalid-case checks for contracts/fixtures."""
+    fixtures = contracts_dir / "fixtures"
+    schema_dir = contracts_dir / "schema"
+    problems: list[str] = []
+    if not fixtures.is_dir():
+        return [f"{fixtures}: fixtures directory is missing"]
+
+    allowed = fixtures / "bucket" / "contract"
+    for path in sorted((fixtures / "bucket").rglob("*")) if (fixtures / "bucket").is_dir() else []:
+        if path.is_file() and path.parent != allowed:
+            problems.append(
+                f"{path.relative_to(contracts_dir).as_posix()}: fixtures/bucket may only hold contract/v*.json "
+                "manifests (artifacts are reused from contracts/bucket)"
+            )
+
+    manifests = _fixture_manifests(contracts_dir)
+    if not manifests:
+        problems.append("contracts/fixtures/bucket/contract: no fixture manifest (v*.json) found")
+    published = published_versions(contracts_dir)
+    for path in manifests:
+        problems += check_manifest(path, contracts_dir, fixture=True, copies_must_match=not published)
+
+    pointers = sorted(fixtures.glob("latest-v*.json"))
+    if not pointers:
+        problems.append("contracts/fixtures: no latest-v*.json pointer found")
+    for path in pointers:
+        rel = path.relative_to(contracts_dir).as_posix()
+        raw = path.read_bytes()
+        file_problems = _json_file_problems(rel, raw)
+        problems += file_problems
+        if file_problems:
+            continue
+        pointer = json.loads(raw.decode("utf-8"))
+        problems += _schema_problems(rel, pointer, "contract-pointer", schema_dir)
+        uri = pointer.get("manifest_uri") if isinstance(pointer, dict) else None
+        if not isinstance(uri, str) or not re.fullmatch(r"contract/v[0-9]+\.json", uri):
+            continue
+        candidates = [
+            contracts_dir / "bucket" / uri,
+            contracts_dir / "fixtures" / "bucket" / uri,
+        ]
+        target = next((c for c in candidates if c.is_file()), None)
+        if target is None:
+            problems.append(f"{rel}: manifest_uri {uri} names no committed manifest")
+        elif contract_lib.sha256_hex(target.read_bytes()) != pointer.get("manifest_sha256"):
+            problems.append(f"{rel}: manifest_sha256 differs from the sha256 of {uri}")
+
+    invalid_dir = fixtures / "invalid"
+    cases = sorted(invalid_dir.glob("*.json")) if invalid_dir.is_dir() else []
+    if not cases:
+        problems.append("contracts/fixtures/invalid: no invalid cases found")
+    for path in cases:
+        rel = path.relative_to(contracts_dir).as_posix()
+        try:
+            case = _read_json(path)
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            problems.append(f"{rel}: not valid JSON ({exc})")
+            continue
+        if not isinstance(case, dict) or set(case) != {"schema", "instance", "reason"}:
+            problems.append(f"{rel}: an invalid case must be exactly {{schema, instance, reason}}")
+            continue
+        if not case["reason"]:
+            problems.append(f"{rel}: reason must say which invariant is broken")
+        try:
+            errors = contract_lib.validation_errors(case["instance"], case["schema"], schema_dir)
+        except contract_lib.ContractError as exc:
+            problems.append(f"{rel}: {exc}")
+            continue
+        if not errors:
+            problems.append(f"{rel}: the instance is valid against {case['schema']} but must be rejected")
+    return problems
+
+
+def published_problems(contracts_dir: pathlib.Path) -> list[str]:
+    """A version listed in contracts/PUBLISHED.json is immutable: its manifest bytes may not change."""
+    path = contracts_dir / "PUBLISHED.json"
+    if not path.exists():
+        return []
+    try:
+        published = _read_json(path)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return [f"PUBLISHED.json: not valid JSON ({exc})"]
+    if not isinstance(published, dict):
+        return ["PUBLISHED.json: expected an object mapping version to manifest sha256"]
+    problems = []
+    for version, record in sorted(published.items(), key=lambda kv: str(kv[0])):
+        recorded = record.get("manifest_sha256") if isinstance(record, dict) else record
+        manifest = contracts_dir / "bucket" / "contract" / f"v{version}.json"
+        if not manifest.is_file():
+            problems.append(f"published version {version} modified: {manifest.name} is missing from the bundle")
+        elif contract_lib.sha256_hex(manifest.read_bytes()) != recorded:
+            problems.append(f"published version {version} modified: manifest sha256 differs from PUBLISHED.json")
+    return problems
+
+
+# ---------------------------------------------------------------------------
+# Additive-only schema evolution
+# ---------------------------------------------------------------------------
+
+def _schema_vocabulary(schema) -> tuple[set[str], set[tuple[str, str]]]:
+    """(property names, (owning property, enum value) pairs) found anywhere in a schema."""
+    names: set[str] = set()
+    enums: set[tuple[str, str]] = set()
+
+    def walk(node, owner: str) -> None:
+        if isinstance(node, dict):
+            properties = node.get("properties")
+            if isinstance(properties, dict):
+                for key, sub in properties.items():
+                    names.add(key)
+                    walk(sub, key)
+            if isinstance(node.get("enum"), list):
+                for value in node["enum"]:
+                    enums.add((owner, json.dumps(value, sort_keys=True)))
+            for key, sub in node.items():
+                if key != "properties":
+                    walk(sub, owner)
+        elif isinstance(node, list):
+            for sub in node:
+                walk(sub, owner)
+
+    walk(schema, "$")
+    return names, enums
+
+
+def additive_problems(contracts_dir: pathlib.Path) -> list[str]:
+    """Behavioural and structural checks that the current schemas only ever grew."""
+    problems: list[str] = []
+    schema_dir = contracts_dir / "schema"
+    manifests = sorted((contracts_dir / "bucket" / "contract").glob("v*.json"))
+    manifests += _fixture_manifests(contracts_dir)
+    for path in manifests:
+        fixture = "fixtures" in path.relative_to(contracts_dir).parts
+        problems += [
+            f"additive (behavioural): {line}"
+            for line in check_manifest(path, contracts_dir, fixture=fixture, copies_must_match=False)
+        ]
+
+    for copy_path in sorted((contracts_dir / "bucket").glob(f"v*/schema/*{contract_lib.SCHEMA_SUFFIX}")):
+        rel = copy_path.relative_to(contracts_dir).as_posix()
+        current = schema_dir / copy_path.name
+        if not current.is_file():
+            problems.append(f"additive (structural): {rel}: the current schema {copy_path.name} no longer exists")
+            continue
+        old_names, old_enums = _schema_vocabulary(_read_json(copy_path))
+        new_names, new_enums = _schema_vocabulary(_read_json(current))
+        for name in sorted(old_names - new_names):
+            problems.append(f"additive (structural): {current.name} dropped property {name!r} present in {rel}")
+        for owner, value in sorted(old_enums - new_enums):
+            problems.append(
+                f"additive (structural): {current.name} dropped enum value {value} of {owner!r} present in {rel}"
+            )
+    return problems
+
+
+# ---------------------------------------------------------------------------
+# Schema parity corpus
+# ---------------------------------------------------------------------------
+
+WRONG_TYPE_VALUES = (
+    ("object", {"__wrong__": 1}),
+    ("array", []),
+    ("string", "__wrong__ #"),
+    ("boolean", True),
+    ("number", 12345.5),
+    ("null", None),
+)
+PARITY_CORPUS_RELPATH = "fixtures/parity-corpus.json"
+
+
+def _allowed_types(sub) -> set[str] | None:
+    declared = sub.get("type") if isinstance(sub, dict) else None
+    if declared is None:
+        return None
+    return {declared} if isinstance(declared, str) else set(declared)
+
+
+def _mutants(instance: dict, schema: dict, verdict) -> dict[str, dict]:
+    """Mechanical one-change mutants of `instance`; each must be rejected by the schema."""
+    out: dict[str, dict] = {}
+    properties = schema.get("properties", {})
+    for key in schema.get("required", []):
+        if key in instance:
+            mutant = copy.deepcopy(instance)
+            del mutant[key]
+            out[f"drop:{key}"] = mutant
+    for key, sub in sorted(properties.items()):
+        if key not in instance:
+            continue
+        allowed = _allowed_types(sub)
+        for type_name, value in WRONG_TYPE_VALUES:
+            if allowed is not None and type_name in allowed:
+                continue  # that JSON type is legal here, so it would not be a wrong-type mutant
+            if instance[key] == value:
+                continue
+            mutant = copy.deepcopy(instance)
+            mutant[key] = value
+            if allowed is None and not verdict(mutant):
+                continue  # untyped (const/ref) property: keep the first value it actually rejects
+            out[f"type:{key}:{type_name}"] = mutant
+            break
+        if isinstance(sub, dict) and "enum" in sub:
+            mutant = copy.deepcopy(instance)
+            mutant[key] = "__not_in_enum__"
+            out[f"enum:{key}"] = mutant
+        if isinstance(sub, dict) and "pattern" in sub and instance[key] is not None:
+            mutant = copy.deepcopy(instance)
+            mutant[key] = "not a valid value #"
+            out[f"pattern:{key}"] = mutant
+    return out
+
+
+def _truncated_projection(projection: dict) -> dict:
+    """A projection copy with every long array cut to 3 items (valid: lengths are checked elsewhere)."""
+    small = copy.deepcopy(projection)
+    for key in ("mean", "explained_variance", "explained_variance_ratio", "site_ids", "coordinates"):
+        small[key] = small[key][:3]
+    small["components"] = [row[:3] for row in small["components"][:3]]
+    return small
+
+
+def _corpus_instances(contracts_dir: pathlib.Path) -> list[tuple[str, str, str, object]]:
+    """(schema stem, case name, source tag, instance) for every committed valid instance."""
+    items: list[tuple[str, str, str, object]] = []
+    bucket_manifests = sorted((contracts_dir / "bucket" / "contract").glob("v*.json"))
+    for path in bucket_manifests:
+        source = "representative" if path == bucket_manifests[-1] else "manifest"
+        items.append(("contract-manifest", f"manifest/{path.stem}", source, _read_json(path)))
+    for path in _fixture_manifests(contracts_dir):
+        items.append(("contract-manifest", f"fixture-manifest/{path.stem}", "fixture", _read_json(path)))
+    for path in sorted((contracts_dir / "fixtures").glob("latest-v*.json")):
+        base = bucket_manifests and path.stem == f"latest-{bucket_manifests[-1].stem}"
+        items.append(("contract-pointer", f"pointer/{path.stem}", "representative" if base else "pointer", _read_json(path)))
+    if not bucket_manifests:
+        return items
+
+    latest = _read_json(bucket_manifests[-1])
+    bucket = contracts_dir / "bucket"
+    sites = _read_json(bucket / latest["artifacts"]["sites"]["uri"])["sites"]
+    seen = set()
+    for site in sites:
+        combo = (site["dataset_id"], site["reference_role"])
+        if combo not in seen:
+            seen.add(combo)
+            items.append(("site", f"site/{combo[0]}/{combo[1]}", "representative", site))
+    for artifact, stem in (
+        ("model_version", "model-version"),
+        ("preprocessing_spec", "preprocessing-spec"),
+        ("stamp", "analysis-result"),
+    ):
+        items.append((stem, f"artifact/{artifact}", "representative", _read_json(bucket / latest["artifacts"][artifact]["uri"])))
+    items.append(
+        ("projection", "artifact/projection-truncated", "representative",
+         _truncated_projection(_read_json(bucket / latest["artifacts"]["projection"]["uri"])))
+    )
+    return items
+
+
+def build_corpus(contracts_dir: pathlib.Path) -> bytes:
+    """Deterministic parity corpus: [{schema, case, verdict, instance}], sorted, one entry per line."""
+    schema_dir = contracts_dir / "schema"
+    validators: dict[str, object] = {}
+
+    def verdict_for(stem: str, instance) -> str:
+        if stem not in validators:
+            validators[stem] = contract_lib.make_validator(stem, schema_dir)
+        return "invalid" if validators[stem](instance) else "valid"
+
+    entries = []
+    for stem, case, source, instance in _corpus_instances(contracts_dir):
+        if verdict_for(stem, instance) != "valid":
+            raise contract_lib.ContractError(f"corpus: committed instance {case} is not valid against {stem}")
+        entries.append({"schema": stem, "case": f"valid:{case}", "verdict": "valid", "instance": instance})
+        if source == "representative":
+            schema = contract_lib.load_schema(stem, schema_dir)
+            for mutant_case, mutant in _mutants(instance, schema, lambda m, s=stem: verdict_for(s, m) == "invalid").items():
+                if verdict_for(stem, mutant) != "invalid":
+                    raise contract_lib.ContractError(f"corpus: mutant {case}/{mutant_case} is accepted by {stem}")
+                entries.append(
+                    {"schema": stem, "case": f"mutant:{case}/{mutant_case}", "verdict": "invalid", "instance": mutant}
+                )
+    invalid_dir = contracts_dir / "fixtures" / "invalid"
+    for path in sorted(invalid_dir.glob("*.json")) if invalid_dir.is_dir() else []:
+        case = _read_json(path)
+        if verdict_for(case["schema"], case["instance"]) != "invalid":
+            raise contract_lib.ContractError(f"corpus: curated case {path.name} is accepted by {case['schema']}")
+        entries.append(
+            {"schema": case["schema"], "case": f"curated:{path.stem}", "verdict": "invalid", "instance": case["instance"]}
+        )
+    entries.sort(key=lambda e: (e["schema"], e["case"]))
+    lines = [json.dumps(e, sort_keys=True, separators=(",", ":"), ensure_ascii=False) for e in entries]
+    return ("[\n" + ",\n".join(lines) + "\n]\n").encode("utf-8")
+
+
+def corpus_problems(contracts_dir: pathlib.Path) -> list[str]:
+    path = contracts_dir / PARITY_CORPUS_RELPATH
+    if not path.is_file():
+        return [f"{PARITY_CORPUS_RELPATH}: missing; run `py -3.12 scripts/check_contract.py --write-corpus`"]
+    try:
+        fresh = build_corpus(contracts_dir)
+    except (contract_lib.ContractError, OSError, ValueError, KeyError, IndexError, TypeError) as exc:
+        return [f"{PARITY_CORPUS_RELPATH}: cannot regenerate the corpus ({type(exc).__name__}: {exc})"]
+    if path.read_bytes() != fresh:
+        return [f"{PARITY_CORPUS_RELPATH}: stale; regenerate with `py -3.12 scripts/check_contract.py --write-corpus`"]
+    return []
+
+
+def write_corpus(contracts_dir: pathlib.Path) -> int:
+    data = build_corpus(contracts_dir)
+    target = contracts_dir / PARITY_CORPUS_RELPATH
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(data)
+    count = len(json.loads(data.decode("utf-8")))
+    print(f"OK: wrote {count} parity entries ({len(data)} bytes) to {target}")
+    return 0
+
+
 def check(contracts_dir: pathlib.Path) -> list[str]:
     contracts_dir = pathlib.Path(contracts_dir)
     manifests = sorted((contracts_dir / "bucket" / "contract").glob("v*.json"))
     if not manifests:
         return [f"{contracts_dir / 'bucket' / 'contract'}: no contract manifest (v*.json) found"]
     problems = []
+    published = published_versions(contracts_dir)
     for manifest_path in manifests:
-        problems += check_manifest(manifest_path, contracts_dir)
+        version = manifest_path.stem[1:]
+        problems += check_manifest(manifest_path, contracts_dir, copies_must_match=version not in published)
+    problems += fixture_problems(contracts_dir)
+    problems += published_problems(contracts_dir)
+    problems += corpus_problems(contracts_dir)
     return problems
 
 
@@ -298,22 +686,33 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("--check", action="store_true", help="verify every committed bundle")
+    parser.add_argument("--check", action="store_true", help="verify every committed bundle, fixture and the corpus")
+    parser.add_argument("--additive", action="store_true", help="verify the schemas only ever grew")
+    parser.add_argument("--write-corpus", action="store_true", help="regenerate contracts/fixtures/parity-corpus.json")
     parser.add_argument("--contracts-dir", help="contracts directory to check (default: the repository's)")
     args = parser.parse_args(argv)
-    if not args.check:
-        parser.error("--check is required")
+    if not (args.check or args.additive or args.write_corpus):
+        parser.error("one of --check, --additive or --write-corpus is required")
 
     contracts_dir = pathlib.Path(args.contracts_dir or contract_lib.CONTRACTS_DIR)
     try:
-        problems = check(contracts_dir)
+        if args.write_corpus:
+            code = write_corpus(contracts_dir)
+            if code or not (args.check or args.additive):
+                return code
+        problems = []
+        if args.check:
+            problems += check(contracts_dir)
+        if args.additive:
+            problems += additive_problems(contracts_dir)
     except contract_lib.ContractError as exc:
         problems = [str(exc)]
     for line in problems:
         print(f"FAIL {line}")
     if problems:
         return 1
-    print("OK: every committed contract bundle matches its schemas and manifest hashes")
+    modes = " and ".join(name for name, on in (("--check", args.check), ("--additive", args.additive)) if on)
+    print(f"OK: contract {modes} passed (bundles, fixtures, schemas and parity corpus are consistent)")
     return 0
 
 

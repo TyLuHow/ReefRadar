@@ -1,0 +1,31 @@
+{
+  "instance": {
+    "country": "Australia",
+    "dataset_id": "marrs",
+    "dataset_name": "MARRS",
+    "dataset_url": "https://doi.org/10.5522/04/29958062",
+    "doi": "10.5522/04/29958062",
+    "doi_note": null,
+    "embedding_row": 0,
+    "label_assigned_by": "MARRS research team (Williams, Jones et al. 2025)",
+    "label_definition": "Comparable to restored sites prior to restoration (rubble).",
+    "label_note": null,
+    "label_original": "Degraded (D)",
+    "label_source_name": "MARRS (Mars Assisted Reef Restoration System)",
+    "latitude": -16.84732,
+    "licence": "CC BY 4.0",
+    "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+    "location_label": "Great Barrier Reef, Australia",
+    "longitude": 146.22907,
+    "period": null,
+    "projection": null,
+    "reference_role": "acoustic_reference",
+    "region": "Great Barrier Reef",
+    "site_id": "aus_D1",
+    "status": "degraded",
+    "status_basis": null,
+    "synthetic": false
+  },
+  "reason": "An acoustic reference site must have a projection point.",
+  "schema": "site"
+}
