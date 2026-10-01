@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 01
 current_phase_name: Truth & Reproducibility
 status: executing
-stopped_at: Plan 01-14 attempt 1 rolled back after 503 during live verification; prod restored
-last_updated: "2026-10-01T15:41:36.435Z"
+stopped_at: Completed 01-14-PLAN.md (attempt 2 deployed and verified)
+last_updated: "2026-10-01T16:29:02.811Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 01 execution started
-state_head: d1a4473f82334ed64a3903e81a25264f625d9fce
+state_head: 1433f0838c2c78b00cef49b5a1adabd4bb7fd808
 progress:
   total_phases: 17
   completed_phases: 0
   total_plans: 20
-  completed_plans: 18
+  completed_plans: 19
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 01 (Truth & Reproducibility) — EXECUTING
-Plan: 19 of 20
+Plan: 20 of 20
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 01 execution started
 
@@ -78,6 +78,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P17 | 70min | 3 tasks | 21 files |
 | Phase 01-truth-reproducibility P18 | 55min | 3 tasks | 7 files |
 | Phase 01-truth-reproducibility P19 | 55min | 3 tasks | 11 files |
+| Phase 01 P14 | 25min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -139,8 +140,7 @@ None yet.
 - [Phase 8]: Owner must set the AWS spend ceiling before any transfer or compute job; MARRS filename timezone unverified (correctness gate for diel features).
 - [Phase 11/12]: GPU vs CPU embedding throughput, Spot pricing and the Perch 2.0 Kaggle handle need re-verification before committing budget; calibration method at 5–10 real sites per class unresolved.
 - [Phase 14/16/17]: If the Data & ML track stalls (budget, credentials), Phase 14 cannot complete, which holds Phases 16 and 17.
-- Plan 01-14 (production deploy of Phase 1 backend truth fixes: router+classifier Lambdas, interim real-only model, real audio to S3 samples/marrs/, synthetic clips to retired/) was blocked by the Claude Code auto-mode safety classifier despite owner pre-approval. Owner must run it (or allow it): /gsd-execute-phase 1 then approve, or run scripts/deploy-lambdas.py per 01-14-PLAN.md. 01-20 (exit gate) depends on it.
-- Plan 01-14 attempt 1 (2026-10-01): deployed router+classifier+interim model; verify_live_truth passed /sites and /samples but whole API returned 503 during analysis checks; rolled back (deploy-lambdas --ref 26b3e61 + archived model copied back), prod restored. Root cause unknown (account concurrency saturation vs code). Check concurrency limit + CloudWatch before retry. See docs/deploy/DEPLOY-LOG.md. Real audio in samples/marrs/ and model archive remain in S3.
+- [Ops]: AWS Lambda account concurrency limit is 10; Service Quotas request 4b8d23edbdcf43d9a9eee46fddc7b589IQUhYJr5 (to 1000) pending. Warm the inference container and run analyses serially until granted (see docs/deploy/DEPLOY-LOG.md).
 
 ## Deferred Items
 
@@ -152,6 +152,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T15:41:36.410Z
-Stopped at: Plan 01-14 attempt 1 rolled back after 503 during live verification; prod restored
-Resume file: docs/deploy/DEPLOY-LOG.md
+Last session: 2026-10-01T16:29:02.764Z
+Stopped at: Completed 01-14-PLAN.md (attempt 2 deployed and verified)
+Resume file: None

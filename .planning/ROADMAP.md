@@ -91,7 +91,7 @@ Decimal phases appear between their surrounding integers in numeric order. Numer
   4. The live classifier's version, classes and training data are recorded; no class trained on synthetic audio is served; displayed class probabilities are unmodified model outputs that sum to 100%.
   5. A reviewer reading every route finds no claim the system did not measure (no species claims, fabricated crossfade states or scripted processing messages), corrected and consistent citations/DOIs (MARRS Williams et al. 2025, SurfPerch arXiv 2404.16436, Irma DOI), and dataset-specific labels shown with who assigned them and what they mean.
 
-**Plans**: 16/20 plans executed (12 waves)
+**Plans**: 19/20 plans executed (12 waves)
 
 Plans:
 **Wave 1**
@@ -130,7 +130,7 @@ Plans:
 
 **Wave 8** *(blocked on Wave 7 completion)*
 
-- [ ] 01-14-PLAN.md — Owner-approved production deploy, live verification, synthetic clips retired
+- [x] 01-14-PLAN.md — Owner-approved production deploy, live verification, synthetic clips retired
 - [x] 01-15-PLAN.md — Results UI: integer probabilities summing to 100, region note, honest caveats
 - [x] 01-16-PLAN.md — Real /status stages, polling fix, embedding scatter removed
 
@@ -433,7 +433,7 @@ Numeric order (1 → 17) is a valid order. With parallelization, Data & ML phase
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Truth & Reproducibility | 16/20 | In Progress|  |
+| 1. Truth & Reproducibility | 19/20 | In Progress|  |
 | 2. Data Contract v1 | 0/TBD | Not started | - |
 | 3. Platform Upgrade & Stack Consolidation | 0/TBD | Not started | - |
 | 4. Design System & Instrument Primitives | 0/TBD | Not started | - |

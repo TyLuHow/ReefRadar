@@ -5,8 +5,7 @@ No credentials, presigned URLs or Lambda environment values appear in this file.
 
 ## Attempt 1 (2026-10-01): ROLLED BACK after live verification failed
 
-**Status:** production was returned to its pre-deploy behaviour. The plan is NOT complete:
-the truthful router/classifier, interim model and real-audio retirement are not live.
+**Status:** production was returned to its pre-deploy behaviour (superseded: attempt 2 below succeeded).
 The real MARRS excerpts under `samples/marrs/` and the model archive remain in S3 (additive, harmless).
 
 ### Approving decision
@@ -76,18 +75,80 @@ bundled provenance/manifest members the current spec lists (unused by the old co
 from the original pre-deploy values; behaviour is the pre-deploy code. After the rollback: `/health`, `/sites`
 and `/samples` return 200, and `publish_model.py --dry-run` shows the live model hashes equal the v2.0 lock.
 
-### Root cause of the 503: not established
+### Root cause of the 503 (established afterwards from CloudWatch)
 
-The 503 began between the second and third verifier runs, and cleared after the rollback. Two hypotheses, neither
-confirmed (no CloudWatch or Lambda-configuration read access in this session):
+Hypothesis 1 (account-level concurrency saturation) was confirmed; the new code was not implicated.
 
-1. Account-level Lambda concurrency saturation: the two buggy verifier runs left four analyses in flight, each
-   cold-starting the 3 GB inference container (plus async retries), which may have starved the router.
-2. A fault in the new router or classifier code. The router answered `/sites`, `/samples`, `/upload` and `/analyze`
-   correctly minutes earlier, and `/health` is a trivial handler, which argues against this.
+- The AWS account Lambda concurrent-executions limit is 10 (new-account default).
+- At 15:37Z the first two analyses hit a cold inference container: the classifier logged
+  `CodeArtifactUserPendingException` ("Lambda is initializing your function") 3 times and failed with `InferenceError`.
+  Lambda's default asynchronous retries re-ran those classifier invocations, and the buggy verifier added more analyses.
+- 15:38-15:39Z: account `ConcurrentExecutions` maximum reached 10; router Throttles = 5 + 3 (surfaced as API Gateway 503);
+  inference Throttles = 25 ("Rate Exceeded"). No classifier errors other than inference-invoke failures.
+- Mitigation: Service Quotas request `4b8d23edbdcf43d9a9eee46fddc7b589IQUhYJr5` was filed to raise Lambda concurrent
+  executions from 10 to 1000 (still PENDING when attempt 2 ran). Attempt 2 relied on the serial verifier (about 3-4
+  concurrent slots) plus a pre-warmed inference container.
 
-Before a second attempt: check the account concurrency limit and recent CloudWatch errors for the router and
-classifier, then re-run deploy with the fixed verifier (it runs the two analyses strictly one at a time).
+## Attempt 2 (2026-10-01): SUCCEEDED, verified live
+
+### Approving decision
+
+After being shown the root cause above, the owner explicitly chose "Retry now + request quota" (the owner's
+`deploy-now` decision of 2026-10-01 stands, including retirement of the synthetic clips to `retired/`).
+
+### Procedure and results
+
+1. Clean tree at `1433f0838c2c78b00cef49b5a1adabd4bb7fd808` (branch `redesign/v2-discovery`); deployed from that commit.
+2. Pre-flight: `GET /health` 200; CloudWatch `ConcurrentExecutions` for the previous 4 minutes had no datapoints (idle).
+3. Warm-up: one `lambda invoke` of `reefradar-2477-inference` with payload `{}` (StatusCode 200; response not recorded).
+4. `sync_sample_audio.py --confirm`: 9 manifest excerpts already present under `samples/marrs/`; re-uploaded idempotently and
+   re-downloaded sha256-verified (all `verified: true`).
+5. `publish_model.py --confirm`: archive `models/archive/2.0-20261001/` already matched the v2.0 lock (sha256 re-verified);
+   interim artifacts published and verified (config `9781d1ab...f658`, weights `ab9e3830...dedcf4`).
+6. Deploy (scripted path, clean tree):
+
+| Function | CodeSha256 before | CodeSha256 after | Time (UTC) |
+|---|---|---|---|
+| reefradar-2477-classifier | `f5/YQCndbLXD3bNjWWgrcvFiK4sdZVdDRKU18l4Jfg8=` (attempt-1 rollback build) | `jCDobm45tCUpCPAVxGfB0aCBCnWbV7xi2sodsA3uKMI=` | 16:23:24 |
+| reefradar-2477-router | `Cs98AU112N/HIcAhW5GE8qKw50xGxFZQThS57l/j8sU=` (attempt-1 rollback build) | `QAN8peUHi+MGf/S/KtehybiadQPtC4+A6RW5iV/EOS4=` | 16:23:32 |
+
+   Both records carry `git_sha=1433f0838c2c78b00cef49b5a1adabd4bb7fd808`.
+
+7. `verify_live_truth.py` (first run, before retirement): exit 0. PASS /sites provenance; PASS /samples ids; PASS /samples
+   audio real and hash-matched (9 clips); PASS analysis with coordinates (29 s, includes a cold path); PASS analysis without
+   coordinates (13 s). No 503, no throttling, no inference-initialising errors.
+8. Retirement: `sync_sample_audio.py --retire --confirm` moved eight synthetic clips from `samples/` to
+   `s3://reefradar-2477-audio/retired/synthetic-samples-20261001/` (size verified, then original deleted):
+   `aus_degraded_reef.wav`, `aus_healthy_gbr.wav`, `aus_healthy_outer.wav`, `aus_restored_reef.wav`,
+   `idn_healthy_dawn.wav`, `idn_restored_mid.wav`, `mex_restored_carib.wav`, `phl_degraded_reef.wav`.
+   `aws s3 ls s3://reefradar-2477-audio/samples/ --recursive | grep -vc "samples/marrs/"` now prints 0.
+9. Re-ran `verify_live_truth.py` after retirement: exit 0, all five checks PASS (analysis 14 s and 13 s).
+   `drift-check.py --function all`: router, preprocessor, classifier, inference all MATCH, exit 0.
+10. `infrastructure/deployed-state.json` refreshed from a read-only boto3 query (environment variable names only).
+
+### Verification evidence (post-retirement run)
+
+| Check | Analysis id | Result |
+|---|---|---|
+| With coordinates (ind_H1 excerpt) | `d5e62ea6-d107-44a5-a54f-c8ee87a0d204` | label `degraded`, model_version `interim-real-only`, probability sum 1.0, region INDONESIA / specific / coordinates_provided true / in_training_region true / training_sites_in_region 4 |
+| Without coordinates | `25e425f7-6c01-44b3-9e55-4b74a683e3e5` | label `degraded`, model_version `interim-real-only`, probability sum 1.0, region UNKNOWN / coordinates_provided false / in_training_region false |
+
+Observation for Phase 5 only: `similar_sites` count is 0 for both analyses (the router/classifier no longer return
+embedding-space similarity data; nothing is displayed from it).
+
+(Earlier same-day run, before retirement: analyses `3986c78d-7451-4ca5-99df-24c9fb5cebfd` and
+`bf4012a7-b1ba-4284-b47b-0b2553ae7a62`, same outcomes.)
+
+### Deployed S3 state after attempt 2
+
+- `s3://reefradar-2477-audio/samples/marrs/`: 9 real MARRS excerpts (sha256 equal to `data/audio-manifest.json`); nothing else under `samples/`.
+- `s3://reefradar-2477-audio/retired/synthetic-samples-20261001/`: the 8 retired synthetic clips (archived, not destroyed).
+- `s3://reefradar-2477-embeddings/models/`: interim real-only model; v2.0 archived at `models/archive/2.0-20261001/`.
+
+### Follow-up
+
+Lambda account concurrency is still 10 until the Service Quotas request is granted. Until then, avoid running several
+analyses at once, and warm the inference container (one `lambda invoke` with payload `{}`) before a burst or a verification run.
 
 ## Rollback
 
