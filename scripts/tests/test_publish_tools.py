@@ -304,8 +304,11 @@ def test_run_analysis_polls_until_complete():
             return _Resp({"analysis_id": "a1"}, status=202)
 
         def get(self, url, **kw):
-            calls["visualize"] += 1
-            return _Resp({"status": "processing"} if calls["visualize"] < 3 else {"status": "complete"})
+            if "/status/" in url:
+                calls["visualize"] += 1
+                return _Resp({"status": "processing"} if calls["visualize"] < 3 else {"status": "complete"})
+            assert "/visualize/a1" in url
+            return _Resp({"status": "complete", "classification": {}})
 
     aid, body = verify_live_truth.run_analysis(
         Session(), "http://api", b"wav", "x.wav", (1.0, 2.0), timeout_s=30, poll_interval=0, sleep=lambda s: None

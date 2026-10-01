@@ -154,25 +154,46 @@ def _get_json(session, url, timeout):
     return resp.json()
 
 
+class StepError(RuntimeError):
+    """An API step failed; carries only the step name, HTTP status and API error code."""
+
+
+def _check_step(resp, step):
+    if resp.status_code >= 400:
+        code = ""
+        try:
+            code = (resp.json().get("error") or {}).get("code", "")
+        except Exception:  # noqa: BLE001
+            pass
+        raise StepError(f"{step} returned HTTP {resp.status_code} {code}".strip())
+
+
 def run_analysis(session, api, wav_bytes, filename, coords, timeout_s, poll_interval=3.0, sleep=time.sleep):
-    """Upload, analyse and poll /visualize. Returns (analysis_id, body)."""
+    """Upload, analyse, poll /status, then fetch /visualize. Returns (analysis_id, body)."""
     up = session.post(
         f"{api}/upload", data=wav_bytes, headers={"Content-Type": "audio/wav", "X-Filename": filename}, timeout=60
     )
-    up.raise_for_status()
+    _check_step(up, "POST /upload")
     upload_id = up.json()["upload_id"]
     payload = {"upload_id": upload_id}
     if coords:
         payload["latitude"], payload["longitude"] = coords
     an = session.post(f"{api}/analyze", json=payload, timeout=30)
-    an.raise_for_status()
+    _check_step(an, "POST /analyze")
     analysis_id = an.json()["analysis_id"]
 
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
-        body = _get_json(session, f"{api}/visualize/{analysis_id}", 30)
-        if body.get("status") in ("complete", "failed"):
-            return analysis_id, body
+        # /status first: /visualize 404s until preprocessing has written its record.
+        poll = session.get(f"{api}/status/{analysis_id}", timeout=30)
+        _check_step(poll, "GET /status")
+        state = poll.json().get("status")
+        if state == "complete":
+            final = session.get(f"{api}/visualize/{analysis_id}", timeout=30)
+            _check_step(final, "GET /visualize")
+            return analysis_id, final.json()
+        if state == "failed":
+            return analysis_id, {"status": "failed", "error": poll.json().get("error")}
         sleep(poll_interval)
     return analysis_id, {"status": "timeout"}
 
@@ -246,7 +267,7 @@ def main(argv=None, session=None) -> int:
                 section(f"analysis {label} ({elapsed:.0f}s)", found)
                 summary[f"analysis_{'with' if use_coords else 'without'}_coordinates"] = analysis_summary(body, analysis_id)
             except Exception as e:  # noqa: BLE001
-                section(f"analysis {label}", [f"failed: {type(e).__name__}"])
+                section(f"analysis {label}", [f"failed: {e if isinstance(e, StepError) else type(e).__name__}"])
 
     print(json.dumps({"summary": summary, "failures": len(failures)}))
     return 0 if not failures else 1
