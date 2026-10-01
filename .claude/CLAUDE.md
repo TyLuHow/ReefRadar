@@ -195,7 +195,7 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 | Router | HTTP routing, upload validation, DynamoDB status fan-out | `lambdas/router/handler.py` |
 | Preprocessor | WAV decode, resample, segment | `lambdas/preprocessor/handler.py` |
 | Classifier | Orchestrates inference, runs MLP, region adjustment, similarity | `lambdas/classifier/handler.py` |
-| Region detection | Biogeographic lookup + confidence multiplier | `lambdas/classifier/region_detection.py` |
+| Region detection | Biogeographic region naming + distance to the nearest real training site (never scales probabilities) | `lambdas/classifier/region_detection.py` |
 | Inference container | SurfPerch embedding extraction | `infrastructure/lambda_container/inference.py` |
 | Next.js dashboard | Upload/analyze UX, site explorer, immersive experience | `dashboard-next/src/app/` |
 | Streamlit dashboard | Legacy 3-tab UI (Analyze / Reference Sites / About) | `dashboard/app.py` |
@@ -278,7 +278,7 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 - **Threading:** Browser-side, all real-time work (band energy, vitality lerp, spectrogram) runs on `requestAnimationFrame` on the main thread — no Web Workers or `AudioWorklet`; heavy per-frame math is kept intentionally cheap (RMS over small typed-array slices).
 - **Global state:** Module-level zustand stores (`analysis-store.ts`, `vitality-store.ts`) are effectively app-wide singletons; `lib/api.ts` exports a singleton `ApiClient` instance (`api`).
 - **Async fire-and-forget chain:** Router→Preprocessor→Classifier uses `InvocationType='Event'` with no dead-letter queue visible in the explored code — a crash mid-chain surfaces only as a stuck `stage` in DynamoDB until a client times out polling (60 × 2s = 120s in `ApiClient.pollAnalysis`).
-- **Region confidence is a static lookup table:** `lambdas/classifier/region_detection.py` hardcodes a confidence multiplier per geographic region; no runtime learning.
+- **Region detection is descriptive only:** `lambdas/classifier/region_detection.py` names the biogeographic region from static bounding boxes and reports distance to the nearest real training site (`in_training_region` within 50 km); it never scales probabilities or confidence (D-12); no runtime learning.
 - **Missing committed files:** `@/components/gallery/SampleGallery` (imported in `dashboard-next/src/app/page.tsx:5`) and `@/lib/samples` (imported in `dashboard-next/src/app/experience/page.tsx`) are referenced but do not exist in the working tree or git history — the app will fail to build/run until these are added. See STRUCTURE.md.
 
 ## Anti-Patterns
