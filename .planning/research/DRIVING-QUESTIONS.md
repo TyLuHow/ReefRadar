@@ -28,3 +28,7 @@
 | # | Question | Decision | Consequence for planning |
 |---|---|---|---|
 | Q10 | AWS spend ceiling | **$25 (interpreted as monthly; owner to correct if total)** | AWS Budget alarm + automated stop action at $25/month before any batch job. Large ingestion (Q3) is redesigned as **stream-process-discard**: figshare files are streamed, windowed, embedded and aggregated without persisting the ~1 TB raw archive; only embeddings (float16), detections, aggregates and curated listening clips are stored (~16–33 GB, ≈$1/month). Embedding runs on Spot capacity only after a pilot shard measures cost; if projected compute exceeds the remaining monthly budget, ingestion is sharded across months or sub-sampled (stratified by site × hour-of-day) with the sampling disclosed. |
+
+## Standing owner approvals (2026-10-01)
+
+Owner explicitly approved, for the autonomous run: **all new test/dev packages** (including any not yet listed), **all production deployment decisions** (Lambda deploys, S3 object changes, Vercel production), and **any AWS changes** — within the $25/month budget ceiling (Q10). Blocking-human checkpoints covering these are pre-approved; executors should proceed and record the decision in SUMMARY.md. Not covered: deleting the GitHub repo/history, force-pushing main, or exceeding the budget.
