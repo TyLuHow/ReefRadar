@@ -6,7 +6,7 @@ import { Play, Pause, ArrowLeft, MapPin } from 'lucide-react';
 import { GlassPanel, GlassButton } from '@/components/ui/glass';
 import { BANDS, BAND_IDS } from '@/components/spectrogram/FrequencyBands';
 import { CaveatsFooter } from './CaveatsFooter';
-import { useLocationAudio, HealthStatus } from './useLocationAudio';
+import { useLocationAudio, HealthStatus, ExcerptMeta } from './useLocationAudio';
 import { useVitalityStore } from '@/stores/vitality-store';
 
 const SpectrogramCanvas = dynamic(
@@ -65,12 +65,12 @@ const STATUS_ORDER: HealthStatus[] = [
   'healthy',
 ];
 
-const STATUS_DESCRIPTIONS: Record<HealthStatus, string> = {
-  healthy: 'Rich dusk chorus with fish calls (low), grazing parrotfish (mid), and snapping shrimp (high-frequency clicks).',
-  degraded: 'Notably quieter across all bands. Fewer fish calls, reduced shrimp activity, less biotic complexity.',
-  restored_early: 'Early-stage restoration site. Initial signs of acoustic recovery with some returning species.',
-  restored_mid: 'Mid-stage restoration. Increasing biodiversity signals compared to degraded sites.',
-};
+/** Fact-only caption from the selected state's excerpt metadata (D-08/D-09): site, recorder-clock time, MARRS label definition. No invented biology. */
+function excerptDescription(meta: ExcerptMeta | undefined): string {
+  if (!meta) return 'No recording metadata available for this state.';
+  const [date] = meta.recorded_at.split('T');
+  return `${meta.site_id} — recorded ${date} ${meta.time_of_day} (recorder clock, timezone unverified). ${meta.label_definition}`;
+}
 
 function formatTime(s: number): string {
   const m = Math.floor(s / 60);
@@ -326,7 +326,7 @@ export function LocationCompare({ onGoLanding, onGoDemo }: LocationCompareProps)
                       {STATUS_LABELS[audio.leftTrack]}
                     </span>
                     {' -- '}
-                    {STATUS_DESCRIPTIONS[audio.leftTrack]}
+                    {excerptDescription(audio.selectedLocation.excerpts?.[audio.leftTrack])}
                   </p>
                 </div>
                 <div className="flex items-start gap-2">
@@ -339,15 +339,15 @@ export function LocationCompare({ onGoLanding, onGoDemo }: LocationCompareProps)
                       {STATUS_LABELS[audio.rightTrack]}
                     </span>
                     {' -- '}
-                    {STATUS_DESCRIPTIONS[audio.rightTrack]}
+                    {excerptDescription(audio.selectedLocation.excerpts?.[audio.rightTrack])}
                   </p>
                 </div>
               </div>
 
               <p style={{ color: 'var(--text-dim)' }}>
                 Use the crossfade slider to blend between the two recordings. Toggle frequency
-                bands to isolate specific organisms. The spectrogram in the background visualizes
-                amplitude across the three frequency ranges in real time.
+                bands to isolate that range of the audio. The moving background is decorative,
+                not a spectrogram or a visualisation of these bands.
               </p>
 
               <div className="pt-1 border-t border-white/5">
@@ -361,7 +361,7 @@ export function LocationCompare({ onGoLanding, onGoDemo }: LocationCompareProps)
             <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               <p>Select a location above to begin comparing reef health recordings.</p>
               <p className="mt-2" style={{ color: 'var(--text-dim)' }}>
-                Audio from MARRS (Mars Assisted Reef Restoration System) sites across 5 countries.
+                Audio from real MARRS restoration sites with a committed excerpt for every state shown.
               </p>
             </div>
           )}

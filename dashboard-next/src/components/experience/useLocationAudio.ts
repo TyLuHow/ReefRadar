@@ -8,6 +8,14 @@ import { ALL_BANDS } from '@/components/spectrogram/FrequencyBands';
 
 export type HealthStatus = 'healthy' | 'degraded' | 'restored_early' | 'restored_mid';
 
+export interface ExcerptMeta {
+  excerpt_id: string;
+  site_id: string;
+  recorded_at: string;
+  time_of_day: string;
+  label_definition: string;
+}
+
 export interface LocationInfo {
   id: string;
   name: string;
@@ -15,6 +23,8 @@ export interface LocationInfo {
   coordinates: { lat: number; lon: number };
   available: HealthStatus[];
   files: Partial<Record<HealthStatus, string>>;
+  /** Additive: per-state excerpt metadata (01-17 Task 3, D-08). Not present on older manifests. */
+  excerpts?: Partial<Record<HealthStatus, ExcerptMeta>>;
   description: string;
 }
 

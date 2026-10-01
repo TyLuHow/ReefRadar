@@ -126,7 +126,7 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
     } catch {
       setLoadState('error');
     }
-  }, [loadState, webAudioSupported]);
+  }, [loadState, webAudioSupported, pair.a.url_path, pair.b.url_path]);
 
   // --- Create fresh BufferSourceNodes and start playback ---
   const startPlayback = useCallback(() => {

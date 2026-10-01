@@ -110,3 +110,31 @@ test.describe('Honest copy, no fabricated claims (Task 2)', () => {
     expect(after).toBe(before);
   });
 });
+
+test.describe('Location Compare: real files only, no missing audio (Task 3)', () => {
+  test('the compare manifest lists only aus and ind, and every file path returns 200', async ({ request, baseURL }) => {
+    const manifestRes = await request.get(`${baseURL}/audio/compare/manifest.json`);
+    expect(manifestRes.ok()).toBe(true);
+    const manifest = await manifestRes.json();
+
+    expect(manifest.locations.map((l: { id: string }) => l.id).sort()).toEqual(['aus', 'ind']);
+
+    for (const location of manifest.locations) {
+      for (const filePath of Object.values(location.files) as string[]) {
+        const res = await request.get(`${baseURL}${filePath}`);
+        expect(res.ok(), `${filePath} should return 200`).toBe(true);
+      }
+    }
+  });
+
+  test('/experience?mode=compare contains no banned claims and no invented biology', async ({ page }) => {
+    await mockApi(page);
+    await page.goto('/experience/?mode=compare');
+    await expect(page.getByText('Compare Locations').first()).toBeVisible();
+    const bodyText = (await page.locator('body').innerText()).toLowerCase();
+    for (const claim of BANNED_CLAIMS) {
+      expect(bodyText, `banned claim "${claim}" found on /experience?mode=compare`).not.toContain(claim);
+    }
+    expect(bodyText).not.toContain('5 countries');
+  });
+});
