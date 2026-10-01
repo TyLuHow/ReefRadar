@@ -164,7 +164,7 @@ def collect_wav_files(paths):
     for p in paths:
         path = Path(p)
         if path.is_dir():
-            found = sorted(set(path.glob("*.wav")) | set(path.glob("*.WAV")))
+            found = sorted(set(path.rglob("*.wav")) | set(path.rglob("*.WAV")))
             files.extend(found)
         elif path.is_file():
             files.append(path)
