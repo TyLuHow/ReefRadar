@@ -1,0 +1,82 @@
+{
+  "_comment": "D-01 recovery snapshot (plan 01-09). Records what was actually deployed in each reefradar-2477-* Lambda at captured_at, read-only via boto3 (profile reefradar). Environment variable NAMES only -- never values. Regenerate after any future deploy (01-14).",
+  "captured_at": "2026-10-01T08:30:00Z",
+  "account_id": "781978598306",
+  "region": "us-east-1",
+  "functions": {
+    "reefradar-2477-router": {
+      "FunctionName": "reefradar-2477-router",
+      "PackageType": "Zip",
+      "Runtime": "python3.11",
+      "Handler": "handler.handler",
+      "MemorySize": 256,
+      "Timeout": 30,
+      "Layers": [],
+      "CodeSha256": "bfU0WTb89Oa/EKB0VOneG86u2ISzO4MzedRujHsjOxE=",
+      "CodeSize": 5777,
+      "LastModified": "2026-03-07T19:16:30.000+0000",
+      "EnvironmentVariableNames": [
+        "AUDIO_BUCKET",
+        "EMBEDDINGS_BUCKET",
+        "METADATA_TABLE",
+        "PREPROCESSOR_FUNCTION"
+      ]
+    },
+    "reefradar-2477-preprocessor": {
+      "FunctionName": "reefradar-2477-preprocessor",
+      "PackageType": "Zip",
+      "Runtime": "python3.11",
+      "Handler": "handler.handler",
+      "MemorySize": 1024,
+      "Timeout": 180,
+      "Layers": [
+        "arn:aws:lambda:us-east-1:781978598306:layer:reefradar-2477-numpy:1"
+      ],
+      "CodeSha256": "StVZQB8v8GAEkcEJkPERYuYDSCkiUkGkHBP1yDrklWk=",
+      "CodeSize": 13668,
+      "LastModified": "2026-02-20T18:19:15.000+0000",
+      "EnvironmentVariableNames": [
+        "AUDIO_BUCKET",
+        "CLASSIFIER_FUNCTION",
+        "EMBEDDINGS_BUCKET",
+        "METADATA_TABLE"
+      ]
+    },
+    "reefradar-2477-classifier": {
+      "FunctionName": "reefradar-2477-classifier",
+      "PackageType": "Zip",
+      "Runtime": "python3.11",
+      "Handler": "handler.handler",
+      "MemorySize": 512,
+      "Timeout": 300,
+      "Layers": [
+        "arn:aws:lambda:us-east-1:781978598306:layer:reefradar-2477-numpy:1"
+      ],
+      "CodeSha256": "DpgOFTR156CbiBsnjM+8RLYI5Twr8e4FEUtbDU6qknw=",
+      "CodeSize": 8175,
+      "LastModified": "2026-02-27T19:40:05.000+0000",
+      "EnvironmentVariableNames": [
+        "AUDIO_BUCKET",
+        "EMBEDDINGS_BUCKET",
+        "INFERENCE_FUNCTION",
+        "METADATA_TABLE"
+      ]
+    },
+    "reefradar-2477-inference": {
+      "FunctionName": "reefradar-2477-inference",
+      "PackageType": "Image",
+      "Runtime": null,
+      "Handler": null,
+      "MemorySize": 3008,
+      "Timeout": 300,
+      "Layers": [],
+      "ImageUri": "781978598306.dkr.ecr.us-east-1.amazonaws.com/reefradar-2477-inference:latest",
+      "ResolvedImageUri": "781978598306.dkr.ecr.us-east-1.amazonaws.com/reefradar-2477-inference@sha256:cd0e2729a277abcb25ad3ed9f7236f20c97aac03ec4f784350147b6e32a47bb7",
+      "CodeSize": 0,
+      "LastModified": "2026-02-20T19:21:42.000+0000",
+      "EnvironmentVariableNames": [
+        "KAGGLE_CONFIG_DIR"
+      ]
+    }
+  }
+}
