@@ -8,13 +8,22 @@ AWS (fake credentials are forced in conftest.py before any handler
 module-level `boto3.client(...)`/`boto3.resource(...)` call runs).
 """
 
+import importlib.util
 import os
-import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
-from conftest import load_lambda  # noqa: E402
+# Load lambdas/conftest.py by explicit file path rather than
+# `from conftest import load_lambda`: a bare `import conftest` is cached
+# in sys.modules by its literal filename, so once a second conftest.py
+# exists anywhere else in the collected test tree (e.g.
+# scripts/tests/conftest.py), whichever one pytest's own internal
+# collection happens to import last silently wins the "conftest" cache
+# slot for this statement too, regardless of sys.path order.
+_LAMBDAS_DIR = Path(__file__).resolve().parent.parent.parent
+_spec = importlib.util.spec_from_file_location("lambdas_conftest", _LAMBDAS_DIR / "conftest.py")
+_lambdas_conftest = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_lambdas_conftest)
+load_lambda = _lambdas_conftest.load_lambda
 
 
 def test_load_lambda_returns_distinct_modules_for_same_filename():
