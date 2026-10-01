@@ -87,3 +87,54 @@ jobs:
           node-version: 22
       - run: node scripts/check-citations.mjs --check-md
       - run: node scripts/check-citations.mjs --scope docs
+
+  visual:
+    name: visual (screenshot regression, Docker-pinned)
+    needs: web
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+    defaults:
+      run:
+        working-directory: dashboard-next
+    env:
+      PW_VISUAL: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard-next/package-lock.json
+      - run: npm ci
+      - if: ${{ github.event_name == 'workflow_dispatch' && inputs.update_snapshots }}
+        name: Update snapshots
+        env:
+          PW_UPDATE: "1"
+        run: npx playwright test --project=visual --update-snapshots
+      - if: ${{ github.event_name == 'workflow_dispatch' && inputs.update_snapshots }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-snapshots
+          path: dashboard-next/tests/e2e/visual.spec.ts-snapshots
+      - if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.update_snapshots) }}
+        name: Run visual regression
+        run: npx playwright test --project=visual
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-visual
+          path: dashboard-next/playwright-report
+          retention-days: 7
+
+  live-smoke:
+    name: live-smoke (manual dispatch only)
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.live_smoke }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - run: python scripts/smoke_live.py
