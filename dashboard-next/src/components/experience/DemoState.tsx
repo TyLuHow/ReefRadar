@@ -7,6 +7,7 @@ import { GlassPanel, GlassButton } from '@/components/ui/glass';
 import { BANDS, BAND_IDS } from '@/components/spectrogram/FrequencyBands';
 import { CaveatsFooter } from './CaveatsFooter';
 import { useDemoAudio } from './useDemoAudio';
+import { demoPair } from '@/lib/audio-manifest';
 
 const SpectrogramCanvas = dynamic(
   () => import('@/components/spectrogram/SpectrogramCanvas'),
@@ -28,6 +29,15 @@ export function DemoState({ onGoLanding, onGoCompare }: DemoStateProps) {
   const [activeTrack, setActiveTrack] = useState<'healthy' | 'degraded'>('healthy');
 
   const audio = useDemoAudio();
+  const pair = demoPair();
+  const [healthyDate, healthyTime] = [
+    pair.a.recorded_at_recorder_clock.split('T')[0],
+    pair.a.time_of_day_recorder_clock,
+  ];
+  const [degradedDate, degradedTime] = [
+    pair.b.recorded_at_recorder_clock.split('T')[0],
+    pair.b.time_of_day_recorder_clock,
+  ];
 
   return (
     <div className="relative min-h-screen flex flex-col">
@@ -140,28 +150,32 @@ export function DemoState({ onGoLanding, onGoCompare }: DemoStateProps) {
           <p className="mono">What You Are Hearing</p>
           <div className="space-y-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
             <p>
-              These are real underwater recordings from the MARRS restoration project.
-              The healthy sample is a dusk chorus recording; the degraded sample is from a midday recording on a damaged reef.
+              Two sites from the MARRS restoration dataset, not one reef changing over time.
+              Both clips are unprocessed and not level-matched -- no gain or normalisation has
+              been applied, so loudness differences may partly reflect recording conditions,
+              not just reef condition.
             </p>
             <div className="space-y-2">
               <div className="flex items-start gap-2">
                 <span className="w-2 h-2 mt-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#cd853f' }} />
                 <p>
-                  <span className="text-bone font-medium">Healthy reef</span> -- Rich with fish calls
-                  (low frequency), grazing parrotfish (mid), and snapping shrimp (high-frequency clicks).
+                  <span className="text-bone font-medium">{pair.a.site_id}</span> -- recorded{' '}
+                  {healthyDate} {healthyTime} (recorder clock, timezone unverified). Label
+                  &ldquo;{pair.a.label?.label_original}&rdquo; assigned by MARRS: {pair.a.label?.label_definition}
                 </p>
               </div>
               <div className="flex items-start gap-2">
                 <span className="w-2 h-2 mt-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#c08081' }} />
                 <p>
-                  <span className="text-bone font-medium">Degraded reef</span> -- Notably quieter across
-                  all bands. Fewer fish calls, reduced shrimp activity, less biotic complexity.
+                  <span className="text-bone font-medium">{pair.b.site_id}</span> -- recorded{' '}
+                  {degradedDate} {degradedTime} (recorder clock, timezone unverified). Label
+                  &ldquo;{pair.b.label?.label_original}&rdquo; assigned by MARRS: {pair.b.label?.label_definition}
                 </p>
               </div>
             </div>
             <p style={{ color: 'var(--text-dim)' }}>
-              Toggle frequency bands to isolate specific organisms. The spectrogram in the
-              background visualizes amplitude across the three frequency ranges in real time.
+              Toggle frequency bands to isolate that range of the audio. The moving background
+              is decorative, not a spectrogram or a visualisation of these bands.
             </p>
           </div>
 
@@ -175,7 +189,7 @@ export function DemoState({ onGoLanding, onGoCompare }: DemoStateProps) {
               </GlassButton>
             )}
             <GlassButton variant="ghost" href="/dashboard/map">
-              Explore 54 Sites on Map
+              Explore the reference sites on the map
             </GlassButton>
           </div>
         </GlassPanel>

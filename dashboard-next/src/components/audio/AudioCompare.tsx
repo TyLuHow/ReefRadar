@@ -12,7 +12,7 @@ import { SpectrogramCanvas } from './SpectrogramCanvas';
 import { FrequencyBandLabels } from './FrequencyBandLabels';
 import { ABCrossfader } from './ABCrossfader';
 import { cn } from '@/lib/utils';
-import { demoPair } from '@/lib/audio-manifest';
+import { demoPair, excerptCaption, attributionLine } from '@/lib/audio-manifest';
 
 interface AudioCompareProps {
   /** When true, uses a smaller vertical layout with a CTA to the full page */
@@ -23,6 +23,9 @@ interface AudioCompareProps {
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
 
 export function AudioCompare({ compact = false, className }: AudioCompareProps) {
+  // The demo pair is static manifest data -- safe to read directly in render.
+  const pair = demoPair();
+
   // --- State ---------------------------------------------------------------
   const [loadState, setLoadState] = useState<LoadState>('idle');
   const [isPlaying, setIsPlaying] = useState(false);
@@ -66,7 +69,6 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
       audioCtxRef.current = ctx;
 
       // Fetch real MARRS reef audio files (D-05/D-07: demoPair, no gain or normalisation applied)
-      const pair = demoPair();
       const [healthyResponse, degradedResponse] = await Promise.all([
         fetch(pair.a.url_path),
         fetch(pair.b.url_path),
@@ -274,9 +276,7 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
       {/* Header banner */}
       <div className="flex items-center gap-2 px-4 py-2 text-xs" style={{ background: '#252220', color: '#a8a29e' }}>
         <Info className="w-3.5 h-3.5 text-ochre flex-shrink-0" />
-        <span>
-          Real reef recordings from the MARRS dataset (CC-BY 4.0) -- Williams et al. 2024
-        </span>
+        <span>{attributionLine()}</span>
       </div>
 
       <div style={{ background: '#0f0d0b' }} className="p-4 space-y-4">
@@ -305,7 +305,12 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
           </button>
 
           <div className="flex-1">
-            <ABCrossfader value={crossfade} onChange={setCrossfade} />
+            <ABCrossfader
+              value={crossfade}
+              onChange={setCrossfade}
+              leftCaption={excerptCaption(pair.a)}
+              rightCaption={excerptCaption(pair.b)}
+            />
           </div>
 
           <Volume2 className="w-4 h-4 text-ochre flex-shrink-0 opacity-60" />

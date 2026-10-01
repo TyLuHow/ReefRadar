@@ -15,6 +15,22 @@ const DEMO_PAIR_PATHS = [
   '/audio/marrs/ind_D1_20220830_120000.wav',
 ];
 
+// Banned claims (TRUTH-07): species/behaviour names, condition claims not
+// backed by the manifest, and the "living spectrogram" fabrication.
+const BANNED_CLAIMS = [
+  'fish call',
+  'fish chorus',
+  'parrotfish',
+  'snapping shrimp',
+  'shrimp activity',
+  'bleaching',
+  'bleached',
+  'coral cover',
+  'overfishing',
+  'living spectrogram',
+  'biotic complexity',
+];
+
 async function trackAudioRequests(page: Page) {
   const audioRequests: { path: string; status: number; contentType: string | null }[] = [];
   page.on('response', async (response) => {
@@ -58,5 +74,39 @@ test.describe('A/B demo plays the real, manifest-sourced pair (Task 1)', () => {
 
     const paths = audioRequests.map((r) => r.path).sort();
     expect(paths).toEqual([...DEMO_PAIR_PATHS].sort());
+  });
+});
+
+test.describe('Honest copy, no fabricated claims (Task 2)', () => {
+  test('/dashboard/compare contains no banned claims and discloses MARRS attribution', async ({ page }) => {
+    await mockApi(page);
+    await page.goto('/dashboard/compare/');
+    const bodyText = (await page.locator('body').innerText()).toLowerCase();
+    for (const claim of BANNED_CLAIMS) {
+      expect(bodyText, `banned claim "${claim}" found on /dashboard/compare`).not.toContain(claim);
+    }
+    expect(bodyText).toContain('williams & jones 2025');
+  });
+
+  test('/experience?mode=demo contains no banned claims and discloses MARRS attribution', async ({ page }) => {
+    await mockApi(page);
+    await page.goto('/experience/?mode=demo');
+    await expect(page.getByRole('button', { name: /^play$/i })).toBeVisible();
+    const bodyText = (await page.locator('body').innerText()).toLowerCase();
+    for (const claim of BANNED_CLAIMS) {
+      expect(bodyText, `banned claim "${claim}" found on /experience?mode=demo`).not.toContain(claim);
+    }
+    expect(bodyText).toContain('assigned by marrs');
+  });
+
+  test('crossfader shows static endpoint captions regardless of slider position', async ({ page }) => {
+    await mockApi(page);
+    await page.goto('/dashboard/compare/');
+    const before = await page.locator('body').innerText();
+    const slider = page.getByRole('slider', { name: /crossfade between healthy and degraded/i });
+    await slider.focus();
+    await slider.press('End');
+    const after = await page.locator('body').innerText();
+    expect(after).toBe(before);
   });
 });

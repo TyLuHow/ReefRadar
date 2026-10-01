@@ -2,8 +2,10 @@
 
 import { AudioCompare } from '@/components/audio/AudioCompare';
 import { CaveatsBanner } from '@/components/dashboard/CaveatsBanner';
+import { demoPair } from '@/lib/audio-manifest';
 
 export default function ComparePage() {
+  const pair = demoPair();
   return (
     <div
       className="min-h-screen"
@@ -19,10 +21,9 @@ export default function ComparePage() {
             Audio Comparison
           </h1>
           <p className="text-sm max-w-xl mx-auto" style={{ color: '#a8a29e' }}>
-            Hear the difference between a thriving reef and a degraded one.
-            Use the crossfader to blend between real healthy and degraded
-            coral reef recordings from the MARRS dataset while watching their
-            spectrograms in real time.
+            Two real coral reef recordings from the MARRS dataset, same
+            location, same recorder-clock time of day. Use the crossfader to
+            blend between them while watching their spectrograms in real time.
           </p>
         </div>
 
@@ -39,23 +40,19 @@ export default function ComparePage() {
           </h2>
           <div className="space-y-2 text-sm" style={{ color: '#a8a29e' }}>
             <p>
-              <strong style={{ color: '#cd853f' }}>Healthy reefs</strong> are
-              acoustically rich. Snapping shrimp produce continuous broadband
-              crackles (2-16 kHz), fish produce low-frequency grunts and calls
-              (200-800 Hz), and the overall sound level is markedly higher than
-              degraded sites.
+              <strong style={{ color: '#cd853f' }}>{pair.a.site_id}</strong>{' '}
+              -- labelled &ldquo;{pair.a.label?.label_original}&rdquo; by MARRS:{' '}
+              {pair.a.label?.label_definition}
             </p>
             <p>
-              <strong style={{ color: '#c08081' }}>Degraded reefs</strong> are
-              strikingly quiet. With fewer organisms present, the soundscape is
-              dominated by abiotic noise -- distant boat traffic, wave action,
-              and low-frequency rumble. The absence of biological sound is
-              itself a diagnostic signal.
+              <strong style={{ color: '#c08081' }}>{pair.b.site_id}</strong>{' '}
+              -- labelled &ldquo;{pair.b.label?.label_original}&rdquo; by MARRS:{' '}
+              {pair.b.label?.label_definition}
             </p>
             <p>
-              The SurfPerch ML model used by ReefRadar converts these acoustic
-              differences into 1280-dimensional embeddings that can be compared
-              quantitatively to reference sites of known health status.
+              Both clips are unprocessed and not level-matched -- no gain or
+              normalisation has been applied, so loudness differences may
+              partly reflect recording conditions, not just reef condition.
             </p>
           </div>
         </div>

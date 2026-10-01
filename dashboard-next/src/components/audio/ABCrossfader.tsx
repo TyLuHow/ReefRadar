@@ -1,33 +1,26 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
 interface ABCrossfaderProps {
   /** 0 = fully healthy, 1 = fully degraded */
   value: number;
   onChange: (value: number) => void;
+  /** Static caption for the left (value=0) endpoint clip -- does not change with slider position (D-16). */
+  leftCaption: string;
+  /** Static caption for the right (value=1) endpoint clip -- does not change with slider position (D-16). */
+  rightCaption: string;
   className?: string;
 }
 
-function getDescription(value: number): string {
-  if (value < 0.15) return 'Vibrant reef with rich snapping shrimp and fish chorus';
-  if (value < 0.35) return 'Mostly healthy with occasional quiet patches';
-  if (value < 0.5) return 'Mixed soundscape -- some biophony, some silence';
-  if (value < 0.65) return 'Noticeably quieter, biological sounds fading';
-  if (value < 0.85) return 'Sparse soundscape dominated by low-frequency noise';
-  return 'Near-silent reef with only faint background rumble';
-}
-
-export function ABCrossfader({ value, onChange, className }: ABCrossfaderProps) {
+export function ABCrossfader({ value, onChange, leftCaption, rightCaption, className }: ABCrossfaderProps) {
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       onChange(parseFloat(e.target.value));
     },
     [onChange],
   );
-
-  const description = useMemo(() => getDescription(value), [value]);
 
   // Gradient stops: green (healthy) on left, red (degraded) on right
   const trackGradient =
@@ -60,10 +53,11 @@ export function ABCrossfader({ value, onChange, className }: ABCrossfaderProps) 
         />
       </div>
 
-      {/* Dynamic description */}
-      <p className="mt-2 text-center text-xs" style={{ color: '#a8a29e' }}>
-        {description}
-      </p>
+      {/* Static endpoint captions -- do not change with slider position (D-16) */}
+      <div className="mt-2 flex justify-between gap-4 text-xs" style={{ color: '#a8a29e' }}>
+        <p className="text-left">{leftCaption}</p>
+        <p className="text-right">{rightCaption}</p>
+      </div>
 
       <style jsx>{`
         input[type='range']::-webkit-slider-thumb {
