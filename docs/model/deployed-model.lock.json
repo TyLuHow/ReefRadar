@@ -1,0 +1,267 @@
+{
+  "artifacts": {
+    "claimed_test_accuracy": 0.9047619047619048,
+    "claimed_training_samples": 140,
+    "config_sha256": "dfe29cb23b2a587bd70ae3aee3613f3f8db7b8c907d63036131d0b6ef5a5a07f",
+    "created": "2026-02-05T04:21:19.979618",
+    "idx_to_label": {
+      "0": "degraded",
+      "1": "healthy",
+      "2": "restored_early",
+      "3": "restored_mid"
+    },
+    "num_classes": 4,
+    "version": "2.0",
+    "weight_shapes": {
+      "b1": [
+        256
+      ],
+      "b2": [
+        64
+      ],
+      "b3": [
+        4
+      ],
+      "w1": [
+        1280,
+        256
+      ],
+      "w2": [
+        256,
+        64
+      ],
+      "w3": [
+        64,
+        4
+      ]
+    },
+    "weights_sha256": "172d56ced02ed402652c6c710c409b77bfddb136859c54037ed091d50bb77faf"
+  },
+  "audited_at": "2026-10-01T08:22:28.518481Z",
+  "classes_without_real_rows": [
+    "restored_mid"
+  ],
+  "evidence": [
+    {
+      "lines": "393-475",
+      "source": "lambdas/classifier/handler.py",
+      "statement": "The deployed classifier downloads models/reef_classifier_weights.npz and models/model_config.json from S3, reads idx_to_label from the config, and runs a pure-NumPy forward pass (w1 -> ReLU -> w2 -> ReLU -> w3 -> softmax)."
+    },
+    {
+      "lines": "39-83",
+      "source": "scripts/train_classifier.py",
+      "statement": "Training data is loaded from training/training_test_20.json; each sample has embedding, label and site_id fields."
+    },
+    {
+      "lines": "44-59",
+      "source": "scripts/add_restored_mid_and_retrain.py",
+      "statement": "RESTORED_MID_SITES hardcodes the only two site_id/label targets the synthetic generator ever produces: ind_R1 and ind_R2, both labelled restored_mid."
+    },
+    {
+      "lines": "144-177",
+      "source": "scripts/add_restored_mid_and_retrain.py",
+      "statement": "generate_synthetic_audio() builds sine tones plus exponential-decay clicks and Gaussian noise -- no real recording is read for these rows."
+    },
+    {
+      "lines": "225-261",
+      "source": "scripts/add_restored_mid_and_retrain.py",
+      "statement": "generate_embeddings_for_site() writes file_id as '{site_id}_synthetic_{i:04d}' for every synthetic row it generates."
+    },
+    {
+      "lines": "333-345",
+      "source": "scripts/add_restored_mid_and_retrain.py",
+      "statement": "train_classifier() sets config['version'] = '2.0' and training_samples = len(X), i.e. existing real rows plus the newly generated synthetic restored_mid rows."
+    },
+    {
+      "lines": "348-366",
+      "source": "scripts/add_restored_mid_and_retrain.py",
+      "statement": "save_and_upload() writes the merged training file to data/training/training_with_restored_mid.json on local disk only -- it is never uploaded to S3. Only models/reef_classifier_weights.npz and models/model_config.json are uploaded."
+    },
+    {
+      "lines": "F2, section 6",
+      "source": ".planning/audit/DATA-MODEL.md",
+      "statement": "The training set table records degraded (ind_D2, ind_D3, 40 rows), healthy (ind_H4, ken_H1, 40 rows), restored_early (ind_N1, 20 rows), all real, and restored_mid (ind_R1, ind_R2, 40 rows) as synthetic sines -- 100 real + 40 synthetic = 140, matching the v2.0 config's claimed training_samples."
+    }
+  ],
+  "interim_classes": [
+    "degraded",
+    "healthy",
+    "restored_early"
+  ],
+  "interim_num_classes": 3,
+  "interim_required": true,
+  "s3_listing": [
+    {
+      "key": "models/model_config.json",
+      "last_modified": "2026-02-05T04:21:47+00:00",
+      "size": 366
+    },
+    {
+      "key": "models/reef_classifier_weights.npz",
+      "last_modified": "2026-02-05T04:21:26+00:00",
+      "size": 1380014
+    },
+    {
+      "key": "models/surfperch/model.tar.gz",
+      "last_modified": "2026-01-30T00:45:16+00:00",
+      "size": 87923690
+    },
+    {
+      "key": "training/metadata.json",
+      "last_modified": "2026-02-02T01:42:21+00:00",
+      "size": 370
+    },
+    {
+      "key": "training/test_embeddings.json",
+      "last_modified": "2026-02-01T23:06:51+00:00",
+      "size": 704650
+    },
+    {
+      "key": "training/training_test_20.json",
+      "last_modified": "2026-02-02T01:42:20+00:00",
+      "size": 2816332
+    }
+  ],
+  "synthetic_class_detected": true,
+  "training_files": [
+    {
+      "by_label": {},
+      "by_site": {},
+      "key": "training/metadata.json",
+      "real_rows": 0,
+      "rows": 0,
+      "synthetic_rows": 0
+    },
+    {
+      "by_label": {
+        "degraded": {
+          "real": 10,
+          "synthetic": 0
+        },
+        "healthy": {
+          "real": 10,
+          "synthetic": 0
+        },
+        "restored_early": {
+          "real": 5,
+          "synthetic": 0
+        }
+      },
+      "by_site": {
+        "ind_D2": {
+          "country": "indonesia",
+          "real": 5,
+          "synthetic": 0
+        },
+        "ind_D3": {
+          "country": "indonesia",
+          "real": 5,
+          "synthetic": 0
+        },
+        "ind_H4": {
+          "country": "indonesia",
+          "real": 5,
+          "synthetic": 0
+        },
+        "ind_N1": {
+          "country": "indonesia",
+          "real": 5,
+          "synthetic": 0
+        },
+        "ken_H1": {
+          "country": "kenya",
+          "real": 5,
+          "synthetic": 0
+        }
+      },
+      "key": "training/test_embeddings.json",
+      "real_rows": 25,
+      "rows": 25,
+      "synthetic_rows": 0
+    },
+    {
+      "by_label": {
+        "degraded": {
+          "real": 40,
+          "synthetic": 0
+        },
+        "healthy": {
+          "real": 40,
+          "synthetic": 0
+        },
+        "restored_early": {
+          "real": 20,
+          "synthetic": 0
+        }
+      },
+      "by_site": {
+        "ind_D2": {
+          "country": "indonesia",
+          "real": 20,
+          "synthetic": 0
+        },
+        "ind_D3": {
+          "country": "indonesia",
+          "real": 20,
+          "synthetic": 0
+        },
+        "ind_H4": {
+          "country": "indonesia",
+          "real": 20,
+          "synthetic": 0
+        },
+        "ind_N1": {
+          "country": "indonesia",
+          "real": 20,
+          "synthetic": 0
+        },
+        "ken_H1": {
+          "country": "kenya",
+          "real": 20,
+          "synthetic": 0
+        }
+      },
+      "key": "training/training_test_20.json",
+      "real_rows": 100,
+      "rows": 100,
+      "synthetic_rows": 0
+    }
+  ],
+  "training_sites": [
+    {
+      "country": "Indonesia",
+      "latitude": -4.9401,
+      "longitude": 119.318815,
+      "real_rows": 25,
+      "site_id": "ind_D2"
+    },
+    {
+      "country": "Indonesia",
+      "latitude": -4.930635,
+      "longitude": 119.316119,
+      "real_rows": 25,
+      "site_id": "ind_D3"
+    },
+    {
+      "country": "Indonesia",
+      "latitude": -4.929463,
+      "longitude": 119.316792,
+      "real_rows": 25,
+      "site_id": "ind_H4"
+    },
+    {
+      "country": "Indonesia",
+      "latitude": -4.9310799,
+      "longitude": 119.3159127,
+      "real_rows": 25,
+      "site_id": "ind_N1"
+    },
+    {
+      "country": "Kenya",
+      "latitude": -2.215614,
+      "longitude": 41.013482,
+      "real_rows": 25,
+      "site_id": "ken_H1"
+    }
+  ]
+}
