@@ -2,6 +2,9 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { getCitation, formatCitation } from '@/lib/citations';
+import { deriveSiteStats, formatList } from '@/lib/site-stats';
+import modelCard from '@/data/model-card.json';
 import { Waves, Server, CheckCircle, AlertTriangle } from 'lucide-react';
 import { ArchitectureDiagram } from '@/components/about/ArchitectureDiagram';
 
@@ -11,6 +14,12 @@ export default function AboutPage() {
     queryFn: () => api.getHealth(),
     refetchInterval: 30000, // Refresh every 30 seconds
   });
+  const { data: sitesData } = useQuery({
+    queryKey: ['sites'],
+    queryFn: () => api.getSites(),
+    staleTime: 60_000,
+  });
+  const stats = deriveSiteStats(sitesData);
 
   return (
     <div
@@ -94,28 +103,30 @@ export default function AboutPage() {
           <div className="glass-panel p-6">
             <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>ML Model</h3>
             <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
-              <strong>SurfPerch</strong> is an audio embedding model from Google Research,
-              originally trained for bird vocalization analysis and adapted for
-              underwater reef sounds.
+              <strong>SurfPerch</strong> ({formatCitation('surfperch', 'short')}) is an audio
+              embedding model pre-trained on reef, bird and general audio, used here to
+              extract acoustic features from underwater reef recordings.
             </p>
             <ul className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
               <li>Input: 32kHz mono audio, 5.0s windows</li>
               <li>Output: 1280-dimensional embeddings</li>
               <li>Framework: TensorFlow via perch-hoplite</li>
+              <li>Paper: {getCitation('surfperch').url}</li>
             </ul>
           </div>
 
           <div className="glass-panel p-6">
             <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Reference Data</h3>
             <p className="mb-4" style={{ color: 'var(--text-secondary)' }}>
-              54 reference sites across 7 countries, combining multiple open-access
-              underwater acoustic datasets including pre/post hurricane comparison.
+              {sitesData
+                ? `${stats.total} reference sites across ${stats.countryCount} countries, combining multiple open-access underwater acoustic datasets including a pre/post-hurricane comparison.`
+                : 'Reference sites combining multiple open-access underwater acoustic datasets including a pre/post-hurricane comparison.'}
             </p>
             <ul className="space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              <li>Indonesia, Australia, Kenya, Maldives, Mexico (MARRS dataset)</li>
-              <li>USA - Florida Keys (Hurricane Irma study, NOAA SanctSound)</li>
-              <li>French Polynesia - Bora-Bora (CoralSoundExplorer)</li>
-              <li>DOI: 10.5522/04/29958062 (CC BY 4.0)</li>
+              <li>Indonesia, Australia, Kenya, Maldives, Mexico ({formatCitation('marrs', 'short')})</li>
+              <li>USA -- Florida Keys ({formatCitation('irma', 'short')}, {getCitation('sanctsound').short})</li>
+              <li>French Polynesia -- Bora-Bora ({formatCitation('coralsoundexplorer', 'short')})</li>
+              <li>DOI: {getCitation('marrs').doi} ({getCitation('marrs').licence})</li>
             </ul>
           </div>
         </div>
@@ -127,9 +138,9 @@ export default function AboutPage() {
             <div>
               <h4 className="font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>What This Tool Measures</h4>
               <ul className="space-y-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                <li>Biological sound production (fish, snapping shrimp, invertebrates)</li>
-                <li>Acoustic diversity and complexity of soundscapes</li>
-                <li>Similarity to reference sites of known health status</li>
+                <li>SurfPerch acoustic features extracted from 5-second recording windows</li>
+                <li>Acoustic similarity to labelled reference recordings</li>
+                <li>Probabilities from a small exploratory classifier trained on real reef recordings</li>
               </ul>
             </div>
             <div>
@@ -137,6 +148,7 @@ export default function AboutPage() {
               <ul className="space-y-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
                 <li>Coral tissue health or bleaching extent</li>
                 <li>Specific species identification</li>
+                <li>Definitive reef health diagnosis</li>
                 <li>Water quality or temperature</li>
                 <li>Coral coverage percentage</li>
               </ul>
@@ -164,10 +176,19 @@ export default function AboutPage() {
           </h3>
           <ul className="space-y-2 text-sm" style={{ color: 'rgba(184, 134, 11, 0.85)' }}>
             <li>Results are based on acoustic similarity only -- combine with visual surveys for definitive assessment</li>
-            <li>Model trained on reef sounds from Indonesia, Australia, Kenya, Maldives, and Mexico -- Caribbean/Atlantic reefs have different soundscapes and are not validated</li>
+            <li>
+              Classifier version {modelCard.model_version}, trained on {modelCard.training_rows} recordings
+              from {modelCard.training_sites_count} real sites in {formatList(modelCard.training_countries)} --
+              not validated on new sites or regions
+            </li>
+            <li>{modelCard.evaluation_note}</li>
             <li>Background noise (boats, weather, equipment) can affect accuracy</li>
             <li>Soundscapes vary by time of day, season, and lunar cycle -- single recordings may not represent overall reef health</li>
-            <li>54 reference sites across 7 countries (Indonesia, Australia, Kenya, Maldives, Mexico, USA, French Polynesia)</li>
+            <li>
+              {sitesData
+                ? `${stats.total} reference sites across ${stats.countryCount} countries (${formatList(stats.countries)})`
+                : 'Reference site counts are loading...'}
+            </li>
           </ul>
         </div>
 
@@ -178,38 +199,39 @@ export default function AboutPage() {
             <div>
               <h4 className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>MARRS Foundation</h4>
               <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
-                Mars Assisted Reef Restoration System -- 45 sites across Indo-Pacific
+                Mars Assisted Reef Restoration System -- 45 sites in Indonesia, Australia,
+                Kenya, Maldives and Mexico ({formatCitation('marrs', 'short')})
               </p>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                DOI: 10.5522/04/29958062 | License: CC BY 4.0
+                DOI: {getCitation('marrs').doi} | License: {getCitation('marrs').licence}
               </p>
             </div>
             <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '16px' }}>
-              <h4 className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>Hurricane Irma Florida Keys Dataset</h4>
+              <h4 className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{getCitation('irma').title}</h4>
               <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
-                Simmons, K.R., Bohnenstiehl, D.R., &amp; Eggleston, D.B. (2020). Reef soundscapes before and after Hurricane Irma.
-                Pre/post hurricane comparison at Western Dry Rocks and Eastern Sambo reef sites.
+                {formatCitation('irma', 'short')}. Pre/post hurricane comparison at Western
+                Dry Rocks and Eastern Sambo reef sites.
               </p>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                DOI: 10.5061/dryad.5tb2rbp38 | License: CC0 (Public Domain)
+                DOI: {getCitation('irma').doi} | License: {getCitation('irma').licence}
               </p>
             </div>
             <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '16px' }}>
               <h4 className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>CoralSoundExplorer Bora-Bora</h4>
               <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
-                Minier, L., et al. (2025). CoralSoundExplorer: A tool for soundscape-based coral reef monitoring. PLOS Computational Biology.
+                {formatCitation('coralsoundexplorer', 'short')}. {getCitation('coralsoundexplorer').title}.
               </p>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                DOI: 10.5281/zenodo.14577064 | License: CC-BY 4.0
+                DOI: {getCitation('coralsoundexplorer').doi} | License: {getCitation('coralsoundexplorer').licence}
               </p>
             </div>
             <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '16px' }}>
-              <h4 className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>NOAA SanctSound</h4>
+              <h4 className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>{getCitation('sanctsound').title}</h4>
               <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>
-                NOAA Sanctuary Soundscape Monitoring Project -- Florida Keys National Marine Sanctuary
+                {getCitation('sanctsound').publisher} -- Florida Keys National Marine Sanctuary
               </p>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                License: Public Domain (U.S. Government Work)
+                License: {getCitation('sanctsound').licence}
               </p>
             </div>
           </div>
@@ -221,12 +243,12 @@ export default function AboutPage() {
           <div className="grid md:grid-cols-3 gap-6 text-sm" style={{ color: 'var(--text-secondary)' }}>
             <div>
               <p className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>ML Model</p>
-              <p>SurfPerch by Google Research</p>
+              <p>{formatCitation('surfperch', 'short')}</p>
             </div>
             <div>
               <p className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Reference Data</p>
-              <p>MARRS Reef Sound Research</p>
-              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>DOI: 10.5522/04/29958062</p>
+              <p>{formatCitation('marrs', 'short')}</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>DOI: {getCitation('marrs').doi}</p>
             </div>
             <div>
               <p className="font-medium mb-1" style={{ color: 'var(--text-primary)' }}>Infrastructure</p>

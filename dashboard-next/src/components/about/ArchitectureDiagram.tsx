@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Cloud, Server, Database, HardDrive, Package, Cpu, Users } from 'lucide-react';
+import modelCard from '@/data/model-card.json';
 
 interface NodeSpec {
   icon: React.ElementType;
@@ -28,7 +29,7 @@ const LAMBDA_NODES: NodeSpec[] = [
     icon: Server,
     label: 'Classifier',
     sub: '512 MB · 120s',
-    tooltip: 'Trained MLP (1280→256→64→4, ~90% test accuracy). Applies geographic region confidence adjustment.',
+    tooltip: `Small exploratory MLP (1280→256→64→${modelCard.num_classes}), version ${modelCard.model_version}. Not validated on new sites or regions.`,
   },
   {
     icon: Cpu,
@@ -50,7 +51,7 @@ const STORAGE_NODES: NodeSpec[] = [
     icon: HardDrive,
     label: 'S3 Embeddings',
     sub: 'reefradar-2477-embeddings',
-    tooltip: '54 pre-computed 1280-dim reference embeddings across 7 countries for cosine similarity comparison.',
+    tooltip: 'Pre-computed 1280-dim reference embeddings for the labelled reference sites, used for cosine similarity comparison.',
   },
   {
     icon: Database,
