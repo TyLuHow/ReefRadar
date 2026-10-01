@@ -213,7 +213,7 @@ function LandingState({ dispatch }: { dispatch: React.Dispatch<ExperienceAction>
               Drop a WAV file here, or click to browse
             </p>
             <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
-              Max 50 MB
+              Max 4 MB
             </p>
             <input
               ref={fileInputRef}

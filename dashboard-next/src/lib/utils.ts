@@ -23,9 +23,20 @@ export function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/**
+ * Real upload ceiling. The router sits behind API Gateway, which hands the
+ * binary body to Lambda base64-encoded (x 4/3) inside a synchronous
+ * invocation event limited to 6 MB; 4 MiB of WAV becomes ~5.6 MB of event
+ * (plus a few KB of headers), which fits, while the old 50 MB claim was
+ * rejected by the platform with a non-JSON error long before any check
+ * (REVIEW WR-18). Keep in sync with MAX_UPLOAD_BYTES in
+ * lambdas/router/handler.py.
+ */
+export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+
 // Validate WAV file
 export function validateWavFile(file: File): { valid: boolean; error?: string } {
-  const MAX_SIZE = 50 * 1024 * 1024; // 50MB
+  const MAX_SIZE = MAX_UPLOAD_BYTES;
 
   if (!file.name.toLowerCase().endsWith('.wav')) {
     return { valid: false, error: 'Please upload a WAV file' };

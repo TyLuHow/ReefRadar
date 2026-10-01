@@ -169,3 +169,28 @@ def test_upload_decodes_percent_encoded_filename(upload_env):
     result, body = _upload(upload_env, quote("珊瑚礁.wav"))
     assert result["statusCode"] == 200
     assert body["filename"] == "珊瑚礁.wav"
+
+
+# --- WR-18: honest upload limit --------------------------------------------------
+
+
+def test_upload_over_the_real_limit_is_rejected_with_json(upload_env):
+    big = b"RIFF" + b"\x00" * 4 + b"WAVE" + b"\x00" * (upload_env.MAX_UPLOAD_BYTES + 1)
+    event = {
+        "requestContext": {"http": {"method": "POST"}, "stage": ""},
+        "rawPath": "/upload",
+        "headers": {"content-type": "audio/wav"},
+        "isBase64Encoded": True,
+        "body": base64.b64encode(big).decode(),
+    }
+    result = upload_env.handler(event, context=None)
+    body = json.loads(result["body"])
+    assert result["statusCode"] == 400
+    assert body["error"]["code"] == "FILE_TOO_LARGE"
+    assert "4 MB" in body["error"]["message"]
+
+
+def test_upload_limit_fits_in_a_lambda_sync_event(upload_env):
+    # 4 MiB of WAV, base64-encoded (x4/3), must stay under the 6 MB sync payload cap.
+    encoded = upload_env.MAX_UPLOAD_BYTES * 4 / 3
+    assert encoded + 20_000 < 6 * 1024 * 1024

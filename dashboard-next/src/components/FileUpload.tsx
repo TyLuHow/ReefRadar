@@ -165,7 +165,7 @@ export function FileUpload({
           </div>
 
           <div className="text-xs" style={{ color: 'var(--text-dim)' }}>
-            WAV format only, maximum 50MB
+            WAV format only, maximum 4 MB
           </div>
         </div>
       </div>

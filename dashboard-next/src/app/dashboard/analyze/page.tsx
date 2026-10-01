@@ -492,7 +492,7 @@ export default function EnhancedAnalyzePage() {
                 <div>
                   <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Compare</p>
                   <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                    Trained classifier determines reef health status
+                    A trained classifier reports which labelled reference recordings yours is most similar to
                   </p>
                 </div>
               </div>
@@ -504,7 +504,7 @@ export default function EnhancedAnalyzePage() {
                 <div>
                   <p className="font-medium" style={{ color: 'var(--text-primary)' }}>Results</p>
                   <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                    Health classification and similar reference sites
+                    Class probabilities (model output) and similar reference sites
                   </p>
                 </div>
               </div>
@@ -535,7 +535,7 @@ export default function EnhancedAnalyzePage() {
             <h3 className="font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>Requirements</h3>
             <ul className="text-sm space-y-2" style={{ color: 'var(--text-secondary)' }}>
               <li>WAV format audio files</li>
-              <li>Maximum file size: 50MB</li>
+              <li>Maximum file size: 4 MB</li>
               <li>Minimum duration: 5 seconds</li>
               <li>Best results with underwater recordings</li>
             </ul>

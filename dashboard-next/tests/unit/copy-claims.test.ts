@@ -60,6 +60,13 @@ export const BANNED: BannedPhrase[] = [
   { phrase: 'confidence is reduced', why: 'confidence-reduction sentence; multiplier removed (AUDIT 0.3)' },
   { phrase: 'confidence reduced', why: 'confidence-reduction sentence; multiplier removed (AUDIT 0.3)' },
   { phrase: 'confidence adjustment', why: 'region no longer adjusts probabilities (D-12; REVIEW CR-01)' },
+  { phrase: 'known health status', why: 'reference sites do not all have a known health status (REVIEW WR-18)' },
+  { phrase: 'without the need for physical surveys', why: 'overclaim; contradicts "complementary to visual surveys" (REVIEW WR-18)' },
+  { phrase: 'determines reef health', why: 'the classifier reports similarity to labelled references, not health (REVIEW WR-18)' },
+  { phrase: 'we can assess reef health', why: 'overclaim; not a validated health assessment (REVIEW WR-18)' },
+  { phrase: 'maximum file size: 50', why: 'the real upload limit is 4 MB (REVIEW WR-18)' },
+  { phrase: 'max 50 mb', why: 'the real upload limit is 4 MB (REVIEW WR-18)' },
+  { phrase: 'maximum 50mb', why: 'the real upload limit is 4 MB (REVIEW WR-18)' },
   { phrase: 'adjusts confidence', why: 'region no longer adjusts probabilities (D-12; REVIEW CR-01)' },
   // False processing claims.
   { phrase: 'real-time processing', why: 'false claim; analysis is asynchronous (AUDIT 4.8)' },

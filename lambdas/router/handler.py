@@ -24,6 +24,13 @@ s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
 lambda_client = boto3.client('lambda')
 
+# Real upload ceiling. API Gateway passes the binary body to this Lambda
+# base64-encoded (x 4/3) inside a synchronous invocation event capped at 6 MB,
+# so 4 MiB of WAV (~5.6 MB of event) is the largest size that reliably gets here.
+# Larger bodies are rejected by the platform before any code runs, with a
+# non-JSON error. Keep in sync with MAX_UPLOAD_BYTES in dashboard-next/src/lib/utils.ts.
+MAX_UPLOAD_BYTES = 4 * 1024 * 1024
+
 AUDIO_BUCKET = os.environ.get('AUDIO_BUCKET')
 EMBEDDINGS_BUCKET = os.environ.get('EMBEDDINGS_BUCKET')
 METADATA_TABLE = os.environ.get('METADATA_TABLE')
@@ -119,12 +126,12 @@ def handle_upload(event):
                 }
             })
 
-        # Validate file size (50MB max)
-        if len(file_content) > 50 * 1024 * 1024:
+        # Validate file size (see MAX_UPLOAD_BYTES)
+        if len(file_content) > MAX_UPLOAD_BYTES:
             return response(400, {
                 'error': {
                     'code': 'FILE_TOO_LARGE',
-                    'message': 'File exceeds 50MB limit'
+                    'message': f'File exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)} MB upload limit'
                 }
             })
 

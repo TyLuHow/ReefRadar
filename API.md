@@ -126,12 +126,12 @@ Upload an audio file for analysis.
 | Header | Required | Description |
 |--------|----------|-------------|
 | Content-Type | Yes | `audio/wav` |
-| X-Filename | No | Original filename (default: `upload_{id}.wav`) |
+| X-Filename | No | Original filename, percent-encoded (`encodeURIComponent`); the server decodes and sanitises it (default: `upload_{id}.wav`) |
 
 **Request Body:** Raw binary WAV file data
 
 **Constraints:**
-- Maximum file size: 50 MB
+- Maximum file size: 4 MB (API Gateway delivers the body to Lambda base64-encoded inside a 6 MB synchronous invocation event; larger bodies are rejected by the platform with a non-JSON error)
 - Format: WAV (PCM)
 - Minimum duration: 5 seconds
 
@@ -170,9 +170,9 @@ curl -X POST https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod/upload 
 {
   "error": {
     "code": "FILE_TOO_LARGE",
-    "message": "File exceeds 50 MB limit",
+    "message": "File exceeds the 4 MB upload limit",
     "details": {
-      "size_bytes": 52428800
+      "size_bytes": 4194304
     }
   }
 }
@@ -442,7 +442,7 @@ done
 | Code | HTTP Status | Description |
 |------|-------------|-------------|
 | NOT_FOUND | 404 | Route or resource not found |
-| FILE_TOO_LARGE | 400 | Upload exceeds 50 MB |
+| FILE_TOO_LARGE | 400 | Upload exceeds 4 MB |
 | MISSING_UPLOAD_ID | 400 | upload_id not provided |
 | UPLOAD_NOT_FOUND | 404 | Invalid upload_id |
 | ANALYSIS_NOT_FOUND | 404 | Invalid analysis_id |

@@ -76,15 +76,19 @@ export default function AboutPage() {
           <div className="max-w-none">
             <p className="leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
               ReefRadar is a research instrument for listening to and comparing coral reef
-              underwater acoustic recordings. Healthy reefs produce distinct soundscapes
-              from the fish, invertebrates, and other marine life that inhabit them.
-              By analyzing these sounds, we can assess reef health non-invasively.
+              underwater acoustic recordings. Reefs produce soundscapes shaped by the
+              fish, invertebrates, and other marine life that inhabit them, and
+              ReefRadar lets you hear and compare real recordings across places and
+              restoration stages.
             </p>
             <p className="leading-relaxed mt-4" style={{ color: 'var(--text-secondary)' }}>
               The system uses machine learning to extract acoustic features from
-              recordings and compare them against reference sites of known health status.
-              This enables rapid, scalable reef monitoring without the need for
-              physical surveys.
+              recordings and report which labelled reference recordings a new
+              recording is most similar to. Each reference label comes from the
+              dataset{"'"}s own researchers (every site states who assigned its label),
+              and some reference sites carry no health label at all. It is a
+              research instrument for exploring recordings, complementary to visual
+              surveys rather than a replacement for them.
             </p>
           </div>
         </div>
