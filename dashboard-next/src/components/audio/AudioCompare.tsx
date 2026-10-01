@@ -12,7 +12,7 @@ import { SpectrogramCanvas } from './SpectrogramCanvas';
 import { FrequencyBandLabels } from './FrequencyBandLabels';
 import { ABCrossfader } from './ABCrossfader';
 import { cn } from '@/lib/utils';
-import { demoPair, excerptCaption, attributionLine } from '@/lib/audio-manifest';
+import { demoPair, excerptCaption, attributionLine, type AudioExcerpt } from '@/lib/audio-manifest';
 
 interface AudioCompareProps {
   /** When true, uses a smaller vertical layout with a CTA to the full page */
@@ -21,6 +21,17 @@ interface AudioCompareProps {
 }
 
 type LoadState = 'idle' | 'loading' | 'ready' | 'error';
+
+/**
+ * Heading for a spectrogram panel: states the dataset's own label and who
+ * assigned it, never a bare "Healthy Reef" fact (every label shows who
+ * assigned it).
+ */
+function spectrogramHeading(excerpt: AudioExcerpt): string {
+  const label = excerpt.label?.label_original ?? 'unlabelled';
+  const assignedBy = excerpt.label?.label_source ? excerpt.label.label_source.toUpperCase() : 'dataset';
+  return `${excerpt.site_id} — label ‘${label}’ (${assignedBy})`;
+}
 
 export function AudioCompare({ compact = false, className }: AudioCompareProps) {
   // The demo pair is static manifest data -- safe to read directly in render.
@@ -46,6 +57,9 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
   const degradedBufferRef = useRef<AudioBuffer | null>(null);
   const startTimeRef = useRef<number>(0);
   const timerRef = useRef<number | null>(null);
+  // Mirrors `crossfade` so a slider move made BEFORE the audio graph exists
+  // (the slider is enabled while idle) is applied when the gains are created.
+  const crossfadeRef = useRef(0);
 
   // --- Check Web Audio support on mount ---
   useEffect(() => {
@@ -95,8 +109,9 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
       // Create gain nodes
       const healthyGain = ctx.createGain();
       const degradedGain = ctx.createGain();
-      healthyGain.gain.value = 1;
-      degradedGain.gain.value = 0;
+      const initialAngle = crossfadeRef.current * Math.PI / 2;
+      healthyGain.gain.value = Math.cos(initialAngle);
+      degradedGain.gain.value = Math.sin(initialAngle);
       healthyGainRef.current = healthyGain;
       degradedGainRef.current = degradedGain;
 
@@ -232,6 +247,7 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
 
   // --- Update gain when crossfade changes (equal-power crossfade) ---
   useEffect(() => {
+    crossfadeRef.current = crossfade;
     const angle = crossfade * Math.PI / 2;
     if (healthyGainRef.current) {
       healthyGainRef.current.gain.value = Math.cos(angle);
@@ -340,7 +356,7 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
             <div className="flex items-center gap-2 mb-1">
               <span className="w-2 h-2 rounded-full" style={{ background: '#cd853f' }} />
               <span className="text-xs font-semibold" style={{ color: '#cd853f' }}>
-                Healthy Reef
+                {spectrogramHeading(pair.a)}
               </span>
             </div>
             <div className="relative">
@@ -363,7 +379,7 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
             <div className="flex items-center gap-2 mb-1">
               <span className="w-2 h-2 rounded-full" style={{ background: '#c08081' }} />
               <span className="text-xs font-semibold" style={{ color: '#c08081' }}>
-                Degraded Reef
+                {spectrogramHeading(pair.b)}
               </span>
             </div>
             <div className="relative">
