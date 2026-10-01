@@ -18,7 +18,7 @@
 - [ ] **TRUTH-07**: Descriptive copy makes no claims the system did not measure (no species claims, no fabricated crossfade states, no scripted processing messages) [CAP-17, CAP-26, CAP-36]
 - [x] **TRUTH-08**: Dataset citations, DOIs, author lists and model paper references are corrected and consistent everywhere (MARRS Williams et al. 2025; SurfPerch arXiv 2404.16436; Irma DOI) [CAP-74]
 - [ ] **TRUTH-09**: Dataset-specific labels are presented with who assigned them and what they mean (e.g. Bora-Bora disturbance types are not shown as "degraded" health; post-hurricane vector not labelled healthy)
-- [ ] **TRUTH-10**: Visual, accessibility and bundle-size baselines of the current app are captured before redesign work begins
+- [x] **TRUTH-10**: Visual, accessibility and bundle-size baselines of the current app are captured before redesign work begins
 
 ### Data Contract (CONTRACT)
 
@@ -222,7 +222,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRUTH-07 | Phase 1 | Pending |
 | TRUTH-08 | Phase 1 | Complete |
 | TRUTH-09 | Phase 1 | Pending |
-| TRUTH-10 | Phase 1 | Pending |
+| TRUTH-10 | Phase 1 | Complete |
 | CONTRACT-01 | Phase 2 | Pending |
 | CONTRACT-02 | Phase 2 | Pending |
 | CONTRACT-03 | Phase 2 | Pending |
