@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 2
 current_phase_name: Data Contract v1
 status: executing
-stopped_at: Completed 02-05-PLAN.md
-last_updated: "2026-10-01T23:13:10.402Z"
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-10-01T23:33:27.891Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 2 execution started
-state_head: 1d28afa691d0baf58ddb3cac203f707da4edfbe0
+state_head: a82faeadcddd68dc1caa6aafdfaf0a33ebf3af82
 progress:
   total_phases: 17
   completed_phases: 1
   total_plans: 32
-  completed_plans: 24
+  completed_plans: 25
   percent: 6
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 ## Current Position
 
 Phase: 2 (Data Contract v1) — EXECUTING
-Plan: 5 of 12
+Plan: 6 of 12
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 2 execution started
 
@@ -84,6 +84,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 02 P02 | 20min | 2 tasks | 4 files |
 | Phase 02 P03 | 45min | 2 tasks | 31 files |
 | Phase 02 P05 | 25min | 2 tasks | 8 files |
+| Phase 02 P04 | 40min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,8 @@ Recent decisions affecting current work:
 - [Phase 2]: 02-03: once a version is in PUBLISHED.json its bundled schema copies are frozen; copy-equals-source and rebuild comparison are skipped for it, immutability guarded by manifest sha256 plus structural --additive
 - [Phase 2]: 02-03: projection.json/embeddings.f32 reused unless --recompute-projection/--reference-metadata; PCA verified by tolerance (1e-8 components, 2e-6 coordinates), not hash, so numpy 1.26.4 and 2.5.3 agree
 - [Phase 2]: [Phase 02] 02-05: stamp_for_model nulls contract/dataset/preprocessing versions unless the loaded model version equals the bundled stamp's model; an unloadable stamp writes nulls instead of failing the analysis
+- [Phase 2]: [Phase 02] 02-04: contract publisher uses S3 If-None-Match for immutability with a read-only preflight, pointer last via If-Match on its ETag; --confirm is gated on the ceiling budget alarm; --set-latest rollback verifies the bucket against PUBLISHED.json
+- [Phase 2]: [Phase 02] 02-04: clean-tree requirement applies to publish --confirm only; --set-latest and --dry-run are not blocked by an uncommitted tree
 
 ### Pending Todos
 
@@ -165,6 +168,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T23:13:10.236Z
-Stopped at: Completed 02-05-PLAN.md
+Last session: 2026-10-01T23:33:27.689Z
+Stopped at: Completed 02-04-PLAN.md
 Resume file: None
