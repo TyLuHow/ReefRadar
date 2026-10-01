@@ -163,12 +163,84 @@ def upload_env(aws):
     return load_lambda("router")
 
 
-def test_upload_decodes_percent_encoded_filename(upload_env):
+def test_upload_decodes_percent_encoded_filename_then_sanitises_it(upload_env):
     from urllib.parse import quote
 
-    result, body = _upload(upload_env, quote("珊瑚礁.wav"))
+    # Decoded first (so "%2E%2E%2F" cannot smuggle a path), then reduced to a
+    # safe key component: no directories, only [A-Za-z0-9._-], capped length.
+    result, body = _upload(upload_env, quote("../../etc/pass wd.wav"))
     assert result["statusCode"] == 200
-    assert body["filename"] == "珊瑚礁.wav"
+    assert body["filename"] == "pass_wd.wav"
+    assert body["s3_key"] == f"uploads/{body['upload_id']}/pass_wd.wav"
+
+    _, body = _upload(upload_env, quote("珊瑚礁.wav"))
+    assert body["filename"] == "___.wav"
+
+
+def test_sanitize_filename_edge_cases(upload_env):
+    f = upload_env.sanitize_filename
+    assert f("..", "default.wav") == "default.wav"
+    assert f("", "default.wav") == "default.wav"
+    assert f("a\\b\\c.wav", "d") == "c.wav"
+    assert f("x" * 300 + ".wav", "d").__len__() == 100
+    assert f(".hidden.wav", "d") == "hidden.wav"
+
+
+# --- WR-21: records are written before the pipeline is started ---------------------
+
+
+class _RecordingLambda:
+    def __init__(self, table, fail=False):
+        self.table = table
+        self.fail = fail
+        self.seen_metadata_at_invoke = None
+
+    def invoke(self, **kwargs):
+        payload = json.loads(kwargs["Payload"])
+        item = self.table.get_item(
+            Key={"pk": f"ANALYSIS#{payload['analysis_id']}", "sk": "METADATA"}
+        ).get("Item")
+        self.seen_metadata_at_invoke = item is not None
+        if self.fail:
+            raise RuntimeError("boom")
+        return {"StatusCode": 202}
+
+
+def _analyze(module, upload_id):
+    event = {
+        "requestContext": {"http": {"method": "POST"}, "stage": ""},
+        "rawPath": "/analyze",
+        "body": json.dumps({"upload_id": upload_id}),
+    }
+    result = module.handler(event, context=None)
+    return result, json.loads(result["body"])
+
+
+def test_analyze_writes_records_before_invoking_the_pipeline(upload_env):
+    table = boto3.resource("dynamodb", region_name="us-east-1").Table(METADATA_TABLE)
+    table.put_item(Item={"pk": "UPLOAD#u1", "sk": "METADATA", "s3_key": "uploads/u1/a.wav"})
+    upload_env.lambda_client = _RecordingLambda(table)
+
+    result, body = _analyze(upload_env, "u1")
+    assert result["statusCode"] == 202
+    assert upload_env.lambda_client.seen_metadata_at_invoke is True
+
+
+def test_analyze_records_terminal_error_when_pipeline_cannot_start(upload_env):
+    table = boto3.resource("dynamodb", region_name="us-east-1").Table(METADATA_TABLE)
+    table.put_item(Item={"pk": "UPLOAD#u2", "sk": "METADATA", "s3_key": "uploads/u2/a.wav"})
+    upload_env.lambda_client = _RecordingLambda(table, fail=True)
+
+    result, body = _analyze(upload_env, "u2")
+    assert result["statusCode"] == 500
+    analysis_id = [
+        i["analysis_id"]
+        for i in table.scan()["Items"]
+        if i["pk"].startswith("ANALYSIS#") and i["sk"] == "METADATA"
+    ][0]
+    status_result, status_body = _get(upload_env, f"/status/{analysis_id}")
+    assert status_body["status"] == "failed"
+    assert status_body["error"]["code"] == "PIPELINE_START_FAILED"
 
 
 # --- WR-18: honest upload limit --------------------------------------------------

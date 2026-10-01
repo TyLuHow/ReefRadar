@@ -9,6 +9,7 @@ from datetime import datetime
 from decimal import Decimal
 import base64
 import os
+import re
 from urllib.parse import unquote
 from site_provenance import load_provenance, apply_label_provenance
 
@@ -97,6 +98,18 @@ def handler(event, context):
     return response(404, {'error': {'code': 'NOT_FOUND', 'message': f'Unknown route: {http_method} {path}'}})
 
 
+def sanitize_filename(name, default):
+    """Client-controlled file name -> safe S3 key component.
+
+    Drops any directory part (so a client cannot create sub-prefixes that
+    downstream code may basename), keeps only [A-Za-z0-9._-], caps the length
+    at 100 and never returns an empty / dot-only name.
+    """
+    base = (name or '').replace('\\', '/').rsplit('/', 1)[-1]
+    cleaned = re.sub(r'[^A-Za-z0-9._-]', '_', base)[:100].lstrip('.')
+    return cleaned or default
+
+
 def handle_upload(event):
     """Handle audio file upload."""
     try:
@@ -139,7 +152,9 @@ def handle_upload(event):
         headers = event.get('headers', {})
         content_type = headers.get('content-type', 'audio/wav')
         # The client percent-encodes X-Filename (HTTP headers are Latin-1 only).
-        filename = unquote(headers.get('x-filename') or f'upload_{upload_id}.wav')
+        filename = sanitize_filename(
+            unquote(headers.get('x-filename') or ''), f'upload_{upload_id}.wav'
+        )
 
         # Upload to S3
         s3_key = f'uploads/{upload_id}/{filename}'
@@ -196,24 +211,9 @@ def handle_analyze(event):
         upload_item = result['Item']
         analysis_id = str(uuid.uuid4())
 
-        # Invoke preprocessor asynchronously
-        preprocess_payload = {
-            'upload_id': upload_id,
-            'analysis_id': analysis_id,
-            's3_key': upload_item['s3_key']
-        }
-        if latitude is not None:
-            preprocess_payload['latitude'] = latitude
-        if longitude is not None:
-            preprocess_payload['longitude'] = longitude
-
-        lambda_client.invoke(
-            FunctionName=PREPROCESSOR_FUNCTION,
-            InvocationType='Event',
-            Payload=json.dumps(preprocess_payload)
-        )
-
-        # Create analysis metadata record (enables /status lookups immediately)
+        # Write the records FIRST: if a record write fails after the pipeline was
+        # started there would be a pipeline run with no record, the client would
+        # get a 500, retry, and create duplicate analyses.
         table.put_item(Item={
             'pk': f'ANALYSIS#{analysis_id}',
             'sk': 'METADATA',
@@ -231,6 +231,40 @@ def handle_analyze(event):
             ExpressionAttributeNames={'#status': 'status'},
             ExpressionAttributeValues={':status': 'processing', ':aid': analysis_id}
         )
+
+        # Invoke preprocessor asynchronously
+        preprocess_payload = {
+            'upload_id': upload_id,
+            'analysis_id': analysis_id,
+            's3_key': upload_item['s3_key']
+        }
+        if latitude is not None:
+            preprocess_payload['latitude'] = latitude
+        if longitude is not None:
+            preprocess_payload['longitude'] = longitude
+
+        try:
+            lambda_client.invoke(
+                FunctionName=PREPROCESSOR_FUNCTION,
+                InvocationType='Event',
+                Payload=json.dumps(preprocess_payload)
+            )
+        except Exception as invoke_err:
+            # The pipeline never started: record a terminal ERROR so /status and
+            # /visualize report it instead of "processing" forever.
+            print(f"ERROR /analyze: could not start preprocessor ({type(invoke_err).__name__})")
+            table.put_item(Item={
+                'pk': f'ANALYSIS#{analysis_id}',
+                'sk': 'ERROR',
+                'upload_id': upload_id,
+                'error_code': 'PIPELINE_START_FAILED',
+                'error': 'The analysis pipeline could not be started.',
+                'status': 'failed',
+                'stage': 'preprocessing',
+                'suggestion': 'Please retry the analysis.',
+                'timestamp': datetime.utcnow().isoformat(),
+            })
+            return response(500, {'error': {'code': 'ANALYZE_FAILED', 'message': 'The analysis pipeline could not be started'}})
 
         return response(202, {
             'analysis_id': analysis_id,
