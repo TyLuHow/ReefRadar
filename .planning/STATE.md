@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 01
 current_phase_name: Truth & Reproducibility
 status: executing
-stopped_at: Completed 01-16-PLAN.md
-last_updated: "2026-10-01T09:26:40.010Z"
+stopped_at: Completed 01-17-PLAN.md
+last_updated: "2026-10-01T09:45:31.063Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 01 execution started
-state_head: a4de7c9eb9b28e7c0fb59c2e8a32c6e8a520bd2f
+state_head: 1fa0fbdcb74a72de090bdd4e9cb97d4cbf7b641a
 progress:
   total_phases: 17
   completed_phases: 0
   total_plans: 20
-  completed_plans: 15
+  completed_plans: 16
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 01 (Truth & Reproducibility) — EXECUTING
-Plan: 16 of 20
+Plan: 17 of 20
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 01 execution started
 
@@ -75,6 +75,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P13 | 20min | 2 tasks | 7 files |
 | Phase 01 P15 | 55min | 3 tasks | 14 files |
 | Phase 01-truth-reproducibility P16 | 70min | 3 tasks | 11 files |
+| Phase 01 P17 | 70min | 3 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,9 @@ Recent decisions affecting current work:
 - [Phase 01]: [Phase 01] 01-15 D-12 UI half: toIntegerPercentages renormalises by the input's own sum (not assumed 1) so legacy multiplied probability payloads still render the correct percentages
 - [Phase 01]: pollAnalysis reads request_id from GET /visualize's error payload (not /status's, which omits it) when an analysis fails
 - [Phase 01]: AnalysisProgress error-step highlighting: 'uploading' marked complete, 'analyzing' marked as the errored step (fixes pre-existing dead error-branch bug)
+- [Phase 01]: [Phase 01] 01-17: Location Compare manifest coordinates are the centroid of each location's real reference sites (data/snapshots/api-sites.json); no single canonical lat/lon existed per location
+- [Phase 01]: [Phase 01] 01-17: excerptCaption()'s region slot uses the excerpt's country (only region-like field available) rather than a finer sub-region string
+- [Phase 01]: [Phase 01] 01-17 Rule 2 deviation: extended the honest-copy fix beyond Task 2's declared files to dashboard/compare/page.tsx and the shared FrequencyBands.ts/FrequencyBandLabels.tsx, which made unlabelled species/behaviour claims on the same audio surfaces
 
 ### Pending Todos
 
@@ -141,6 +145,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T09:26:39.991Z
-Stopped at: Completed 01-16-PLAN.md
+Last session: 2026-10-01T09:45:31.043Z
+Stopped at: Completed 01-17-PLAN.md
 Resume file: None
