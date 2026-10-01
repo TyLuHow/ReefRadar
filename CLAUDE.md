@@ -21,7 +21,7 @@ ReefRadar/
 │   │   └── handler.py          # WAV parsing, resampling to 32kHz, segmentation
 │   └── classifier/             # ML classification (512MB, 120s)
 │       ├── handler.py          # Trained MLP classifier, embedding generation
-│       └── region_detection.py # Geographic region detection and confidence adjustment
+│       └── region_detection.py # Region naming + distance to real training sites (never adjusts probabilities)
 │
 ├── dashboard-next/             # Next.js 14 web UI (primary)
 │   ├── src/app/                # App Router pages (/, /sites, /about)
@@ -39,8 +39,8 @@ ReefRadar/
 │       └── study_sites_map.kml # KML with all site coordinates
 │
 ├── models/                     # Trained classifier
-│   ├── reef_classifier_weights.npz  # MLP weights (1280→256→64→4)
-│   └── model_config.json            # Architecture, labels, accuracy
+│   ├── reef_classifier_weights.npz  # Archived v2.0 MLP weights (1280→256→64→4); the DEPLOYED model is models/interim-real-only (1280→256→64→3)
+│   └── model_config.json            # Archived v2.0 architecture, labels, accuracy
 │
 ├── infrastructure/
 │   ├── resources.json          # Complete AWS resource inventory
@@ -124,17 +124,16 @@ sk: "METADATA", "PREPROCESSED", "RESULT", or "ERROR"
 
 ### Classification
 - Generates real SurfPerch embeddings via inference Lambda
-- Classifies using trained MLP (1280→256→64→4, ~90% test accuracy)
-- Applies geographic region detection for confidence adjustment
+- Classifies using the deployed interim real-only MLP (1280→256→64→3; trained on 100 windows from 5 sites in Indonesia and Kenya; accuracy is a random per-window split, not an estimate for new sites)
+- Reports region and distance to the nearest real training site; probabilities and confidence are never scaled or adjusted
 - Compares to 54 reference sites via cosine similarity
-- Categories: healthy, degraded, restored_early, restored_mid
+- Model classes: degraded, healthy, restored_early (the `restored_mid` reference label has no real training data and is not a model output)
 
 ### Geographic Region Detection
-- `region_detection.py` detects biogeographic region from coordinates
-- Indo-Pacific (training distribution): full confidence
-- Caribbean/Atlantic/Red Sea/Eastern Pacific: 60% confidence multiplier
-- Unknown (no coordinates): 70% confidence multiplier
-- Caveats automatically adjusted based on region
+- `region_detection.py` names the biogeographic region from coordinates (descriptive bounding boxes)
+- `in_training_region` is true only within 50 km of a real training site; `nearest_training_site_km` is reported
+- Probabilities are the model's raw output; the old per-region scaling was removed in Phase 1 (D-12)
+- Unknown (no coordinates): the caveat says the location relative to the training sites is unknown
 
 ## Reference Data
 

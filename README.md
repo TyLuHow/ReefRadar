@@ -98,13 +98,13 @@ flowchart LR
 
 4. **Classify** (Async)
    - Invokes Inference Lambda to generate real SurfPerch embeddings
-   - Classifies using trained MLP (1280->256->64->4, ~90% test accuracy)
-   - Detects geographic region and adjusts confidence if out-of-distribution
+   - Classifies using the deployed interim real-only model (1280->256->64->3: degraded, healthy, restored_early; 100 training windows from 5 sites in Indonesia and Kenya; its accuracy comes from a random per-window split and is not an estimate for new sites or regions)
+   - Reports whether the recording is near the classifier's training sites (probabilities are never adjusted)
    - Compares to 54 reference site embeddings via cosine similarity
    - Stores results in DynamoDB
 
 5. **Visualize** (`GET /visualize/{analysis_id}`)
-   - Returns classification, similar sites, region info, and visualization data
+   - Returns classification, similar sites and region info
 
 ---
 
@@ -191,16 +191,17 @@ Get analysis results (poll until `status: "complete"`).
   "classification": {
     "label": "healthy",
     "confidence": 0.87,
-    "probabilities": {"healthy": 0.87, "degraded": 0.04, "restored_early": 0.05, "restored_mid": 0.04},
+    "probabilities": {"healthy": 0.87, "degraded": 0.06, "restored_early": 0.07},
     "region": {
-      "detected": "INDO_PACIFIC_WEST",
-      "name": "Indo-Pacific West (Indonesia/Philippines)",
-      "in_training_distribution": true,
+      "detected": "INDONESIA",
+      "name": "Indonesia",
+      "in_training_region": true,
+      "nearest_training_site_km": 1.2,
       "confidence_adjusted": false
     }
   },
   "similar_sites": [
-    {"site_id": "ind_H4", "country": "Indonesia", "similarity": 0.94, "status": "healthy"}
+    {"site_id": "ind_H4", "country": "Indonesia", "similarity": 0.94, "status": "healthy", "label_source": "marrs", "label_original": "Healthy (H)"}
   ],
   "caveats": "..."
 }
@@ -266,17 +267,17 @@ ReefRadar analyzes **biological sound activity** - the acoustic signatures produ
 
 1. **Audio Preprocessing**: WAV files are resampled to 32kHz mono and segmented into 5.0-second windows (160,000 samples)
 2. **Embedding Generation**: Each segment is processed by the [SurfPerch model](https://www.kaggle.com/models/google/surfperch) (Google Research), producing a 1280-dimensional acoustic embedding
-3. **Classification**: A trained MLP classifier (1280->256->64->4 architecture, ~90% test accuracy) classifies the mean embedding into one of four categories
-4. **Region Detection**: If coordinates are provided, geographic region is detected and confidence is adjusted for out-of-distribution regions
+3. **Classification**: A trained MLP classifier (the deployed interim real-only model, 1280->256->64->3 architecture) maps the mean embedding to class probabilities over degraded, healthy and restored_early. Its reported accuracy is from a random per-window split on 5 training sites and is not an estimate for new sites or regions
+4. **Region Detection**: If coordinates are provided, the response reports the named region and the distance to the nearest real training site ("in training region" means within 50 km of one). Probabilities and confidence are never scaled or adjusted
 
 ### Health Categories
 
 | Category | Description |
 |----------|-------------|
-| `healthy` | Diverse fish communities, abundant snapping shrimp, complex acoustic signatures |
-| `degraded` | Reduced acoustic diversity, lower biological sound production |
-| `restored_early` | Recently restored (<3 months), initial signs of acoustic recovery |
-| `restored_mid` | Mid-restoration (32-53 months), soundscapes approaching healthy characteristics |
+| `healthy` | MARRS label: least disturbed reef habitat in the local area |
+| `degraded` | MARRS label: comparable to restored sites prior to restoration (rubble) |
+| `restored_early` | MARRS label: reef stars installed less than 3 months before recording |
+| `restored_mid` | MARRS label: restored 32 to 53 months before recording (a reference label only; the deployed model has no `restored_mid` class because it had no real training data) |
 
 ### Reference Data
 
@@ -329,7 +330,7 @@ SageMaker resources have been deleted. All ML inference runs on Lambda container
 
 1. **Cold Start Latency**: The inference Lambda container has cold starts of 5-30 seconds. First analysis after idle period takes longer.
 
-2. **Geographic Coverage**: Model trained on Indo-Pacific (Indonesia) and Indian Ocean (Kenya) reef data only. Results from other regions (Caribbean, Red Sea, etc.) have reduced confidence with automatic warnings.
+2. **Geographic Coverage**: Model trained on 5 sites in Indonesia (one reef system) and Kenya only. Recordings far from those sites get an explicit warning; probabilities are never reduced or adjusted for location.
 
 3. **Temporal Limitation**: Training data from specific recording periods. Reef soundscapes vary seasonally and diurnally.
 

@@ -121,9 +121,9 @@ This is meaningful because:
 - Impact: Potential loss of high-frequency information
 
 **Training Data Size:**
-- Classifier trained on ~100 samples
+- Deployed classifier trained on 100 windows from 5 sites (Indonesia, Kenya)
 - Limited compared to production ML systems
-- Test accuracy (90%) may not generalize
+- Its accuracy comes from a random per-window split in which windows from the same site appear in train and test, so it is not an estimate of performance on new sites or regions
 
 **Reference Site Selection:**
 - ReefRadar uses subset of 45 MARRS sites
@@ -156,8 +156,8 @@ This is meaningful because:
 
 The API response includes this caveat:
 ```
-"Classification by trained MLP on SurfPerch embeddings (90% test accuracy on MARRS data).
-Not a definitive health diagnosis. Complements visual surveys."
+"Probabilities shown are the model's raw, unmodified output ... Classification reflects acoustic similarity to training data, not a definitive health diagnosis."
+(The exact text is produced by `lambdas/classifier/region_detection.py` and varies with whether coordinates were given and how close they are to a real training site.)
 ```
 
 This caveat is honest and necessary.
@@ -220,12 +220,12 @@ This caveat is honest and necessary.
 | Data Provenance | Clear chain of custody | MARRS dataset documented |
 | Reproducibility | Methods published | Code open source |
 | Uncertainty Quantification | Confidence intervals | Provides probabilities |
-| Validation | Independent test set | 90% on held-out test |
+| Validation | Independent test set | Random per-window split only; grouped leave-one-site-out evaluation is planned (Phase 5) |
 | Limitations Stated | Required in papers | Documented in API response |
 
 ### Areas for Improvement
 
-1. **Cross-validation:** Current 90% accuracy is on small test set
+1. **Cross-validation:** The current accuracy is from a random per-window split on a small set; grouped leave-one-site-out evaluation is planned
 2. **Independent Validation:** Need testing on non-MARRS sites
 3. **Uncertainty Bounds:** Could provide confidence intervals
 4. **Geographic Validation:** Test on Caribbean/Atlantic sites
@@ -238,7 +238,7 @@ When presenting ReefRadar in a portfolio context, be accurate:
 **Do Say:**
 - "Implements state-of-the-art SurfPerch model for reef acoustics"
 - "Trained on peer-reviewed MARRS dataset"
-- "Achieves 90% accuracy on MARRS test data"
+- "Trained on a small set of real MARRS recordings; accuracy on new sites has not been measured"
 - "Demonstrates AWS serverless ML deployment"
 
 **Do Not Say:**

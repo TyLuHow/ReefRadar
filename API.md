@@ -289,56 +289,45 @@ curl https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod/visualize/a1d94
   "status": "complete",
   "classification": {
     "label": "degraded",
-    "confidence": 0.261377,
+    "confidence": 0.49,
     "probabilities": {
-      "healthy": 0.241853,
-      "degraded": 0.261377,
-      "restored_early": 0.250283,
-      "restored_mid": 0.246488
+      "degraded": 0.49,
+      "healthy": 0.22,
+      "restored_early": 0.29
+    },
+    "model_version": "interim-real-only",
+    "region": {
+      "detected": "INDONESIA",
+      "name": "Indonesia",
+      "scope": "specific",
+      "coordinates_provided": true,
+      "in_training_region": true,
+      "training_sites_in_region": 4,
+      "nearest_training_site_km": 1.2,
+      "training_radius_km": 50.0,
+      "training_countries": ["Indonesia", "Kenya"],
+      "confidence_adjusted": false
     }
   },
   "similar_sites": [
     {
-      "site_id": "phl_D1",
-      "country": "phl",
-      "similarity": 0.223476,
-      "status": "degraded"
-    },
-    {
-      "site_id": "aus_D1",
-      "country": "aus",
-      "similarity": 0.20864,
-      "status": "degraded"
-    },
-    {
-      "site_id": "aus_R1",
-      "country": "aus",
-      "similarity": 0.20801,
-      "status": "restored_early"
+      "site_id": "ind_D2",
+      "country": "Indonesia",
+      "similarity": 0.89,
+      "status": "degraded",
+      "label_source": "marrs",
+      "label_source_name": "MARRS (Mars Assisted Reef Restoration System)",
+      "label_original": "Degraded (D)"
     }
   ],
-  "visualization": {
-    "type": "projection_2d",
-    "coordinates": {
-      "x": 0.662955,
-      "y": 0.318253
-    },
-    "reference_sites": [
-      {
-        "site_id": "aus_H1",
-        "x": 0.017611,
-        "y": 0.018041,
-        "status": "healthy"
-      }
-    ]
-  },
+  "similar_sites_error": null,
   "embedding_summary": {
     "dimension": 1280,
     "num_segments": 1,
     "aggregation": "mean",
-    "synthetic": true
+    "synthetic": false
   },
-  "caveats": "Classification based on acoustic similarity to reference sites. Not a definitive health diagnosis. Complements but does not replace visual surveys. (Demo mode: using synthetic embeddings)"
+  "caveats": "This recording's coordinates are within 50 km of 4 of the classifier's 5 real training sites ... Probabilities shown are the model's raw, unmodified output."
 }
 ```
 
@@ -348,24 +337,24 @@ curl https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod/visualize/a1d94
 | analysis_id | string | Analysis identifier |
 | status | string | "processing", "complete", or "failed" |
 | classification | object | Classification results (when complete) |
-| classification.label | string | Predicted health status |
-| classification.confidence | number | Confidence score (0-1) |
-| classification.probabilities | object | Probability for each category |
-| similar_sites | array | Top 3 most similar reference sites |
+| classification.label | string | Class with the highest probability |
+| classification.confidence | number | Probability of that class (0-1); never scaled or adjusted |
+| classification.probabilities | object | Raw model probabilities per class; they sum to 1. The deployed model has three classes (degraded, healthy, restored_early) |
+| classification.model_version | string | Model version that produced the probabilities |
+| classification.region | object | Where the recording is relative to the classifier's real training sites (see ARCHITECTURE.md). `in_training_region` means within `training_radius_km` of a real training site; it is not validation. `confidence_adjusted` is always false |
+| similar_sites | array | Up to 3 most similar reference sites (may be empty; see `similar_sites_error`) |
 | similar_sites[].site_id | string | Reference site ID |
-| similar_sites[].country | string | Country code |
+| similar_sites[].country | string | Country |
 | similar_sites[].similarity | number | Cosine similarity (0-1) |
-| similar_sites[].status | string | Site health status |
-| visualization | object | 2D projection data |
-| visualization.type | string | Always "projection_2d" |
-| visualization.coordinates | object | User sample position |
-| visualization.reference_sites | array | Reference site positions |
+| similar_sites[].status | string | The dataset's label for the site, or "unknown" where the dataset assigns no health label |
+| similar_sites[].label_source / label_source_name / label_original | string | Which dataset assigned the label, its display name, and the dataset's own term |
+| similar_sites_error | string or null | Why `similar_sites` is empty when the lookup failed or nothing was comparable |
 | embedding_summary | object | Technical details |
 | embedding_summary.dimension | integer | Embedding size (1280) |
 | embedding_summary.num_segments | integer | Audio segments processed |
 | embedding_summary.aggregation | string | Aggregation method ("mean") |
-| embedding_summary.synthetic | boolean | True if using fallback embeddings |
-| caveats | string | Important disclaimers |
+| embedding_summary.synthetic | boolean | Always false: embeddings are never synthetic |
+| caveats | string | Important disclaimers, worded by region status |
 
 **Response - Failed (200 OK):**
 ```json

@@ -127,18 +127,17 @@
 1. Load audio segments from S3
 2. Invoke inference Lambda to generate real SurfPerch embeddings
 3. Average embeddings across segments (mean pooling)
-4. Classify using trained MLP (1280->256->64->4)
-5. Detect geographic region from coordinates
-6. Adjust confidence for out-of-distribution regions
-7. Find top similar reference sites via cosine similarity
-8. Generate 2D visualization coordinates (PCA-like projection)
-9. Store results in DynamoDB
+4. Classify using the deployed trained MLP (interim real-only model, 1280->256->64->3)
+5. Detect geographic region from coordinates and report distance to the nearest real training site (probabilities are never adjusted)
+6. Find top similar reference sites via cosine similarity (with their label source; an explicit note if unavailable)
+7. Store results in DynamoDB (one terminal RESULT or ERROR item per analysis)
 
 **Categories:**
-- `healthy` - Diverse bioacoustic signatures
-- `degraded` - Reduced acoustic diversity
-- `restored_early` - Early restoration (<3 months)
-- `restored_mid` - Mid restoration (32-53 months)
+Dataset (MARRS) reference labels, each assigned by the dataset's researchers:
+- `healthy` - least disturbed reef habitat in the local area
+- `degraded` - comparable to restored sites prior to restoration (rubble)
+- `restored_early` - reef stars installed less than 3 months before recording
+- `restored_mid` - restored 32 to 53 months before recording (reference label only; the deployed model is 3-class and has no `restored_mid` output)
 
 #### Inference (reefradar-2477-inference)
 **Memory:** 3008 MB | **Timeout:** 300s | **Runtime:** Container (Python 3.12)
@@ -161,18 +160,17 @@
 
 **File:** `lambdas/classifier/region_detection.py`
 
-Detects biogeographic region from recording coordinates and adjusts classification confidence:
+Names the biogeographic region of a recording from its coordinates and reports how far it is from the classifier's real training sites. It never scales or adjusts probabilities or confidence (removed in Phase 1, D-12).
 
-| Region | Confidence Multiplier | Training Data? |
-|--------|----------------------|----------------|
-| Indo-Pacific West (Indonesia/Philippines) | 1.0 | Yes |
-| Indian Ocean (Kenya/Maldives) | 1.0 | Yes |
-| Indo-Pacific Central (Australia/PNG) | 0.6 | No |
-| Caribbean | 0.6 | No |
-| Eastern Atlantic | 0.6 | No |
-| Red Sea | 0.6 | No |
-| Eastern Pacific | 0.6 | No |
-| Unknown (no coordinates) | 0.7 | Unknown |
+| Field | Meaning |
+|-------|---------|
+| `detected` / `name` | Region name from a coarse bounding box (descriptive only) |
+| `in_training_region` | True only when a real training site is within 50 km (`training_radius_km`) |
+| `nearest_training_site_km` | Distance to the nearest real training site |
+| `training_countries` | Countries of the real training sites (currently Indonesia and Kenya) |
+| no coordinates | `coordinates_provided: false`; the caveat says the location relative to the training sites is unknown |
+
+Being near a training site is not validation of the model there.
 
 ### 4. Storage
 
@@ -198,7 +196,7 @@ Detects biogeographic region from recording coordinates and adjusts classificati
 |----|-----|----------|
 | `UPLOAD#{id}` | `METADATA` | filename, s3_key, size, status, created_at |
 | `ANALYSIS#{id}` | `PREPROCESSED` | duration, num_segments, processed_key |
-| `ANALYSIS#{id}` | `RESULT` | classification, similar_sites, visualization |
+| `ANALYSIS#{id}` | `RESULT` | classification, similar_sites, similar_sites_error |
 | `ANALYSIS#{id}` | `ERROR` | error message, status |
 
 ### 5. ML Pipeline

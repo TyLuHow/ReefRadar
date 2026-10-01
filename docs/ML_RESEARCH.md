@@ -175,7 +175,7 @@ Output: 3 classes (softmax)
 
 - **Source:** MARRS dataset embeddings
 - **Training Samples:** 100 (small due to limited GPU access)
-- **Test Accuracy:** 90%
+- **Test Accuracy:** 90% on a random per-window split (historical v2.0 figure; not an estimate for new sites; the deployed interim real-only model reports its own split accuracy in `models/interim-real-only/TRAINING-REPORT.md`)
 - **Classes:** degraded, healthy, restored_early
 
 ### Inference Implementation

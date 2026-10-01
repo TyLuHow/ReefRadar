@@ -202,3 +202,45 @@ describe('banned-claims gate (TRUTH-07)', () => {
     expect(stale, `stale ALLOW entries: ${JSON.stringify(stale)}`).toEqual([]);
   });
 });
+
+/**
+ * Docs variant of the gate (REVIEW WR-19): the top-level docs that steer
+ * readers and AI-assisted edits must not describe behaviour that Phase 1
+ * removed (confidence multipliers, "90% accuracy", per-region confidence
+ * scaling) or claims the UI is banned from making.
+ */
+const DOC_FILES = ['README.md', 'ARCHITECTURE.md', 'CLAUDE.md', 'API.md'];
+
+const DOC_BANNED: BannedPhrase[] = [
+  { phrase: 'confidence multiplier', why: 'multipliers were removed (D-12); probabilities are never scaled' },
+  { phrase: 'adjusts confidence', why: 'region detection never adjusts confidence (D-12)' },
+  { phrase: 'adjust confidence', why: 'region detection never adjusts confidence (D-12)' },
+  { phrase: 'confidence adjustment', why: 'region detection never adjusts confidence (D-12)' },
+  { phrase: '60% confidence', why: 'removed 0.6 region multiplier (D-12)' },
+  { phrase: '70% confidence', why: 'removed 0.7 unknown-region multiplier (D-12)' },
+  { phrase: '~90% test accuracy', why: 'accuracy claim without context (DATA-MODEL s6)' },
+  { phrase: '90% accura', why: 'accuracy claim without context (DATA-MODEL s6)' },
+  { phrase: 'diverse fish communities', why: 'unmeasured ecology claim (DATA-MODEL s6)' },
+  { phrase: 'abundant snapping shrimp', why: 'unmeasured species claim (DATA-MODEL s6)' },
+  { phrase: 'projection_2d', why: 'the embedding-space visualization was removed (D-13)' },
+];
+
+describe('banned-claims gate: top-level docs (WR-19)', () => {
+  it('README / ARCHITECTURE / CLAUDE / API contain no removed-behaviour or banned claims', () => {
+    const hits: string[] = [];
+    let scanned = 0;
+    for (const name of DOC_FILES) {
+      const full = path.resolve(DASHBOARD_ROOT, '..', name);
+      if (!fs.existsSync(full)) continue;
+      scanned++;
+      const lines = fs.readFileSync(full, 'utf8').toLowerCase().split(/\r?\n/);
+      lines.forEach((line, idx) => {
+        for (const banned of DOC_BANNED) {
+          if (line.includes(banned.phrase)) hits.push(`${name}:${idx + 1} banned "${banned.phrase}" (${banned.why})`);
+        }
+      });
+    }
+    expect(scanned, 'no top-level docs found to scan').toBeGreaterThan(0);
+    expect(hits, `\n${hits.join('\n')}\n`).toEqual([]);
+  });
+});
