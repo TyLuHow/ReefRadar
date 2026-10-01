@@ -144,15 +144,17 @@ def create_attribution(output_dir: Path, healthy_src: Path, degraded_src: Path) 
 
     content = f"""# Audio Attribution
 
+Canonical citations: docs/CITATIONS.md
+
 ## MARRS Coral Reef Acoustic Dataset
 
 The demo audio files in this directory are excerpts from the MARRS
 (Mars Assisted Reef Restoration System) coral reef acoustic dataset.
 
 **Citation:**
-Williams, B., Maynes, T., Sherwood, O., et al. (2024).
-Coral reef acoustic recordings from the MARRS restoration project.
-UCL Figshare. DOI: 10.5522/04/29958062
+Williams, B. & Jones, K. (2025). Coral Reef Soundscapes from a Global
+Restoration Programme. University College London (UCL).
+DOI: 10.5522/04/29958062
 
 **License:** Creative Commons Attribution 4.0 International (CC BY 4.0)
 https://creativecommons.org/licenses/by/4.0/

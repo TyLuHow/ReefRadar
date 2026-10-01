@@ -375,7 +375,9 @@ After connecting the GitHub repository in Vercel settings (with root directory s
 
 ## Credits
 
-- **SurfPerch Model:** Google Research (bird-vocalization-classifier, adapted for underwater acoustics)
-- **Reference Data:** [MARRS Coral Reef Restoration Monitoring](https://doi.org/10.5281/zenodo.6024203) - University of Exeter
+Canonical citations: [docs/CITATIONS.md](./docs/CITATIONS.md)
+
+- **SurfPerch Model:** SurfPerch (Williams et al. 2024, arXiv:2404.16436), pre-trained on reef, bird and general audio — Google Research
+- **Reference Data:** Williams & Jones 2025, *Coral Reef Soundscapes from a Global Restoration Programme*, [DOI: 10.5522/04/29958062](https://doi.org/10.5522/04/29958062), CC BY 4.0 — University College London (UCL)
 - **Built with:** AWS Lambda, Next.js 14, TensorFlow, perch-hoplite
 - **Dashboard Hosting:** [Vercel](https://vercel.com)

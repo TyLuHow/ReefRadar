@@ -849,7 +849,7 @@ with tab3:
 
     ### Technology Stack
 
-    - **Model**: SurfPerch (bird-vocalization-classifier adapted for reef sounds)
+    - **Model**: SurfPerch (Williams et al. 2024, arXiv:2404.16436), pre-trained on reef, bird and general audio
     - **Cloud**: AWS (Lambda, ECR, S3, DynamoDB, API Gateway)
     - **Frontend**: Streamlit
 

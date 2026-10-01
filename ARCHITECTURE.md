@@ -204,7 +204,7 @@ Detects biogeographic region from recording coordinates and adjusts classificati
 ### 5. ML Pipeline
 
 #### SurfPerch Model
-**Source:** Google Research (bird-vocalization-classifier)
+**Source:** SurfPerch (Williams et al. 2024, arXiv:2404.16436), Google Research — pre-trained on reef, bird and general audio. Canonical citation: [docs/CITATIONS.md](./docs/CITATIONS.md)
 **Input:** 160,000 samples (5s @ 32kHz)
 **Output:** 1280-dimensional embedding vector
 
