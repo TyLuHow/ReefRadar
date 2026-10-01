@@ -1,0 +1,52 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-10-01T12:38:14.825Z",
+  "phase": "01",
+  "phase_name": "Truth & Reproducibility",
+  "phase_dir": ".planning/phases/01-truth-reproducibility",
+  "plan": 14,
+  "task": 1,
+  "total_tasks": 3,
+  "status": "paused",
+  "completed_tasks": [
+    {"id": "01-01", "name": "Test tooling (Vitest, Playwright+axe, pytest+moto)", "status": "done", "commit": "a524c5e"},
+    {"id": "01-02", "name": "Canonical citations", "status": "done", "commit": "790b91d"},
+    {"id": "01-03", "name": "Real MARRS excerpts + manifest + real-audio checker", "status": "done", "commit": "0106d20"},
+    {"id": "01-04", "name": "Pre-truth baselines (live)", "status": "done", "commit": "895b2d6"},
+    {"id": "01-05", "name": "Deterministic packaging, drift-check, deploy-lambdas", "status": "done", "commit": "5808aaa"},
+    {"id": "01-06", "name": "Label provenance, gallery manifest, API fixtures", "status": "done", "commit": "96c9390"},
+    {"id": "01-07", "name": "Gallery source recovery, bundle baseline, Next 14.2.35", "status": "done", "commit": "f1074e1"},
+    {"id": "01-08", "name": "CI pipeline (GitHub Actions green)", "status": "done", "commit": "1f52e27"},
+    {"id": "01-09", "name": "Recover deployed Lambdas into git (drift MATCH)", "status": "done", "commit": "6fd7897"},
+    {"id": "01-10", "name": "Deployed model audit + lock", "status": "done", "commit": "da02afd"},
+    {"id": "01-11", "name": "Classifier truth fixes", "status": "done", "commit": "a2bc335"},
+    {"id": "01-12", "name": "Router truth fixes", "status": "done", "commit": "55c59e3"},
+    {"id": "01-13", "name": "Interim real-only 3-class model + model card", "status": "done", "commit": "ef4aaf0"},
+    {"id": "01-15", "name": "Results UI honesty", "status": "done", "commit": "47e3ea7"},
+    {"id": "01-16", "name": "Real /status stages, scatter removed", "status": "done", "commit": "355074f"},
+    {"id": "01-17", "name": "Audio surfaces on real excerpts", "status": "done", "commit": "7f43593"},
+    {"id": "01-18", "name": "Gallery + sample view truth", "status": "done", "commit": "e4075a6"},
+    {"id": "01-19", "name": "Site label provenance, derived counts, about citations", "status": "done", "commit": "8c539c8"}
+  ],
+  "remaining_tasks": [
+    {"id": "01-14", "name": "Production deploy of backend truth fixes (Lambdas, interim model, S3 audio)", "status": "not_started"},
+    {"id": "01-20", "name": "Phase 1 exit gate (banned-claims CI, live sweep, Vercel preview, Linux visual baselines)", "status": "not_started"}
+  ],
+  "blockers": [
+    {"description": "Plan 01-14 production deploy was refused by the Claude Code auto-mode safety classifier despite the owner's standing approval", "type": "human_action", "workaround": "Run /gsd-execute-phase 1 in a normal (non-auto) session and approve deploy commands when prompted, or add a permission rule for scripts/deploy-lambdas.py and the S3 commands"}
+  ],
+  "async_jobs": [],
+  "human_actions_pending": [
+    {"action": "Allow or run the 01-14 production deploy", "context": "Live site still serves synthetic audio and the v2.0 model with a synthetic-only restored_mid class", "blocking": true}
+  ],
+  "decisions": [
+    {"decision": "Sequential executor dispatch (workflow.use_worktrees=false)", "rationale": "Reliable on Windows; most waves single-plan", "phase": "01"},
+    {"decision": "Interim model is 3-class real-only (degraded, healthy, restored_early)", "rationale": "Deployed restored_mid has 0 real training rows", "phase": "01"},
+    {"decision": "Bora-Bora (incl. undisturbed) and Irma sites relabelled unknown with original label shown", "rationale": "Labels describe disturbance/period context, not reef health", "phase": "01"},
+    {"decision": "Synthetic-audio checker uses AND-combined spectral thresholds", "rationale": "Plan's OR thresholds false-flagged real fish choruses; logged in .planning/WINDOWS.md", "phase": "01"},
+    {"decision": "Standing owner approvals: packages, prod deploys, AWS changes within $25/month", "rationale": "Owner message 2026-10-01", "phase": "all"}
+  ],
+  "uncommitted_files": [],
+  "next_action": "Run plan 01-14 (production deploy) with owner approval in a non-auto session, then plan 01-20, then phase 1 verification/code review/transition, then /gsd-autonomous --from 2",
+  "context_notes": "GSD project at repo root (.planning/), 17-phase roadmap, two tracks (UI + Data/ML) joined by a versioned data contract. Owner asleep during autonomous run; wants maximum autonomy. Branch redesign/v2-discovery pushed; nothing merged to main. AWS profile 'reefradar' = IAM user reefradar-agent (admin). Revisit: 01-17 removed guild names (snapping shrimp/fish) from band toggle labels as banned claims — the band filters are real; Phase 4/7 should restore honest, cited guild labels."
+}
