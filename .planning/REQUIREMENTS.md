@@ -16,7 +16,7 @@
 - [ ] **TRUTH-05**: The deployed classifier's version, classes and training data are verified and recorded; any class trained on synthetic audio is removed from the live model until retrained on real data
 - [ ] **TRUTH-06**: Displayed class probabilities are unmodified model probabilities that sum to 100% (region multipliers removed from probabilities) [CAP-38]
 - [ ] **TRUTH-07**: Descriptive copy makes no claims the system did not measure (no species claims, no fabricated crossfade states, no scripted processing messages) [CAP-17, CAP-26, CAP-36]
-- [ ] **TRUTH-08**: Dataset citations, DOIs, author lists and model paper references are corrected and consistent everywhere (MARRS Williams et al. 2025; SurfPerch arXiv 2404.16436; Irma DOI) [CAP-74]
+- [x] **TRUTH-08**: Dataset citations, DOIs, author lists and model paper references are corrected and consistent everywhere (MARRS Williams et al. 2025; SurfPerch arXiv 2404.16436; Irma DOI) [CAP-74]
 - [ ] **TRUTH-09**: Dataset-specific labels are presented with who assigned them and what they mean (e.g. Bora-Bora disturbance types are not shown as "degraded" health; post-hurricane vector not labelled healthy)
 - [ ] **TRUTH-10**: Visual, accessibility and bundle-size baselines of the current app are captured before redesign work begins
 
@@ -220,7 +220,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRUTH-05 | Phase 1 | Pending |
 | TRUTH-06 | Phase 1 | Pending |
 | TRUTH-07 | Phase 1 | Pending |
-| TRUTH-08 | Phase 1 | Pending |
+| TRUTH-08 | Phase 1 | Complete |
 | TRUTH-09 | Phase 1 | Pending |
 | TRUTH-10 | Phase 1 | Pending |
 | CONTRACT-01 | Phase 2 | Pending |
