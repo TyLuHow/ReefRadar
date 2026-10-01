@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 01
 current_phase_name: Truth & Reproducibility
 status: executing
-stopped_at: Completed 01-17-PLAN.md
-last_updated: "2026-10-01T09:45:31.063Z"
+stopped_at: Completed 01-18-PLAN.md
+last_updated: "2026-10-01T09:55:53.235Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 01 execution started
-state_head: 1fa0fbdcb74a72de090bdd4e9cb97d4cbf7b641a
+state_head: 4732ee191be7720c18c2fcef58d9b741d3bf8e0d
 progress:
   total_phases: 17
   completed_phases: 0
   total_plans: 20
-  completed_plans: 16
+  completed_plans: 17
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 01 (Truth & Reproducibility) — EXECUTING
-Plan: 17 of 20
+Plan: 18 of 20
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 01 execution started
 
@@ -76,6 +76,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P15 | 55min | 3 tasks | 14 files |
 | Phase 01-truth-reproducibility P16 | 70min | 3 tasks | 11 files |
 | Phase 01 P17 | 70min | 3 tasks | 21 files |
+| Phase 01-truth-reproducibility P18 | 55min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -122,6 +123,8 @@ Recent decisions affecting current work:
 - [Phase 01]: [Phase 01] 01-17: Location Compare manifest coordinates are the centroid of each location's real reference sites (data/snapshots/api-sites.json); no single canonical lat/lon existed per location
 - [Phase 01]: [Phase 01] 01-17: excerptCaption()'s region slot uses the excerpt's country (only region-like field available) rather than a finer sub-region string
 - [Phase 01]: [Phase 01] 01-17 Rule 2 deviation: extended the honest-copy fix beyond Task 2's declared files to dashboard/compare/page.tsx and the shared FrequencyBands.ts/FrequencyBandLabels.tsx, which made unlabelled species/behaviour claims on the same audio surfaces
+- [Phase 01]: [Phase 01] 01-18: Reference-label lookup uses existing getExcerpt(sample.id) from audio-manifest.ts (sample id == manifest excerpt_id) rather than adding a new site_id-keyed export outside the plan's declared files
+- [Phase 01]: [Phase 01] 01-18 Rule 1 fix: SampleGallery.tsx's STORY_ORDER referenced the pre-manifest 'restoration_timeline' key instead of 'restoration_ladder', silently dropping that story section
 
 ### Pending Todos
 
@@ -145,6 +148,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T09:45:31.043Z
-Stopped at: Completed 01-17-PLAN.md
+Last session: 2026-10-01T09:55:46.220Z
+Stopped at: Completed 01-18-PLAN.md
 Resume file: None

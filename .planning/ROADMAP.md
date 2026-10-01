@@ -140,7 +140,7 @@ Plans:
 
 **Wave 10** *(blocked on Wave 9 completion)*
 
-- [ ] 01-18-PLAN.md — Gallery and sample view truth (fallback from manifest, reference-label wording)
+- [x] 01-18-PLAN.md — Gallery and sample view truth (fallback from manifest, reference-label wording)
 
 **Wave 11** *(blocked on Wave 10 completion)*
 
