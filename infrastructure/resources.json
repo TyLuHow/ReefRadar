@@ -168,5 +168,37 @@
       "/aws/lambda/reefradar-2477-classifier",
       "/aws/lambda/reefradar-2477-inference"
     ]
+  },
+  "budgets": {
+    "ceiling": {
+      "name": "reefradar-2477-ceiling-25",
+      "budget_type": "COST",
+      "time_unit": "MONTHLY",
+      "limit_usd": 25,
+      "notifications": [
+        {
+          "type": "ACTUAL",
+          "operator": "GREATER_THAN",
+          "threshold_percent": 80
+        },
+        {
+          "type": "ACTUAL",
+          "operator": "GREATER_THAN",
+          "threshold_percent": 100
+        },
+        {
+          "type": "FORECASTED",
+          "operator": "GREATER_THAN",
+          "threshold_percent": 100
+        }
+      ],
+      "subscriber_type": "EMAIL",
+      "subscriber_note": "owner alert address per 02-CONTEXT.md; not stored in this file"
+    },
+    "replaced": {
+      "name": "reefradar-2477-budget",
+      "former_limit_usd": 50,
+      "status": "deleted"
+    }
   }
 }

@@ -216,3 +216,76 @@ classifier's previous async retry behaviour:
 
 4. Confirm: `py -3.12 scripts/publish_model.py --dry-run` shows live hashes equal to
    `docs/model/deployed-model.lock.json`, and `GET /health` returns 200.
+
+## Phase 2: contract infrastructure (2026-10-01)
+
+Plan 02-02. AWS resources for the data contract, created through `scripts/setup_contract_infra.py` only (no console
+edits). No credentials, presigned URLs or addresses appear in this section.
+
+### Approving decision
+
+- The owner's standing approval for AWS changes within the 25 USD/month ceiling (`DRIVING-QUESTIONS.md`).
+- The owner's decision recorded in `02-CONTEXT.md`, "Owner decisions after research" (2026-10-01): replace the
+  alert-less 50 USD budget with a single 25 USD/month budget that emails alerts at 80% and 100% of actual spend and at
+  100% of forecast spend.
+
+### Budget (created 2026-10-01, before any contract publish)
+
+| Item | Value |
+|---|---|
+| Name | `reefradar-2477-ceiling-25` |
+| Type, period, limit | COST, MONTHLY, 25 USD |
+| Notification 1 | ACTUAL greater than 80% |
+| Notification 2 | ACTUAL greater than 100% |
+| Notification 3 | FORECASTED greater than 100% |
+| Subscribers | one EMAIL subscriber per notification: the owner alert address per 02-CONTEXT.md |
+
+The new budget and all three notifications (with their subscribers) were read back before the old budget was removed.
+Budget data lags by several hours, so this is an alarm, not a spend stop.
+
+### Legacy budget removed
+
+`reefradar-2477-budget` had no notifications, so it never alerted. Prior parameters: COST, MONTHLY, limit 50.0 USD,
+no cost filters, default cost types (tax, subscription, refund, credit, upfront, recurring, other subscription,
+support and discount all included; blended and amortized off). Deleted after the read-back above.
+
+To recreate it, save this as `legacy-budget.json` and run the command below:
+
+```
+{
+  "BudgetName": "reefradar-2477-budget",
+  "BudgetType": "COST",
+  "TimeUnit": "MONTHLY",
+  "BudgetLimit": {"Amount": "50.0", "Unit": "USD"},
+  "CostFilters": {},
+  "CostTypes": {"IncludeTax": true, "IncludeSubscription": true, "UseBlended": false, "IncludeRefund": true,
+                "IncludeCredit": true, "IncludeUpfront": true, "IncludeRecurring": true,
+                "IncludeOtherSubscription": true, "IncludeSupport": true, "IncludeDiscount": true,
+                "UseAmortized": false}
+}
+```
+
+```
+py -3.12 -m awscli budgets create-budget --account-id 781978598306 --budget file://legacy-budget.json --profile reefradar
+```
+
+### Commands used
+
+```
+py -3.12 scripts/setup_contract_infra.py --step budget --dry-run --notify-email <owner alert address>
+py -3.12 scripts/setup_contract_infra.py --step budget --confirm --notify-email <owner alert address>
+py -3.12 scripts/setup_contract_infra.py --step budget --verify
+py -3.12 scripts/setup_contract_infra.py --step budget --record-resources
+```
+
+The first `--confirm` created the budget and its notifications, then stopped at the read-back because the real Budgets API
+omits `ThresholdType` when it is the default (PERCENTAGE). The script was fixed (`155b40d`) and `--confirm` was re-run: it
+created nothing, read the budget back (3 notifications) and then deleted the legacy budget, which also demonstrates the
+idempotent resume.
+
+### Rollback (budget)
+
+Delete the new budget with
+`py -3.12 -m awscli budgets delete-budget --account-id 781978598306 --budget-name reefradar-2477-ceiling-25 --profile reefradar`
+and recreate the legacy one with the command above. Do this only together with a replacement alarm: the contract publish
+requires an armed budget.
