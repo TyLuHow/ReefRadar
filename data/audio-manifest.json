@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "dataset": {
+    "citation_id": "marrs",
+    "doi": "10.5522/04/29958062",
+    "licence": "CC BY 4.0",
+    "figshare_article": 29958062
+  },
+  "selection_rule": "For each site, among WAV files named <site>_<YYYYMMDD>_<HHMMSS>.WAV, select the file on the date (first recorded date + 1 day(s)) whose recorder-clock time is nearest 12:00:00; if no files exist on that date, fall forward to the next date that has files; ties resolve to the earlier time. Offset into the selected file is 15.0s, excerpt duration is 30.0s.",
+  "timezone_note": "Filename timestamps are the recorder clock; timezone unverified until Phase 8 (DATA-02).",
+  "excerpts": [
+    {
+      "excerpt_id": "ind_H1_20220830_120000",
+      "site_id": "ind_H1",
+      "source_zip": "ind_H1.zip",
+      "source_file": "ind_H1_20220830_120000.WAV",
+      "figshare_file_id": 57334727,
+      "recorded_at_recorder_clock": "2022-08-30T12:00:00",
+      "timezone": "unverified",
+      "time_of_day_recorder_clock": "12:00",
+      "offset_s": 15.0,
+      "duration_s": 30.0,
+      "sample_rate_hz": 16000,
+      "channels": 1,
+      "bits_per_sample": 16,
+      "gain_db": 0,
+      "normalized": false,
+      "path": "dashboard-next/public/audio/marrs/ind_H1_20220830_120000.wav",
+      "url_path": "/audio/marrs/ind_H1_20220830_120000.wav",
+      "sha256": "df098586c4f234e553dabdc82cebfd4ddae00ffa477278560f01a43b09a9bc62",
+      "rms_dbfs": -60.93,
+      "bytes": 960044
+    }
+  ]
+}
