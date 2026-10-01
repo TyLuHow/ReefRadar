@@ -1,0 +1,250 @@
+{
+  "$defs": {
+    "absent_artifact": {
+      "description": "An artifact that this contract version does not contain: exactly {\"present\": false}.",
+      "maxProperties": 1,
+      "minProperties": 1,
+      "properties": {
+        "present": {
+          "const": false
+        }
+      },
+      "required": [
+        "present"
+      ],
+      "type": "object"
+    },
+    "artifact": {
+      "properties": {
+        "bytes": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "content_type": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "count": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "uri": {
+          "$ref": "#/$defs/artifact_uri"
+        }
+      },
+      "required": [
+        "uri",
+        "sha256",
+        "bytes",
+        "content_type"
+      ],
+      "type": "object"
+    },
+    "artifact_or_absent": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/artifact"
+        },
+        {
+          "$ref": "#/$defs/absent_artifact"
+        }
+      ]
+    },
+    "artifact_uri": {
+      "description": "Path relative to the contract base URL: contract/... or v<N>/..., never absolute, never a URL, never containing '..'.",
+      "pattern": "^(contract|v[0-9]+)/(?!.*\\.\\.)[A-Za-z0-9_./-]+$",
+      "type": "string"
+    },
+    "version_string": {
+      "pattern": "^[a-z0-9][a-z0-9.+-]*$",
+      "type": "string"
+    }
+  },
+  "$id": "urn:reefradar:contract:manifest",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Manifest of one immutable contract version (contract/v<N>.json). Additive-only: later versions may add optional properties and artifacts.",
+  "properties": {
+    "artifacts": {
+      "additionalProperties": {
+        "$ref": "#/$defs/artifact_or_absent"
+      },
+      "properties": {
+        "aggregates_diel": {
+          "$ref": "#/$defs/artifact_or_absent"
+        },
+        "aggregates_effort": {
+          "$ref": "#/$defs/artifact_or_absent"
+        },
+        "detections": {
+          "$ref": "#/$defs/artifact_or_absent"
+        },
+        "model_version": {
+          "$ref": "#/$defs/artifact_or_absent"
+        },
+        "preprocessing_spec": {
+          "$ref": "#/$defs/artifact_or_absent"
+        },
+        "schemas": {
+          "additionalProperties": {
+            "$ref": "#/$defs/artifact"
+          },
+          "type": "object"
+        },
+        "sites": {
+          "$ref": "#/$defs/artifact_or_absent"
+        },
+        "stamp": {
+          "$ref": "#/$defs/artifact_or_absent"
+        }
+      },
+      "required": [
+        "sites",
+        "schemas",
+        "aggregates_diel",
+        "aggregates_effort",
+        "detections"
+      ],
+      "type": "object"
+    },
+    "contract_version": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "coverage": {
+      "properties": {
+        "countries": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "has_detections": {
+          "type": "boolean"
+        },
+        "has_diel": {
+          "type": "boolean"
+        },
+        "has_effort": {
+          "type": "boolean"
+        },
+        "has_pre_post_event": {
+          "type": "boolean"
+        },
+        "sites_with_embeddings": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total_sites": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "has_diel",
+        "has_detections",
+        "has_pre_post_event",
+        "has_effort",
+        "total_sites",
+        "sites_with_embeddings",
+        "countries"
+      ],
+      "type": "object"
+    },
+    "dataset_version": {
+      "$ref": "#/$defs/version_string"
+    },
+    "datasets": {
+      "items": {
+        "properties": {
+          "doi": {
+            "pattern": "^10\\.\\d{4,9}/\\S+$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "doi_note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "licence": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "licence_url": {
+            "pattern": "^https://\\S+$",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "pattern": "^https://\\S+$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "doi",
+          "doi_note",
+          "url",
+          "licence",
+          "licence_url"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "fixture": {
+      "description": "True only for test fixtures. Publishing refuses any manifest that sets it.",
+      "type": "boolean"
+    },
+    "frozen_at": {
+      "description": "When the contract data was frozen at build time. The actual publish time is recorded by the publisher in contracts/PUBLISHED.json.",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$",
+      "type": "string"
+    },
+    "model_version": {
+      "$ref": "#/$defs/version_string"
+    },
+    "preprocessing_spec_version": {
+      "$ref": "#/$defs/version_string"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "sources": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "contract_version",
+    "frozen_at",
+    "dataset_version",
+    "model_version",
+    "preprocessing_spec_version",
+    "coverage",
+    "artifacts",
+    "datasets",
+    "sources"
+  ],
+  "title": "ContractManifest",
+  "type": "object"
+}

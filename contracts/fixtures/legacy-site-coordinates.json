@@ -1,0 +1,282 @@
+{
+  "aus_D1": {
+    "lat": -16.84732,
+    "location": "Great Barrier Reef, Australia",
+    "lon": 146.22907
+  },
+  "aus_D2": {
+    "lat": -16.847,
+    "location": "Great Barrier Reef, Australia",
+    "lon": 146.22946
+  },
+  "aus_D3": {
+    "lat": -16.84667,
+    "location": "Great Barrier Reef, Australia",
+    "lon": 146.22975
+  },
+  "aus_H1": {
+    "lat": -16.84761,
+    "location": "Great Barrier Reef, Australia",
+    "lon": 146.22839
+  },
+  "aus_H2": {
+    "lat": -16.84782,
+    "location": "Great Barrier Reef, Australia",
+    "lon": 146.22798
+  },
+  "aus_H3": {
+    "lat": -16.84656,
+    "location": "Great Barrier Reef, Australia",
+    "lon": 146.22653
+  },
+  "aus_R1": {
+    "lat": -16.84719,
+    "location": "Great Barrier Reef, Australia",
+    "lon": 146.22866
+  },
+  "borabora_boat_traffic": {
+    "lat": -16.5132,
+    "location": "Bora-Bora, French Polynesia",
+    "lon": -151.7589
+  },
+  "borabora_tourist": {
+    "lat": -16.4864,
+    "location": "Bora-Bora, French Polynesia",
+    "lon": -151.7256
+  },
+  "borabora_undisturbed": {
+    "lat": -16.5004,
+    "location": "Bora-Bora, French Polynesia",
+    "lon": -151.7415
+  },
+  "ind_D1": {
+    "lat": -4.928784,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.316541
+  },
+  "ind_D2": {
+    "lat": -4.9401,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.318815
+  },
+  "ind_D3": {
+    "lat": -4.930635,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.316119
+  },
+  "ind_D4": {
+    "lat": -4.931781,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.316612
+  },
+  "ind_D5": {
+    "lat": -4.932403,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.31646
+  },
+  "ind_D6": {
+    "lat": -4.930792,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.318102
+  },
+  "ind_H1": {
+    "lat": -4.9216,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.316922
+  },
+  "ind_H2": {
+    "lat": -4.923003,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.316719
+  },
+  "ind_H3": {
+    "lat": -4.934867,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.317384
+  },
+  "ind_H4": {
+    "lat": -4.929463,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.316792
+  },
+  "ind_H5": {
+    "lat": -4.936146,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.317739
+  },
+  "ind_H6": {
+    "lat": -4.940581,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.32009
+  },
+  "ind_N1": {
+    "lat": -4.9310799,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.3159127
+  },
+  "ind_N2": {
+    "lat": -4.9314166,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.3162828
+  },
+  "ind_N3": {
+    "lat": -4.9319109,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.3163365
+  },
+  "ind_R1": {
+    "lat": -4.922214,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.317036
+  },
+  "ind_R2": {
+    "lat": -4.926557,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.316267
+  },
+  "ind_R3": {
+    "lat": -4.927522,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.317245
+  },
+  "ind_R4": {
+    "lat": -4.927955,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.315882
+  },
+  "ind_R5": {
+    "lat": -4.93155,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.315775
+  },
+  "ind_R6": {
+    "lat": -4.92572,
+    "location": "South Sulawesi, Indonesia",
+    "lon": 119.316127
+  },
+  "irma_eastern_sambo_post": {
+    "lat": 24.4915,
+    "location": "Florida Keys, USA",
+    "lon": -81.6625
+  },
+  "irma_eastern_sambo_pre": {
+    "lat": 24.4915,
+    "location": "Florida Keys, USA",
+    "lon": -81.6625
+  },
+  "irma_western_dry_rocks": {
+    "lat": 24.4468,
+    "location": "Florida Keys, USA",
+    "lon": -81.9275
+  },
+  "irma_western_dry_rocks_pre": {
+    "lat": 24.4468,
+    "location": "Florida Keys, USA",
+    "lon": -81.9275
+  },
+  "ken_D1": {
+    "lat": -2.215419,
+    "location": "Mombasa Coast, Kenya",
+    "lon": 41.014101
+  },
+  "ken_D3": {
+    "lat": -2.213638,
+    "location": "Mombasa Coast, Kenya",
+    "lon": 41.019482
+  },
+  "ken_H1": {
+    "lat": -2.215614,
+    "location": "Mombasa Coast, Kenya",
+    "lon": 41.013482
+  },
+  "ken_H2": {
+    "lat": -2.214743,
+    "location": "Mombasa Coast, Kenya",
+    "lon": 41.016132
+  },
+  "ken_N1": {
+    "lat": -2.21411,
+    "location": "Mombasa Coast, Kenya",
+    "lon": 41.017986
+  },
+  "mal_D1": {
+    "lat": 4.8864713,
+    "location": "North Male Atoll, Maldives",
+    "lon": 72.9360995
+  },
+  "mal_D2": {
+    "lat": 4.8867,
+    "location": "North Male Atoll, Maldives",
+    "lon": 72.9349
+  },
+  "mal_H1": {
+    "lat": 4.8864,
+    "location": "North Male Atoll, Maldives",
+    "lon": 72.9278
+  },
+  "mal_H2": {
+    "lat": 4.8856,
+    "location": "North Male Atoll, Maldives",
+    "lon": 72.9239
+  },
+  "mal_N1": {
+    "lat": 4.8855893,
+    "location": "North Male Atoll, Maldives",
+    "lon": 72.9251649
+  },
+  "mex_D1": {
+    "lat": 18.3405443,
+    "location": "Caribbean Coast, Mexico",
+    "lon": -87.8075489
+  },
+  "mex_D2": {
+    "lat": 18.288481,
+    "location": "Caribbean Coast, Mexico",
+    "lon": -87.825105
+  },
+  "mex_H1": {
+    "lat": 18.3416616,
+    "location": "Caribbean Coast, Mexico",
+    "lon": -87.8074022
+  },
+  "mex_H2": {
+    "lat": 18.260936,
+    "location": "Caribbean Coast, Mexico",
+    "lon": -87.825753
+  },
+  "mex_H3": {
+    "lat": 18.261723,
+    "location": "Caribbean Coast, Mexico",
+    "lon": -87.8255695
+  },
+  "mex_N1": {
+    "lat": 18.262246,
+    "location": "Caribbean Coast, Mexico",
+    "lon": -87.825671
+  },
+  "mex_R1": {
+    "lat": 18.34107,
+    "location": "Caribbean Coast, Mexico",
+    "lon": -87.807348
+  },
+  "sanctsound_fk01": {
+    "lat": 24.5575,
+    "location": "Florida Keys, USA",
+    "lon": -81.4044
+  },
+  "sanctsound_fk02": {
+    "lat": 24.5433,
+    "location": "Florida Keys, USA",
+    "lon": -81.5192
+  },
+  "sanctsound_fk03": {
+    "lat": 24.6128,
+    "location": "Florida Keys, USA",
+    "lon": -81.1067
+  },
+  "sanctsound_fk04": {
+    "lat": 24.4561,
+    "location": "Florida Keys, USA",
+    "lon": -81.7858
+  }
+}

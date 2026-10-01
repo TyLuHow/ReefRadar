@@ -1,0 +1,206 @@
+{
+  "$id": "urn:reefradar:contract:site",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [
+    {
+      "description": "A site whose dataset gives no label definition has no health status; the reason must be stated.",
+      "if": {
+        "properties": {
+          "label_definition": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "label_definition"
+        ]
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "const": "unknown"
+          },
+          "status_basis": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "status_basis"
+        ]
+      }
+    },
+    {
+      "description": "A dataset without a DOI states why (the dataset's own verification note); a DOI is never invented.",
+      "if": {
+        "properties": {
+          "doi": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "doi"
+        ]
+      },
+      "then": {
+        "properties": {
+          "doi_note": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "doi_note"
+        ]
+      }
+    }
+  ],
+  "description": "One reference site in the ReefRadar data contract, with the provenance of its location, dataset, licence and label. Additive-only: new optional properties may appear in later contract versions.",
+  "properties": {
+    "country": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "dataset_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "dataset_name": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "dataset_url": {
+      "pattern": "^https://\\S+$",
+      "type": "string"
+    },
+    "doi": {
+      "pattern": "^10\\.\\d{4,9}/\\S+$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "doi_note": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "label_assigned_by": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "label_definition": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "label_note": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "label_original": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "label_source_name": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "latitude": {
+      "maximum": 90,
+      "minimum": -90,
+      "type": "number"
+    },
+    "licence": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "licence_url": {
+      "pattern": "^https://\\S+$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "location_label": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "longitude": {
+      "maximum": 180,
+      "minimum": -180,
+      "type": "number"
+    },
+    "period": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reference_role": {
+      "enum": [
+        "acoustic_reference",
+        "location_only"
+      ]
+    },
+    "region": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "site_id": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "healthy",
+        "degraded",
+        "restored_early",
+        "restored_mid",
+        "unknown"
+      ]
+    },
+    "status_basis": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "synthetic": {
+      "const": false
+    }
+  },
+  "required": [
+    "site_id",
+    "country",
+    "region",
+    "location_label",
+    "latitude",
+    "longitude",
+    "status",
+    "reference_role",
+    "dataset_id",
+    "dataset_name",
+    "doi",
+    "doi_note",
+    "dataset_url",
+    "licence",
+    "licence_url",
+    "label_source_name",
+    "label_assigned_by",
+    "label_original",
+    "label_definition",
+    "status_basis",
+    "period",
+    "label_note",
+    "synthetic"
+  ],
+  "title": "Site",
+  "type": "object"
+}

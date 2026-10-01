@@ -1,0 +1,26 @@
+{
+  "$id": "urn:reefradar:contract:pointer",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "contract/latest.json: the only mutable object in the contract bucket. Points at an immutable manifest and records its sha256.",
+  "properties": {
+    "contract_version": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "manifest_uri": {
+      "pattern": "^contract/v[0-9]+\\.json$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_version",
+    "manifest_uri",
+    "manifest_sha256"
+  ],
+  "title": "ContractPointer",
+  "type": "object"
+}

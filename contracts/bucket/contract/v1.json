@@ -1,0 +1,116 @@
+{
+  "artifacts": {
+    "aggregates_diel": {
+      "present": false
+    },
+    "aggregates_effort": {
+      "present": false
+    },
+    "detections": {
+      "present": false
+    },
+    "schemas": {
+      "contract_manifest": {
+        "bytes": 5918,
+        "content_type": "application/json",
+        "sha256": "ac980e90a1e4fca6ee511a349b9e4d52ad29eb2febea3b8b269559d36a7130af",
+        "uri": "v1/schema/contract-manifest.schema.json"
+      },
+      "contract_pointer": {
+        "bytes": 677,
+        "content_type": "application/json",
+        "sha256": "d101ccab16f01084d8c180fed71dd04b78665b606d7b1fe70aa9a126d48a31bf",
+        "uri": "v1/schema/contract-pointer.schema.json"
+      },
+      "site": {
+        "bytes": 3945,
+        "content_type": "application/json",
+        "sha256": "6bec9ebaf42fe518339e79a946f2b2b04d7a701ae282fd187d782e6bb7dcae0d",
+        "uri": "v1/schema/site.schema.json"
+      }
+    },
+    "sites": {
+      "bytes": 54081,
+      "content_type": "application/json",
+      "count": 54,
+      "sha256": "10a4e0567107c76b4e6b788fdcc6792f5b18302a05f7354d3672169f7b321406",
+      "uri": "v1/sites.json"
+    }
+  },
+  "contract_version": 1,
+  "coverage": {
+    "countries": 7,
+    "has_detections": false,
+    "has_diel": false,
+    "has_effort": false,
+    "has_pre_post_event": false,
+    "sites_with_embeddings": 48,
+    "total_sites": 54
+  },
+  "dataset_version": "reefradar-reference-2026.10.0",
+  "datasets": [
+    {
+      "doi": "10.5522/04/29958062",
+      "doi_note": null,
+      "id": "marrs",
+      "licence": "CC BY 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+      "name": "MARRS (Mars Assisted Reef Restoration System)",
+      "title": "Coral Reef Soundscapes from a Global Restoration Programme",
+      "url": "https://doi.org/10.5522/04/29958062"
+    },
+    {
+      "doi": "10.5281/zenodo.14577064",
+      "doi_note": null,
+      "id": "coralsoundexplorer",
+      "licence": "CC BY 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+      "name": "CoralSoundExplorer",
+      "title": "Visualization and quantification of coral reef soundscapes using CoralSoundExplorer software",
+      "url": "https://zenodo.org/records/14577064"
+    },
+    {
+      "doi": "10.5061/dryad.5tb2rbp38",
+      "doi_note": null,
+      "id": "irma",
+      "licence": "CC0 1.0 (Public Domain Dedication)",
+      "licence_url": "https://spdx.org/licenses/CC0-1.0.html",
+      "name": "Hurricane Irma Dataset",
+      "title": "Hurricane impacts on a coral reef soundscape",
+      "url": "https://datadryad.org/dataset/doi:10.5061/dryad.5tb2rbp38"
+    },
+    {
+      "doi": null,
+      "doi_note": "SanctSound issues per-site, per-detection-type DOIs at NCEI (e.g. 10.25921/PF0H-SQ72) rather than one collection-level DOI — confirmed live this session against the NCEI passive-acoustic-data page. No single DOI exists for the project as a whole, so doi is recorded null and the project landing page is used as the canonical url. Underlying archive filenames (NOAA-Navy-SanctSound_*) show the U.S. Navy as a co-contributing data partner alongside NOAA ONMS.",
+      "id": "sanctsound",
+      "licence": "Public domain (U.S. Government work)",
+      "licence_url": null,
+      "name": "NOAA SanctSound",
+      "title": "Sanctuary Soundscape Monitoring Project (SanctSound)",
+      "url": "https://sanctsound.ioos.us/"
+    }
+  ],
+  "frozen_at": "2026-10-01T22:10:03Z",
+  "model_version": "interim-real-only",
+  "preprocessing_spec_version": "preproc-2026.10.0-as-deployed",
+  "schema_version": 1,
+  "sources": {
+    "citations": {
+      "path": "dashboard-next/src/data/citations.json",
+      "schema_version": 1,
+      "sha256": "93a4d5901d52d2b0e22449abac27f8a1abe6a877aa6b582896c1b547a93c09b6",
+      "verified_at": "2026-10-01"
+    },
+    "provenance": {
+      "path": "data/site-label-provenance.json",
+      "schema_version": 1,
+      "sha256": "c44128d61fa1088cac2b81cac8d70fddfcd979edb50de9713945266c90cff109"
+    },
+    "snapshot": {
+      "path": "data/snapshots/api-sites.json",
+      "sha256": "bb3c5582c6b07b2fc6d580917c826b8d2815efb089951c9b9a0586b9f7b1a15c",
+      "snapshot_at": "2026-10-01T06:23:53Z",
+      "version": "6.0"
+    }
+  }
+}
