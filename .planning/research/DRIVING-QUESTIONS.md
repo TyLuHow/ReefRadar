@@ -22,3 +22,9 @@
 - §6 Visual direction: replace with light scientific-editorial (see Q8).
 - §8 Tech: data volume rises from ~300 KB to precomputed aggregates over ~9,000 h — still serve **precomputed aggregates** (per-site × hour-of-day × day, per-detection-class counts, embedding summaries) as static/CDN data or small query endpoints; raw audio streamed per clip on demand. Re-evaluate DuckDB-WASM/Parquet for the aggregate layer during data-contract research.
 - §10 Roadmap: add parallel **Data & Model track** (ingestion → embedding/detections → evaluation → retrain → publish versioned dataset/model) feeding the UI tracks; UI phases consume a versioned data contract so they are not blocked on ingestion.
+
+## Budget decision (2026-09-30)
+
+| # | Question | Decision | Consequence for planning |
+|---|---|---|---|
+| Q10 | AWS spend ceiling | **$25 (interpreted as monthly; owner to correct if total)** | AWS Budget alarm + automated stop action at $25/month before any batch job. Large ingestion (Q3) is redesigned as **stream-process-discard**: figshare files are streamed, windowed, embedded and aggregated without persisting the ~1 TB raw archive; only embeddings (float16), detections, aggregates and curated listening clips are stored (~16–33 GB, ≈$1/month). Embedding runs on Spot capacity only after a pilot shard measures cost; if projected compute exceeds the remaining monthly budget, ingestion is sharded across months or sub-sampled (stratified by site × hour-of-day) with the sampling disclosed. |
