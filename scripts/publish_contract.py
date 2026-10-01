@@ -49,6 +49,7 @@ sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 import check_contract  # noqa: E402
 import contract_lib  # noqa: E402
+from setup_contract_infra import ACCOUNT_ID, BUDGET_NAME  # noqa: E402
 
 DEFAULT_BUCKET = "reefradar-2477-contract"
 IMMUTABLE_CACHE = "public, max-age=31536000, immutable"
@@ -59,10 +60,16 @@ DEFAULT_PUBLISHED = REPO_ROOT / "contracts" / "PUBLISHED.json"
 
 ACTION_CREATED = "created"
 ACTION_EXISTS_IDENTICAL = "exists_identical"
+REQUIRED_NOTIFICATIONS = 3
+EXIT_BLOCKED = 2
 
 
 class PublishError(RuntimeError):
     """Raised for any condition that must stop the publish."""
+
+
+class BucketReadError(PublishError):
+    """The bucket could not be read (no access, no credentials); distinct from a real conflict."""
 
 
 def sha256_hex(data: bytes) -> str:
@@ -92,12 +99,35 @@ def current_git_sha() -> str:
 # The committed bundle
 # ---------------------------------------------------------------------------
 
-def load_bundle(bundle: pathlib.Path, version: int) -> dict:
+def pointer_bytes(version: int, manifest_sha256: str, schema_dir: pathlib.Path) -> bytes:
+    """Canonical bytes of contract/latest.json for a version, validated against its schema."""
+    pointer = {
+        "contract_version": version,
+        "manifest_uri": f"contract/v{version}.json",
+        "manifest_sha256": manifest_sha256,
+    }
+    errors = contract_lib.validation_errors(pointer, "contract-pointer", schema_dir)
+    if errors:
+        raise PublishError("pointer failed its schema: " + "; ".join(errors))
+    return contract_lib.canonical_json_bytes(pointer)
+
+
+def recorded_sha256(published: dict, version: int):
+    """The manifest sha256 PUBLISHED.json records for a version (record object or bare hash), or None."""
+    record = published.get(str(version))
+    return record.get("manifest_sha256") if isinstance(record, dict) else record
+
+
+def load_bundle(bundle: pathlib.Path, version: int, published: dict | None = None) -> dict:
     """Validate the committed bundle for `version` and return what would be published.
+
+    Refuses a manifest marked fixture, CRLF in any JSON file, a bundle that fails check_contract,
+    and a manifest whose hash differs from the one PUBLISHED.json records for this version.
 
     Returns {"items": [{key, body, sha256, content_type}] in upload order (artifacts sorted by
     key, then the manifest), "manifest_sha256", "pointer": bytes}.
     """
+    published = published or {}
     bundle = pathlib.Path(bundle)
     contracts_dir = bundle.parent
     manifest_path = bundle / "contract" / f"v{version}.json"
@@ -110,6 +140,17 @@ def load_bundle(bundle: pathlib.Path, version: int) -> dict:
         raise PublishError(f"contract/v{version}.json: not valid UTF-8 JSON ({exc})") from exc
     if not isinstance(manifest, dict) or manifest.get("contract_version") != version:
         raise PublishError(f"contract/v{version}.json: contract_version is not {version}")
+    if manifest.get("fixture") is True:
+        raise PublishError(f"contract/v{version}.json is marked fixture true; a fixture is never published")
+    if b"\r" in raw:
+        raise PublishError(f"contract/v{version}.json contains CRLF line endings (contract JSON must be LF-only)")
+    manifest_sha = sha256_hex(raw)
+    recorded = recorded_sha256(published, version)
+    if recorded is not None and recorded != manifest_sha:
+        raise PublishError(
+            f"published version {version} modified: manifest sha256 {manifest_sha} differs from "
+            f"PUBLISHED.json ({recorded}); versions are immutable, bump the contract version instead"
+        )
     artifacts = manifest.get("artifacts") if isinstance(manifest.get("artifacts"), dict) else {}
 
     uris = sorted(
@@ -119,10 +160,16 @@ def load_bundle(bundle: pathlib.Path, version: int) -> dict:
             if isinstance(entry, dict) and entry.get("present") is not False and isinstance(entry.get("uri"), str)
         }
     )
+    for uri in uris:
+        path = bundle / uri
+        if uri.endswith(".json") and path.is_file() and b"\r" in path.read_bytes():
+            raise PublishError(f"{uri} contains CRLF line endings (contract JSON must be LF-only)")
     problems = []
     try:
+        # Once a version is published its bundled schema copies are frozen while the source schemas
+        # may grow additively, so copy-equals-source only holds for a version not yet published.
         problems = check_contract.check_manifest(
-            manifest_path, contracts_dir, fixture=False, copies_must_match=True
+            manifest_path, contracts_dir, fixture=False, copies_must_match=recorded is None
         )
     except (contract_lib.ContractError, OSError) as exc:
         problems = [str(exc)]
@@ -134,18 +181,13 @@ def load_bundle(bundle: pathlib.Path, version: int) -> dict:
     for uri in uris:
         body = (bundle / uri).read_bytes()
         items.append({"key": uri, "body": body, "sha256": sha256_hex(body), "content_type": content_type_for(uri)})
-    manifest_key = f"contract/v{version}.json"
-    manifest_sha = sha256_hex(raw)
-    items.append({"key": manifest_key, "body": raw, "sha256": manifest_sha, "content_type": "application/json"})
-
-    pointer = {"contract_version": version, "manifest_uri": manifest_key, "manifest_sha256": manifest_sha}
-    errors = contract_lib.validation_errors(pointer, "contract-pointer", contracts_dir / "schema")
-    if errors:
-        raise PublishError("pointer failed its schema: " + "; ".join(errors))
+    items.append(
+        {"key": f"contract/v{version}.json", "body": raw, "sha256": manifest_sha, "content_type": "application/json"}
+    )
     return {
         "items": items,
         "manifest_sha256": manifest_sha,
-        "pointer": contract_lib.canonical_json_bytes(pointer),
+        "pointer": pointer_bytes(version, manifest_sha, contracts_dir / "schema"),
     }
 
 
@@ -183,8 +225,13 @@ def put_immutable(s3, bucket: str, item: dict) -> str:
 
 def verify_objects(s3, bucket: str, items: list[dict]) -> None:
     """Re-download every object and compare its sha256 and Cache-Control."""
+    from botocore.exceptions import ClientError
+
     for item in items:
-        obj = _get(s3, bucket, item["key"])
+        try:
+            obj = _get(s3, bucket, item["key"])
+        except ClientError as exc:
+            raise PublishError(f"{item['key']}: cannot be re-downloaded from the bucket ({_code(exc) or 'error'})") from exc
         body = obj["Body"].read()
         if sha256_hex(body) != item["sha256"]:
             raise PublishError(f"{item['key']}: re-downloaded sha256 {sha256_hex(body)} != expected {item['sha256']}")
@@ -204,7 +251,7 @@ def read_pointer(s3, bucket: str):
     except ClientError as exc:
         if _code(exc) in ("NoSuchKey", "404", "NotFound"):
             return None
-        raise PublishError(f"cannot read {POINTER_KEY} ({_code(exc) or 'error'})") from exc
+        raise BucketReadError(f"cannot read {POINTER_KEY} ({_code(exc) or 'error'})") from exc
     return obj["Body"].read(), obj["ETag"]
 
 
@@ -276,12 +323,125 @@ def _emit(**fields) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Guards
+# ---------------------------------------------------------------------------
+
+def probe_object(s3, bucket: str, item: dict) -> str:
+    """Read-only state of one object: absent | identical | different | cache_mismatch."""
+    from botocore.exceptions import ClientError
+
+    try:
+        obj = _get(s3, bucket, item["key"])
+    except ClientError as exc:
+        if _code(exc) in ("NoSuchKey", "404", "NotFound"):
+            return "absent"
+        raise BucketReadError(f"cannot read {item['key']} ({_code(exc) or 'error'})") from exc
+    if sha256_hex(obj["Body"].read()) != item["sha256"]:
+        return "different"
+    return "identical" if obj.get("CacheControl") == IMMUTABLE_CACHE else "cache_mismatch"
+
+
+def inspect_bucket(s3, bucket: str, items: list[dict], version: int, pointer: bytes) -> dict:
+    """Read-only look at what the bucket already holds, and why a publish could not proceed.
+
+    Returns {"states": {key: state}, "pointer_state": absent|identical|older, "etag", "problems": [...]}.
+    """
+    states = {item["key"]: probe_object(s3, bucket, item) for item in items}
+    problems = []
+    for key, state in states.items():
+        if state == "different":
+            problems.append(f"{key} exists with different content; versions are immutable")
+        elif state == "cache_mismatch":
+            problems.append(
+                f"{key} exists with identical bytes but not the immutable Cache-Control; "
+                "an existing object is never rewritten"
+            )
+    current = read_pointer(s3, bucket)
+    pointer_state, etag = "absent", None
+    if current is not None:
+        body, etag = current
+        try:
+            current_version = json.loads(body)["contract_version"]
+        except (ValueError, KeyError, TypeError):
+            current_version = None
+        if body == pointer:
+            pointer_state = "identical"
+        elif not isinstance(current_version, int) or isinstance(current_version, bool):
+            problems.append(f"{POINTER_KEY} is not a valid pointer; inspect it before publishing")
+        elif current_version > version:
+            problems.append(
+                f"{POINTER_KEY} points at version {current_version}, newer than {version}; "
+                f"publishing is forward-only, use --set-latest {version} to move the pointer back"
+            )
+        elif current_version == version:
+            problems.append(f"{POINTER_KEY} names version {version} but a different manifest hash")
+        else:
+            pointer_state = "older"
+    return {"states": states, "pointer_state": pointer_state, "etag": etag, "problems": problems}
+
+
+def uncommitted_contract_paths(contracts_dir: pathlib.Path) -> list[str]:
+    """`git status --porcelain` lines (including untracked files) under the contracts directory."""
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(contracts_dir), "status", "--porcelain", "--", "."],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise PublishError(f"cannot verify that contracts/ is committed (git failed: {type(exc).__name__})") from exc
+    if proc.returncode != 0:
+        raise PublishError(f"cannot verify that {contracts_dir} is committed (git status failed)")
+    return [line for line in proc.stdout.splitlines() if line.strip()]
+
+
+def budget_gate(budgets) -> tuple[bool, str]:
+    """(ok, detail): the cost-ceiling budget exists with all three notifications."""
+    from botocore.exceptions import ClientError
+
+    try:
+        budgets.describe_budget(AccountId=ACCOUNT_ID, BudgetName=BUDGET_NAME)
+        notifications = budgets.describe_notifications_for_budget(
+            AccountId=ACCOUNT_ID, BudgetName=BUDGET_NAME
+        ).get("Notifications", [])
+    except ClientError as exc:
+        if _code(exc) == "NotFoundException":
+            return False, "budget not found"
+        return False, f"cannot be verified ({_code(exc) or 'error'})"
+    except Exception as exc:  # noqa: BLE001 - no credentials, unknown profile: report the class only
+        return False, f"cannot be verified ({type(exc).__name__})"
+    if len(notifications) < REQUIRED_NOTIFICATIONS:
+        return False, f"{len(notifications)} of {REQUIRED_NOTIFICATIONS} notifications"
+    return True, f"{len(notifications)} notifications"
+
+
+def _budget_status(args, budgets_client) -> tuple[bool, str]:
+    try:
+        client = budgets_client if budgets_client is not None else _budgets_client(args.profile)
+    except Exception as exc:  # noqa: BLE001
+        return False, f"cannot be verified ({type(exc).__name__})"
+    return budget_gate(client)
+
+
+def _budget_line(ok: bool, detail: str) -> str:
+    if ok:
+        return f"budget gate: ok ({BUDGET_NAME}, {detail})"
+    return f"BLOCKED: budget alarm {BUDGET_NAME} missing ({detail})"
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    p.add_argument("--version", type=int, required=True, metavar="N", help="contract version to publish")
+    which = p.add_mutually_exclusive_group(required=True)
+    which.add_argument("--version", type=int, metavar="N", help="publish contract version N")
+    which.add_argument(
+        "--set-latest", type=int, metavar="N",
+        help="point contract/latest.json at an already published version N (rollback)",
+    )
     p.add_argument("--dry-run", action="store_true", help="print the plan; no write")
     p.add_argument("--confirm", action="store_true", help="required for any S3 write")
     p.add_argument("--bucket", default=DEFAULT_BUCKET)
@@ -298,30 +458,139 @@ def _s3_client(profile: str, region: str):
     return boto3.Session(profile_name=profile, region_name=region).client("s3")
 
 
+def _budgets_client(profile: str):
+    import boto3
+
+    return boto3.Session(profile_name=profile, region_name="us-east-1").client("budgets")
+
+
+def _schema_dir(args) -> pathlib.Path:
+    local = pathlib.Path(args.bundle).parent / "schema"
+    return local if local.is_dir() else contract_lib.SCHEMA_DIR
+
+
 def _publish(args, write: bool, s3_client, budgets_client) -> int:
-    bundle = load_bundle(args.bundle, args.version)
-    items = bundle["items"]
+    published = read_published(args.published_file)
+    bundle = load_bundle(args.bundle, args.version, published)
+    items, pointer = bundle["items"], bundle["pointer"]
+    contracts_dir = pathlib.Path(args.bundle).parent
     print(f"plan: contract version {args.version} -> s3://{args.bucket}/ ({len(items)} objects, then {POINTER_KEY})")
-    if not write:
+
+    if write:
+        dirty = uncommitted_contract_paths(contracts_dir)
+        if dirty:
+            raise PublishError(
+                f"uncommitted changes under contracts/ ({len(dirty)} path(s)); "
+                "publish only from a committed tree, commit them first"
+            )
+        ok, detail = _budget_status(args, budgets_client)
+        if not ok:
+            print(_budget_line(ok, detail), file=sys.stderr)
+            return EXIT_BLOCKED
+        s3 = s3_client if s3_client is not None else _s3_client(args.profile, args.region)
+        seen = inspect_bucket(s3, args.bucket, items, args.version, pointer)
+        if seen["problems"]:
+            raise PublishError("; ".join(seen["problems"]))
+
         for item in items:
-            _emit(key=item["key"], bytes=len(item["body"]), sha256=item["sha256"], action="would_create")
-        _emit(key=POINTER_KEY, bytes=len(bundle["pointer"]), sha256=sha256_hex(bundle["pointer"]), action="would_flip")
-        print("[dry-run] no S3 write made" if args.dry_run else "[no --confirm] no S3 write made")
+            action = put_immutable(s3, args.bucket, item)
+            _emit(key=item["key"], bytes=len(item["body"]), sha256=item["sha256"], action=action)
+        verify_objects(s3, args.bucket, items)
+
+        if seen["pointer_state"] == "identical":
+            action = "pointer_unchanged"
+        else:
+            action = flip_pointer(s3, args.bucket, pointer, seen["etag"])
+        _emit(key=POINTER_KEY, bytes=len(pointer), sha256=sha256_hex(pointer), action=action)
+        if recorded_sha256(published, args.version) is None:
+            record_published(args.published_file, args.version, bundle["manifest_sha256"], args.bucket)
+        print(f"published contract version {args.version}; {args.published_file.name} up to date")
         return 0
 
-    s3 = s3_client if s3_client is not None else _s3_client(args.profile, args.region)
-    current = read_pointer(s3, args.bucket)
-    etag = current[1] if current else None
+    # Read-only report: nothing below issues a put, copy or delete call.
+    try:
+        dirty = uncommitted_contract_paths(contracts_dir)
+        print(f"tree: {'dirty (' + str(len(dirty)) + ' path(s) under contracts/; --confirm would refuse)' if dirty else 'clean'}")
+    except PublishError as exc:
+        print(f"tree: {exc}")
+    print(_budget_line(*_budget_status(args, budgets_client)))
 
+    seen = None
+    try:
+        s3 = s3_client if s3_client is not None else _s3_client(args.profile, args.region)
+        seen = inspect_bucket(s3, args.bucket, items, args.version, pointer)
+    except BucketReadError as exc:
+        print(f"bucket not inspected ({exc})")
+    except PublishError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - no credentials or no profile: still show the plan
+        print(f"bucket not inspected ({type(exc).__name__})")
     for item in items:
-        action = put_immutable(s3, args.bucket, item)
+        state = seen["states"][item["key"]] if seen else None
+        action = {"absent": "would_create", "identical": ACTION_EXISTS_IDENTICAL, None: "unchecked"}.get(state, "conflict")
         _emit(key=item["key"], bytes=len(item["body"]), sha256=item["sha256"], action=action)
-    verify_objects(s3, args.bucket, items)
+    pointer_action = "unchecked"
+    if seen:
+        pointer_action = {"absent": "would_create", "identical": "pointer_unchanged", "older": "would_flip"}.get(
+            seen["pointer_state"], "conflict"
+        )
+    _emit(key=POINTER_KEY, bytes=len(pointer), sha256=sha256_hex(pointer), action=pointer_action)
+    print("[dry-run] no S3 write made" if args.dry_run else "[no --confirm] no S3 write made")
+    if seen and seen["problems"]:
+        raise PublishError("; ".join(seen["problems"]))
+    return 0
 
-    action = flip_pointer(s3, args.bucket, bundle["pointer"], etag)
-    _emit(key=POINTER_KEY, bytes=len(bundle["pointer"]), sha256=sha256_hex(bundle["pointer"]), action=action)
-    record_published(args.published_file, args.version, bundle["manifest_sha256"], args.bucket)
-    print(f"published contract version {args.version}; {args.published_file.name} updated")
+
+def _set_latest(args, write: bool, s3_client, budgets_client) -> int:
+    version = args.set_latest
+    published = read_published(args.published_file)
+    recorded = recorded_sha256(published, version)
+    if recorded is None:
+        raise PublishError(f"contract version {version} is not in {args.published_file.name}; only published versions can be set")
+    manifest_key = f"contract/v{version}.json"
+    print(f"plan: set {POINTER_KEY} to version {version} in s3://{args.bucket}/ (verified against {args.published_file.name})")
+
+    if write:
+        ok, detail = _budget_status(args, budgets_client)
+        if not ok:
+            print(_budget_line(ok, detail), file=sys.stderr)
+            return EXIT_BLOCKED
+    else:
+        print(_budget_line(*_budget_status(args, budgets_client)))
+
+    s3 = s3_client if s3_client is not None else _s3_client(args.profile, args.region)
+    from botocore.exceptions import ClientError
+
+    try:
+        manifest_bytes = _get(s3, args.bucket, manifest_key)["Body"].read()
+    except ClientError as exc:
+        raise PublishError(f"{manifest_key}: cannot be read from the bucket ({_code(exc) or 'error'})") from exc
+    if sha256_hex(manifest_bytes) != recorded:
+        raise PublishError(
+            f"{manifest_key} in the bucket hashes to {sha256_hex(manifest_bytes)}, "
+            f"but {args.published_file.name} records {recorded}; refusing to point at it"
+        )
+    try:
+        artifacts = json.loads(manifest_bytes.decode("utf-8"))["artifacts"]
+    except (UnicodeDecodeError, ValueError, KeyError, TypeError) as exc:
+        raise PublishError(f"{manifest_key}: the bucket copy is not a readable manifest") from exc
+    to_verify = [{"key": manifest_key, "sha256": recorded}]
+    for _, entry in check_contract._iter_artifacts(artifacts):
+        if isinstance(entry, dict) and entry.get("present") is not False:
+            to_verify.append({"key": entry["uri"], "sha256": entry["sha256"]})
+    verify_objects(s3, args.bucket, to_verify)
+
+    pointer = pointer_bytes(version, recorded, _schema_dir(args))
+    current = read_pointer(s3, args.bucket)
+    if current is not None and current[0] == pointer:
+        action = "pointer_unchanged"
+    elif not write:
+        action = "would_flip" if current is not None else "would_create"
+    else:
+        action = flip_pointer(s3, args.bucket, pointer, current[1] if current is not None else None)
+    _emit(key=POINTER_KEY, bytes=len(pointer), sha256=sha256_hex(pointer), action=action, verified_objects=len(to_verify))
+    if not write:
+        print("[dry-run] no S3 write made" if args.dry_run else "[no --confirm] no S3 write made")
     return 0
 
 
@@ -329,6 +598,8 @@ def main(argv=None, s3_client=None, budgets_client=None) -> int:
     args = build_parser().parse_args(argv)
     write = args.confirm and not args.dry_run
     try:
+        if args.set_latest is not None:
+            return _set_latest(args, write, s3_client, budgets_client)
         return _publish(args, write, s3_client, budgets_client)
     except PublishError as exc:
         print(f"error: {exc}", file=sys.stderr)
