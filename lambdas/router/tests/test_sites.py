@@ -16,8 +16,8 @@ table and handle_get_sites():
     statuses are unchanged -- TRUTH-03/TRUTH-04 neighbouring truth.
   - The ?has_embedding filter and all top-level count fields behave
     exactly as before this plan's change.
-  - When S3 is unavailable, the hard-coded fallback list is returned
-    with the same label provenance overlay and its error_note unchanged.
+  - When S3 is unavailable, the route returns 503 SITES_UNAVAILABLE rather
+    than a fabricated fallback list (REVIEW WR-02).
 """
 
 import importlib.util
@@ -153,17 +153,12 @@ def test_has_embedding_filter_unchanged(router_handler):
     assert body_false["total_all_sites"] == 54
 
 
-def test_s3_failure_fallback_carries_provenance_and_error_note(aws):
-    # No S3 buckets created -- handle_get_sites's S3 read raises, falling
-    # back to the hard-coded minimal list.
+def test_s3_failure_returns_503_not_fabricated_sites(aws):
+    # No S3 buckets created -- the S3 read fails. The route must say so (503)
+    # rather than return a hard-coded "4 sites" list with HTTP 200 (WR-02).
     module = load_lambda("router")
     result, body = _get_sites(module)
 
-    assert result["statusCode"] == 200
-    assert "error_note" in body
-    assert body["error_note"].startswith("Loaded from fallback:")
-
-    by_id = _by_id(body["sites"])
-    assert by_id["ind_H4"]["status"] == "healthy"
-    assert by_id["ind_H4"]["label_source"] == "marrs"
-    assert by_id["ken_H1"]["label_source"] == "marrs"
+    assert result["statusCode"] == 503
+    assert body["error"]["code"] == "SITES_UNAVAILABLE"
+    assert "sites" not in body

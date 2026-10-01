@@ -235,9 +235,17 @@ def handle_analyze(event):
 
 
 def handle_get_sites(event):
-    """Return list of reference sites from S3 metadata."""
+    """Return list of reference sites from S3 metadata.
+
+    Never fabricates data: if the reference metadata cannot be loaded or
+    parsed the route returns 503 SITES_UNAVAILABLE instead of a hard-coded
+    list with HTTP 200 (every UI count is derived from this response, so a
+    silent fallback would show "4 sites" as truth). A single malformed site
+    record is skipped and reported in `skipped_sites` rather than taking the
+    whole response down.
+    """
     try:
-        # Try loading v5 metadata first, fall back to legacy metadata.json
+        # Try loading v6 metadata first, then v5, then legacy metadata.json
         metadata = None
         for key in ['reference/metadata_v6.json', 'reference/metadata_v5.json', 'reference/metadata.json']:
             try:
@@ -248,7 +256,7 @@ def handle_get_sites(event):
                 continue
 
         if metadata is None:
-            raise Exception('Could not load metadata from S3')
+            raise RuntimeError('Could not load metadata from S3')
 
         # Handle new format (v2.0+) with 'sites' key
         if isinstance(metadata, dict) and 'sites' in metadata:
@@ -257,6 +265,7 @@ def handle_get_sites(event):
             raw_sites = metadata
         else:
             raw_sites = []
+        meta = metadata if isinstance(metadata, dict) else {}
 
         # Check for ?has_embedding=true query parameter
         query_params = event.get('queryStringParameters') or {}
@@ -265,6 +274,7 @@ def handle_get_sites(event):
         # Extract only the fields needed for the API response (exclude large embeddings)
         prov = get_label_provenance()
         sites = []
+        skipped_sites = []
         for site in raw_sites:
             has_embedding = site.get('has_embedding', True)
 
@@ -288,43 +298,39 @@ def handle_get_sites(event):
             # D-17: overlay label provenance (label_source, label_original,
             # label_definition, label_assigned_by, status_basis, period,
             # label_note) on every site record.
-            sites.append(apply_label_provenance(site_record, prov))
+            try:
+                sites.append(apply_label_provenance(site_record, prov))
+            except (KeyError, AttributeError, TypeError) as site_err:
+                # Never present a site without provenance; never hide that it
+                # was dropped either.
+                print(f"WARN /sites: skipping site {site.get('site_id')!r}: {type(site_err).__name__}")
+                skipped_sites.append(site.get('site_id'))
 
         # Include metadata-level counts for the full dataset
         total_all_sites = len(raw_sites)
-        sites_with_embeddings = metadata.get('sites_with_embeddings',
+        sites_with_embeddings = meta.get('sites_with_embeddings',
             sum(1 for s in raw_sites if s.get('has_embedding', True)))
 
-        return response(200, {
+        body = {
             'sites': sites,
             'total_sites': len(sites),
             'total_all_sites': total_all_sites,
             'sites_with_embeddings': sites_with_embeddings,
-            'countries': list(set(s['country'] for s in sites)),
-            'version': metadata.get('version', '1.0') if isinstance(metadata, dict) else '1.0',
-            'source': metadata.get('source', 'Unknown') if isinstance(metadata, dict) else 'Unknown',
-            'notes': metadata.get('notes', '') if isinstance(metadata, dict) else ''
-        })
+            'countries': sorted(set(s['country'] for s in sites if s.get('country'))),
+            'version': meta.get('version', '1.0'),
+            'source': meta.get('source', 'Unknown'),
+            'notes': meta.get('notes', '')
+        }
+        if skipped_sites:
+            body['skipped_sites'] = skipped_sites
+        return response(200, body)
     except Exception as e:
-        # Fallback to hardcoded minimal list if S3 fails. Still carries the
-        # same label provenance as the main path (D-17) -- the fallback is
-        # a reduced site list, not a different truth-telling contract.
-        prov = get_label_provenance()
-        sites = [
-            apply_label_provenance(s, prov) for s in [
-                {'site_id': 'ind_H4', 'country': 'Indonesia', 'status': 'healthy', 'has_embedding': True, 'synthetic': False},
-                {'site_id': 'ind_H5', 'country': 'Indonesia', 'status': 'healthy', 'has_embedding': True, 'synthetic': False},
-                {'site_id': 'ken_H1', 'country': 'Kenya', 'status': 'healthy', 'has_embedding': True, 'synthetic': False},
-                {'site_id': 'ind_N1', 'country': 'Indonesia', 'status': 'restored_early', 'has_embedding': True, 'synthetic': False},
-            ]
-        ]
-        return response(200, {
-            'sites': sites,
-            'total_sites': len(sites),
-            'total_all_sites': len(sites),
-            'sites_with_embeddings': len(sites),
-            'countries': list(set(s['country'] for s in sites)),
-            'error_note': f'Loaded from fallback: {str(e)}'
+        print(f"ERROR /sites: {type(e).__name__}: {e}")
+        return response(503, {
+            'error': {
+                'code': 'SITES_UNAVAILABLE',
+                'message': 'Reference site list is temporarily unavailable.'
+            }
         })
 
 

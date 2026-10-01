@@ -97,3 +97,41 @@ def test_visualize_unknown_analysis_is_404(router, table):
     result, body = _get(router, "/visualize/nope")
     assert result["statusCode"] == 404
     assert body["error"]["code"] == "ANALYSIS_NOT_FOUND"
+
+
+# --- WR-02: /sites never fabricates data -----------------------------------------
+
+
+def _put_metadata(obj, key="reference/metadata_v6.json"):
+    s3 = boto3.client("s3", region_name="us-east-1")
+    s3.create_bucket(Bucket=EMBEDDINGS_BUCKET)
+    s3.put_object(Bucket=EMBEDDINGS_BUCKET, Key=key, Body=json.dumps(obj))
+
+
+def test_sites_skips_unknown_site_and_reports_it(router, aws):
+    _put_metadata(
+        {
+            "sites": [
+                {"site_id": "ind_H4", "country": "Indonesia", "status": "healthy", "has_embedding": True},
+                {"site_id": "zzz_unknown_prefix", "country": "Nowhere", "status": "healthy"},
+                {"country": "NoId"},
+            ]
+        }
+    )
+    result, body = _get(router, "/sites")
+    assert result["statusCode"] == 200
+    assert [s["site_id"] for s in body["sites"]] == ["ind_H4"]
+    assert body["total_sites"] == 1
+    assert body["total_all_sites"] == 3
+    assert sorted(map(str, body["skipped_sites"])) == ["None", "zzz_unknown_prefix"]
+
+
+def test_sites_legacy_list_metadata_does_not_crash(router, aws):
+    _put_metadata(
+        [{"site_id": "ind_H4", "country": "Indonesia", "status": "healthy", "has_embedding": True}],
+        key="reference/metadata.json",
+    )
+    result, body = _get(router, "/sites")
+    assert result["statusCode"] == 200
+    assert body["total_sites"] == 1
+    assert body["sites_with_embeddings"] == 1
