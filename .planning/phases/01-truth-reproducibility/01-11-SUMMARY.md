@@ -177,3 +177,7 @@ None - used the owner's standing AWS profile `reefradar` (read-only, already con
 ---
 *Phase: 01-truth-reproducibility*
 *Completed: 2026-10-01*
+
+## Self-Check: PASSED
+
+All 6 created/modified files found on disk (`lambdas/classifier/region_detection.py`, `lambdas/classifier/handler.py`, `lambdas/classifier/tests/test_region_detection.py`, `lambdas/classifier/tests/test_handler.py`, `infrastructure/lambda-packages/classifier.json`, `scripts/tests/test_lambda_packaging.py`); all 3 commits (`0811fee`, `7b95cbe`, `dc301d0`) found in git history.
