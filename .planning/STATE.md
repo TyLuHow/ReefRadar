@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 2
 current_phase_name: Data Contract v1
 status: executing
-stopped_at: Phase 1 complete, ready to plan Phase 2
-last_updated: "2026-10-01T22:02:26.978Z"
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-10-01T22:17:50.100Z"
 last_activity: 2026-10-01
-last_activity_desc: Phase 1 complete, transitioned to Phase 2
-state_head: 3c7a29e0f9b6c0b7c0935cb21f482250a5d16592
+last_activity_desc: Phase 2 execution started
+state_head: 1a65576aac6501a95d0cc8b4a6904b4339850cb1
 progress:
   total_phases: 17
   completed_phases: 1
   total_plans: 32
-  completed_plans: 20
+  completed_plans: 21
   percent: 6
 ---
 
@@ -29,12 +29,12 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 
 ## Current Position
 
-Phase: 2 (Data Contract v1) — READY TO EXECUTE
-Plan: Not started
+Phase: 2 (Data Contract v1) — EXECUTING
+Plan: 2 of 12
 Status: Ready to execute
-Last activity: 2026-10-01 — Phase 1 complete, transitioned to Phase 2
+Last activity: 2026-10-01 — Phase 2 execution started
 
-Progress: [████████████████████] 20/20 plans (100%)
+Progress: [████████████████████] 20/20 plans ([█░░░░░░░░░] 6%)
 
 ## Performance Metrics
 
@@ -80,6 +80,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 01-truth-reproducibility P19 | 55min | 3 tasks | 11 files |
 | Phase 01 P14 | 25min | 3 tasks | 6 files |
 | Phase 01 P20 | 100min | 3 tasks | 49 files |
+| Phase 02 P01 | 11min | 3 tasks | 26 files |
 
 ## Accumulated Context
 
@@ -133,6 +134,7 @@ Recent decisions affecting current work:
 
 - [Owner, 2026-10-01]: Hold the merge of `redesign/v2-discovery` to `main` (production frontend) until the UI/UX overhaul is far enough along to be worth a visible launch (after Phases 4/6 at the earliest). Backend truth fixes are already live; production frontend stays on the legacy UI meanwhile.
 - [Phase 01 review]: Router now answers CORS preflight (OPTIONS, 204); before 6aca641 every browser POST /upload was blocked (pre-existing). Experience entry copy "classify reef health" logged for the Phase 4/7 copy pass.
+- [Phase 2]: 02-01: contracts/bucket/v1/sites.json is {schema_version, sites[]}; config_sha256 is over LF bytes and config_sha256_deployed records the CRLF hash of the deployed config
 
 ### Pending Todos
 
@@ -156,6 +158,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T20:48:43Z
-Stopped at: Phase 1 complete, ready to plan Phase 2
+Last session: 2026-10-01T22:17:49.913Z
+Stopped at: Completed 02-01-PLAN.md
 Resume file: None

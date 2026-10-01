@@ -22,10 +22,10 @@
 
 ### Data Contract (CONTRACT)
 
-- [ ] **CONTRACT-01**: A versioned, immutable data contract (dataset version + model version + preprocessing-spec version + schemas) is published to CDN-served storage and is the only source of reference data for the web app
-- [ ] **CONTRACT-02**: Contract v1 freezes the current real (post-truth-pass) 54-site data with full provenance per site (source, DOI, licence, label definition, acoustic-reference vs location-only)
+- [x] **CONTRACT-01**: A versioned, immutable data contract (dataset version + model version + preprocessing-spec version + schemas) is published to CDN-served storage and is the only source of reference data for the web app
+- [x] **CONTRACT-02**: Contract v1 freezes the current real (post-truth-pass) 54-site data with full provenance per site (source, DOI, licence, label definition, acoustic-reference vs location-only)
 - [ ] **CONTRACT-03**: The contract schema declares coverage flags (diel, detections, pre/post event, effort) so time features can ship dormant and activate on a later contract publish without a redeploy
-- [ ] **CONTRACT-04**: Every analysis result, export and shared URL pins the dataset, model and preprocessing versions it was produced with, and resolves that exact version on load
+- [x] **CONTRACT-04**: Every analysis result, export and shared URL pins the dataset, model and preprocessing versions it was produced with, and resolves that exact version on load
 - [ ] **CONTRACT-05**: UI development runs against contract fixtures so UI phases are never blocked by data ingestion
 
 ### Data Ingestion (DATA)
@@ -223,10 +223,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TRUTH-08 | Phase 1 | Complete |
 | TRUTH-09 | Phase 1 | Complete |
 | TRUTH-10 | Phase 1 | Complete |
-| CONTRACT-01 | Phase 2 | Pending |
-| CONTRACT-02 | Phase 2 | Pending |
+| CONTRACT-01 | Phase 2 | Complete |
+| CONTRACT-02 | Phase 2 | Complete |
 | CONTRACT-03 | Phase 2 | Pending |
-| CONTRACT-04 | Phase 2 | Pending |
+| CONTRACT-04 | Phase 2 | Complete |
 | CONTRACT-05 | Phase 2 | Pending |
 | DATA-01 | Phase 8 | Pending |
 | DATA-02 | Phase 8 | Pending |
