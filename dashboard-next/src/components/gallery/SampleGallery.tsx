@@ -13,7 +13,9 @@ import { api } from '@/lib/api';
 import { FALLBACK_SAMPLES, SAMPLE_STORIES } from '@/lib/samples';
 import type { Sample, SampleStory } from '@/types';
 
-const STORY_ORDER = ['healthy_vs_degraded', 'restoration_timeline', 'geographic_diversity'];
+// 01-18: keys match data/audio-manifest.json's gallery.stories (restoration_ladder,
+// not the pre-manifest "restoration_timeline" key).
+const STORY_ORDER = ['healthy_vs_degraded', 'restoration_ladder', 'geographic_diversity'];
 
 export function SampleGallery() {
   const [samples, setSamples] = useState<Sample[]>([]);
