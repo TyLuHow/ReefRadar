@@ -13,14 +13,18 @@ export function labelSourceDisplayName(site: Pick<SimilarSite, 'label_source' | 
 }
 
 /**
- * "label: Healthy (H) (MARRS ...)" -- or null when the API (an older
- * response) carries no provenance at all, in which case callers must not
- * present the status as a dataset label.
+ * "label: Healthy (H) (assigned by MARRS ...)" when the dataset assigned a
+ * label, "no health label assigned by Hurricane Irma ..." when the source is
+ * known but the dataset assigns none (Irma, SanctSound), or null when the API
+ * (an older response) carries no provenance at all -- in which case callers
+ * must not present the status as a dataset label.
  */
 export function similarSiteLabelText(
   site: Pick<SimilarSite, 'label_source' | 'label_source_name' | 'label_original'>
 ): string | null {
   const source = labelSourceDisplayName(site);
-  if (!source || !site.label_original) return null;
-  return `label: ${site.label_original} (assigned by ${source})`;
+  if (!source) return null;
+  return site.label_original
+    ? `label: ${site.label_original} (assigned by ${source})`
+    : `no health label assigned by ${source}`;
 }

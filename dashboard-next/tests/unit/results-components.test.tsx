@@ -218,7 +218,38 @@ describe('AnalysisResults similar-site labels (REVIEW WR-17)', () => {
     const { container } = render(<AnalysisResults result={result} />);
     const text = container.textContent ?? '';
     expect(text).toMatch(/label: Healthy \(H\) \(assigned by MARRS/);
-    // No label_original: never presented as a dataset label.
-    expect(text).toMatch(/label source not reported/);
+    // Source known but the dataset assigns no label (irma): say so, never "not reported".
+    expect(text).toMatch(/no health label assigned by Simmons/);
+    expect(text).not.toMatch(/label source not reported/);
+  });
+
+  it('falls back to "label source not reported" only when there is no provenance at all', () => {
+    const result = {
+      ...noCoordsResult,
+      similar_sites: [
+        { site_id: 'legacy_1', country: 'Indonesia', status: 'healthy', similarity: 0.8 },
+      ],
+    } as unknown as AnalysisResult;
+    const { container } = render(<AnalysisResults result={result} />);
+    expect(container.textContent ?? '').toMatch(/label source not reported/);
+  });
+
+  it('uses the API-supplied source name for sites with no label (Irma / SanctSound)', () => {
+    const result = {
+      ...noCoordsResult,
+      similar_sites: [
+        {
+          site_id: 'sanctsound_fk01',
+          country: 'USA',
+          status: 'unknown',
+          similarity: 0.7,
+          label_source: 'sanctsound',
+          label_source_name: 'NOAA SanctSound',
+          label_original: null,
+        },
+      ],
+    } as unknown as AnalysisResult;
+    const { container } = render(<AnalysisResults result={result} />);
+    expect(container.textContent ?? '').toMatch(/no health label assigned by NOAA SanctSound/);
   });
 });
