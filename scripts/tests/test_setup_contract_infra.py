@@ -110,6 +110,11 @@ class FakeBudgets:
         _, subs = self.budgets[BudgetName]["notifications"][self._key(Notification)]
         return {"Subscribers": subs}
 
+    def create_subscriber(self, AccountId, BudgetName, Notification, Subscriber):
+        self.calls.append("create_subscriber")
+        self.budgets[BudgetName]["notifications"][self._key(Notification)][1].append(dict(Subscriber))
+        return {}
+
     def delete_budget(self, AccountId, BudgetName):
         self.calls.append("delete_budget")
         del self.budgets[BudgetName]
@@ -225,6 +230,16 @@ def test_existing_budget_missing_one_notification_gets_only_that_one(budgets, ca
     assert code == 0
     assert budgets.mutating_calls() == ["create_notification"]
     assert len(entry["notifications"]) == 3
+
+
+def test_notification_without_email_subscriber_gets_one(budgets, capsys):
+    run(["--step", "budget", "--confirm", "--notify-email", EMAIL], budgets, capsys)
+    key = ("ACTUAL", "GREATER_THAN", 80.0, "PERCENTAGE")
+    budgets.budgets["reefradar-2477-ceiling-25"]["notifications"][key][1].clear()
+    budgets.calls.clear()
+    code, _, _ = run(["--step", "budget", "--confirm", "--notify-email", EMAIL], budgets, capsys)
+    assert code == 0
+    assert budgets.mutating_calls() == ["create_subscriber"]
 
 
 def test_legacy_budget_deleted_only_after_readback_and_its_parameters_printed_first(budgets, capsys):
