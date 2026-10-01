@@ -33,7 +33,12 @@ export default defineConfig({
   projects: [
     {
       name: 'e2e',
-      testIgnore: /visual\.spec\.ts/,
+      // Project-level testIgnore REPLACES (does not merge with) the
+      // top-level testIgnore above, so -live specs and the live-network
+      // gallery-parity spec must be re-excluded here explicitly, or they
+      // silently join this fixture-mocked project and hit the live API in
+      // CI (01-08, D-22: e2e tests must never hit the live API).
+      testIgnore: /visual\.spec\.ts|-live\.spec\.ts|gallery-parity\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
     },
     {
