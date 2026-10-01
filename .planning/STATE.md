@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 01
 current_phase_name: Truth & Reproducibility
 status: executing
-stopped_at: Completed 01-08-PLAN.md
-last_updated: "2026-10-01T08:05:35.268Z"
+stopped_at: Completed 01-09-PLAN.md
+last_updated: "2026-10-01T08:16:45.215Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 01 execution started
-state_head: 6c8266d05c96b588cb45939737470a9e56297a49
+state_head: 4bfd1b7cd5c2155e693ba5d7285b4cf8c8f1cd07
 progress:
   total_phases: 17
   completed_phases: 0
   total_plans: 20
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 01 (Truth & Reproducibility) — EXECUTING
-Plan: 9 of 20
+Plan: 10 of 20
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 01 execution started
 
@@ -68,6 +68,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P06 | 35min | 3 tasks | 11 files |
 | Phase 01 P07 | 38min | 3 tasks | 11 files |
 | Phase 01 P08 | 55min | 3 tasks | 14 files |
+| Phase 01 P09 | 25min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,7 @@ Recent decisions affecting current work:
 - [Phase 01]: Patched Next.js to exactly 14.2.35 (nextjs.org advisory's confirmed Fixed In version for the 14.x line, CVE-2025-55184), staying within 14.2.x; Vercel installCommand switched to npm ci
 - [Phase 01]: Playwright e2e project testIgnore replaces (not merges) top-level testIgnore, so -live specs and gallery-parity.spec.ts must be explicitly re-excluded in each project that should stay fixture-mocked
 - [Phase 01]: check-citations.mjs --scope docs excludes dashboard-next/tests/baseline/ — a frozen D-20 capture of the live deployment, not live documentation to hold to current citation standards
+- [Phase 01]: D-01 recovery found drift only in router (/samples route); preprocessor, classifier, and inference already matched git byte-for-byte, confirmed via drift-check before committing anything
 
 ### Pending Todos
 
@@ -122,6 +124,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T08:05:35.250Z
-Stopped at: Completed 01-08-PLAN.md
+Last session: 2026-10-01T08:16:45.198Z
+Stopped at: Completed 01-09-PLAN.md
 Resume file: None
