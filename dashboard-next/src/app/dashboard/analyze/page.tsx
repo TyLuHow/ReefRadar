@@ -9,7 +9,7 @@ import { SpectrogramCanvas } from '@/components/audio/SpectrogramCanvas';
 import { CaveatsBanner } from '@/components/dashboard/CaveatsBanner';
 import { RegionWarning } from '@/components/dashboard/RegionWarning';
 import { toast } from '@/components/Toast';
-import { api } from '@/lib/api';
+import { api, AnalysisError } from '@/lib/api';
 import { AnalysisResult } from '@/types';
 import {
   Upload,
@@ -29,11 +29,14 @@ export default function EnhancedAnalyzePage() {
   // --- Upload / Analysis state ---
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [analysisStep, setAnalysisStep] = useState<AnalysisStep>('idle');
-  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [stageLabel, setStageLabel] = useState<string | undefined>(undefined);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorSuggestion, setErrorSuggestion] = useState<string | undefined>(undefined);
+  const [errorRequestId, setErrorRequestId] = useState<string | undefined>(undefined);
   const [latitude, setLatitude] = useState<string>('');
   const [longitude, setLongitude] = useState<string>('');
+  const pollAbortRef = useRef<AbortController | null>(null);
 
   // --- Preview spectrogram state ---
   const [previewPlaying, setPreviewPlaying] = useState(false);
@@ -104,6 +107,8 @@ export default function EnhancedAnalyzePage() {
       setAnalysisStep('idle');
       setAnalysisResult(null);
       setError(null);
+      setErrorSuggestion(undefined);
+      setErrorRequestId(undefined);
       decodeFileForPreview(file);
     },
     [decodeFileForPreview],
@@ -126,7 +131,9 @@ export default function EnhancedAnalyzePage() {
     setAnalysisStep('idle');
     setAnalysisResult(null);
     setError(null);
-    setAnalysisProgress(0);
+    setErrorSuggestion(undefined);
+    setErrorRequestId(undefined);
+    setStageLabel(undefined);
     audioBufferRef.current = null;
   }, [stopPreview]);
 
@@ -168,8 +175,13 @@ export default function EnhancedAnalyzePage() {
 
     stopPreview();
     setError(null);
+    setErrorSuggestion(undefined);
+    setErrorRequestId(undefined);
+    setStageLabel(undefined);
     setAnalysisStep('uploading');
-    setAnalysisProgress(0);
+
+    const controller = new AbortController();
+    pollAbortRef.current = controller;
 
     try {
       toast.info('Uploading audio file...');
@@ -187,24 +199,24 @@ export default function EnhancedAnalyzePage() {
       );
       toast.success(`Analysis started: ${analyzeResult.analysis_id}`);
 
-      let attempts = 0;
-      const maxAttempts = 60;
+      const pollResult = await api.pollAnalysis(analyzeResult.analysis_id, {
+        onStage: (info) => setStageLabel(info.label),
+        signal: controller.signal,
+      });
 
-      const pollResult = await api.pollAnalysis(
-        analyzeResult.analysis_id,
-        () => {
-          attempts++;
-          setAnalysisProgress(
-            Math.min(Math.round((attempts / maxAttempts) * 100), 95),
-          );
-        },
-      );
-
-      setAnalysisProgress(100);
       setAnalysisStep('complete');
       setAnalysisResult(pollResult);
       toast.success('Analysis complete!');
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      if (err instanceof AnalysisError) {
+        setError(err.message);
+        setErrorSuggestion(err.suggestion);
+        setErrorRequestId(err.requestId);
+        setAnalysisStep('error');
+        toast.error(err.message);
+        return;
+      }
       const errorMessage =
         err instanceof Error ? err.message : 'An error occurred';
       setError(errorMessage);
@@ -214,18 +226,22 @@ export default function EnhancedAnalyzePage() {
   }, [selectedFile, latitude, longitude, stopPreview]);
 
   const handleReset = useCallback(() => {
+    pollAbortRef.current?.abort();
     stopPreview();
     setSelectedFile(null);
     setAnalysisStep('idle');
     setAnalysisResult(null);
     setError(null);
-    setAnalysisProgress(0);
+    setErrorSuggestion(undefined);
+    setErrorRequestId(undefined);
+    setStageLabel(undefined);
     audioBufferRef.current = null;
   }, [stopPreview]);
 
   // --- Cleanup on unmount ---
   useEffect(() => {
     return () => {
+      pollAbortRef.current?.abort();
       try {
         sourceRef.current?.stop();
       } catch {
@@ -401,8 +417,10 @@ export default function EnhancedAnalyzePage() {
           {(isAnalyzing || analysisStep === 'error') && (
             <AnalysisProgress
               step={analysisStep}
-              progress={analysisProgress}
+              stageLabel={stageLabel}
               error={error || undefined}
+              suggestion={errorSuggestion}
+              requestId={errorRequestId}
             />
           )}
 

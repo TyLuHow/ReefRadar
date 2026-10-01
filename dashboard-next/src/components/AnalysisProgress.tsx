@@ -7,8 +7,11 @@ type AnalysisStep = 'idle' | 'uploading' | 'analyzing' | 'complete' | 'error';
 
 interface AnalysisProgressProps {
   step: AnalysisStep;
-  progress?: number;
+  /** The real pipeline stage label from /status (D-15) -- never a numeric percentage. */
+  stageLabel?: string;
   error?: string;
+  suggestion?: string;
+  requestId?: string;
 }
 
 const steps = [
@@ -17,17 +20,22 @@ const steps = [
   { id: 'complete', label: 'Complete', description: 'Results ready' },
 ];
 
-export function AnalysisProgress({ step, progress = 0, error }: AnalysisProgressProps) {
+export function AnalysisProgress({ step, stageLabel, error, suggestion, requestId }: AnalysisProgressProps) {
   if (step === 'idle') return null;
 
   const currentStepIndex = steps.findIndex((s) => s.id === step);
+  // D-15 fix: 'error' is not a step id, so it never matched s.id === step --
+  // the error branch below was dead code. On failure, treat 'uploading' as
+  // done and 'analyzing' (where polling failures surface) as the errored step.
+  const erroredStepId = step === 'error' ? 'analyzing' : null;
 
   return (
     <div className="glass-panel p-6">
       <div className="space-y-4">
         {steps.map((s, index) => {
-          const isActive = s.id === step;
-          const isComplete = currentStepIndex > index || step === 'complete';
+          const isActive = step === 'error' ? s.id === erroredStepId : s.id === step;
+          const isComplete =
+            step === 'error' ? s.id === 'uploading' : currentStepIndex > index || step === 'complete';
           const isError = step === 'error' && isActive;
 
           return (
@@ -80,27 +88,28 @@ export function AnalysisProgress({ step, progress = 0, error }: AnalysisProgress
                   {s.description}
                 </p>
 
-                {/* Progress bar for analyzing step */}
-                {isActive && s.id === 'analyzing' && progress > 0 && (
-                  <div className="mt-2">
-                    <div
-                      className="h-2 rounded-full overflow-hidden"
-                      style={{ background: 'var(--glass-bg)' }}
-                    >
-                      <div
-                        className="h-full bg-ochre transition-all duration-300 ease-out rounded-full"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                    <p className="text-xs mt-1" style={{ color: 'var(--text-dim)' }}>
-                      {progress}% complete
-                    </p>
-                  </div>
+                {/* Real pipeline stage reported by /status (D-15) -- never a percentage */}
+                {isActive && s.id === 'analyzing' && stageLabel && (
+                  <p className="text-sm mt-2" style={{ color: 'var(--text-muted)' }}>
+                    {stageLabel}
+                  </p>
                 )}
 
-                {/* Error message */}
+                {/* Error message + actionable detail (D-15) */}
                 {isError && error && (
-                  <p className="text-sm text-status-degraded mt-1">{error}</p>
+                  <div className="mt-1 space-y-1">
+                    <p className="text-sm text-status-degraded">{error}</p>
+                    {suggestion && (
+                      <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
+                        {suggestion}
+                      </p>
+                    )}
+                    {requestId && (
+                      <p className="text-xs font-mono" style={{ color: 'var(--text-dim)' }}>
+                        Request ID: {requestId}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

@@ -1,0 +1,38 @@
+[
+  {
+    "statusCode": 404,
+    "body": {
+      "error": {
+        "code": "ANALYSIS_NOT_FOUND",
+        "message": "No analysis found with ID: fixture-sequence"
+      }
+    }
+  },
+  {
+    "statusCode": 200,
+    "body": {
+      "analysis_id": "fixture-sequence",
+      "stage": "preprocessing",
+      "status": "processing",
+      "progress": "Processing audio file"
+    }
+  },
+  {
+    "statusCode": 200,
+    "body": {
+      "analysis_id": "fixture-sequence",
+      "stage": "classifying",
+      "status": "processing",
+      "progress": "Classifying 6 audio segments"
+    }
+  },
+  {
+    "statusCode": 200,
+    "body": {
+      "analysis_id": "fixture-sequence",
+      "stage": "complete",
+      "status": "complete",
+      "completed_at": "2026-10-01T00:05:00.000Z"
+    }
+  }
+]
