@@ -99,6 +99,12 @@
         "arn": "arn:aws:s3:::reefradar-2477-embeddings",
         "region": "us-east-1",
         "folders": ["models/", "reference/", "layers/"]
+      },
+      "contract": {
+        "name": "reefradar-2477-contract",
+        "arn": "arn:aws:s3:::reefradar-2477-contract",
+        "region": "us-east-1",
+        "folders": ["contract/", "v1/"]
       }
     }
   },
@@ -168,6 +174,20 @@
       "/aws/lambda/reefradar-2477-classifier",
       "/aws/lambda/reefradar-2477-inference"
     ]
+  },
+  "cloudfront": {
+    "distributions": {
+      "contract": {
+        "id": "E1SD3UZ4FZ1GWL",
+        "arn": "arn:aws:cloudfront::781978598306:distribution/E1SD3UZ4FZ1GWL",
+        "domain_name": "d7dr1fzple2sg.cloudfront.net",
+        "comment": "reefradar-2477-contract",
+        "origin_access_control_id": "E3JD4NDX1VQA27",
+        "cache_policy": "Managed-CachingOptimized",
+        "response_headers_policy": "Managed-SimpleCORS",
+        "error_caching_min_ttl": 10
+      }
+    }
   },
   "budgets": {
     "ceiling": {

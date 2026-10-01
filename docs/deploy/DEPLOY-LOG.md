@@ -289,3 +289,64 @@ Delete the new budget with
 `py -3.12 -m awscli budgets delete-budget --account-id 781978598306 --budget-name reefradar-2477-ceiling-25 --profile reefradar`
 and recreate the legacy one with the command above. Do this only together with a replacement alarm: the contract publish
 requires an armed budget.
+
+### Contract storage (created 2026-10-01, after the budget alarm)
+
+Nothing is published yet: the bucket is empty until plan 02-06. The same approving decision as above applies (standing
+approval for AWS changes within the 25 USD/month ceiling).
+
+| Item | Value |
+|---|---|
+| Bucket | `reefradar-2477-contract`, us-east-1, no website hosting, no bucket CORS, tag `Project=reefradar-2477` |
+| Bucket settings | all four public-access-block flags on; object ownership BucketOwnerEnforced; default encryption SSE-S3 (AES256) |
+| Origin access control | `reefradar-2477-contract-oac` (`E3JD4NDX1VQA27`): sigv4, signing always, origin type s3 |
+| Distribution | `E1SD3UZ4FZ1GWL`, domain `d7dr1fzple2sg.cloudfront.net`, comment `reefradar-2477-contract`, enabled, deployed, pay-as-you-go (no flat-rate plan) |
+| Origin | `reefradar-2477-contract.s3.us-east-1.amazonaws.com` through the OAC (no legacy origin access identity) |
+| Behaviour | redirect HTTP to HTTPS; GET and HEAD only; compression on; HTTP/2 and HTTP/3; IPv6 on; PriceClass_All |
+| Cache policy | AWS managed `Managed-CachingOptimized` (honours the origin `Cache-Control` set by the publisher) |
+| CORS | AWS managed `Managed-SimpleCORS` response-headers policy (`Access-Control-Allow-Origin: *`, no credentials): the data is public, open-licensed and fetched without credentials, and `*.vercel.app` preview hosts cannot be listed in advance |
+| Error caching | 403 and 404 cached for 10 seconds, no custom error page |
+| Bucket policy | exactly one statement: Allow `s3:GetObject` on `arn:aws:s3:::reefradar-2477-contract/*` to `cloudfront.amazonaws.com`, conditioned on `AWS:SourceArn` = this distribution. No `s3:ListBucket`, no wildcard principal |
+
+The bucket policy is written only after the distribution reports Deployed. The CloudFront domain above becomes the web
+app's default contract base URL (plan 02-07). No invalidation is ever needed: versions are immutable and
+`contract/latest.json` has a 60 second TTL.
+
+Commands used:
+
+```
+py -3.12 scripts/setup_contract_infra.py --step storage --dry-run
+py -3.12 scripts/setup_contract_infra.py --step storage --confirm
+py -3.12 scripts/setup_contract_infra.py --step all --verify
+py -3.12 scripts/setup_contract_infra.py --step all --record-resources
+```
+
+Verification (unauthenticated HTTPS probes, status codes only): a direct S3 GET of `contract/latest.json` returned 403;
+a CloudFront GET of a missing key returned 403; CloudFront `contract/latest.json` returned 403 (bucket empty); the
+CloudFront root path returned 403 and no `ListBucketResult` body. A second `--confirm` created and changed nothing, and
+a later `--step all --dry-run` listed no create or update action.
+
+### Rollback (storage)
+
+The bucket is empty and unused until 02-06, so removal is safe now. Once content is published, removing it takes the
+site data with it, so publish a replacement first.
+
+1. Disable the distribution (CloudFront needs the current ETag and config):
+
+   ```
+   py -3.12 -m awscli cloudfront get-distribution-config --id E1SD3UZ4FZ1GWL --profile reefradar
+   ```
+
+   Save the `DistributionConfig` part to `dist.json` with `"Enabled": false`, then:
+
+   ```
+   py -3.12 -m awscli cloudfront update-distribution --id E1SD3UZ4FZ1GWL --if-match <ETag> --distribution-config file://dist.json --profile reefradar
+   ```
+
+2. When the distribution status is Deployed, delete it:
+   `py -3.12 -m awscli cloudfront delete-distribution --id E1SD3UZ4FZ1GWL --if-match <new ETag> --profile reefradar`
+3. Delete the origin access control:
+   `py -3.12 -m awscli cloudfront delete-origin-access-control --id E3JD4NDX1VQA27 --if-match <ETag> --profile reefradar`
+4. Delete the empty bucket:
+   `py -3.12 -m awscli s3api delete-bucket --bucket reefradar-2477-contract --profile reefradar`
+5. Remove the `s3.buckets.contract` and `cloudfront` entries from `infrastructure/resources.json`.

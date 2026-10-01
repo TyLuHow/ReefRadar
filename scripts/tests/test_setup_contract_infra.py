@@ -154,6 +154,15 @@ def json_lines(text):
     return lines
 
 
+def pristine_resources_text() -> str:
+    """The committed inventory minus the sections this script records, so tests start from a clean slate."""
+    data = json.loads((sci.REPO_ROOT / "infrastructure" / "resources.json").read_text(encoding="utf-8"))
+    for key in ("budgets", "cloudfront"):
+        data.pop(key, None)
+    data["s3"]["buckets"].pop("contract", None)
+    return sci.render_json(data)
+
+
 # ------------------------------------------------------------------- dry-run
 
 
@@ -362,7 +371,7 @@ def test_resources_renderer_round_trips_the_committed_file():
 
 
 def test_record_resources_rewrites_only_the_budgets_section(budgets, capsys, tmp_path):
-    src = (sci.REPO_ROOT / "infrastructure" / "resources.json").read_text(encoding="utf-8")
+    src = pristine_resources_text()
     target = tmp_path / "resources.json"
     target.write_text(src, encoding="utf-8")
     before = json.loads(src)
@@ -385,7 +394,7 @@ def test_record_resources_rewrites_only_the_budgets_section(budgets, capsys, tmp
 
 def test_record_resources_is_a_noop_rewrite_when_run_twice(budgets, capsys, tmp_path):
     target = tmp_path / "resources.json"
-    target.write_text((sci.REPO_ROOT / "infrastructure" / "resources.json").read_text(encoding="utf-8"), encoding="utf-8")
+    target.write_text(pristine_resources_text(), encoding="utf-8")
     run(["--step", "budget", "--confirm", "--notify-email", EMAIL], budgets, capsys)
     run(["--step", "budget", "--record-resources"], budgets, capsys, resources_path=target)
     first = target.read_bytes()
@@ -395,7 +404,7 @@ def test_record_resources_is_a_noop_rewrite_when_run_twice(budgets, capsys, tmp_
 
 def test_record_resources_refuses_when_budget_is_missing(budgets, capsys, tmp_path):
     target = tmp_path / "resources.json"
-    original = (sci.REPO_ROOT / "infrastructure" / "resources.json").read_text(encoding="utf-8")
+    original = pristine_resources_text()
     target.write_text(original, encoding="utf-8")
     code, _, _ = run(["--step", "budget", "--record-resources"], budgets, capsys, resources_path=target)
     assert code == 1
@@ -770,7 +779,7 @@ def test_storage_verify_flags_missing_public_access_block(world, capsys):
 
 def test_record_resources_after_storage_adds_bucket_and_distribution_and_keeps_the_rest(world, capsys, tmp_path):
     storage_confirm(world, capsys)
-    source = (sci.REPO_ROOT / "infrastructure" / "resources.json").read_text(encoding="utf-8")
+    source = pristine_resources_text()
     target = tmp_path / "resources.json"
     target.write_text(source, encoding="utf-8")
     before = json.loads(source)
@@ -808,7 +817,7 @@ def test_record_resources_after_storage_adds_bucket_and_distribution_and_keeps_t
 def test_record_resources_refuses_when_storage_is_missing(world, capsys, tmp_path):
     arm_budget(world, capsys)
     target = tmp_path / "resources.json"
-    original = (sci.REPO_ROOT / "infrastructure" / "resources.json").read_text(encoding="utf-8")
+    original = pristine_resources_text()
     target.write_text(original, encoding="utf-8")
     code, _, _ = run_with(["--step", "storage", "--record-resources", "--resources-file", str(target)], world, capsys)
     assert code == 1
