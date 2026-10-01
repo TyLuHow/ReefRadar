@@ -190,3 +190,35 @@ describe('AnalysisResults similar sites', () => {
     expect(screen.getByText(/similar-site comparison is unavailable/i)).toBeInTheDocument();
   });
 });
+
+describe('AnalysisResults similar-site labels (REVIEW WR-17)', () => {
+  it('states who assigned each similar site label instead of a bare status', () => {
+    const result = {
+      ...noCoordsResult,
+      similar_sites: [
+        {
+          site_id: 'ind_H4',
+          country: 'Indonesia',
+          status: 'healthy',
+          similarity: 0.8,
+          label_source: 'marrs',
+          label_source_name: 'MARRS (Mars Assisted Reef Restoration System)',
+          label_original: 'Healthy (H)',
+        },
+        {
+          site_id: 'irma_eastern_sambo',
+          country: 'USA',
+          status: 'unknown',
+          similarity: 0.7,
+          label_source: 'irma',
+          label_original: undefined,
+        },
+      ],
+    } as unknown as AnalysisResult;
+    const { container } = render(<AnalysisResults result={result} />);
+    const text = container.textContent ?? '';
+    expect(text).toMatch(/label: Healthy \(H\) \(assigned by MARRS/);
+    // No label_original: never presented as a dataset label.
+    expect(text).toMatch(/label source not reported/);
+  });
+});

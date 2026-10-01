@@ -6,6 +6,7 @@ import { STATUS_COLORS } from '@/types';
 import type { AnalysisResult, ReefStatus } from '@/types';
 import { formatStatus } from '@/lib/utils';
 import { toIntegerPercentages, presentClasses } from '@/lib/probabilities';
+import { similarSiteLabelText } from '@/lib/label-source';
 
 interface ComparisonPanelProps {
   analysisData: AnalysisResult;
@@ -25,17 +26,6 @@ const CATEGORY_LABELS: Record<ReefStatus, string> = {
   restored_mid: 'Restored (Mid)',
   unknown: 'Unknown',
 };
-
-function labelSourceName(labelSource: string): string {
-  switch (labelSource) {
-    case 'marrs':
-      return 'MARRS';
-    case 'coralsoundexplorer':
-      return 'CoralSoundExplorer';
-    default:
-      return labelSource;
-  }
-}
 
 export function ComparisonPanel({ analysisData }: ComparisonPanelProps) {
   const classification = analysisData.classification;
@@ -127,9 +117,9 @@ export function ComparisonPanel({ analysisData }: ComparisonPanelProps) {
                 <span className="text-xs" style={{ color: 'var(--text-dim)' }}>
                   {site.country}
                 </span>
-                {site.label_source && site.label_original && (
+                {similarSiteLabelText(site) && (
                   <span className="text-xs" style={{ color: 'var(--text-dim)' }}>
-                    label: {site.label_original} ({labelSourceName(site.label_source)})
+                    {similarSiteLabelText(site)}
                   </span>
                 )}
               </div>

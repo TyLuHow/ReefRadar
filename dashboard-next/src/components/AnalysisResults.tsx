@@ -5,6 +5,7 @@ import { AnalysisResult, STATUS_COLORS, ReefStatus } from '@/types';
 import { formatStatus, formatPercent, cn, getStatusBgColor } from '@/lib/utils';
 import { ProbabilityBars } from '@/components/charts';
 import { toIntegerPercentages } from '@/lib/probabilities';
+import { similarSiteLabelText } from '@/lib/label-source';
 import { Check, TrendingUp, MapPin, Map } from 'lucide-react';
 
 // Dynamic import for MiniMap to avoid SSR issues with Leaflet
@@ -156,7 +157,10 @@ export function AnalysisResults({ result }: AnalysisResultsProps) {
                           )}
                         </p>
                         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-                          {site.country} - {formatStatus(site.status)}
+                          {site.country}
+                          {similarSiteLabelText(site)
+                            ? ` - ${similarSiteLabelText(site)}`
+                            : ` - ${formatStatus(site.status)} (label source not reported)`}
                         </p>
                       </div>
                     </div>

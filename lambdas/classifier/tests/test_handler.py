@@ -272,6 +272,7 @@ def test_handler_no_visualization_and_similar_sites_carry_label_provenance(class
     marrs_site = by_site["ind_H4"]
     assert marrs_site["status"] == "healthy"
     assert marrs_site["label_source"] == "marrs"
+    assert marrs_site["label_source_name"].startswith("MARRS")
 
     # Fixture stores this CoralSoundExplorer site's raw status as
     # "degraded" -- apply_label_provenance must override it to "unknown"

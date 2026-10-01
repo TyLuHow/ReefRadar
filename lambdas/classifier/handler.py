@@ -757,6 +757,7 @@ def find_similar_sites_with_status(embedding, top_k=3):
             'country': ref.get('country', 'Unknown'),
             'status': labeled['status'],
             'label_source': labeled['label_source'],
+            'label_source_name': labeled['label_source_name'],
             'label_original': labeled['label_original'],
         })
 

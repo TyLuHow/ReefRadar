@@ -123,6 +123,7 @@ export interface SimilarSite {
   // Dataset label provenance (D-17/TRUTH-09) -- present when the backend
   // overlays apply_label_provenance(); absent on older API responses.
   label_source?: string;
+  label_source_name?: string;
   label_original?: string;
 }
 
