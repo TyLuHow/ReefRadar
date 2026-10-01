@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 01
 current_phase_name: Truth & Reproducibility
 status: executing
-stopped_at: Completed 01-13-PLAN.md
-last_updated: "2026-10-01T08:56:00.340Z"
+stopped_at: Completed 01-15-PLAN.md
+last_updated: "2026-10-01T09:09:15.427Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 01 execution started
-state_head: ad45cebd5f365a1e940f6da5ae0b553340e220f0
+state_head: 7189c4608c2416e666a8f088aadff67d5213c6d0
 progress:
   total_phases: 17
   completed_phases: 0
   total_plans: 20
-  completed_plans: 13
+  completed_plans: 14
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 01 (Truth & Reproducibility) — EXECUTING
-Plan: 14 of 20
+Plan: 15 of 20
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 01 execution started
 
@@ -73,6 +73,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P11 | 50min | 2 tasks | 6 files |
 | Phase 01-truth-reproducibility P12 | 35min | 2 tasks | 4 files |
 | Phase 01 P13 | 20min | 2 tasks | 7 files |
+| Phase 01 P15 | 55min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -112,6 +113,8 @@ Recent decisions affecting current work:
 - [Phase 01]: Deleted CURATED_SAMPLES/SAMPLE_STORIES outright instead of keeping as fallback -- missing audio manifest now returns 500 SAMPLES_UNAVAILABLE per D-05/D-09
 - [Phase 01]: router.json's 3 new bundled members (site_provenance.py, site_label_provenance.json, audio_manifest.json) added incrementally, one task's worth per commit
 - [Phase 01]: D-11 interim model: trained interim-real-only 3-class MLP (degraded, healthy, restored_early) on the 100 real rows in training_test_20.json, dropping restored_mid (zero real rows); weights proven byte-compatible with the deployed classifier's forward pass
+- [Phase 01]: [Phase 01] vitest.setup.ts needed an explicit afterEach(cleanup) -- vitest.config.ts has no test.globals, so Testing Library's auto-cleanup detection never fired and multi-render component tests leaked DOM across tests in the same file
+- [Phase 01]: [Phase 01] 01-15 D-12 UI half: toIntegerPercentages renormalises by the input's own sum (not assumed 1) so legacy multiplied probability payloads still render the correct percentages
 
 ### Pending Todos
 
@@ -135,6 +138,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T08:56:00.319Z
-Stopped at: Completed 01-13-PLAN.md
+Last session: 2026-10-01T09:09:15.408Z
+Stopped at: Completed 01-15-PLAN.md
 Resume file: None
