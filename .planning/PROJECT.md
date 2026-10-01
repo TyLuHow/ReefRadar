@@ -23,12 +23,12 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 - ✓ Site map with country/status filters, region fly-to, reference vs location-only distinction — existing
 - ✓ Methods/limitations content ("what it measures / cannot measure"), dataset citations, architecture diagram — existing
 - ✓ Graceful fallbacks for missing WebGL / Web Audio; partial reduced-motion support — existing
+- ✓ Truth & reproducibility: clean-clone build; CI (unit, e2e, axe, Linux visual regression); all four Lambdas built from git with drift check MATCH; synthetic audio retired and 9 real MARRS excerpts served; interim real-only 3-class model live (restored_mid dropped until real data); raw probabilities; label provenance and canonical citations (TRUTH-01..10, PLAT-04) — Phase 1
 
 ### Active
 
 See `.planning/REQUIREMENTS.md` for the full, ID'd list. Summary of the milestone's intent:
 
-- [ ] **Truth & reproducibility:** clean-clone build; deployed backend reconciled with source; all synthetic audio and synthetic-trained classes removed; deployed model verified; every clip and site attributed.
 - [ ] **Data & model track:** large ingestion of MARRS timestamped audio + sonotype detections + Hurricane Irma pre/post; batch embedding; leave-one-site-out evaluation; retrained classifier on real data only (SurfPerch vs Perch 2.0 evaluated); published model card; versioned dataset/model contract.
 - [ ] **Instrument:** one workspace — Atlas (geography ↔ sound-space), persistent Inspector, Listening Bench (real spectrograms, per-window readings, guild filters, fair A/B/C comparison, recovery ladder) — with all state in the URL.
 - [ ] **Time as a first-class dimension:** within-recording playhead/window strip; diel (time-of-day) patterns; deployment effort and detection timelines; pre/post-event comparison.
@@ -51,8 +51,9 @@ See `.planning/REQUIREMENTS.md` for the full, ID'd list. Summary of the mileston
 
 - **Discovery artifacts (read before planning any phase):** `.planning/codebase/*` (7-doc codebase map), `.planning/audit/PRODUCT-AUDIT.md`, `.planning/audit/CAPABILITY-MATRIX.md` (anti-regression contract), `.planning/audit/DATA-MODEL.md`, `.planning/research/REFERENCE-PLATFORMS.md`, `.planning/research/TECH-LANDSCAPE.md`, `.planning/research/REDESIGN-THESIS.md`, `.planning/research/DRIVING-QUESTIONS.md`.
 - **Prior milestone:** `dashboard-next/.planning/` holds the completed v1.0 "Adaptive Bioluminescent UI" milestone (2026-03). It is superseded by this project; its vitality system is retired.
-- **Live system:** API `https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod` (AWS account 781978598306, us-east-1, prefix `reefradar-2477-`); dashboard on Vercel (`dashboard-next-indol-nu.vercel.app`). Deployed `/samples` route and gallery source are not in git.
-- **Integrity findings that shape everything:** synthetic gallery audio (verified), likely synthetic-trained `restored_mid` class, 10-window same-site test set, probabilities scaled by region multipliers, meaningless embedding scatter, cherry-picked confounded demo pair, mislabelled datasets (Bora-Bora disturbance types as "degraded", post-hurricane vector labelled healthy), citation errors (MARRS, SurfPerch arXiv id).
+- **Live system:** API `https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod` (AWS account 781978598306, us-east-1, prefix `reefradar-2477-`); dashboard on Vercel (`dashboard-next-indol-nu.vercel.app`). All deployed Lambda code and the gallery source are in git (drift check MATCH); production frontend remains the legacy UI until the overhaul is launch-worthy (merge on hold by owner decision).
+- **Phase 1 outcome:** backend truth fixes live in production (2026-10-01). Lambda account concurrency is 10 until a quota increase is granted. The interim model labels the healthy ind_H1 excerpt degraded (0.956), so grouped evaluation (Phase 5) and a real-data retrain (Phase 12) matter.
+- **Integrity findings that shape everything (pre-Phase 1):** synthetic gallery audio (verified), likely synthetic-trained `restored_mid` class, 10-window same-site test set, probabilities scaled by region multipliers, meaningless embedding scatter, cherry-picked confounded demo pair, mislabelled datasets (Bora-Bora disturbance types as "degraded", post-hurricane vector labelled healthy), citation errors (MARRS, SurfPerch arXiv id).
 - **Dataset's strongest asset:** South Sulawesi paired design — healthy, degraded, newly-restored (<3 mo) and mid-restored (32–53 mo) sites within ~2 km.
 - **Upstream data available for ingestion:** MARRS ~542k timestamped one-minute files (~9,000 h, every 2–4 min over 3–40 days/site), MARRS sonotype detections (15 sound types, ~66 GB), Hurricane Irma pre/post archives (CC0), CoralSoundExplorer, SanctSound. MARRS filename timezone unverified.
 - **Users:** (1) reef/PAM researchers and restoration practitioners — the standard every number is held to; (2) curious public and portfolio reviewers — served by the front door.
@@ -73,7 +74,7 @@ See `.planning/REQUIREMENTS.md` for the full, ID'd list. Summary of the mileston
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
 | Research instrument with public front door (Q1) | Credibility comes from rigor; landing still hooks in 5 s | — Pending |
-| Truth pass + retrain this milestone (Q2) | Instrument cannot sit on synthetic data / unvalidated model | — Pending |
+| Truth pass + retrain this milestone (Q2) | Instrument cannot sit on synthetic data / unvalidated model | ✓ Truth pass done (Phase 1); retrain Phase 12 |
 | Large ingestion of upstream data (Q3) | Makes time (diel, effort, detections, pre/post) a real axis | — Pending |
 | Evidence-first classifier role (Q4) | Upload as search; probabilities secondary with abstain | — Pending |
 | URL permalinks + local saves, no accounts (Q5) | Shareability without auth/privacy burden | — Pending |
@@ -103,4 +104,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-09-30 after initialization*
+*Last updated: 2026-10-01 after Phase 1*
