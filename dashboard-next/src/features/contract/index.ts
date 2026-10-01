@@ -3,7 +3,7 @@
  * from '@/features/contract' only; client.ts, schema.ts and config.ts are
  * internal and are not imported from outside this folder (tests excepted).
  */
-export { useContract, useReferenceSites } from './hooks';
+export { useContract, useCoverage, useModelVersion, useReferenceSites } from './hooks';
 export type { ContractQueryResult } from './hooks';
 export { useLegacySitesResponse, toLegacySitesResponse } from './legacy';
 export {
@@ -15,4 +15,4 @@ export {
   ContractSchemaError,
   ContractUriError,
 } from './errors';
-export type { ContractManifest, ContractPointer, ContractSite, Coverage } from './schema';
+export type { ContractManifest, ContractPointer, ContractSite, Coverage, ModelVersion } from './schema';

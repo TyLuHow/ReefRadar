@@ -139,6 +139,8 @@ export const ContractManifest = ContractManifestBase;
 export const SITE_STATUSES = ['healthy', 'degraded', 'restored_early', 'restored_mid', 'unknown'] as const;
 export const REFERENCE_ROLES = ['acoustic_reference', 'location_only'] as const;
 
+export const SiteProjectionBase = z.looseObject({ x: z.number(), y: z.number() });
+
 export const ContractSiteBase = z.looseObject({
   site_id: nonEmpty,
   country: nonEmpty,
@@ -164,7 +166,7 @@ export const ContractSiteBase = z.looseObject({
   label_note: z.string().nullable(),
   synthetic: z.literal(false),
   embedding_row: nonNegativeInt.nullable(),
-  projection: z.looseObject({ x: z.number(), y: z.number() }).nullable(),
+  projection: SiteProjectionBase.nullable(),
 });
 
 /** The four JSON Schema if/then invariants (site.schema.json allOf). */
@@ -208,6 +210,141 @@ export const ContractSitesFile = z.looseObject({
   sites: z.array(ContractSite),
 });
 
+// ---- model version (v<N>/model_version.json) ------------------------------
+
+export const EmbeddingModelBase = z.looseObject({
+  name: nonEmpty,
+  version: nonEmpty,
+  dimension: positiveInt,
+});
+export const EmbeddingModel = EmbeddingModelBase;
+
+export const ModelArchitectureBase = z.looseObject({
+  input_dim: positiveInt,
+  hidden_dims: z.array(positiveInt),
+  num_classes: positiveInt,
+});
+
+export const ModelTrainingBase = z.looseObject({
+  rows: nonNegativeInt,
+  sites: z.array(nonEmpty),
+  countries: z.array(nonEmpty),
+  synthetic_data: z.literal(false),
+  synthetic_rows_excluded: nonNegativeInt,
+  seed: z.number().int(),
+});
+
+export const ModelPredecessorBase = z.looseObject({
+  model_version: nonEmpty,
+  retired_reason: nonEmpty,
+});
+
+export const ModelVersionBase = z.looseObject({
+  schema_version: z.literal(1),
+  model_version: versionString,
+  architecture: ModelArchitectureBase,
+  classes: z.array(nonEmpty).min(1),
+  embedding_model: EmbeddingModelBase,
+  preprocessing_spec_version: versionString,
+  training: ModelTrainingBase,
+  // Null unless a grouped, site-held-out evaluation exists; no accuracy figure is carried.
+  evaluation: z.record(z.string(), z.unknown()).nullable(),
+  evaluation_note: nonEmpty,
+  config_sha256: sha256,
+  config_sha256_deployed: sha256.optional(),
+  weights_sha256: sha256,
+  weights_location: z.string().regex(/^s3:\/\/[a-z0-9.-]+\/\S+$/),
+  predecessor: ModelPredecessorBase,
+});
+export const ModelVersion = ModelVersionBase;
+
+// ---- preprocessing spec (v<N>/preprocessing_spec.json) --------------------
+
+export const ResamplingBase = z.looseObject({
+  method: nonEmpty,
+  anti_alias_filter: z.boolean(),
+});
+
+export const KnownGapBase = z.looseObject({
+  id: nonEmpty,
+  summary: nonEmpty,
+  owner_phase: nonEmpty,
+  status: nonEmpty,
+  reference: nonEmpty,
+});
+
+export const ServingBase = z.looseObject({ window_pooling: nonEmpty });
+
+export const PreprocessingSpecBase = z.looseObject({
+  schema_version: z.literal(1),
+  spec_version: versionString,
+  status: nonEmpty,
+  sample_rate_hz: positiveInt,
+  window_s: z.number().gt(0),
+  window_samples: positiveInt,
+  hop_s: z.number().gt(0),
+  min_duration_s: z.number().min(0),
+  max_duration_s: z.number().min(0),
+  trailing_partial_window: nonEmpty,
+  channel_mix: nonEmpty,
+  amplitude_scaling: z.record(z.string(), z.unknown()),
+  resampling: ResamplingBase,
+  embedding_model: EmbeddingModelBase,
+  serving: ServingBase,
+  known_gaps: z.array(KnownGapBase).min(1),
+  source: nonEmpty,
+});
+export const PreprocessingSpec = PreprocessingSpecBase.superRefine((value, ctx) => {
+  if (Object.keys(value.amplitude_scaling).length < 1) {
+    ctx.addIssue({ code: 'custom', message: 'amplitude_scaling must describe the scaling', path: ['amplitude_scaling'] });
+  }
+});
+
+// ---- projection (v<N>/projection.json) ------------------------------------
+
+export const ProjectionCoordinateBase = z.looseObject({
+  site_id: nonEmpty,
+  x: z.number(),
+  y: z.number(),
+});
+
+export const ProjectionBase = z.looseObject({
+  schema_version: z.literal(1),
+  method: z.literal('pca'),
+  input_uri: z.string().regex(/^v[0-9]+\/[A-Za-z0-9_./-]+$/),
+  site_ids: z.array(nonEmpty),
+  mean: z.array(z.number()),
+  components: z.array(z.array(z.number())),
+  explained_variance: z.array(z.number()),
+  explained_variance_ratio: z.array(z.number()),
+  cumulative_explained_variance_ratio: z.number().min(0).max(1),
+  coordinates: z.array(ProjectionCoordinateBase),
+  sign_rule: nonEmpty,
+  note: nonEmpty,
+});
+// Array lengths are verified by scripts/check_contract.py, not by the JSON Schema, so not here either.
+export const Projection = ProjectionBase;
+
+// ---- analysis result version stamp ----------------------------------------
+
+export const AnalysisResultStampBase = z.looseObject({
+  contract_version: positiveInt.nullable(),
+  dataset_version: versionString.nullable(),
+  model_version: versionString.nullable(),
+  preprocessing_spec_version: versionString.nullable(),
+});
+/** A pre-contract result (null contract_version) carries no dataset or preprocessing-spec version. */
+export const AnalysisResultStamp = AnalysisResultStampBase.superRefine((stamp, ctx) => {
+  if (stamp.contract_version === null) {
+    if (stamp.dataset_version !== null) {
+      ctx.addIssue({ code: 'custom', message: 'a pre-contract result has no dataset_version', path: ['dataset_version'] });
+    }
+    if (stamp.preprocessing_spec_version !== null) {
+      ctx.addIssue({ code: 'custom', message: 'a pre-contract result has no preprocessing_spec_version', path: ['preprocessing_spec_version'] });
+    }
+  }
+});
+
 // ---- inferred types -------------------------------------------------------
 
 export type ContractPointer = z.infer<typeof ContractPointer>;
@@ -217,3 +354,7 @@ export type AbsentArtifact = z.infer<typeof AbsentArtifact>;
 export type ContractManifest = z.infer<typeof ContractManifest>;
 export type ContractSite = z.infer<typeof ContractSite>;
 export type ContractSitesFile = z.infer<typeof ContractSitesFile>;
+export type ModelVersion = z.infer<typeof ModelVersion>;
+export type PreprocessingSpec = z.infer<typeof PreprocessingSpec>;
+export type Projection = z.infer<typeof Projection>;
+export type AnalysisResultStamp = z.infer<typeof AnalysisResultStamp>;

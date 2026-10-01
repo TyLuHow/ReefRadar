@@ -2,9 +2,9 @@
 
 import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { loadContractSites, loadLatestPointer, loadManifest } from './client';
+import { loadArtifact, loadContractSites, loadLatestPointer, loadManifest } from './client';
 import { ContractFetchError } from './errors';
-import type { ContractManifest, ContractSite } from './schema';
+import { ModelVersion, type ContractManifest, type ContractSite, type Coverage } from './schema';
 
 /**
  * TanStack hooks over the verified contract client (02-07).
@@ -88,6 +88,49 @@ export function useContract(version?: number): ContractQueryResult<ContractManif
     isLoading: manifest.data === undefined && error === null,
     error,
     refetch,
+  };
+}
+
+/** The classifier model identity and provenance of the pinned or latest contract version. */
+export function useModelVersion(version?: number): ContractQueryResult<ModelVersion> {
+  const contract = useContract(version);
+  const manifest = contract.data;
+
+  const model = useQuery({
+    queryKey: ['contract', contract.version, 'model_version'],
+    queryFn: () => loadArtifact(manifest as ContractManifest, 'model_version', ModelVersion),
+    enabled: manifest !== undefined,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    retry: retryTransient,
+  });
+
+  const refetchContract = contract.refetch;
+  const refetchModel = model.refetch;
+  const refetch = useCallback(async () => {
+    await refetchContract();
+    await refetchModel();
+  }, [refetchContract, refetchModel]);
+
+  const error = (model.error ?? contract.error ?? null) as Error | null;
+  return {
+    data: model.data,
+    version: contract.version,
+    isLoading: model.data === undefined && error === null,
+    error,
+    refetch,
+  };
+}
+
+/** What the pinned or latest contract version covers (the manifest's coverage block). */
+export function useCoverage(version?: number): ContractQueryResult<Coverage> {
+  const contract = useContract(version);
+  return {
+    data: contract.data?.coverage,
+    version: contract.version,
+    isLoading: contract.isLoading,
+    error: contract.error,
+    refetch: contract.refetch,
   };
 }
 
