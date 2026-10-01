@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 2
 current_phase_name: Data Contract v1
 status: executing
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-10-01T22:17:50.100Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-10-01T22:37:52.575Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 2 execution started
-state_head: 1a65576aac6501a95d0cc8b4a6904b4339850cb1
+state_head: 9f54ecfb9323306984385ef4737346447666239e
 progress:
   total_phases: 17
   completed_phases: 1
   total_plans: 32
-  completed_plans: 21
+  completed_plans: 22
   percent: 6
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 ## Current Position
 
 Phase: 2 (Data Contract v1) — EXECUTING
-Plan: 2 of 12
+Plan: 3 of 12
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 2 execution started
 
@@ -81,6 +81,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 01 P14 | 25min | 3 tasks | 6 files |
 | Phase 01 P20 | 100min | 3 tasks | 49 files |
 | Phase 02 P01 | 11min | 3 tasks | 26 files |
+| Phase 02 P02 | 20min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -135,6 +136,7 @@ Recent decisions affecting current work:
 - [Owner, 2026-10-01]: Hold the merge of `redesign/v2-discovery` to `main` (production frontend) until the UI/UX overhaul is far enough along to be worth a visible launch (after Phases 4/6 at the earliest). Backend truth fixes are already live; production frontend stays on the legacy UI meanwhile.
 - [Phase 01 review]: Router now answers CORS preflight (OPTIONS, 204); before 6aca641 every browser POST /upload was blocked (pre-existing). Experience entry copy "classify reef health" logged for the Phase 4/7 copy pass.
 - [Phase 2]: 02-01: contracts/bucket/v1/sites.json is {schema_version, sites[]}; config_sha256 is over LF bytes and config_sha256_deployed records the CRLF hash of the deployed config
+- [Phase 02]: 02-02: managed SimpleCORS (wildcard origin, no credentials) for the public contract CDN; storage confirm gated on a verified budget alarm; contract CloudFront domain d7dr1fzple2sg.cloudfront.net
 
 ### Pending Todos
 
@@ -158,6 +160,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T22:17:49.913Z
-Stopped at: Completed 02-01-PLAN.md
+Last session: 2026-10-01T22:37:52.390Z
+Stopped at: Completed 02-02-PLAN.md
 Resume file: None
