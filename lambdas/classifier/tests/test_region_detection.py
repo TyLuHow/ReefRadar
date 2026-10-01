@@ -1,15 +1,18 @@
 """
-Characterization tests for lambdas/classifier/region_detection.py.
+Tests for lambdas/classifier/region_detection.py.
 
-These tests pin the CURRENT, pre-fix behaviour of the region confidence
-multiplier (0.6 out-of-distribution, 0.7 unknown-region) as it exists
-today. Per CONTEXT.md D-12, this behaviour is known-wrong: raw softmax
-probabilities should not be scaled by a region multiplier. Plan 01-11
-removes the multiplier and inverts the assertions below.
+Per CONTEXT.md D-12/TRUTH-06, the 0.6/0.7 region confidence multiplier
+that used to scale probabilities and confidence has been removed
+entirely. These tests pin the NEW, honest behaviour: `adjust_classification`
+never changes label/confidence/probabilities, and `detect_region` reports
+a separate region object computed from the classifier's actual (audited)
+training sites -- Indonesia and Kenya only, per
+docs/model/deployed-model.lock.json (plan 01-10).
 
-Ported from scripts/test_region_detection.py (manual smoke script) into
-pytest functions, plus two new characterization cases for the
-soon-to-be-removed multiplier behaviour.
+This file replaces the pre-fix characterization tests from plan 01-01,
+which pinned the old 0.6/0.7-multiplier behaviour as "currently correct".
+That behaviour is now gone; `test_old_multiplier_behaviour_is_removed`
+below is the one test deliberately kept (inverted) to prove it.
 """
 
 import sys
@@ -22,139 +25,236 @@ import pytest
 # `import region_detection` resolves without needing a package __init__.
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from region_detection import detect_region, adjust_classification, REGION_BOUNDS  # noqa: E402
+from region_detection import (  # noqa: E402
+    DEFAULT_TRAINING_SITES,
+    adjust_classification,
+    detect_region,
+)
 
 
-# --- In-distribution (training) regions -----------------------------------
-
-def test_indonesia_in_training_distribution():
-    result = detect_region(-4.93, 119.32)
-    assert result["in_training_distribution"] is True
-    assert result["confidence_multiplier"] == 1.0
-
-
-def test_australia_gbr_in_training_distribution():
-    result = detect_region(-18.0, 147.0)
-    assert result["in_training_distribution"] is True
-    assert result["region"] == "GREAT_BARRIER_REEF"
+RAW_CLASSIFICATION = {
+    "label": "healthy",
+    "confidence": 0.9,
+    "probabilities": {
+        "healthy": 0.4,
+        "degraded": 0.3,
+        "restored_early": 0.2,
+        "restored_mid": 0.1,
+    },
+}
 
 
-def test_kenya_in_training_distribution():
-    result = detect_region(-2.22, 41.01)
-    assert result["in_training_distribution"] is True
-    assert result["region"] == "EAST_AFRICA"
+def _assert_probabilities_untouched(adjusted):
+    assert adjusted["probabilities"] == RAW_CLASSIFICATION["probabilities"]
+    assert adjusted["confidence"] == RAW_CLASSIFICATION["confidence"]
+    assert adjusted["label"] == RAW_CLASSIFICATION["label"]
+    assert sum(adjusted["probabilities"].values()) == pytest.approx(1.0, abs=1e-9)
 
 
-def test_maldives_in_training_distribution():
-    result = detect_region(4.17, 73.51)
-    assert result["in_training_distribution"] is True
-    assert result["region"] == "MALDIVES"
+# --- No coordinates ----------------------------------------------------------
 
 
-def test_mexico_mesoamerican_in_training_distribution():
-    result = detect_region(20.5, -87.4)
-    assert result["in_training_distribution"] is True
-    assert result["region"] == "MESOAMERICAN_REEF"
-
-
-# --- Out-of-distribution regions -------------------------------------------
-
-def test_jamaica_out_of_distribution():
-    result = detect_region(18.1, -77.3)
-    assert result["in_training_distribution"] is False
-    assert result["region"] == "CARIBBEAN"
-    assert result["confidence_multiplier"] == 0.6
-
-
-def test_florida_keys_out_of_distribution():
-    # NOTE: the ad hoc scripts/test_region_detection.py this was ported from
-    # asserted region == "CARIBBEAN" here, but FLORIDA_KEYS is a smaller,
-    # more specific bounding box than CARIBBEAN, so smallest-area-wins
-    # (region_detection.py:149-152) actually picks FLORIDA_KEYS. That
-    # original assertion was never enforced (the script only counted
-    # pass/fail, it didn't exit non-zero mid-run) — this pins the real
-    # current behaviour instead of the stale manual-script expectation.
-    result = detect_region(24.5, -81.8)
-    assert result["in_training_distribution"] is False
-    assert result["region"] == "FLORIDA_KEYS"
-
-
-def test_red_sea_out_of_distribution():
-    result = detect_region(25.0, 37.0)
-    assert result["in_training_distribution"] is False
-    assert result["region"] == "RED_SEA"
-
-
-def test_eastern_atlantic_out_of_distribution():
-    result = detect_region(15.0, -17.0)
-    assert result["in_training_distribution"] is False
-    assert result["region"] == "EASTERN_ATLANTIC"
-
-
-# --- Unknown / null coordinates ---------------------------------------------
-
-def test_unknown_coordinates():
-    result = detect_region(None, None)
-    assert result["in_training_distribution"] is False
-    assert result["confidence_multiplier"] == 0.7
-    assert result["region"] == "UNKNOWN"
-
-
-# --- Overlap resolution (smallest bounding box wins) ------------------------
-
-def test_mesoamerican_smaller_than_caribbean():
-    meso = REGION_BOUNDS["MESOAMERICAN_REEF"]
-    carib = REGION_BOUNDS["CARIBBEAN"]
-    meso_area = (meso["lat_max"] - meso["lat_min"]) * (meso["lon_max"] - meso["lon_min"])
-    carib_area = (carib["lat_max"] - carib["lat_min"]) * (carib["lon_max"] - carib["lon_min"])
-    assert meso_area < carib_area
-
-
-def test_east_africa_smaller_than_indian_ocean():
-    ea = REGION_BOUNDS["EAST_AFRICA"]
-    io = REGION_BOUNDS["INDIAN_OCEAN"]
-    ea_area = (ea["lat_max"] - ea["lat_min"]) * (ea["lon_max"] - ea["lon_min"])
-    io_area = (io["lat_max"] - io["lat_min"]) * (io["lon_max"] - io["lon_min"])
-    assert ea_area < io_area
-
-
-def test_gbr_smaller_than_indo_pacific_west():
-    gbr = REGION_BOUNDS["GREAT_BARRIER_REEF"]
-    ipw = REGION_BOUNDS["INDO_PACIFIC_WEST"]
-    gbr_area = (gbr["lat_max"] - gbr["lat_min"]) * (gbr["lon_max"] - gbr["lon_min"])
-    ipw_area = (ipw["lat_max"] - ipw["lat_min"]) * (ipw["lon_max"] - ipw["lon_min"])
-    assert gbr_area < ipw_area
-
-
-# --- Characterization of the known-wrong multiplier behaviour (D-12) -------
-# These two tests pin CURRENT behaviour so plan 01-11 has a concrete
-# regression signal to invert when it removes the region multiplier.
-
-def test_characterization_unknown_region_multiplier_is_0_7():
-    """detect_region(None, None) currently yields multiplier 0.7, region UNKNOWN."""
-    result = detect_region(None, None)
-    assert result["confidence_multiplier"] == 0.7
-    assert result["region"] == "UNKNOWN"
-
-
-def test_characterization_adjust_classification_scales_probabilities():
-    """
-    With no coordinates, adjust_classification currently scales probabilities
-    that sum to 1 down to summing to 0.7 (the unknown-region multiplier).
-    This is the exact bug D-12 removes: probabilities should remain raw
-    softmax output, not be multiplied by a region confidence factor.
-    """
-    classification = {
-        "confidence": 0.9,
-        "probabilities": {
-            "healthy": 0.4,
-            "degraded": 0.3,
-            "restored_early": 0.2,
-            "restored_mid": 0.1,
-        },
-    }
+def test_no_coordinates_probabilities_unmodified():
     region_result = detect_region(None, None)
-    adjusted = adjust_classification(classification, region_result)
+    adjusted = adjust_classification(RAW_CLASSIFICATION, region_result)
+    _assert_probabilities_untouched(adjusted)
 
+
+def test_no_coordinates_fields():
+    region_result = detect_region(None, None)
+    assert region_result["coordinates_provided"] is False
+    assert region_result["in_training_region"] is False
+    assert region_result["training_countries"] == ["Indonesia", "Kenya"]
+
+
+# --- In-training-region coordinates (South Sulawesi, Kenya) -----------------
+
+
+def test_south_sulawesi_in_training_region():
+    region_result = detect_region(-4.93, 119.32)
+    adjusted = adjust_classification(RAW_CLASSIFICATION, region_result)
+    _assert_probabilities_untouched(adjusted)
+    assert region_result["coordinates_provided"] is True
+    assert region_result["in_training_region"] is True
+    assert region_result["training_countries"] == ["Indonesia", "Kenya"]
+
+
+def test_kenya_in_training_region():
+    region_result = detect_region(-2.21, 41.01)
+    adjusted = adjust_classification(RAW_CLASSIFICATION, region_result)
+    _assert_probabilities_untouched(adjusted)
+    assert region_result["coordinates_provided"] is True
+    assert region_result["in_training_region"] is True
+    assert region_result["training_countries"] == ["Indonesia", "Kenya"]
+
+
+# --- Outside-training-region coordinates (GBR, Maldives, Mexico, Florida) ---
+
+
+@pytest.mark.parametrize(
+    "lat,lon",
+    [
+        (-16.85, 146.23),  # Great Barrier Reef
+        (4.89, 72.93),  # Maldives
+        (18.34, -87.81),  # Mexico (Mesoamerican reef)
+        (24.45, -81.93),  # Florida Keys
+    ],
+)
+def test_outside_training_region_probabilities_unmodified(lat, lon):
+    region_result = detect_region(lat, lon)
+    adjusted = adjust_classification(RAW_CLASSIFICATION, region_result)
+    _assert_probabilities_untouched(adjusted)
+    assert region_result["coordinates_provided"] is True
+    assert region_result["in_training_region"] is False
+    assert region_result["training_countries"] == ["Indonesia", "Kenya"]
+
+
+def test_great_barrier_reef_region_name():
+    region_result = detect_region(-16.85, 146.23)
+    assert region_result["region"] == "GREAT_BARRIER_REEF"
+    assert region_result["in_training_region"] is False
+
+
+def test_maldives_region_name():
+    region_result = detect_region(4.89, 72.93)
+    assert region_result["region"] == "MALDIVES"
+    assert region_result["in_training_region"] is False
+
+
+def test_mexico_region_name():
+    region_result = detect_region(18.34, -87.81)
+    assert region_result["region"] == "MESOAMERICAN_REEF"
+    assert region_result["in_training_region"] is False
+
+
+def test_florida_keys_region_name():
+    region_result = detect_region(24.45, -81.93)
+    assert region_result["region"] == "FLORIDA_KEYS"
+    assert region_result["in_training_region"] is False
+
+
+# --- Broad-region coordinates (Philippines) ----------------------------------
+
+
+def test_philippines_resolves_to_broad_region_and_is_outside_training():
+    region_result = detect_region(10.3, 123.9)
+    assert region_result["scope"] == "broad"
+    assert region_result["in_training_region"] is False
+
+
+# --- No caveat claims Australia/Maldives/Mexico as classifier training ------
+# --- countries (the caveat may still *name the detected region* -- e.g. -----
+# --- "appears to be from Maldives" -- that's an honest location statement, -
+# --- not a training-coverage claim). -----------------------------------------
+
+
+@pytest.mark.parametrize(
+    "lat,lon",
+    [
+        (None, None),
+        (-4.93, 119.32),
+        (-2.21, 41.01),
+        (-16.85, 146.23),
+        (4.89, 72.93),
+        (18.34, -87.81),
+        (24.45, -81.93),
+        (10.3, 123.9),
+    ],
+)
+def test_caveat_training_countries_are_only_indonesia_and_kenya(lat, lon):
+    region_result = detect_region(lat, lon)
+    # The field that actually drives any UI/API claim about training
+    # coverage must never include the old (incorrect) 5-country MARRS
+    # reference-site footprint -- only the classifier's real training
+    # countries.
+    assert region_result["training_countries"] == ["Indonesia", "Kenya"]
+    caveat = region_result["caveat"]
+    # The old caveat claimed "Confidence scores have been reduced." -- that
+    # exact claim must be gone. A caveat may still honestly say confidence
+    # was *not* reduced/adjusted (that's the correct, new claim).
+    assert "confidence scores have been reduced" not in caveat.lower()
+    assert "confidence has been reduced" not in caveat.lower()
+
+
+# --- Legacy fields: in_training_distribution mirrors in_training_region, --
+# --- confidence_adjusted is always False ------------------------------------
+
+
+@pytest.mark.parametrize(
+    "lat,lon",
+    [
+        (None, None),
+        (-4.93, 119.32),
+        (-2.21, 41.01),
+        (-16.85, 146.23),
+        (4.89, 72.93),
+        (18.34, -87.81),
+        (24.45, -81.93),
+        (10.3, 123.9),
+    ],
+)
+def test_legacy_fields_on_adjusted_region(lat, lon):
+    region_result = detect_region(lat, lon)
+    adjusted = adjust_classification(RAW_CLASSIFICATION, region_result)
+    region = adjusted["region"]
+    assert region["in_training_distribution"] == region["in_training_region"]
+    assert region["confidence_adjusted"] is False
+
+
+# --- T-01-11-01: non-numeric / out-of-range coordinates degrade gracefully --
+
+
+@pytest.mark.parametrize(
+    "lat,lon",
+    [
+        ("not-a-number", 119.32),
+        (-4.93, "not-a-number"),
+        (999, 119.32),  # out of valid latitude range
+        (-4.93, -999),  # out of valid longitude range
+        (float("nan"), 119.32),
+    ],
+)
+def test_invalid_coordinates_treated_as_not_provided(lat, lon):
+    region_result = detect_region(lat, lon)  # must not raise
+    assert region_result["coordinates_provided"] is False
+    assert region_result["region"] == "UNKNOWN"
+
+
+# --- Default training sites mirror the audited lock file --------------------
+
+
+def test_default_training_sites_are_indonesia_and_kenya_only():
+    countries = {site["country"] for site in DEFAULT_TRAINING_SITES}
+    assert countries == {"Indonesia", "Kenya"}
+    assert len(DEFAULT_TRAINING_SITES) == 5
+
+
+def test_custom_training_sites_override_default():
+    custom_sites = [
+        {"site_id": "aus_X1", "country": "Australia", "latitude": -18.0, "longitude": 147.0},
+    ]
+    region_result = detect_region(-18.0, 147.0, training_sites=custom_sites)
+    assert region_result["training_countries"] == ["Australia"]
+    assert region_result["in_training_region"] is True
+    assert region_result["region"] == "GREAT_BARRIER_REEF"
+
+
+# --- Characterization of the OLD multiplier behaviour (now removed) --------
+
+
+def test_old_multiplier_behaviour_is_removed():
+    """
+    The old region_detection.py scaled probabilities/confidence by a
+    0.6 (out-of-distribution) or 0.7 (unknown-region) multiplier, and
+    exposed that multiplier as `confidence_multiplier` on detect_region's
+    result. D-12 removes this entirely: no multiplier field exists, and
+    probabilities/confidence pass through unmodified in every case,
+    including the exact no-coordinates case that used to sum to 0.7.
+    """
+    region_result = detect_region(None, None)
+    assert "confidence_multiplier" not in region_result
+
+    adjusted = adjust_classification(RAW_CLASSIFICATION, region_result)
     total = sum(adjusted["probabilities"].values())
-    assert total == pytest.approx(0.7)
+    assert total == pytest.approx(1.0, abs=1e-9)
+    assert total != pytest.approx(0.7)

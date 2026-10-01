@@ -13,7 +13,7 @@ import uuid
 import time
 from datetime import datetime
 from decimal import Decimal
-from region_detection import detect_region, adjust_classification
+from region_detection import detect_region, adjust_classification, DEFAULT_TRAINING_SITES
 
 s3 = boto3.client('s3')
 lambda_client = boto3.client('lambda')
@@ -91,8 +91,12 @@ def handler(event, context):
         # Load reference embeddings and classify
         classification = classify_embedding(mean_embedding)
 
-        # Apply geographic region detection and confidence adjustment
-        region_result = detect_region(latitude, longitude)
+        # Apply geographic region detection (D-12: no confidence/probability
+        # scaling -- region is reported honestly, separately, from the
+        # classifier's actual (audited) training sites).
+        _, model_config = load_classifier_model()
+        training_sites = model_config.get('training_sites') or DEFAULT_TRAINING_SITES
+        region_result = detect_region(latitude, longitude, training_sites=training_sites)
         classification = adjust_classification(classification, region_result)
 
         similar_sites = find_similar_sites(mean_embedding)
