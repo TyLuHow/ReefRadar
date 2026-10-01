@@ -3,15 +3,31 @@
 Spectral sanity check that flags synthetic tone-mix clips and passes real
 reef recordings (TRUTH-03).
 
-Flags a clip when ANY of:
+Flags a clip when:
   - sample_rate != 16000 Hz (MARRS native rate; the previously-served
-    synthetic demo clips were generated at 32 kHz)
-  - spectral_flatness < 0.1 over 50 Hz-Nyquist (tonal, not broadband)
-  - more than 50% of in-band energy sits in the 50 loudest FFT bins
-    (concentrated tones rather than a natural soundscape)
+    synthetic demo clips were generated at 32 kHz) -- this is the primary,
+    deterministic signal: every currently-served synthetic clip measured
+    this session is 32 kHz, and every real MARRS excerpt is 16 kHz native.
+  - OR spectral_flatness is extremely low (< 0.025) AND, simultaneously,
+    more than 85% of in-band (50 Hz-Nyquist) energy sits in the 50 loudest
+    FFT bins -- both conditions together, not either alone.
 
 Computation is numpy-only: a hand-rolled Welch-averaged power spectrum
 (nfft=4096, Hann window, 50% overlap).
+
+Calibration note: an earlier version flagged on EITHER spectral_flatness
+< 0.1 OR top-50-bin energy fraction > 0.5 (matching the plan's literal
+text). Verified against the 9 real MARRS excerpts this plan extracted,
+that independent-OR rule false-flagged real, tonal reef biophony (fish
+choruses legitimately concentrate energy in a narrow low-frequency band --
+e.g. aus_H1 measured spectral_flatness 0.045, aus_R1 0.036, BOTH below the
+0.065 reference value measured for the actual synthetic clips in
+DATA-MODEL.md 5.6). Measuring the actual 8 live synthetic clips confirmed
+sample_rate alone correctly flags all 8 regardless of spectral thresholds,
+so the spectral heuristic was tightened to require both signals jointly,
+with thresholds set outside the full real-excerpt calibration range
+(real max flatness-side observed 0.036, real max concentration observed
+0.78) -- see 01-03-SUMMARY.md deviations.
 
 Usage:
     py -3.12 scripts/check_audio_real.py --self-test
@@ -37,9 +53,9 @@ LIVE_SAMPLES_URL = "https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod/
 NFFT = 4096
 OVERLAP = 0.5
 MIN_FREQ_HZ = 50.0
-FLATNESS_THRESHOLD = 0.1
+FLATNESS_THRESHOLD = 0.025
 TOP_N_BINS = 50
-TOP_N_FRACTION_THRESHOLD = 0.5
+TOP_N_FRACTION_THRESHOLD = 0.85
 NATIVE_SAMPLE_RATE_HZ = 16000
 
 
@@ -123,12 +139,13 @@ def check_file(source):
     reasons = []
     if sr != NATIVE_SAMPLE_RATE_HZ:
         reasons.append(f"sample_rate {sr} Hz != {NATIVE_SAMPLE_RATE_HZ} Hz (MARRS native rate)")
-    if spectral_flatness < FLATNESS_THRESHOLD:
-        reasons.append(f"spectral_flatness {spectral_flatness:.4f} < {FLATNESS_THRESHOLD} (tonal)")
-    if top_fraction > TOP_N_FRACTION_THRESHOLD:
+    is_tonal = spectral_flatness < FLATNESS_THRESHOLD
+    is_concentrated = top_fraction > TOP_N_FRACTION_THRESHOLD
+    if is_tonal and is_concentrated:
         reasons.append(
+            f"spectral_flatness {spectral_flatness:.4f} < {FLATNESS_THRESHOLD} AND "
             f"top{TOP_N_BINS}_bin_energy_fraction {top_fraction:.4f} > {TOP_N_FRACTION_THRESHOLD} "
-            "(energy concentrated in a few bins)"
+            "(pure-tone-like: both extremely tonal and extremely concentrated)"
         )
 
     return {
