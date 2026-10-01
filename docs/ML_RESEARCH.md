@@ -13,7 +13,7 @@ This document provides comprehensive technical documentation of the machine lear
 
 [SurfPerch](https://www.kaggle.com/models/google/surfperch) is a transfer learning model developed by Google Research specifically for coral reef acoustic analysis. It builds on the Perch architecture originally designed for bird vocalization detection, extended to marine bioacoustics.
 
-**Key Paper:** Williams et al. (2024) "Leveraging Tropical Reef, Bird and Unrelated Sounds for Superior Transfer Learning in Marine Bioacoustics" ([arXiv](https://arxiv.org/abs/2505.03071))
+**Key Paper:** Williams et al. (2024) "Leveraging tropical reef, bird and unrelated sounds for superior transfer learning in marine bioacoustics" ([arXiv:2404.16436](https://arxiv.org/abs/2404.16436)). Canonical citations: [docs/CITATIONS.md](./CITATIONS.md)
 
 ### Technical Parameters
 
@@ -264,4 +264,4 @@ Using EFS instead of /tmp for model storage:
 - [ReefSet Dataset on Zenodo](https://zenodo.org/records/11060189) - Training data for SurfPerch
 - [AWS Lambda Container Images](https://docs.aws.amazon.com/lambda/latest/dg/images-create.html) - AWS documentation
 - [TensorFlow Hub](https://www.tensorflow.org/hub) - Model loading library
-- [Williams et al. (2024)](https://arxiv.org/abs/2505.03071) - Original SurfPerch paper
+- [Williams et al. (2024)](https://arxiv.org/abs/2404.16436) - Original SurfPerch paper ("Leveraging tropical reef, bird and unrelated sounds for superior transfer learning in marine bioacoustics")

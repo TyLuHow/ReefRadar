@@ -90,5 +90,5 @@ This is the single canonical source for every dataset and model-paper citation u
 
 ## Scope and exclusions
 
-The citation checker (`scripts/check-citations.mjs --scope docs`) scans every git-tracked text file for known-wrong citation patterns, excluding `.planning/`, `prompts/`, `dashboard-next/src/`, `node_modules/` and lockfiles. `prompts/` holds historical task logs and is excluded by design — those files describe past (sometimes since-corrected) planning intent and are not live product documentation. `dashboard-next/src/` is included only at `--scope all`, run once the UI consumes this module directly (Phase 1 plans 01-17/01-18/01-19).
+The citation checker (`scripts/check-citations.mjs --scope docs`) scans every git-tracked text file for known-wrong citation patterns, excluding `.planning/`, `prompts/`, `dashboard-next/src/`, `node_modules/`, lockfiles, and its own source file (which legitimately contains the banned substrings as pattern definitions). `prompts/` holds historical task logs and is excluded by design — those files describe past (sometimes since-corrected) planning intent and are not live product documentation. `dashboard-next/src/` is included only at `--scope all`, run once the UI consumes this module directly (Phase 1 plans 01-17/01-18/01-19).
 

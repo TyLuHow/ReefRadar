@@ -4,9 +4,9 @@ This document describes the data pipeline for transferring MARRS coral reef audi
 
 ## Overview
 
-The MARRS (Monitoring And Restoration of Reef Soundscapes) dataset is a large-scale coral reef acoustic monitoring dataset:
+The MARRS (Mars Assisted Reef Restoration System) dataset is a large-scale coral reef acoustic monitoring dataset:
 
-- **Source:** UCL Figshare (DOI: 10.5522/04/29958062)
+- **Source:** UCL Figshare (DOI: 10.5522/04/29958062). Canonical citations: [docs/CITATIONS.md](./CITATIONS.md)
 - **Size:** ~527GB compressed, ~1TB uncompressed
 - **Sites:** 45 monitoring locations across 5 countries
 - **Files:** ~500,000 one-minute WAV recordings at 16kHz

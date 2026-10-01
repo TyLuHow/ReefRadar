@@ -39,9 +39,9 @@ The field is scientifically legitimate but relatively young, with methodology st
 
 ### Source and Provenance
 
-The MARRS (Monitoring And Restoration of Reef Soundscapes) dataset provides the reference embeddings for ReefRadar.
+The MARRS (Mars Assisted Reef Restoration System) dataset provides the reference embeddings for ReefRadar.
 
-**Citation:** Sherwen, K., et al. (2024). Coral Reef Soundscapes from a Global Restoration Programme. UCL Data Repository. [DOI: 10.5522/04/29958062](https://doi.org/10.5522/04/29958062)
+**Citation:** Williams, B. & Jones, K. (2025). Coral Reef Soundscapes from a Global Restoration Programme. University College London (UCL). [DOI: 10.5522/04/29958062](https://doi.org/10.5522/04/29958062), CC BY 4.0. Canonical citations: [docs/CITATIONS.md](./CITATIONS.md)
 
 ### Dataset Specifications
 
@@ -253,7 +253,7 @@ When presenting ReefRadar in a portfolio context, be accurate:
 
 - [MARRS Dataset (UCL Figshare)](https://doi.org/10.5522/04/29958062) - Reference data source
 - [SurfPerch Model (Kaggle)](https://www.kaggle.com/models/google/surfperch) - Embedding model
-- [Williams et al. (2024)](https://arxiv.org/abs/2505.03071) - SurfPerch methodology paper
+- [Williams et al. (2024)](https://arxiv.org/abs/2404.16436) - "Leveraging tropical reef, bird and unrelated sounds for superior transfer learning in marine bioacoustics" - SurfPerch methodology paper
 
 ### Supporting Literature
 
