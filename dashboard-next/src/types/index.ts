@@ -2,6 +2,11 @@
 
 export type ReefStatus = 'healthy' | 'degraded' | 'restored_early' | 'restored_mid' | 'unknown';
 
+// Label provenance (D-17/TRUTH-09): who assigned this site's label, in the
+// dataset's own words, and what that label means. Present on API responses
+// from apply_label_provenance() (lambdas/shared/site_provenance.py); absent
+// on older/fixture shapes that predate it -- every consumer must fall back
+// gracefully when these are undefined.
 export interface Site {
   site_id: string;
   country: string;
@@ -12,6 +17,14 @@ export interface Site {
   has_embedding?: boolean;
   region?: string;
   source?: string;
+  label_source?: string;
+  label_source_name?: string;
+  label_assigned_by?: string;
+  label_original?: string | null;
+  label_definition?: string | null;
+  status_basis?: string | null;
+  period?: string | null;
+  label_note?: string | null;
 }
 
 export interface SitesResponse {

@@ -19,6 +19,9 @@ interface SitePopupProps {
 
 export function SitePopup({ site, onClose }: SitePopupProps) {
   const dotColor = STATUS_DOT_COLORS[site.status] || '#888';
+  // D-17/TRUTH-09: who assigned this site's label, from real API provenance
+  // fields. Falls back to the bare status on older/fixture shapes.
+  const assignedBy = site.label_assigned_by || site.label_source_name;
   const countryName =
     site.country === 'Indonesia'
       ? 'Indonesia'
@@ -65,6 +68,13 @@ export function SitePopup({ site, onClose }: SitePopupProps) {
           <span className="text-xs font-medium" style={{ color: dotColor }}>
             {formatStatus(site.status)}
           </span>
+        </div>
+
+        {/* Label provenance (D-17/TRUTH-09) */}
+        <div className="text-xs" style={{ color: 'var(--text-dim)' }}>
+          {assignedBy
+            ? `Label: ${site.label_original ?? formatStatus(site.status)} (assigned by ${assignedBy})`
+            : `Label: ${formatStatus(site.status)}`}
         </div>
 
         {/* Coordinates */}
