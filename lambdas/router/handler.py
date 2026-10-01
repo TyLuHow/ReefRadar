@@ -413,12 +413,9 @@ def handle_visualize(analysis_id):
         result = table.get_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': 'RESULT'})
 
         if 'Item' not in result:
-            # Check if still processing
-            preprocess_result = table.get_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': 'PREPROCESSED'})
-            if 'Item' in preprocess_result:
-                return response(200, {'analysis_id': analysis_id, 'status': 'processing'})
-
-            # Check for errors - return detailed error information
+            # Check for errors FIRST (mirrors handle_status): classifier failures
+            # happen after the PREPROCESSED item exists, so checking
+            # PREPROCESSED first reported them as "processing" forever.
             error_result = table.get_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': 'ERROR'})
             if 'Item' in error_result:
                 error_item = error_result['Item']
@@ -434,6 +431,13 @@ def handle_visualize(analysis_id):
                         'retry_count': error_item.get('retry_count', 0)
                     }
                 })
+
+            # Still processing: preprocessed, or the analysis record exists but
+            # preprocessing has not finished yet.
+            for sk in ('PREPROCESSED', 'METADATA'):
+                progress_result = table.get_item(Key={'pk': f'ANALYSIS#{analysis_id}', 'sk': sk})
+                if 'Item' in progress_result:
+                    return response(200, {'analysis_id': analysis_id, 'status': 'processing'})
 
             return response(404, {'error': {'code': 'ANALYSIS_NOT_FOUND', 'message': f'No analysis found with ID: {analysis_id}'}})
 
