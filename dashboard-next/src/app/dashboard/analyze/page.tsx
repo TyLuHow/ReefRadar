@@ -427,14 +427,12 @@ export default function EnhancedAnalyzePage() {
           {analysisStep === 'complete' && analysisResult && (
             <>
               {/* Region Warning */}
-              {analysisResult.classification?.region &&
-                !analysisResult.classification.region
-                  .in_training_distribution && (
-                  <RegionWarning
-                    region={analysisResult.classification.region}
-                    className="mb-2"
-                  />
-                )}
+              {analysisResult.classification?.region && (
+                <RegionWarning
+                  region={analysisResult.classification.region}
+                  className="mb-2"
+                />
+              )}
 
               <AnalysisResults result={analysisResult} />
 

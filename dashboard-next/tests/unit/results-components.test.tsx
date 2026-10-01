@@ -99,7 +99,7 @@ describe('RegionWarning', () => {
     expect(screen.getByText(/Indonesia, Kenya/)).toBeInTheDocument();
   });
 
-  it('names the detected region, says no training sites, and says probabilities are unmodified when outside the training region', () => {
+  it('names the detected region, says no training site is close, and says probabilities are unmodified when outside the training region', () => {
     const region: RegionInfo = {
       detected: 'GREAT_BARRIER_REEF',
       name: 'Great Barrier Reef',
@@ -114,14 +114,21 @@ describe('RegionWarning', () => {
     render(<RegionWarning region={region} />);
 
     expect(screen.getByText(/Great Barrier Reef/)).toBeInTheDocument();
-    expect(screen.getByText(/no real training sites/i)).toBeInTheDocument();
+    expect(screen.getByText(/no\s+training site is close/i)).toBeInTheDocument();
     expect(screen.getByText(/raw output, unmodified/i)).toBeInTheDocument();
   });
 
-  it('renders nothing when in_training_region is true', () => {
-    const region = inRegionResult.classification!.region as RegionInfo;
+  it('renders a soft informational note (not a warning, not validation) when in_training_region is true', () => {
+    const region = {
+      ...(inRegionResult.classification!.region as RegionInfo),
+      nearest_training_site_km: 1.2,
+      training_radius_km: 50,
+    } as RegionInfo;
     const { container } = render(<RegionWarning region={region} />);
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.getByText(/near the classifier.s training sites/i)).toBeInTheDocument();
+    expect(container.textContent).toMatch(/not\s+validation/i);
+    expect(container.textContent).toMatch(/1\.2 km/);
+    expect(container.textContent).not.toMatch(/\d+%/);
   });
 
   it('falls back to detected === UNKNOWN / in_training_distribution for an old-shape region with no new fields', () => {

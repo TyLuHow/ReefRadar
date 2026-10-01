@@ -20,7 +20,54 @@ Australia, Kenya, Maldives, Mexico) this module previously treated as
 "in distribution". `DEFAULT_TRAINING_SITES` below mirrors the audited
 training sites so `in_training_region` reflects where the model was
 actually trained, not where MARRS happened to record reference audio.
+
+WR-07 (Phase 1 review): `in_training_region` used to be true for the whole
+bounding box of a country that merely CONTAINED a training site -- the
+`INDONESIA` box spans ~4,000 km while all four Indonesian training sites sit
+within ~2 km of one reef (Spermonde), so Raja Ampat or Aceh recordings got no
+warning at all. It is now defined by DISTANCE: a recording is "in the training
+region" only when it is within `TRAINING_RADIUS_KM` of a real training site, and
+the result reports `nearest_training_site_km`. The bounding boxes survive only
+as a descriptive region name. Being near a training site is still not a
+validation of the model there.
 """
+
+import math
+
+
+# A recording counts as "near" the classifier's training data when it is within
+# this many km of a real training site. The training sites are a handful of
+# reefs (Spermonde, Indonesia; one Kenyan reef), so this is deliberately small.
+TRAINING_RADIUS_KM = 50.0
+_EARTH_RADIUS_KM = 6371.0088
+
+
+def _haversine_km(lat1, lon1, lat2, lon2):
+    """Great-circle distance in km between two (lat, lon) points in degrees."""
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = phi2 - phi1
+    dlmb = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlmb / 2) ** 2
+    return 2 * _EARTH_RADIUS_KM * math.asin(min(1.0, math.sqrt(a)))
+
+
+def _site_distances_km(lat, lon, training_sites):
+    """[(distance_km, site)] for every training site with numeric coordinates.
+
+    A training site without usable coordinates (e.g. the trainer emitted
+    None/"unknown") is skipped rather than crashing every analysis (IN-05).
+    """
+    out = []
+    for site in training_sites:
+        try:
+            s_lat = float(site['latitude'])
+            s_lon = float(site['longitude'])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if s_lat != s_lat or s_lon != s_lon:  # NaN
+            continue
+        out.append((_haversine_km(lat, lon, s_lat, s_lon), site))
+    return out
 
 
 # Copied from docs/model/deployed-model.lock.json "training_sites"
@@ -44,10 +91,10 @@ DEFAULT_TRAINING_SITES = [
 #                 meaningful geographic claim (a named reef system).
 #   'broad'    -- a huge ocean-basin box, too coarse to claim training
 #                 coverage from alone.
-# `in_training_region` (computed in detect_region, not stored here) is
-# true only when the matched region is 'specific' AND at least one real
-# training site's coordinates fall inside its box -- never from `scope`
-# alone, and never from reference-site geography.
+# These boxes only NAME the region a recording is in. `in_training_region`
+# (computed in detect_region) is decided by distance to the real training
+# sites (TRAINING_RADIUS_KM), never by these boxes and never from
+# reference-site geography.
 REGION_BOUNDS = {
     # --- Broad ocean-basin regions ---
     'INDO_PACIFIC_WEST': {
@@ -147,17 +194,19 @@ CAVEATS = {
         "location relative to the training sites is unknown."
     ),
     'in_training_region': (
-        "This recording's coordinates fall within a region containing "
-        "{in_region} of the classifier's {n} real training sites ({countries}). "
+        "This recording's coordinates are within {radius_km:.0f} km of "
+        "{in_region} of the classifier's {n} real training sites ({countries}); "
+        "the nearest is about {nearest_km:.1f} km away. "
         "Probabilities shown are the model's raw, unmodified output. "
-        "Classification reflects acoustic similarity to training data, not a "
-        "definitive health diagnosis."
+        "Being near a training site is not validation: the classifier has not "
+        "been tested on new sites, and its result reflects acoustic similarity "
+        "to training data, not a definitive health diagnosis."
     ),
     'outside_training_region': (
-        "GEOGRAPHIC LIMITATION: This recording appears to be from {region_name}, "
-        "which has no real training data behind this classifier. The "
+        "GEOGRAPHIC LIMITATION: This recording appears to be from {region_name}. "
+        "No training site is close to this location{nearest_text}. The "
         "classifier was trained only on {n} real reef recording sites in "
-        "{countries} and has NOT been validated for {region_name}. "
+        "{countries} and has NOT been validated for this location. "
         "Probabilities shown are the model's raw, unmodified output -- they "
         "have NOT been reduced or adjusted for this geographic mismatch. "
         "Results from outside the training region should be interpreted with "
@@ -194,7 +243,9 @@ def detect_region(lat, lon, training_sites=None):
 
     Returns a dict with:
       region, region_name, scope, coordinates_provided, in_training_region,
-      training_sites_in_region, training_countries, caveat.
+      training_sites_in_region (training sites within TRAINING_RADIUS_KM),
+      nearest_training_site_km (None when unknown), training_radius_km,
+      training_countries, caveat.
 
     No field here ever scales or adjusts a classification -- this
     function only describes where the recording is and what the
@@ -203,7 +254,7 @@ def detect_region(lat, lon, training_sites=None):
     if training_sites is None:
         training_sites = DEFAULT_TRAINING_SITES
 
-    training_countries = sorted({site['country'] for site in training_sites})
+    training_countries = sorted({site['country'] for site in training_sites if site.get('country')})
     num_training_sites = len(training_sites)
     countries_text = ', '.join(training_countries) if training_countries else 'no countries'
 
@@ -218,15 +269,25 @@ def detect_region(lat, lon, training_sites=None):
             'coordinates_provided': False,
             'in_training_region': False,
             'training_sites_in_region': 0,
+            'nearest_training_site_km': None,
+            'training_radius_km': TRAINING_RADIUS_KM,
             'training_countries': training_countries,
             'caveat': CAVEATS['no_coordinates'].format(
                 n=num_training_sites, countries=countries_text
             ),
         }
 
+    # Distance to the real training sites decides in_training_region.
+    distances = _site_distances_km(lat, lon, training_sites)
+    nearest_km = round(min(d for d, _ in distances), 1) if distances else None
+    sites_in_radius = [site for d, site in distances if d <= TRAINING_RADIUS_KM]
+    in_training_region = len(sites_in_radius) > 0
+    nearest_text = f' (the nearest is about {nearest_km:,.0f} km away)' if nearest_km is not None else ''
+
     # Find all matching regions, then pick the most specific (smallest area)
     # to handle overlapping bounding boxes (e.g. Red Sea within Indian Ocean,
-    # Indonesia within the broader Western Indo-Pacific).
+    # Indonesia within the broader Western Indo-Pacific). The box only names
+    # the region; it never decides training coverage.
     matches = []
     for region_code, bounds in REGION_BOUNDS.items():
         if (bounds['lat_min'] <= lat <= bounds['lat_max'] and
@@ -235,48 +296,35 @@ def detect_region(lat, lon, training_sites=None):
                     (bounds['lon_max'] - bounds['lon_min']))
             matches.append((area, region_code, bounds))
 
-    if not matches:
-        return {
-            'region': 'UNKNOWN',
-            'region_name': 'Unknown Region',
-            'scope': None,
-            'coordinates_provided': True,
-            'in_training_region': False,
-            'training_sites_in_region': 0,
-            'training_countries': training_countries,
-            'caveat': CAVEATS['outside_training_region'].format(
-                region_name='an unrecognized region', n=num_training_sites,
-                countries=countries_text,
-            ),
-        }
-
-    matches.sort(key=lambda x: x[0])
-    _, region_code, bounds = matches[0]
-    scope = bounds['scope']
-
-    sites_in_region = [
-        s for s in training_sites
-        if bounds['lat_min'] <= s['latitude'] <= bounds['lat_max']
-        and bounds['lon_min'] <= s['longitude'] <= bounds['lon_max']
-    ]
-    in_training_region = scope == 'specific' and len(sites_in_region) > 0
+    if matches:
+        matches.sort(key=lambda x: x[0])
+        _, region_code, bounds = matches[0]
+        region_name = bounds['name']
+        scope = bounds['scope']
+    else:
+        region_code, region_name, scope = 'UNKNOWN', 'Unknown Region', None
 
     if in_training_region:
         caveat = CAVEATS['in_training_region'].format(
-            in_region=len(sites_in_region), n=num_training_sites, countries=countries_text,
+            radius_km=TRAINING_RADIUS_KM, in_region=len(sites_in_radius),
+            n=num_training_sites, countries=countries_text,
+            nearest_km=nearest_km if nearest_km is not None else 0.0,
         )
     else:
         caveat = CAVEATS['outside_training_region'].format(
-            region_name=bounds['name'], n=num_training_sites, countries=countries_text,
+            region_name=region_name if matches else 'an unrecognized region',
+            nearest_text=nearest_text, n=num_training_sites, countries=countries_text,
         )
 
     return {
         'region': region_code,
-        'region_name': bounds['name'],
+        'region_name': region_name,
         'scope': scope,
         'coordinates_provided': True,
         'in_training_region': in_training_region,
-        'training_sites_in_region': len(sites_in_region),
+        'training_sites_in_region': len(sites_in_radius),
+        'nearest_training_site_km': nearest_km,
+        'training_radius_km': TRAINING_RADIUS_KM,
         'training_countries': training_countries,
         'caveat': caveat,
     }
@@ -310,6 +358,8 @@ def adjust_classification(classification, region_result):
         'coordinates_provided': region_result['coordinates_provided'],
         'in_training_region': region_result['in_training_region'],
         'training_sites_in_region': region_result['training_sites_in_region'],
+        'nearest_training_site_km': region_result.get('nearest_training_site_km'),
+        'training_radius_km': region_result.get('training_radius_km'),
         'training_countries': region_result['training_countries'],
         # --- legacy fields, kept for the current production frontend ---
         'in_training_distribution': region_result['in_training_region'],

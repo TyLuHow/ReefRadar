@@ -93,7 +93,11 @@ export interface RegionInfo {
   scope?: 'specific' | 'broad' | null;
   coordinates_provided?: boolean;
   in_training_region?: boolean;
+  /** Training sites within `training_radius_km` of the recording. */
   training_sites_in_region?: number;
+  /** Distance to the nearest real training site (null/absent when unknown). */
+  nearest_training_site_km?: number | null;
+  training_radius_km?: number;
   training_countries?: string[];
   // legacy fields, kept for backward compatibility with older API responses
   in_training_distribution?: boolean;

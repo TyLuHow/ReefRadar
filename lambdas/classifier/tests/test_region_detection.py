@@ -258,3 +258,51 @@ def test_old_multiplier_behaviour_is_removed():
     total = sum(adjusted["probabilities"].values())
     assert total == pytest.approx(1.0, abs=1e-9)
     assert total != pytest.approx(0.7)
+
+
+# --- WR-07: training coverage is distance-based, not bounding-box-based ------
+
+
+@pytest.mark.parametrize(
+    "lat,lon",
+    [
+        (-0.5, 130.5),  # Raja Ampat -- inside the INDONESIA box, ~1,000 km from Spermonde
+        (5.5, 95.3),  # Aceh
+        (-8.65, 115.2),  # Bali
+    ],
+)
+def test_indonesia_elsewhere_is_not_in_training_region(lat, lon):
+    region_result = detect_region(lat, lon)
+    assert region_result["region"] == "INDONESIA"
+    assert region_result["in_training_region"] is False
+    assert region_result["training_sites_in_region"] == 0
+    assert region_result["nearest_training_site_km"] > 500
+    assert "No training site is close" in region_result["caveat"]
+
+
+def test_spermonde_reports_nearest_training_site_distance():
+    region_result = detect_region(-4.93, 119.32)
+    assert region_result["in_training_region"] is True
+    assert region_result["training_sites_in_region"] == 4
+    assert region_result["nearest_training_site_km"] < 2
+    adjusted = adjust_classification(RAW_CLASSIFICATION, region_result)
+    assert adjusted["region"]["nearest_training_site_km"] == region_result["nearest_training_site_km"]
+    assert adjusted["region"]["training_radius_km"] == region_result["training_radius_km"]
+
+
+def test_broad_region_caveat_does_not_claim_there_is_no_training_data():
+    # Philippines resolves to a broad box that CONTAINS the training sites; the
+    # old caveat wrongly said that region "has no real training data".
+    region_result = detect_region(10.3, 123.9)
+    assert "has no real training data" not in region_result["caveat"]
+    assert "No training site is close" in region_result["caveat"]
+
+
+def test_training_site_without_coordinates_is_skipped_not_fatal():
+    sites = [
+        {"site_id": "bad", "country": "Nowhere", "latitude": None, "longitude": None},
+        {"site_id": "good", "country": "Indonesia", "latitude": -4.93, "longitude": 119.32},
+    ]
+    region_result = detect_region(-4.93, 119.32, training_sites=sites)  # must not raise
+    assert region_result["in_training_region"] is True
+    assert region_result["training_sites_in_region"] == 1
