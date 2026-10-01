@@ -257,3 +257,74 @@ def test_build_config_summary_no_env_values(drift_check):
     assert "SECRET_API_KEY" in summary["EnvironmentVariableNames"]
     assert "/tmp" not in serialized
     assert "sk-super-secret-do-not-leak" not in serialized
+
+
+# --- WR-10: tool failure is an error (exit 2), not drift -----------------------
+
+
+def test_live_failure_exits_two_and_prints_only_the_exception_type(drift_check, router_repo, monkeypatch, capsys):
+    def boom(*a, **k):
+        raise RuntimeError("GET https://bucket.s3.amazonaws.com/x?X-Amz-Signature=SECRET failed")
+
+    monkeypatch.setattr(drift_check, "check_live", boom)
+    code = drift_check.main(["--function", "router", "--repo-root", str(router_repo)])
+    captured = capsys.readouterr()
+    assert code == 2
+    assert "RuntimeError" in captured.err
+    assert "SECRET" not in captured.err and "SECRET" not in captured.out
+
+
+def test_download_has_a_timeout(drift_check, monkeypatch):
+    seen = {}
+
+    class _Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            return b"x"
+
+    def fake_urlopen(url, timeout=None):
+        seen["timeout"] = timeout
+        return _Resp()
+
+    monkeypatch.setattr(drift_check.urllib.request, "urlopen", fake_urlopen)
+    assert drift_check._download("https://example.invalid/x") == b"x"
+    assert seen["timeout"] and seen["timeout"] > 0
+
+
+class _FakeEcr:
+    def __init__(self, manifests_by_digest):
+        self.manifests = manifests_by_digest
+
+    def batch_get_image(self, repositoryName, imageIds):
+        digest = imageIds[0]["imageDigest"]
+        if digest not in self.manifests:
+            return {"images": []}
+        return {"images": [{"imageManifest": json.dumps(self.manifests[digest])}]}
+
+
+def test_image_index_is_resolved_to_the_linux_amd64_child(drift_check):
+    ecr = _FakeEcr(
+        {
+            "sha256:index": {
+                "manifests": [
+                    {"digest": "sha256:arm", "platform": {"os": "linux", "architecture": "arm64"}},
+                    {"digest": "sha256:amd", "platform": {"os": "linux", "architecture": "amd64"}},
+                ]
+            },
+            "sha256:amd": {"layers": [{"digest": "sha256:l1"}]},
+            "sha256:arm": {"layers": [{"digest": "sha256:other"}]},
+        }
+    )
+    manifest = drift_check._load_image_manifest(ecr, "repo", "sha256:index")
+    assert manifest["layers"] == [{"digest": "sha256:l1"}]
+
+
+def test_manifest_without_layers_is_an_error_not_false_drift(drift_check):
+    ecr = _FakeEcr({"sha256:x": {"config": {}}})
+    with pytest.raises(pkg.SpecError):
+        drift_check._load_image_manifest(ecr, "repo", "sha256:x")

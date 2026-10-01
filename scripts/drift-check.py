@@ -8,7 +8,10 @@ fixture container layer tarballs) or live (the real reefradar-2477-*
 functions, used from plan 01-09 onward).
 
 Exit codes: 0 = match, 1 = drift (missing/extra/changed files named on
-stdout), 2 = error (unknown function name, unreadable/missing input).
+stdout), 2 = error (unknown function name, unreadable/missing input, or ANY
+tool/AWS/network failure -- an outage is reported as an error, never as
+drift). Only the exception type name is printed for unexpected failures, so
+a presigned URL carried in an exception message can never reach the log.
 
 Never prints a presigned Code.Location URL and never includes an
 environment variable's value (only its name) in a --json report.
@@ -79,9 +82,44 @@ def check_offline_layers(function_name: str, layers_dir, repo_root) -> dict:
     return pkg.compare_manifests(expected, actual)
 
 
+DOWNLOAD_TIMEOUT_S = 60
+
+
 def _download(url: str) -> bytes:
-    with urllib.request.urlopen(url) as resp:
+    with urllib.request.urlopen(url, timeout=DOWNLOAD_TIMEOUT_S) as resp:
         return resp.read()
+
+
+def _load_image_manifest(ecr_client, repo_name: str, digest: str) -> dict:
+    """The single-image manifest (with `layers`) for `digest`.
+
+    A multi-arch OCI index / Docker manifest list has `manifests`, not
+    `layers`; resolve it to its linux/amd64 child first, otherwise every file
+    would be reported "missing" (false drift)."""
+    resp = ecr_client.batch_get_image(repositoryName=repo_name, imageIds=[{"imageDigest": digest}])
+    if not resp.get("images"):
+        raise pkg.SpecError(f"ECR image not found for digest {digest}")
+    manifest = json.loads(resp["images"][0]["imageManifest"])
+
+    if "layers" not in manifest and manifest.get("manifests"):
+        child = next(
+            (
+                m for m in manifest["manifests"]
+                if (m.get("platform") or {}).get("os") == "linux"
+                and (m.get("platform") or {}).get("architecture") == "amd64"
+            ),
+            None,
+        )
+        if child is None:
+            raise pkg.SpecError("image index has no linux/amd64 manifest")
+        resp = ecr_client.batch_get_image(repositoryName=repo_name, imageIds=[{"imageDigest": child["digest"]}])
+        if not resp.get("images"):
+            raise pkg.SpecError(f"ECR child image not found for digest {child['digest']}")
+        manifest = json.loads(resp["images"][0]["imageManifest"])
+
+    if not manifest.get("layers"):
+        raise pkg.SpecError("image manifest has no layers; cannot compare files")
+    return manifest
 
 
 def check_live(function_name: str, spec: dict, profile: str, region: str, repo_root):
@@ -92,8 +130,11 @@ def check_live(function_name: str, spec: dict, profile: str, region: str, repo_r
     """
     import boto3  # local import: keeps offline tests boto3-independent
 
+    from botocore.config import Config  # local import, same reason as boto3
+
+    client_config = Config(connect_timeout=10, read_timeout=60, retries={"max_attempts": 3})
     session = boto3.Session(profile_name=profile, region_name=region)
-    lambda_client = session.client("lambda")
+    lambda_client = session.client("lambda", config=client_config)
     resp = lambda_client.get_function(FunctionName=spec["function_name"])
     configuration = resp["Configuration"]
     config_summary = build_config_summary(configuration)
@@ -109,18 +150,13 @@ def check_live(function_name: str, spec: dict, profile: str, region: str, repo_r
         return pkg.compare_manifests(expected, actual), config_summary
 
     if spec["kind"] == "container":
-        ecr_client = session.client("ecr")
+        ecr_client = session.client("ecr", config=client_config)
         image_uri = resp["Code"].get("ResolvedImageUri", "")
         if "@" not in image_uri:
             raise pkg.SpecError(f"No resolved image digest for {function_name}: {image_uri!r}")
         digest = image_uri.rsplit("@", 1)[-1]
         repo_name = spec["ecr_repository"]
-        manifest_resp = ecr_client.batch_get_image(
-            repositoryName=repo_name, imageIds=[{"imageDigest": digest}]
-        )
-        if not manifest_resp.get("images"):
-            raise pkg.SpecError(f"ECR image not found for digest {digest}")
-        image_manifest = json.loads(manifest_resp["images"][0]["imageManifest"])
+        image_manifest = _load_image_manifest(ecr_client, repo_name, digest)
         layer_blobs = []
         for layer in image_manifest.get("layers", []):
             layer_resp = ecr_client.get_download_url_for_layer(
@@ -207,6 +243,11 @@ def main(argv=None) -> int:
                 )
         except pkg.SpecError as e:
             print(f"error: {e}", file=sys.stderr)
+            had_error = True
+            continue
+        except Exception as e:  # noqa: BLE001 -- tool/AWS/network failure is an error, not drift
+            # Type name only: messages (botocore/urllib) can carry presigned URLs.
+            print(f"error: {function_name}: check failed ({type(e).__name__})", file=sys.stderr)
             had_error = True
             continue
 
