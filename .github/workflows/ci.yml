@@ -76,6 +76,9 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
       - run: pytest
+      - run: python scripts/build_audio_consumers.py --check
+      - run: python scripts/build_api_fixtures.py --check
+      - run: python scripts/validate_audio_manifest.py
 
   citations:
     name: citations
@@ -87,6 +90,7 @@ jobs:
           node-version: 22
       - run: node scripts/check-citations.mjs --check-md
       - run: node scripts/check-citations.mjs --scope docs
+      - run: node scripts/check-citations.mjs --scope all
 
   visual:
     name: visual (screenshot regression, Docker-pinned)

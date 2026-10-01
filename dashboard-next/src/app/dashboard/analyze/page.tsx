@@ -263,8 +263,8 @@ export default function EnhancedAnalyzePage() {
           Analyze Reef Audio
         </h1>
         <p className="text-lg max-w-2xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
-          Upload underwater audio recordings to analyze coral reef health using
-          AI-powered acoustic analysis
+          Upload an underwater audio recording to compare its acoustic features with
+          labelled reference recordings
         </p>
       </div>
 
@@ -523,7 +523,7 @@ export default function EnhancedAnalyzePage() {
               </div>
               <div className="flex items-center space-x-3">
                 <Zap className="w-5 h-5 opacity-80" />
-                <span className="text-sm">Real-time processing</span>
+                <span className="text-sm">Asynchronous analysis</span>
               </div>
               <div className="flex items-center space-x-3">
                 <Sparkles className="w-5 h-5 opacity-80" />

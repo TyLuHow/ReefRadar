@@ -111,7 +111,7 @@ export function WorldMap({
     }, {} as Record<string, number>);
   }, [sites]);
 
-  // Calculate initial center - default to global view showing all 5 countries
+  // Calculate initial center - default to global view showing all reference sites
   const initialCenter = useMemo<[number, number]>(() => {
     if (sites.length === 0) return [0, 80]; // Global center at equator
 

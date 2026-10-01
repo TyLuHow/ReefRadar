@@ -26,7 +26,7 @@ interface DemoAudioReturn {
  *
  *   Low  (Fish Calls):      lowpass  at 800 Hz
  *   Mid  (Grazing):         bandpass at 2000 Hz, Q = 1.5
- *   High (Snapping Shrimp): highpass at 3500 Hz
+ *   High:                   highpass at 3500 Hz
  */
 const FILTER_LOW_FREQ = 800;
 const FILTER_MID_FREQ = 2000;

@@ -37,7 +37,7 @@ export default function AboutPage() {
           </div>
           <h1 className="text-4xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>About ReefRadar</h1>
           <p className="text-lg max-w-2xl mx-auto" style={{ color: 'var(--text-secondary)' }}>
-            AI-powered coral reef health analysis through underwater acoustic recordings
+            Listen to coral reef recordings and place your own among labelled references
           </p>
         </div>
 
@@ -75,7 +75,7 @@ export default function AboutPage() {
           <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>What is ReefRadar?</h2>
           <div className="max-w-none">
             <p className="leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-              ReefRadar is an AI-powered tool for analyzing coral reef health through
+              ReefRadar is a research instrument for listening to and comparing coral reef
               underwater acoustic recordings. Healthy reefs produce distinct soundscapes
               from the fish, invertebrates, and other marine life that inhabit them.
               By analyzing these sounds, we can assess reef health non-invasively.

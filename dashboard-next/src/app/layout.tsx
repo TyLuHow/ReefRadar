@@ -17,12 +17,12 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: 'ReefRadar - Coral Reef Acoustic Health Analysis',
-  description: 'AI-powered tool for analyzing coral reef health through underwater acoustic recordings',
+  description: 'Research instrument for listening to and comparing coral reef underwater acoustic recordings',
   keywords: ['coral reef', 'acoustic analysis', 'marine biology', 'AI', 'conservation'],
   authors: [{ name: 'ReefRadar' }],
   openGraph: {
     title: 'ReefRadar - Coral Reef Acoustic Health Analysis',
-    description: 'AI-powered tool for analyzing coral reef health through underwater acoustic recordings',
+    description: 'Research instrument for listening to and comparing coral reef underwater acoustic recordings',
     type: 'website',
   },
 };
