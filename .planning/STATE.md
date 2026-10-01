@@ -4,17 +4,17 @@ milestone: v2
 milestone_name: Reef Soundscape Research Instrument
 current_phase: 01
 current_phase_name: Truth & Reproducibility
-status: executing
-stopped_at: Completed 01-14-PLAN.md (attempt 2 deployed and verified)
-last_updated: "2026-10-01T16:29:02.811Z"
+status: verifying
+stopped_at: Completed 01-20-PLAN.md (Phase 1 exit gate)
+last_updated: "2026-10-01T17:15:23.540Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 01 execution started
-state_head: 1433f0838c2c78b00cef49b5a1adabd4bb7fd808
+state_head: 0605dddd7e389a5ae6cb509999c06dd722906b58
 progress:
   total_phases: 17
   completed_phases: 0
   total_plans: 20
-  completed_plans: 19
+  completed_plans: 20
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 
 Phase: 01 (Truth & Reproducibility) — EXECUTING
 Plan: 20 of 20
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-01 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -79,6 +79,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-truth-reproducibility P18 | 55min | 3 tasks | 7 files |
 | Phase 01-truth-reproducibility P19 | 55min | 3 tasks | 11 files |
 | Phase 01 P14 | 25min | 3 tasks | 6 files |
+| Phase 01 P20 | 100min | 3 tasks | 49 files |
 
 ## Accumulated Context
 
@@ -128,6 +129,7 @@ Recent decisions affecting current work:
 - [Phase 01]: [Phase 01] 01-18: Reference-label lookup uses existing getExcerpt(sample.id) from audio-manifest.ts (sample id == manifest excerpt_id) rather than adding a new site_id-keyed export outside the plan's declared files
 - [Phase 01]: [Phase 01] 01-18 Rule 1 fix: SampleGallery.tsx's STORY_ORDER referenced the pre-manifest 'restoration_timeline' key instead of 'restoration_ladder', silently dropping that story section
 - [Phase 01]: [Phase 01] 01-19 D-17/D-18 UI: SiteCard/SitePopup use label_assigned_by as the primary 'assigned by' attribution, falling back to label_source_name; sites with no label_original show status_basis instead of a redundant 'Label: Unknown' line
+- [Phase 01]: [Phase 01] 01-20: visual baselines hide canvases (visibility:hidden) instead of masking, since a masked fixed background canvas hid all top-of-page content; preview verified via vercel curl + local prod build because Deployment Protection is on
 
 ### Pending Todos
 
@@ -152,6 +154,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T16:29:02.764Z
-Stopped at: Completed 01-14-PLAN.md (attempt 2 deployed and verified)
+Last session: 2026-10-01T17:15:23.508Z
+Stopped at: Completed 01-20-PLAN.md (Phase 1 exit gate)
 Resume file: None
