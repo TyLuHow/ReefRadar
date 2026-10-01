@@ -53,7 +53,7 @@ Out of this phase: ingestion and batch embedding (Phases 8 and 11), retrain (Pha
 - Backend `GET /sites` keeps working unchanged (Streamlit and legacy callers); it retires in Phase 17.
 
 ### Owner decisions after research (2026-10-01)
-- Budget: replace the existing alert-less `reefradar-2477-budget` ($50/month) with a single $25/month cost budget (name e.g. `reefradar-2477-ceiling-25`). It sends email alerts at 80% and 100% of actual spend and 100% of forecast to `tylerlubyhoward@gmail.com`, the owner's choice of alert address. It must exist before the first contract publish.
+- Budget: replace the existing alert-less `reefradar-2477-budget` ($50/month) with a single $25/month cost budget (name e.g. `reefradar-2477-ceiling-25`). It sends email alerts at 80% and 100% of actual spend and 100% of forecast to the owner's chosen alert address (passed only on the command line, never committed). It must exist before the first contract publish.
 - SanctSound has no collection DOI. Success criterion 2 is satisfied by `doi: null` together with the dataset landing `url` and an explicit `doi_note` reason; this does not fabricate a DOI.
 - The 48 embedded sites are counted from the data. The stale `sites_with_embeddings: 44` in the reference metadata and the live `/sites` header is not trusted.
 - The 2-D PCA shows only about 33% of the variance. The contract publishes `explained_variance_ratio`, plus the mean and components so Phase 9 can project uploads, and any UI copy must state how little variance the plane shows.
