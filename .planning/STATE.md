@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 01
 current_phase_name: Truth & Reproducibility
 status: executing
-stopped_at: Completed 01-05-PLAN.md
-last_updated: "2026-10-01T07:04:13.628Z"
+stopped_at: Completed 01-06-PLAN.md
+last_updated: "2026-10-01T07:16:51.462Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 01 execution started
-state_head: 58ceb450fe514547e1232eabd18ad6335095a1bd
+state_head: 9f8b0eed07b156c5ae14a6d2dc2e6e646cda884a
 progress:
   total_phases: 17
   completed_phases: 0
   total_plans: 20
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 01 (Truth & Reproducibility) — EXECUTING
-Plan: 6 of 20
+Plan: 7 of 20
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 01 execution started
 
@@ -65,6 +65,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P03 | 35min | 2 tasks | 15 files |
 | Phase 01 P04 | 12min | 2 tasks | 48 files |
 | Phase 01 P05 | 14min | 3 tasks | 15 files |
+| Phase 01 P06 | 35min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,8 @@ Recent decisions affecting current work:
 - [Phase 01]: Redaction of presigned-S3 query strings applies unconditionally to every axe report, not just gallery-adjacent routes, closing any gap in the T-01-04-01 mitigation
 - [Phase 01]: normalize_text_bytes() (CRLF->LF) added to every lambda_packaging.py reader after discovering Windows core.autocrlf checkouts differ byte-for-byte from committed git blobs, which would have broken D-03/D-04's cross-platform build-determinism guarantee
 - [Phase 01]: Fixed a conftest.py bare-module-name collision in lambdas/classifier/tests/test_load_lambda.py (plan 01-01) surfaced by adding scripts/tests/conftest.py, by loading lambdas/conftest.py via explicit importlib path
+- [Phase 01]: Extended D-17's Bora-Bora reclassification to borabora_undisturbed (healthy->unknown), not just tourist/boat_traffic, recorded as a reversible note in data/site-label-provenance.json
+- [Phase 01]: One shared apply_label_provenance() (lambdas/shared/site_provenance.py) overlays per-site label provenance for router, classifier and fixtures alike; load_provenance() prefers a bundled site_label_provenance.json next to the module, falling back to data/site-label-provenance.json
 
 ### Pending Todos
 
@@ -113,6 +116,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T07:04:13.611Z
-Stopped at: Completed 01-05-PLAN.md
+Last session: 2026-10-01T07:16:51.444Z
+Stopped at: Completed 01-06-PLAN.md
 Resume file: None
