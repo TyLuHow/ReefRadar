@@ -14,7 +14,7 @@ import { CaveatsFooter } from '@/components/experience/CaveatsFooter';
 import { DemoState } from '@/components/experience/DemoState';
 import { LocationCompare } from '@/components/experience/LocationCompare';
 import { validateWavFile } from '@/lib/utils';
-import { api } from '@/lib/api';
+import { api, AnalysisError } from '@/lib/api';
 import { FALLBACK_SAMPLES } from '@/lib/samples';
 import { useVitalityStore } from '@/stores/vitality-store';
 import type { AnalysisResult, Sample } from '@/types';
@@ -23,8 +23,6 @@ const SpectrogramCanvas = dynamic(
   () => import('@/components/spectrogram/SpectrogramCanvas'),
   { ssr: false }
 );
-
-const API_BASE = 'https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod';
 
 // --- State machine -----------------------------------------------------------
 
@@ -36,7 +34,7 @@ type ExperienceState =
   | { type: 'uploading'; file: File }
   | { type: 'processing'; analysisId: string }
   | { type: 'results'; data: AnalysisResult; audioUrl?: string }
-  | { type: 'error'; message: string };
+  | { type: 'error'; message: string; suggestion?: string };
 
 type ExperienceAction =
   | { type: 'GO_LANDING' }
@@ -46,7 +44,7 @@ type ExperienceAction =
   | { type: 'FILE_SELECTED'; file: File }
   | { type: 'START_PROCESSING'; analysisId: string }
   | { type: 'RESULTS_READY'; data: AnalysisResult; audioUrl?: string }
-  | { type: 'ERROR'; message: string };
+  | { type: 'ERROR'; message: string; suggestion?: string };
 
 function reducer(_state: ExperienceState, action: ExperienceAction): ExperienceState {
   switch (action.type) {
@@ -65,7 +63,7 @@ function reducer(_state: ExperienceState, action: ExperienceAction): ExperienceS
     case 'RESULTS_READY':
       return { type: 'results', data: action.data, audioUrl: action.audioUrl };
     case 'ERROR':
-      return { type: 'error', message: action.message };
+      return { type: 'error', message: action.message, suggestion: action.suggestion };
     default:
       return _state;
   }
@@ -126,7 +124,7 @@ function ExperienceInner() {
       case 'results':
         return <ResultsState key="results" data={state.data} dispatch={dispatch} />;
       case 'error':
-        return <ErrorState key="error" message={state.message} dispatch={dispatch} />;
+        return <ErrorState key="error" message={state.message} suggestion={state.suggestion} dispatch={dispatch} />;
     }
   })();
 
@@ -241,47 +239,14 @@ function UploadingState({
 }) {
   async function handleSubmit(f: File, latitude?: number, longitude?: number) {
     try {
-      const arrayBuffer = await f.arrayBuffer();
-      const uploadRes = await fetch(`${API_BASE}/upload`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'audio/wav',
-          'X-Filename': f.name,
-        },
-        body: arrayBuffer,
-      });
-
-      if (!uploadRes.ok) {
-        const errData = await uploadRes.json().catch(() => ({}));
-        throw new Error(
-          (errData as Record<string, Record<string, string>>)?.error?.message ||
-            `Upload failed: ${uploadRes.status}`
-        );
-      }
-
-      const { upload_id } = (await uploadRes.json()) as { upload_id: string };
-
-      const analyzePayload: Record<string, unknown> = { upload_id };
-      if (latitude !== undefined) analyzePayload.latitude = latitude;
-      if (longitude !== undefined) analyzePayload.longitude = longitude;
-
-      const analyzeRes = await fetch(`${API_BASE}/analyze`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(analyzePayload),
-      });
-
-      if (!analyzeRes.ok) {
-        const errData = await analyzeRes.json().catch(() => ({}));
-        throw new Error(
-          (errData as Record<string, Record<string, string>>)?.error?.message ||
-            `Analysis start failed: ${analyzeRes.status}`
-        );
-      }
-
-      const { analysis_id } = (await analyzeRes.json()) as { analysis_id: string };
-      dispatch({ type: 'START_PROCESSING', analysisId: analysis_id });
+      const uploadResult = await api.uploadAudio(f);
+      const analyzeResult = await api.startAnalysis(uploadResult.upload_id, latitude, longitude);
+      dispatch({ type: 'START_PROCESSING', analysisId: analyzeResult.analysis_id });
     } catch (err) {
+      if (err instanceof AnalysisError) {
+        dispatch({ type: 'ERROR', message: err.message, suggestion: err.suggestion });
+        return;
+      }
       dispatch({
         type: 'ERROR',
         message: err instanceof Error ? err.message : 'Upload failed',
@@ -320,48 +285,29 @@ function ProcessingState({
   analysisId: string;
   dispatch: React.Dispatch<ExperienceAction>;
 }) {
+  const [stageLabel, setStageLabel] = useState('Starting analysis');
+
   useEffect(() => {
-    let cancelled = false;
-    let attempts = 0;
-    const maxAttempts = 60;
+    const controller = new AbortController();
 
-    const poll = async () => {
-      while (!cancelled && attempts < maxAttempts) {
-        try {
-          const res = await fetch(`${API_BASE}/visualize/${analysisId}`);
-          if (!res.ok) {
-            attempts++;
-            await new Promise((r) => setTimeout(r, 2000));
-            continue;
-          }
-          const data = (await res.json()) as AnalysisResult;
-          if (data.status === 'complete') {
-            if (!cancelled) dispatch({ type: 'RESULTS_READY', data });
-            return;
-          }
-          if (data.status === 'failed') {
-            const errMsg =
-              typeof data.error === 'string'
-                ? data.error
-                : (data.error as { message?: string })?.message || 'Analysis failed';
-            if (!cancelled) dispatch({ type: 'ERROR', message: errMsg });
-            return;
-          }
-        } catch {
-          // network error, retry
+    api.pollAnalysis(analysisId, {
+      signal: controller.signal,
+      onStage: (info) => setStageLabel(info.label),
+    })
+      .then((data) => dispatch({ type: 'RESULTS_READY', data }))
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        if (err instanceof AnalysisError) {
+          dispatch({ type: 'ERROR', message: err.message, suggestion: err.suggestion });
+          return;
         }
-        attempts++;
-        await new Promise((r) => setTimeout(r, 2000));
-      }
-      if (!cancelled) {
-        dispatch({ type: 'ERROR', message: 'Analysis timed out after 120 seconds' });
-      }
-    };
+        dispatch({
+          type: 'ERROR',
+          message: err instanceof Error ? err.message : 'Analysis failed',
+        });
+      });
 
-    poll();
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [analysisId, dispatch]);
 
   return (
@@ -383,7 +329,7 @@ function ProcessingState({
         </div>
       </div>
       <div className="relative z-10 flex-1 flex items-center justify-center">
-        <ProcessingOverlay />
+        <ProcessingOverlay stageLabel={stageLabel} />
       </div>
     </motion.div>
   );
@@ -465,9 +411,11 @@ function ResultsState({
 
 function ErrorState({
   message,
+  suggestion,
   dispatch,
 }: {
   message: string;
+  suggestion?: string;
   dispatch: React.Dispatch<ExperienceAction>;
 }) {
   return (
@@ -499,6 +447,11 @@ function ErrorState({
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             {message}
           </p>
+          {suggestion && (
+            <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
+              {suggestion}
+            </p>
+          )}
           <GlassButton onClick={() => dispatch({ type: 'GO_LANDING' })}>
             Try Again
           </GlassButton>

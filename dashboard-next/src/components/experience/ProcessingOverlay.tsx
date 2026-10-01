@@ -1,24 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+interface ProcessingOverlayProps {
+  /** The real pipeline stage label from /status (D-15) -- never a scripted message. */
+  stageLabel: string;
+  detail?: string;
+}
 
-const STATUS_MESSAGES = [
-  'Decomposing acoustic layers...',
-  'Measuring fish chorus density...',
-  'Identifying snapping shrimp patterns...',
-  'Comparing to 44 reference sites...',
-];
-
-export function ProcessingOverlay() {
-  const [messageIndex, setMessageIndex] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMessageIndex((prev) => (prev + 1) % STATUS_MESSAGES.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
+export function ProcessingOverlay({ stageLabel, detail }: ProcessingOverlayProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-8">
       {/* Spinner: two concentric rings */}
@@ -43,13 +31,20 @@ export function ProcessingOverlay() {
         />
       </div>
 
-      {/* Cycling status text */}
-      <p
-        className="text-sm font-light tracking-wide text-center"
-        style={{ color: 'var(--text-secondary)' }}
-      >
-        {STATUS_MESSAGES[messageIndex]}
-      </p>
+      {/* Real stage text reported by /status (D-15) -- changes only when the stage changes */}
+      <div className="text-center space-y-1">
+        <p
+          className="text-sm font-light tracking-wide"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          {stageLabel}
+        </p>
+        {detail && (
+          <p className="text-xs" style={{ color: 'var(--text-dim)' }}>
+            {detail}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

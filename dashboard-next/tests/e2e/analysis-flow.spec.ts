@@ -105,3 +105,75 @@ test.describe('/dashboard/analyze -- real /status stages (D-15)', () => {
     await expect(progressPanel.getByText(/req-e2e-1/)).toBeVisible();
   });
 });
+
+test.describe('/experience -- shared API client, real stages (D-15)', () => {
+  test('uploads, analyzes and polls through the API client, showing only real stages', async ({ page }) => {
+    const seenApiPaths: string[] = [];
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (/execute-api/.test(url.hostname)) {
+        seenApiPaths.push(`${request.method()} ${url.pathname}`);
+      }
+    });
+
+    await mockApi(page, {
+      'POST /upload': { upload_id: 'up-exp-1', filename: 'ind_D1.wav', size: 1000, status: 'uploaded' },
+      'POST /analyze': { analysis_id: 'fixture-sequence', upload_id: 'up-exp-1', status: 'processing' },
+      'GET /status/*': sequencedStatusHandler(),
+      'GET /visualize/*': 'visualize-3class-no-coords.json',
+    });
+
+    await page.goto('/experience');
+    await page.setInputFiles('input[type="file"]', AUDIO_FIXTURE);
+
+    // CoordinateModal -- skip coordinates.
+    await page.getByRole('button', { name: /^skip$/i }).click();
+
+    await expect(page.getByText(/Preparing audio/i)).toBeVisible();
+    await expect(page.getByText(/Classifying 6 audio segments/i)).toBeVisible();
+
+    // Results render once the sequence reaches 'complete'.
+    await expect(page.getByText(/new analysis/i)).toBeVisible({ timeout: 20000 });
+
+    await expect(page.getByText(/%\s*complete/i)).toHaveCount(0);
+    expect(seenApiPaths.some((p) => p.includes('/upload'))).toBe(true);
+    expect(seenApiPaths.some((p) => p.includes('/analyze'))).toBe(true);
+    expect(seenApiPaths.some((p) => p.includes('/status/'))).toBe(true);
+    expect(seenApiPaths.some((p) => p.includes('/visualize/'))).toBe(true);
+  });
+
+  test('shows the API message and suggestion in the error state on a failed analysis', async ({ page }) => {
+    await mockApi(page, {
+      'POST /upload': { upload_id: 'up-exp-2', filename: 'ind_D1.wav', size: 1000, status: 'uploaded' },
+      'POST /analyze': { analysis_id: 'fixture-failed-exp', upload_id: 'up-exp-2', status: 'processing' },
+      'GET /status/*': {
+        analysis_id: 'fixture-failed-exp',
+        stage: 'classifying',
+        status: 'failed',
+        error: {
+          code: 'CLASSIFY_FAILED',
+          message: 'Model inference failed',
+          suggestion: 'Please retry the analysis',
+        },
+      },
+      'GET /visualize/*': {
+        analysis_id: 'fixture-failed-exp',
+        status: 'failed',
+        error: {
+          code: 'CLASSIFY_FAILED',
+          message: 'Model inference failed',
+          suggestion: 'Please retry the analysis',
+          request_id: 'req-e2e-2',
+        },
+      },
+    });
+
+    await page.goto('/experience');
+    await page.setInputFiles('input[type="file"]', AUDIO_FIXTURE);
+    await page.getByRole('button', { name: /^skip$/i }).click();
+
+    await expect(page.getByText('Something Went Wrong')).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText('Model inference failed')).toBeVisible();
+    await expect(page.getByText('Please retry the analysis')).toBeVisible();
+  });
+});
