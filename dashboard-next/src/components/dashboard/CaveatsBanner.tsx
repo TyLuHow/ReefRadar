@@ -3,13 +3,19 @@
 import { useState } from 'react';
 import { AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import modelCard from '@/data/model-card.json';
+
+// D-12 (TRUTH-07): caveats name what the classifier was actually trained
+// on (from model-card.json), not the broader reference-site countries, and
+// never claim a confidence reduction.
+const TRAINING_CAVEAT = `A small exploratory classifier (model ${modelCard.model_version}) trained on ${modelCard.training_rows} five-second windows from ${modelCard.training_sites_count} sites in ${modelCard.training_countries.join(', ')}; not validated on other sites or regions.`;
 
 const CAVEATS = [
-  'Classification based on acoustic similarity to reference sites. Not a definitive health diagnosis.',
+  TRAINING_CAVEAT,
+  modelCard.evaluation_note,
+  'Classification is based on acoustic similarity to reference recordings. Not a species identification or a definitive health diagnosis.',
   'Passive acoustic monitoring complements but does not replace visual surveys.',
-  'Models trained primarily on Indo-Pacific reefs (Indonesia, Australia, Kenya, Maldives, Mexico). Results for Caribbean, Red Sea, and other regions carry reduced confidence.',
   'Single audio recordings provide a snapshot. Reef health assessment requires temporal monitoring.',
-  'Acoustic indices developed for terrestrial environments perform inconsistently underwater.',
 ];
 
 interface CaveatsBannerProps {

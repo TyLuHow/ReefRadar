@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, fireEvent } from '@testing-library/react';
 import { ProbabilityBars } from '@/components/charts';
 import { ComparisonPanel } from '@/components/experience/ComparisonPanel';
 import { ControlsPanel } from '@/components/experience/ControlsPanel';
 import { AnalysisResults } from '@/components/AnalysisResults';
-import type { AnalysisResult } from '@/types';
+import { RegionWarning } from '@/components/dashboard/RegionWarning';
+import { CaveatsFooter } from '@/components/experience/CaveatsFooter';
+import { CaveatsBanner } from '@/components/dashboard/CaveatsBanner';
+import type { AnalysisResult, RegionInfo } from '@/types';
 import threeClassNoCoords from '../fixtures/api/visualize-3class-no-coords.json';
 import threeClassInRegion from '../fixtures/api/visualize-3class-in-region.json';
 
@@ -84,5 +87,87 @@ describe('AnalysisResults headline', () => {
     expect(screen.getByText(/interim-real-only/i)).toBeInTheDocument();
     expect(screen.queryByText(/confidence adjusted/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Geographic Limitation/i)).not.toBeInTheDocument();
+  });
+});
+
+describe('RegionWarning', () => {
+  it('says location not provided and names the training countries when coordinates_provided is false', () => {
+    const region = noCoordsResult.classification!.region as RegionInfo;
+    render(<RegionWarning region={region} />);
+
+    expect(screen.getByText(/location not provided/i)).toBeInTheDocument();
+    expect(screen.getByText(/Indonesia, Kenya/)).toBeInTheDocument();
+  });
+
+  it('names the detected region, says no training sites, and says probabilities are unmodified when outside the training region', () => {
+    const region: RegionInfo = {
+      detected: 'GREAT_BARRIER_REEF',
+      name: 'Great Barrier Reef',
+      scope: 'specific',
+      coordinates_provided: true,
+      in_training_region: false,
+      training_sites_in_region: 0,
+      training_countries: ['Indonesia', 'Kenya'],
+      in_training_distribution: false,
+      confidence_adjusted: false,
+    };
+    render(<RegionWarning region={region} />);
+
+    expect(screen.getByText(/Great Barrier Reef/)).toBeInTheDocument();
+    expect(screen.getByText(/no real training sites/i)).toBeInTheDocument();
+    expect(screen.getByText(/raw output, unmodified/i)).toBeInTheDocument();
+  });
+
+  it('renders nothing when in_training_region is true', () => {
+    const region = inRegionResult.classification!.region as RegionInfo;
+    const { container } = render(<RegionWarning region={region} />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('falls back to detected === UNKNOWN / in_training_distribution for an old-shape region with no new fields', () => {
+    const oldShapeRegion = {
+      detected: 'UNKNOWN',
+      name: 'Unknown Region',
+      in_training_distribution: false,
+      confidence_adjusted: true,
+    } as RegionInfo;
+    render(<RegionWarning region={oldShapeRegion} />);
+
+    expect(screen.getByText(/location not provided/i)).toBeInTheDocument();
+  });
+
+  it('never mentions a percentage reduction of confidence or lists Australia/Maldives/Mexico as training countries', () => {
+    const region: RegionInfo = {
+      detected: 'GREAT_BARRIER_REEF',
+      name: 'Great Barrier Reef',
+      scope: 'specific',
+      coordinates_provided: true,
+      in_training_region: false,
+      training_sites_in_region: 0,
+      training_countries: ['Indonesia', 'Kenya'],
+      in_training_distribution: false,
+      confidence_adjusted: false,
+    };
+    const { container } = render(<RegionWarning region={region} />);
+    const text = container.textContent ?? '';
+
+    expect(text).not.toMatch(/\d+%/);
+    expect(text).not.toMatch(/reduced|adjusted by/i);
+    expect(text).not.toMatch(/Australia|Maldives|Mexico/);
+  });
+});
+
+describe('CaveatsFooter and CaveatsBanner', () => {
+  it('neither mentions a percentage confidence reduction nor lists Australia/Maldives/Mexico as training countries', () => {
+    const { container: footerContainer } = render(<CaveatsFooter />);
+    fireEvent.click(within(footerContainer).getByText(/scientific caveats/i));
+    const { container: bannerContainer } = render(<CaveatsBanner defaultExpanded />);
+
+    for (const container of [footerContainer, bannerContainer]) {
+      const text = container.textContent ?? '';
+      expect(text).not.toMatch(/reduced confidence|confidence.*reduced/i);
+      expect(text).not.toMatch(/Australia|Maldives|Mexico/);
+      expect(text).toMatch(/Indonesia, Kenya/);
+    }
   });
 });
