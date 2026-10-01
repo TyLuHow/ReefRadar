@@ -1,0 +1,7 @@
+{
+  "function_name": "reefradar-2477-preprocessor",
+  "kind": "zip",
+  "members": [
+    {"source": "lambdas/preprocessor/handler.py", "archive_path": "handler.py"}
+  ]
+}

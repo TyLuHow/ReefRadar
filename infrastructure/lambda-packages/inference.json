@@ -1,0 +1,9 @@
+{
+  "function_name": "reefradar-2477-inference",
+  "kind": "container",
+  "ecr_repository": "reefradar-2477-inference",
+  "image_workdir": "var/task",
+  "members": [
+    {"source": "infrastructure/lambda_container/inference.py", "archive_path": "inference.py"}
+  ]
+}
