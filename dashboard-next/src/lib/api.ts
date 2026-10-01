@@ -7,11 +7,68 @@ import {
   AnalyzeResponse,
   AnalysisResult,
   StatusResponse,
+  StageInfo,
   ApiError,
   SamplesResponse,
 } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod';
+
+/** Error raised by fetch() itself or a non-ok response, carrying the HTTP status (D-15). */
+type HttpError = Error & { status?: number };
+
+// D-15: fixed label for preprocessing (the API's own progress text for this
+// stage is a generic "Processing audio file" -- this is more specific about
+// what is actually happening); classifying always uses the API's own
+// progress text (it carries the real segment count); complete is unused by
+// pollAnalysis (it resolves before calling onStage for that stage).
+const STAGE_LABELS: Record<string, string> = {
+  preprocessing: 'Preparing audio: decoding, resampling to 32 kHz and cutting 5-second segments',
+  complete: 'Complete',
+};
+
+/**
+ * Error thrown by pollAnalysis on a failed analysis or a timeout/not-found
+ * condition. Carries everything the UI needs to show an actionable error
+ * (D-15): the API's own message and suggestion, the stage it failed at, and
+ * the request id for support (read from /visualize's error payload -- the
+ * /status error does not carry it).
+ */
+export class AnalysisError extends Error {
+  code?: string;
+  stage?: string;
+  suggestion?: string;
+  requestId?: string;
+
+  constructor(
+    message: string,
+    options: { code?: string; stage?: string; suggestion?: string; requestId?: string } = {}
+  ) {
+    super(message);
+    this.name = 'AnalysisError';
+    this.code = options.code;
+    this.stage = options.stage;
+    this.suggestion = options.suggestion;
+    this.requestId = options.requestId;
+  }
+}
+
+export interface PollAnalysisOptions {
+  /** Called whenever /status reports a new processing stage (preprocessing, classifying). */
+  onStage?: (info: StageInfo) => void;
+  /** Aborts polling; pollAnalysis rejects promptly with an AbortError. */
+  signal?: AbortSignal;
+  /** Hard ceiling on total wait time before rejecting with a timeout AnalysisError. Default 180000ms. */
+  maxWaitMs?: number;
+}
+
+function isAbortError(err: unknown): err is DOMException {
+  return err instanceof DOMException && err.name === 'AbortError';
+}
+
+function abortError(): DOMException {
+  return new DOMException('Aborted', 'AbortError');
+}
 
 class ApiClient {
   private baseUrl: string;
@@ -38,7 +95,11 @@ class ApiClient {
 
       if (!response.ok) {
         const error = data as ApiError;
-        throw new Error(error.error?.message || `HTTP ${response.status}: ${response.statusText}`);
+        const httpError: HttpError = new Error(
+          error.error?.message || `HTTP ${response.status}: ${response.statusText}`
+        );
+        httpError.status = response.status;
+        throw httpError;
       }
 
       return data as T;
@@ -110,38 +171,107 @@ class ApiClient {
     return this.request<AnalysisResult>(`/visualize/${analysisId}`);
   }
 
-  // Poll for analysis completion
+  /**
+   * Poll GET /status/{id} until the analysis completes or fails (D-15).
+   *
+   * Reports the real pipeline stage via onStage as it progresses (no
+   * invented percentages); on completion, calls GET /visualize/{id}
+   * exactly once and resolves with that result; on failure, throws an
+   * AnalysisError carrying the API's own message/suggestion/request id.
+   */
   async pollAnalysis(
     analysisId: string,
-    onProgress?: (status: string) => void,
-    maxAttempts: number = 60,
-    interval: number = 2000
+    options: PollAnalysisOptions = {}
   ): Promise<AnalysisResult> {
-    let attempts = 0;
+    const { onStage, signal, maxWaitMs = 180000 } = options;
+    const startedAt = Date.now();
+    let delayMs = 2000;
+    let consecutive404s = 0;
 
-    while (attempts < maxAttempts) {
-      const result = await this.getAnalysisResult(analysisId);
+    const wait = (ms: number): Promise<void> =>
+      new Promise((resolve, reject) => {
+        if (signal?.aborted) {
+          reject(abortError());
+          return;
+        }
+        const timer = setTimeout(resolve, ms);
+        signal?.addEventListener(
+          'abort',
+          () => {
+            clearTimeout(timer);
+            reject(abortError());
+          },
+          { once: true }
+        );
+      });
 
-      if (onProgress) {
-        onProgress(result.status);
+    while (true) {
+      if (signal?.aborted) throw abortError();
+
+      if (Date.now() - startedAt > maxWaitMs) {
+        throw new AnalysisError('Analysis timed out', {
+          code: 'TIMEOUT',
+          suggestion: 'The analysis is taking longer than expected. Please try again.',
+        });
       }
 
-      if (result.status === 'complete') {
-        return result;
+      let status: StatusResponse;
+      try {
+        status = await this.getStatus(analysisId);
+        consecutive404s = 0;
+      } catch (err) {
+        if (isAbortError(err)) throw err;
+        const httpStatus = (err as HttpError).status;
+        if (httpStatus === 404) {
+          consecutive404s++;
+          if (consecutive404s > 5) {
+            throw new AnalysisError('Analysis not found', {
+              code: 'ANALYSIS_NOT_FOUND',
+              suggestion: 'Please try starting a new analysis.',
+            });
+          }
+          await wait(delayMs);
+          delayMs = Math.min(delayMs * 1.5, 8000);
+          continue;
+        }
+        throw err;
       }
 
-      if (result.status === 'failed') {
-        const errMsg = typeof result.error === 'string'
-          ? result.error
-          : result.error?.message || 'Analysis failed';
-        throw new Error(errMsg);
+      if (status.status === 'complete' || status.stage === 'complete') {
+        return this.getAnalysisResult(analysisId);
       }
 
-      await new Promise(resolve => setTimeout(resolve, interval));
-      attempts++;
+      if (status.status === 'failed') {
+        let requestId: string | undefined;
+        let message = status.error?.message ?? 'Analysis failed';
+        let suggestion = status.error?.suggestion;
+        let code = status.error?.code;
+        try {
+          const viz = await this.getAnalysisResult(analysisId);
+          if (viz.error && typeof viz.error === 'object') {
+            requestId = viz.error.request_id;
+            message = viz.error.message ?? message;
+            suggestion = suggestion ?? viz.error.suggestion;
+            code = code ?? viz.error.code;
+          }
+        } catch {
+          // /visualize unavailable -- fall back to /status's fields only.
+        }
+        throw new AnalysisError(message, { code, stage: status.stage, suggestion, requestId });
+      }
+
+      // processing: preprocessing or classifying
+      if (onStage) {
+        const label =
+          status.stage === 'classifying'
+            ? status.progress || 'Classifying audio segments'
+            : STAGE_LABELS[status.stage] || status.progress || status.stage;
+        onStage({ stage: status.stage, label, progress: status.progress });
+      }
+
+      await wait(delayMs);
+      delayMs = Math.min(delayMs * 1.5, 8000);
     }
-
-    throw new Error('Analysis timed out');
   }
 }
 

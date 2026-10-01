@@ -135,7 +135,17 @@ export interface AnalysisResult {
   similar_sites?: SimilarSite[];
   visualization?: Visualization;
   caveats?: string;
-  error?: string | { code: string; message: string; suggestion?: string };
+  // stage/request_id/retry_count: handle_visualize (lambdas/router/handler.py)
+  // includes these on a failed analysis's error object -- pollAnalysis (D-15)
+  // reads request_id from here since /status's error does not carry it.
+  error?: {
+    code: string;
+    message: string;
+    suggestion?: string;
+    stage?: string;
+    request_id?: string;
+    retry_count?: number;
+  } | string;
 }
 
 export interface StatusResponse {
@@ -145,6 +155,14 @@ export interface StatusResponse {
   progress?: string;
   error?: { code: string; message: string; suggestion?: string };
   completed_at?: string;
+}
+
+// D-15: the real pipeline stage reported by GET /status/{id}, mapped to a
+// human-readable label pollAnalysis's onStage callback hands to the UI.
+export interface StageInfo {
+  stage: string;
+  label: string;
+  progress?: string;
 }
 
 export interface ApiError {
