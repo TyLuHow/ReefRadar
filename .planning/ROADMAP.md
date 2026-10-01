@@ -86,7 +86,29 @@ Decimal phases appear between their surrounding integers in numeric order. Numer
   3. Every playable clip anywhere in the product is a real recording from a cited dataset; no sample references a site absent from the reference dataset (e.g. `phl_D1` is gone) and sample labels match site labels (e.g. `aus_R1`).
   4. The live classifier's version, classes and training data are recorded; no class trained on synthetic audio is served; displayed class probabilities are unmodified model outputs that sum to 100%.
   5. A reviewer reading every route finds no claim the system did not measure (no species claims, fabricated crossfade states or scripted processing messages), corrected and consistent citations/DOIs (MARRS Williams et al. 2025, SurfPerch arXiv 2404.16436, Irma DOI), and dataset-specific labels shown with who assigned them and what they mean.
-**Plans**: TBD
+**Plans**: 20 plans (12 waves)
+
+Plans:
+- [ ] 01-01-PLAN.md — Test tooling behind the package-legitimacy gate (Vitest, Playwright + axe, pytest + moto)
+- [ ] 01-02-PLAN.md — Canonical citations module + checker; repo docs corrected
+- [ ] 01-03-PLAN.md — Real MARRS excerpts (16 kHz, 0 dB) + provenance manifest + real-audio checker
+- [ ] 01-04-PLAN.md — Pre-change visual and axe baselines of the deployed app
+- [ ] 01-05-PLAN.md — Deterministic Lambda packaging, drift check and scripted deploy (offline)
+- [ ] 01-06-PLAN.md — Site label provenance, generated gallery content, post-truth API fixtures
+- [ ] 01-07-PLAN.md — Recover gallery source from deployed bundle; build from git; bundle baseline; Next 14.2 patch
+- [ ] 01-08-PLAN.md — CI on every push (lint, types, unit, e2e, axe, Python, citations, Docker visual)
+- [ ] 01-09-PLAN.md — AWS access check + recover deployed Lambda source into git (drift green)
+- [ ] 01-10-PLAN.md — Deployed model audit and interim decision
+- [ ] 01-11-PLAN.md — Classifier: raw probabilities, honest region object, no fake projection
+- [ ] 01-12-PLAN.md — Router: label provenance on /sites, /samples from real-audio manifest
+- [ ] 01-13-PLAN.md — Interim real-only classifier (if required) + model-card data
+- [ ] 01-14-PLAN.md — Owner-approved production deploy, live verification, synthetic clips retired
+- [ ] 01-15-PLAN.md — Results UI: integer probabilities summing to 100, region note, honest caveats
+- [ ] 01-16-PLAN.md — Real /status stages, polling fix, embedding scatter removed
+- [ ] 01-17-PLAN.md — Audio surfaces on real excerpts; crossfader/demo/Location Compare copy
+- [ ] 01-18-PLAN.md — Gallery and sample view truth (fallback from manifest, reference-label wording)
+- [ ] 01-19-PLAN.md — Label provenance on site surfaces, derived counts, about page citations
+- [ ] 01-20-PLAN.md — Exit gate: banned-claims CI test, drift + live sweep, preview, Linux visual baselines
 **UI hint**: no
 
 ### Phase 2: Data Contract v1
@@ -321,7 +343,7 @@ Numeric order (1 → 17) is a valid order. With parallelization, Data & ML phase
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Truth & Reproducibility | 0/TBD | Not started | - |
+| 1. Truth & Reproducibility | 0/20 | Planned | - |
 | 2. Data Contract v1 | 0/TBD | Not started | - |
 | 3. Platform Upgrade & Stack Consolidation | 0/TBD | Not started | - |
 | 4. Design System & Instrument Primitives | 0/TBD | Not started | - |

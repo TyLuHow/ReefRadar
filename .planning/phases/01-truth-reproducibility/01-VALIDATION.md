@@ -39,18 +39,18 @@ created: 2026-09-30
 
 Filled by the planner per task; requirement → command map:
 
-| Requirement | Test Type | Automated Command | File Exists |
-|-------------|-----------|-------------------|-------------|
-| TRUTH-01 | smoke | clean-clone `npm ci && npm run build` (CI step) | ❌ W0 |
-| TRUTH-02 | script | `py -3.12 scripts/drift-check.py` (exit 0) | ❌ W0 |
-| TRUTH-03/04 | unit | `py -3.12 -m pytest tests/test_audio_manifest.py` | ❌ W0 |
-| TRUTH-05 | unit + manual | `py -3.12 -m pytest lambdas/classifier/tests -k synthetic` + `docs/model/DEPLOYED-MODEL-AUDIT.md` review | ❌ W0 |
-| TRUTH-06 | unit | `py -3.12 -m pytest lambdas/classifier/tests -k probabilities` (sum == 1, no multiplier) | ❌ W0 |
-| TRUTH-07 | unit | `npx vitest run tests/unit/copy-claims.test.ts` (banned-claim scan) | ❌ W0 |
-| TRUTH-08 | unit | `npx vitest run tests/unit/citations.test.ts` | ❌ W0 |
-| TRUTH-09 | component | `npx vitest run tests/unit/label-provenance.test.tsx` | ❌ W0 |
-| TRUTH-10 | e2e/visual | `npx playwright test tests/e2e/baseline.spec.ts` (baselines committed first) | ❌ W0 |
-| PLAT-04 | CI | `.github/workflows/ci.yml` green on push | ❌ W0 |
+| Requirement | Plans (task) | Test Type | Automated Command | File Exists |
+|-------------|--------------|-----------|-------------------|-------------|
+| TRUTH-01 | 01-07 (T1, T3), 01-08 (T1) | smoke | `cd dashboard-next && npm ci && npm run lint && npx tsc --noEmit && npm run build` (CI job `web` on a clean clone) | ❌ W0 (01-07) |
+| TRUTH-02 | 01-05 (T1-T3), 01-09 (T2-T3), 01-14 (T2-T3), 01-20 (T2) | script + unit | `py -3.12 -m pytest scripts/tests -x`; `py -3.12 scripts/drift-check.py --function all` (exit 0) | ❌ W0 (01-05) |
+| TRUTH-03/04 | 01-03 (T1-T2), 01-06 (T2), 01-12 (T2), 01-17, 01-18 (T1), 01-14 (T2), 01-20 (T2) | unit + script | `py -3.12 -m pytest scripts/tests/test_audio_manifest.py scripts/tests/test_build_gallery_manifest.py`; `py -3.12 scripts/check_audio_real.py dashboard-next/public/audio`; `npx vitest run tests/unit/samples.test.ts` | ❌ W0 (01-03, 01-06) |
+| TRUTH-05 | 01-10 (T1-T2), 01-13 (T1-T2), 01-14 (T2) | unit + manual | `py -3.12 -m pytest scripts/tests/test_audit_deployed_model.py scripts/tests/test_train_interim_real_only.py` + `docs/model/DEPLOYED-MODEL-AUDIT.md` review | ❌ W0 (01-10) |
+| TRUTH-06 | 01-11 (T1), 01-15 (T1-T2) | unit + component | `py -3.12 -m pytest lambdas/classifier -x` (sum == 1, no multiplier); `npx vitest run tests/unit/probabilities.test.ts tests/unit/results-components.test.tsx` | ❌ W0 (01-11, 01-15) |
+| TRUTH-07 | 01-15, 01-16, 01-17, 01-18, 01-19, 01-20 (T1) | unit + e2e | `npx vitest run tests/unit/copy-claims.test.ts`; `npx playwright test --project=e2e tests/e2e/audio-surfaces.spec.ts tests/e2e/analysis-flow.spec.ts` | ❌ W0 (01-20) |
+| TRUTH-08 | 01-02 (T1-T3), 01-19 (T3) | script + unit | `node scripts/check-citations.mjs --check-md && node scripts/check-citations.mjs --scope all`; `npx vitest run tests/unit/citations.test.ts` | ❌ W0 (01-02, 01-19) |
+| TRUTH-09 | 01-06 (T1), 01-11 (T2), 01-12 (T1), 01-18, 01-19 (T1) | unit + component | `py -3.12 -m pytest lambdas/shared lambdas/router -x`; `npx vitest run tests/unit/label-provenance.test.tsx` | ❌ W0 (01-06, 01-19) |
+| TRUTH-10 | 01-04 (T1-T2), 01-07 (T2-T3), 01-20 (T3) | e2e/visual | `npx playwright test -c playwright.live.config.ts tests/e2e/baseline-live.spec.ts` (pre-truth archive, captured first); CI `visual` job (exit baseline) | ❌ W0 (01-04) |
+| PLAT-04 | 01-01 (T1-T3), 01-08 (T1-T3), 01-20 (T1, T3) | CI | `.github/workflows/ci.yml` green on push (jobs web, e2e, visual, python, citations) | ❌ W0 (01-01, 01-08) |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -58,12 +58,12 @@ Filled by the planner per task; requirement → command map:
 
 ## Wave 0 Requirements
 
-- [ ] `dashboard-next/vitest.config.ts` + Testing Library setup
-- [ ] `dashboard-next/playwright.config.ts` (chromium + Docker-pinned screenshot project) + API fixtures in `dashboard-next/tests/fixtures/`
-- [ ] `lambdas/conftest.py`, `pytest.ini`, moto fixtures
-- [ ] `scripts/drift-check.py`
-- [ ] `.github/workflows/ci.yml`
-- [ ] `dashboard-next/tests/baseline/` captured BEFORE any UI-touching task
+- [ ] `dashboard-next/vitest.config.ts` + Testing Library setup (01-01 T3)
+- [ ] `dashboard-next/playwright.config.ts` + `playwright.live.config.ts` (01-01 T2) + API fixtures in `dashboard-next/tests/fixtures/api/` (01-06 T3, 01-08)
+- [ ] `lambdas/conftest.py`, `pytest.ini`, moto fixtures (01-01 T3)
+- [ ] `scripts/drift-check.py` (01-05 T1)
+- [ ] `.github/workflows/ci.yml` (01-08 T1)
+- [ ] `dashboard-next/tests/baseline/` captured BEFORE any UI-touching task (01-04, wave 2; first UI change is 01-07, wave 3)
 
 ---
 
