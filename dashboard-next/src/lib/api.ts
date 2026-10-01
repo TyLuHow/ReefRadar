@@ -62,6 +62,21 @@ export interface PollAnalysisOptions {
   maxWaitMs?: number;
 }
 
+/** Max consecutive transient failures (5xx/429/network) tolerated while polling. */
+const MAX_CONSECUTIVE_TRANSIENT_ERRORS = 5;
+
+/**
+ * A failure worth retrying while polling: API Gateway 5xx/429 (the DEPLOY-LOG
+ * shows 502/503/504 under the concurrency limit) or a network-level fetch
+ * failure (a TypeError with no HTTP status). A 1-second blip must not kill a
+ * multi-minute analysis the user already waited for (REVIEW WR-13).
+ */
+function isTransientError(err: unknown): boolean {
+  if (err instanceof TypeError) return true;
+  const status = (err as HttpError | undefined)?.status;
+  return status !== undefined && (status === 429 || status >= 500);
+}
+
 function isAbortError(err: unknown): err is DOMException {
   return err instanceof DOMException && err.name === 'AbortError';
 }
@@ -91,13 +106,22 @@ class ApiClient {
         },
       });
 
-      const data = await response.json();
+      // Parse defensively: a gateway 502/503/504 returns an HTML or empty body,
+      // which must surface as an HTTP error with a status (retryable), not as a
+      // status-less SyntaxError.
+      const data: unknown = await response.json().catch(() => null);
 
       if (!response.ok) {
-        const error = data as ApiError;
+        const error = (data ?? {}) as ApiError;
         const httpError: HttpError = new Error(
           error.error?.message || `HTTP ${response.status}: ${response.statusText}`
         );
+        httpError.status = response.status;
+        throw httpError;
+      }
+
+      if (data === null) {
+        const httpError: HttpError = new Error('The API returned an unreadable response');
         httpError.status = response.status;
         throw httpError;
       }
@@ -136,7 +160,10 @@ class ApiClient {
       method: 'POST',
       headers: {
         'Content-Type': 'audio/wav',
-        'X-Filename': file.name,
+        // HTTP header values must be ISO-8859-1: encode so non-Latin1 file names
+        // (e.g. Japanese/Chinese) do not throw before the request is sent. The
+        // router decodes and sanitises it.
+        'X-Filename': encodeURIComponent(file.name),
       },
       body: arrayBuffer,
     });
@@ -187,6 +214,7 @@ class ApiClient {
     const startedAt = Date.now();
     let delayMs = 2000;
     let consecutive404s = 0;
+    let consecutiveTransient = 0;
 
     const wait = (ms: number): Promise<void> =>
       new Promise((resolve, reject) => {
@@ -219,9 +247,17 @@ class ApiClient {
       try {
         status = await this.getStatus(analysisId);
         consecutive404s = 0;
+        consecutiveTransient = 0;
       } catch (err) {
         if (isAbortError(err)) throw err;
         const httpStatus = (err as HttpError).status;
+        if (isTransientError(err)) {
+          consecutiveTransient++;
+          if (consecutiveTransient > MAX_CONSECUTIVE_TRANSIENT_ERRORS) throw err;
+          await wait(delayMs);
+          delayMs = Math.min(delayMs * 1.5, 8000);
+          continue;
+        }
         if (httpStatus === 404) {
           consecutive404s++;
           if (consecutive404s > 5) {
@@ -238,7 +274,16 @@ class ApiClient {
       }
 
       if (status.status === 'complete' || status.stage === 'complete') {
-        return this.getAnalysisResult(analysisId);
+        // The analysis is done: do not lose it to a transient blip on the
+        // result fetch -- retry a few times before giving up.
+        for (let attempt = 0; ; attempt++) {
+          try {
+            return await this.getAnalysisResult(analysisId);
+          } catch (err) {
+            if (isAbortError(err) || !isTransientError(err) || attempt >= 3) throw err;
+            await wait(delayMs);
+          }
+        }
       }
 
       if (status.status === 'failed') {

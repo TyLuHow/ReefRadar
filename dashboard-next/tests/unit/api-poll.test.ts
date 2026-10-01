@@ -10,6 +10,18 @@ import { ApiClient, AnalysisError } from '@/lib/api';
  * them rather than waiting in real time.
  */
 
+/** A gateway-style error response whose body is not JSON (HTML / empty). */
+function nonJsonResponse(status: number): Response {
+  return {
+    ok: false,
+    status,
+    statusText: 'Bad Gateway',
+    json: async () => {
+      throw new SyntaxError('Unexpected token < in JSON');
+    },
+  } as unknown as Response;
+}
+
 function jsonResponse(body: unknown, status = 200): Response {
   return {
     ok: status >= 200 && status < 300,
@@ -157,5 +169,47 @@ describe('ApiClient.pollAnalysis', () => {
       name: 'AnalysisError',
       code: 'TIMEOUT',
     });
+  });
+
+  it('survives a transient 503 (non-JSON body) and a network error while polling', async () => {
+    fetchMock
+      .mockResolvedValueOnce(nonJsonResponse(503))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(jsonResponse({ analysis_id: 'a1', stage: 'complete', status: 'complete' }))
+      .mockResolvedValueOnce(jsonResponse({ analysis_id: 'a1', status: 'complete' }));
+
+    const result = await flush(client.pollAnalysis('a1'));
+    expect(result.status).toBe('complete');
+  });
+
+  it('gives up after more than 5 consecutive transient failures', async () => {
+    fetchMock.mockResolvedValue(nonJsonResponse(502));
+    await expect(flush(client.pollAnalysis('a1'))).rejects.toMatchObject({ status: 502 });
+    const statusCalls = fetchMock.mock.calls.filter(([url]) => String(url).includes('/status/'));
+    expect(statusCalls).toHaveLength(6);
+  });
+
+  it('retries the result fetch after completion on a transient error', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse({ analysis_id: 'a1', stage: 'complete', status: 'complete' }))
+      .mockResolvedValueOnce(nonJsonResponse(504))
+      .mockResolvedValueOnce(jsonResponse({ analysis_id: 'a1', status: 'complete' }));
+    const result = await flush(client.pollAnalysis('a1'));
+    expect(result.status).toBe('complete');
+  });
+});
+
+describe('ApiClient.uploadAudio', () => {
+  it('percent-encodes non-Latin1 file names so the header cannot throw', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ upload_id: 'u1', status: 'uploaded' }));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    const client = new ApiClient('https://api.test');
+    const file = { name: '珊瑚礁 – 録音.wav', arrayBuffer: async () => new ArrayBuffer(8) } as unknown as File;
+
+    await client.uploadAudio(file);
+
+    const headers = fetchMock.mock.calls[0][1].headers as Record<string, string>;
+    expect(headers['X-Filename']).toBe(encodeURIComponent('珊瑚礁 – 録音.wav'));
+    expect(/^[ -~]*$/.test(headers['X-Filename'])).toBe(true);
   });
 });

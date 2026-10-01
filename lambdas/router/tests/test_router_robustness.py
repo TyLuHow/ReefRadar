@@ -135,3 +135,37 @@ def test_sites_legacy_list_metadata_does_not_crash(router, aws):
     assert result["statusCode"] == 200
     assert body["total_sites"] == 1
     assert body["sites_with_embeddings"] == 1
+
+
+# --- WR-13: percent-encoded X-Filename is decoded ----------------------------------
+
+
+def _wav_bytes():
+    return b"RIFF" + b"\x00" * 4 + b"WAVE" + b"\x00" * 40
+
+
+def _upload(module, filename_header):
+    event = {
+        "requestContext": {"http": {"method": "POST"}, "stage": ""},
+        "rawPath": "/upload",
+        "headers": {"content-type": "audio/wav", "x-filename": filename_header},
+        "isBase64Encoded": True,
+        "body": base64.b64encode(_wav_bytes()).decode(),
+    }
+    result = module.handler(event, context=None)
+    return result, json.loads(result["body"])
+
+
+@pytest.fixture
+def upload_env(aws):
+    boto3.client("s3", region_name="us-east-1").create_bucket(Bucket=AUDIO_BUCKET)
+    _make_table()
+    return load_lambda("router")
+
+
+def test_upload_decodes_percent_encoded_filename(upload_env):
+    from urllib.parse import quote
+
+    result, body = _upload(upload_env, quote("珊瑚礁.wav"))
+    assert result["statusCode"] == 200
+    assert body["filename"] == "珊瑚礁.wav"

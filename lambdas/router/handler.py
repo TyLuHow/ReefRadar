@@ -9,6 +9,7 @@ from datetime import datetime
 from decimal import Decimal
 import base64
 import os
+from urllib.parse import unquote
 from site_provenance import load_provenance, apply_label_provenance
 
 
@@ -130,7 +131,8 @@ def handle_upload(event):
         upload_id = str(uuid.uuid4())
         headers = event.get('headers', {})
         content_type = headers.get('content-type', 'audio/wav')
-        filename = headers.get('x-filename', f'upload_{upload_id}.wav')
+        # The client percent-encodes X-Filename (HTTP headers are Latin-1 only).
+        filename = unquote(headers.get('x-filename') or f'upload_{upload_id}.wav')
 
         # Upload to S3
         s3_key = f'uploads/{upload_id}/{filename}'
