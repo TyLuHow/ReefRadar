@@ -9,6 +9,7 @@ from datetime import datetime
 from decimal import Decimal
 import base64
 import os
+from site_provenance import load_provenance, apply_label_provenance
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -26,6 +27,24 @@ AUDIO_BUCKET = os.environ.get('AUDIO_BUCKET')
 EMBEDDINGS_BUCKET = os.environ.get('EMBEDDINGS_BUCKET')
 METADATA_TABLE = os.environ.get('METADATA_TABLE')
 PREPROCESSOR_FUNCTION = os.environ.get('PREPROCESSOR_FUNCTION')
+
+# Caches for warm Lambda invocations
+_label_provenance = None
+_audio_manifest = None
+
+
+def get_label_provenance():
+    """Load and cache data/site-label-provenance.json (or bundled copy).
+
+    D-17: single place that decides which dataset assigned a reference
+    site's label and what that label actually means, so /sites can never
+    invent a health status for a non-MARRS site. Mirrors
+    lambdas/classifier/handler.py's identically-named helper.
+    """
+    global _label_provenance
+    if _label_provenance is None:
+        _label_provenance = load_provenance()
+    return _label_provenance
 
 
 def handler(event, context):
@@ -244,6 +263,7 @@ def handle_get_sites(event):
         filter_has_embedding = query_params.get('has_embedding')
 
         # Extract only the fields needed for the API response (exclude large embeddings)
+        prov = get_label_provenance()
         sites = []
         for site in raw_sites:
             has_embedding = site.get('has_embedding', True)
@@ -254,7 +274,7 @@ def handle_get_sites(event):
                 if has_embedding != filter_val:
                     continue
 
-            sites.append({
+            site_record = {
                 'site_id': site.get('site_id'),
                 'country': site.get('country'),
                 'region': site.get('region'),
@@ -264,7 +284,11 @@ def handle_get_sites(event):
                 'has_embedding': has_embedding,
                 'source': site.get('source', 'MARRS'),
                 'synthetic': site.get('synthetic', False)
-            })
+            }
+            # D-17: overlay label provenance (label_source, label_original,
+            # label_definition, label_assigned_by, status_basis, period,
+            # label_note) on every site record.
+            sites.append(apply_label_provenance(site_record, prov))
 
         # Include metadata-level counts for the full dataset
         total_all_sites = len(raw_sites)
@@ -282,12 +306,17 @@ def handle_get_sites(event):
             'notes': metadata.get('notes', '') if isinstance(metadata, dict) else ''
         })
     except Exception as e:
-        # Fallback to hardcoded minimal list if S3 fails
+        # Fallback to hardcoded minimal list if S3 fails. Still carries the
+        # same label provenance as the main path (D-17) -- the fallback is
+        # a reduced site list, not a different truth-telling contract.
+        prov = get_label_provenance()
         sites = [
-            {'site_id': 'ind_H4', 'country': 'Indonesia', 'status': 'healthy', 'has_embedding': True, 'synthetic': False},
-            {'site_id': 'ind_H5', 'country': 'Indonesia', 'status': 'healthy', 'has_embedding': True, 'synthetic': False},
-            {'site_id': 'ken_H1', 'country': 'Kenya', 'status': 'healthy', 'has_embedding': True, 'synthetic': False},
-            {'site_id': 'ind_N1', 'country': 'Indonesia', 'status': 'restored_early', 'has_embedding': True, 'synthetic': False},
+            apply_label_provenance(s, prov) for s in [
+                {'site_id': 'ind_H4', 'country': 'Indonesia', 'status': 'healthy', 'has_embedding': True, 'synthetic': False},
+                {'site_id': 'ind_H5', 'country': 'Indonesia', 'status': 'healthy', 'has_embedding': True, 'synthetic': False},
+                {'site_id': 'ken_H1', 'country': 'Kenya', 'status': 'healthy', 'has_embedding': True, 'synthetic': False},
+                {'site_id': 'ind_N1', 'country': 'Indonesia', 'status': 'restored_early', 'has_embedding': True, 'synthetic': False},
+            ]
         ]
         return response(200, {
             'sites': sites,
