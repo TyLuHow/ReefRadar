@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "verified_at": "2026-10-01",
+  "citations": {
+    "marrs": {
+      "id": "marrs",
+      "kind": "dataset",
+      "title": "Coral Reef Soundscapes from a Global Restoration Programme",
+      "authors": ["Ben Williams", "Kate Jones"],
+      "year": 2025,
+      "publisher": "University College London (UCL)",
+      "doi": "10.5522/04/29958062",
+      "url": "https://doi.org/10.5522/04/29958062",
+      "licence": "CC BY 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+      "short": "Williams & Jones 2025",
+      "related": [
+        {
+          "label": "Williams et al. 2025 — study paper (bioRxiv)",
+          "doi": "10.1101/2025.09.24.678197"
+        }
+      ],
+      "verified_from": "https://api.figshare.com/v2/articles/29958062",
+      "verification_note": "The figshare dataset record itself registers 2 authors (Ben Williams, Kate Jones). The related bioRxiv study paper (10.1101/2025.09.24.678197) lists the full 16-name author list — Williams, B.; Mars Coral Restoration Project Monitoring Team; Naseem, A.; Nava, G.; Roberts, A.; Nicholson, F.; du Luart, A.; Erasmus, D.; Stoole, O.; Whittick, A.; Gibb, R.; Razak, T.B.; Lamont, T.A.C.; Simpson, S.D.; Curnick, D.J.; Jones, K.E. — confirmed live via the bioRxiv API this session. Do not attribute the full paper author list to the dataset record; they are different registry entities."
+    },
+    "surfperch": {
+      "id": "surfperch",
+      "kind": "paper",
+      "title": "Leveraging tropical reef, bird and unrelated sounds for superior transfer learning in marine bioacoustics",
+      "authors": [
+        "Ben Williams",
+        "Bart van Merriënboer",
+        "Vincent Dumoulin",
+        "Jenny Hamer",
+        "Eleni Triantafillou",
+        "Abram B. Fleishman",
+        "Matthew McKown",
+        "Jill E. Munger",
+        "Aaron N. Rice",
+        "Ashlee Lillis",
+        "Clemency E. White",
+        "Catherine A. D. Hobbs",
+        "Tries B. Razak",
+        "Kate E. Jones",
+        "Tom Denton"
+      ],
+      "year": 2024,
+      "publisher": "arXiv",
+      "doi": null,
+      "url": "https://arxiv.org/abs/2404.16436",
+      "licence": "arXiv.org perpetual, non-exclusive license (no open license declared by the authors)",
+      "licence_url": "https://arxiv.org/licenses/nonexclusive-distrib/1.0/license.html",
+      "short": "Williams et al. 2024",
+      "related": [],
+      "verified_from": "http://export.arxiv.org/api/query?id_list=2404.16436",
+      "verification_note": null
+    },
+    "irma": {
+      "id": "irma",
+      "kind": "dataset",
+      "title": "Hurricane impacts on a coral reef soundscape",
+      "authors": ["Kayelyn Simmons", "DelWayne Bohnenstiehl", "David Eggleston"],
+      "year": 2020,
+      "publisher": "Dryad",
+      "doi": "10.5061/dryad.5tb2rbp38",
+      "url": "https://datadryad.org/dataset/doi:10.5061/dryad.5tb2rbp38",
+      "licence": "CC0 1.0 (Public Domain Dedication)",
+      "licence_url": "https://spdx.org/licenses/CC0-1.0.html",
+      "short": "Simmons, Bohnenstiehl & Eggleston 2020",
+      "related": [
+        {
+          "label": "Zenodo audio mirror",
+          "url": "https://zenodo.org/records/4396323"
+        }
+      ],
+      "verified_from": "https://datadryad.org/api/v2/datasets/doi%3A10.5061%2Fdryad.5tb2rbp38",
+      "verification_note": "Both the Dryad API and its Zenodo mirror return a duplicated 'Kayelyn Simmons' author entry (confirmed live this session on both registries). De-duplicated to 3 authors (Simmons, Bohnenstiehl, Eggleston) per research assumption A7."
+    },
+    "coralsoundexplorer": {
+      "id": "coralsoundexplorer",
+      "kind": "dataset",
+      "title": "Visualization and quantification of coral reef soundscapes using CoralSoundExplorer software",
+      "authors": ["Rouch (ENES Bioacoustic Lab)"],
+      "year": 2024,
+      "publisher": "Zenodo",
+      "doi": "10.5281/zenodo.14577064",
+      "url": "https://zenodo.org/records/14577064",
+      "licence": "CC BY 4.0",
+      "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+      "short": "Rouch et al. 2024",
+      "related": [
+        {
+          "label": "CoralSoundExplorer preprint (Minier, Rouch et al., PLOS Computational Biology)",
+          "doi": "10.1101/2024.04.05.588225"
+        }
+      ],
+      "verified_from": "https://zenodo.org/api/records/14577064",
+      "verification_note": "The Zenodo dataset record registers a single creator (Rouch, ENES Bioacoustic Lab). The fuller author list (Minier, Rouch et al.) belongs to the related bioRxiv preprint (isSupplementTo relation, confirmed live this session), not the dataset record itself."
+    },
+    "sanctsound": {
+      "id": "sanctsound",
+      "kind": "dataset",
+      "title": "Sanctuary Soundscape Monitoring Project (SanctSound)",
+      "authors": ["NOAA Office of National Marine Sanctuaries"],
+      "year": null,
+      "publisher": "NOAA National Centers for Environmental Information (NCEI)",
+      "doi": null,
+      "url": "https://sanctsound.ioos.us/",
+      "licence": "Public domain (U.S. Government work)",
+      "licence_url": null,
+      "short": "NOAA SanctSound",
+      "related": [],
+      "verified_from": "https://sanctsound.ioos.us/",
+      "verification_note": "SanctSound issues per-site, per-detection-type DOIs at NCEI (e.g. 10.25921/PF0H-SQ72) rather than one collection-level DOI — confirmed live this session against the NCEI passive-acoustic-data page. No single DOI exists for the project as a whole, so doi is recorded null and the project landing page is used as the canonical url. Underlying archive filenames (NOAA-Navy-SanctSound_*) show the U.S. Navy as a co-contributing data partner alongside NOAA ONMS."
+    }
+  }
+}
