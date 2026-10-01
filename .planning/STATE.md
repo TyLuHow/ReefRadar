@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 2
 current_phase_name: Data Contract v1
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-10-01T22:37:52.575Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-10-01T22:59:12.043Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 2 execution started
-state_head: 9f54ecfb9323306984385ef4737346447666239e
+state_head: f5eea4589bc5cfac83f12b3ca0f6680cb00ab434
 progress:
   total_phases: 17
   completed_phases: 1
   total_plans: 32
-  completed_plans: 22
+  completed_plans: 23
   percent: 6
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 ## Current Position
 
 Phase: 2 (Data Contract v1) — EXECUTING
-Plan: 3 of 12
+Plan: 4 of 12
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 2 execution started
 
@@ -82,6 +82,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 01 P20 | 100min | 3 tasks | 49 files |
 | Phase 02 P01 | 11min | 3 tasks | 26 files |
 | Phase 02 P02 | 20min | 2 tasks | 4 files |
+| Phase 02 P03 | 45min | 2 tasks | 31 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,8 @@ Recent decisions affecting current work:
 - [Phase 01 review]: Router now answers CORS preflight (OPTIONS, 204); before 6aca641 every browser POST /upload was blocked (pre-existing). Experience entry copy "classify reef health" logged for the Phase 4/7 copy pass.
 - [Phase 2]: 02-01: contracts/bucket/v1/sites.json is {schema_version, sites[]}; config_sha256 is over LF bytes and config_sha256_deployed records the CRLF hash of the deployed config
 - [Phase 02]: 02-02: managed SimpleCORS (wildcard origin, no credentials) for the public contract CDN; storage confirm gated on a verified budget alarm; contract CloudFront domain d7dr1fzple2sg.cloudfront.net
+- [Phase 2]: 02-03: once a version is in PUBLISHED.json its bundled schema copies are frozen; copy-equals-source and rebuild comparison are skipped for it, immutability guarded by manifest sha256 plus structural --additive
+- [Phase 2]: 02-03: projection.json/embeddings.f32 reused unless --recompute-projection/--reference-metadata; PCA verified by tolerance (1e-8 components, 2e-6 coordinates), not hash, so numpy 1.26.4 and 2.5.3 agree
 
 ### Pending Todos
 
@@ -160,6 +163,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T22:37:52.390Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-10-01T22:59:11.860Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None
