@@ -31,7 +31,12 @@ const WorldMap = dynamic(
 );
 
 export default function SitesPage() {
-  const [filteredSites, setFilteredSites] = useState<Site[]>([]);
+  // null until SiteFilters has reported (no filtering applied yet). An empty
+  // array is a real result -- "no site matches" -- and must stay empty
+  // (REVIEW WR-16: it used to fall back to showing every site).
+  const [filteredSites, setFilteredSites] = useState<Site[] | null>(null);
+  // Bumped to remount SiteFilters, which resets its own filter state.
+  const [filterResetKey, setFilterResetKey] = useState(0);
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
@@ -48,7 +53,7 @@ export default function SitesPage() {
   // D-18/TRUTH-07: every count on this page is derived from /sites, not
   // hard-coded.
   const sites = sitesData?.sites || [];
-  const displaySites = filteredSites.length > 0 || sites.length === 0 ? filteredSites : sites;
+  const displaySites = filteredSites ?? sites;
   const stats = deriveSiteStats(sitesData);
   const statusCounts = stats.byStatus;
 
@@ -216,6 +221,7 @@ export default function SitesPage() {
           <div className="lg:col-span-1">
             {!isLoading && sites.length > 0 && (
               <SiteFilters
+                key={filterResetKey}
                 sites={sites}
                 onFilteredSitesChange={handleFilteredSitesChange}
                 className="sticky top-4"
@@ -304,9 +310,12 @@ export default function SitesPage() {
                     ? 'No reference sites available'
                     : 'No sites match your filters'}
                 </p>
-                {sites.length > 0 && filteredSites.length === 0 && (
+                {sites.length > 0 && displaySites.length === 0 && (
                   <button
-                    onClick={() => setFilteredSites(sites)}
+                    onClick={() => {
+                      setFilteredSites(null);
+                      setFilterResetKey((k) => k + 1);
+                    }}
                     className="mt-2 text-sm text-ochre hover:text-pale-gold font-medium"
                   >
                     Clear filters
