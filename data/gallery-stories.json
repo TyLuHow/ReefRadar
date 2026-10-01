@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "stories": {
+    "healthy_vs_degraded": {
+      "title": "Healthy and degraded reefs at one location",
+      "subtitle": "Both are South Sulawesi MARRS sites, recorded at the same recorder-clock time of day.",
+      "sites": ["ind_H1", "ind_D1"]
+    },
+    "restoration_ladder": {
+      "title": "Four reef conditions at one location",
+      "subtitle": "These are different South Sulawesi sites labelled by MARRS, not one reef changing over time.",
+      "sites": ["ind_D1", "ind_N1", "ind_R1", "ind_H1"]
+    },
+    "geographic_diversity": {
+      "title": "Reference reefs in three countries",
+      "subtitle": "MARRS labels are relative to each location, so a healthy reef in one country is not directly comparable with another.",
+      "sites": ["ind_H1", "aus_H1", "aus_H2", "aus_D1", "aus_R1", "mex_R1"]
+    }
+  }
+}
