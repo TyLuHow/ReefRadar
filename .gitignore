@@ -65,3 +65,5 @@ aws_architecture.*
 # Node
 node_modules/
 .next/
+.gsd/
+.planning/milestone.lock
