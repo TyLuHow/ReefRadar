@@ -4,15 +4,32 @@ import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Play, Pause } from 'lucide-react';
 import { GlassPanel } from '@/components/ui/glass';
+import { getExcerpt, attributionLine } from '@/lib/audio-manifest';
+import { formatStatus } from '@/lib/utils';
 import type { Sample, ReefStatus } from '@/types';
 
-const STATUS_BADGE: Record<ReefStatus, { label: string; color: string }> = {
-  healthy: { label: 'Healthy', color: 'var(--status-healthy)' },
-  degraded: { label: 'Degraded', color: 'var(--status-degraded)' },
-  restored_early: { label: 'Early Restoration', color: 'var(--status-restoring-early)' },
-  restored_mid: { label: 'Mid Restoration', color: 'var(--status-restoring-mid)' },
-  unknown: { label: 'Unknown', color: 'var(--text-muted)' },
+const STATUS_COLOR: Record<ReefStatus, string> = {
+  healthy: 'var(--status-healthy)',
+  degraded: 'var(--status-degraded)',
+  restored_early: 'var(--status-restoring-early)',
+  restored_mid: 'var(--status-restoring-mid)',
+  unknown: 'var(--text-muted)',
 };
+
+/**
+ * The dataset's own label_original for a sample, looked up in the audio
+ * manifest by the sample's id (which is the manifest excerpt_id for every
+ * manifest-derived sample). Falls back to a formatted status when the
+ * manifest has no matching excerpt (01-18, D-17/TRUTH-07/09): this is a
+ * reference label assigned by MARRS, never a model output.
+ */
+function referenceLabelFor(sample: Sample): string {
+  try {
+    return getExcerpt(sample.id).label?.label_original ?? formatStatus(sample.category);
+  } catch {
+    return formatStatus(sample.category);
+  }
+}
 
 
 interface SampleCardProps {
@@ -27,7 +44,8 @@ export function SampleCard({ sample, playingId, onPlay, onPause }: SampleCardPro
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [progress, setProgress] = useState(0);
   const isPlaying = playingId === sample.id;
-  const badge = STATUS_BADGE[sample.category] || STATUS_BADGE.unknown;
+  const badgeColor = STATUS_COLOR[sample.category] || STATUS_COLOR.unknown;
+  const referenceLabel = referenceLabelFor(sample);
 
   const togglePlay = useCallback(() => {
     if (!audioRef.current) {
@@ -61,15 +79,16 @@ export function SampleCard({ sample, playingId, onPlay, onPause }: SampleCardPro
     <GlassPanel
       className="p-5 flex flex-col gap-3 w-72 flex-shrink-0 hover:border-[var(--glass-border-bright)]"
     >
-      {/* Header: badge + country */}
-      <div className="flex items-center justify-between">
+      {/* Header: reference label badge + country */}
+      <div className="flex items-center justify-between gap-2">
         <span
-          className="text-[10px] uppercase tracking-widest font-medium px-2 py-0.5 rounded-full border"
-          style={{ color: badge.color, borderColor: badge.color + '40' }}
+          className="text-[10px] font-medium px-2 py-0.5 rounded-full border bg-transparent"
+          style={{ color: badgeColor, borderColor: badgeColor + '80' }}
+          title="A reference label assigned by the dataset, not a model output"
         >
-          {badge.label}
+          Reference label: {referenceLabel} &middot; assigned by MARRS
         </span>
-        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+        <span className="text-xs shrink-0" style={{ color: 'var(--text-muted)' }}>
           {sample.country}
         </span>
       </div>
@@ -82,14 +101,19 @@ export function SampleCard({ sample, playingId, onPlay, onPause }: SampleCardPro
         {sample.description}
       </p>
 
+      {/* Attribution */}
+      <p className="text-[10px]" style={{ color: 'var(--text-dim)' }}>
+        {attributionLine()}
+      </p>
+
       {/* Play button + progress */}
       <div className="flex items-center gap-3">
         <button
           onClick={togglePlay}
           className="flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors"
           style={{
-            borderColor: badge.color,
-            color: badge.color,
+            borderColor: badgeColor,
+            color: badgeColor,
           }}
           aria-label={isPlaying ? 'Pause' : 'Play'}
         >
@@ -98,25 +122,12 @@ export function SampleCard({ sample, playingId, onPlay, onPause }: SampleCardPro
         <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'var(--glass-bg)' }}>
           <div
             className="h-full rounded-full transition-[width] duration-200"
-            style={{ width: `${progress * 100}%`, background: badge.color }}
+            style={{ width: `${progress * 100}%`, background: badgeColor }}
           />
         </div>
         <span className="text-[10px] font-mono" style={{ color: 'var(--text-dim)' }}>
           {sample.duration_seconds}s
         </span>
-      </div>
-
-      {/* Frequency highlights */}
-      <div className="flex flex-wrap gap-1">
-        {sample.frequency_highlights.map((h) => (
-          <span
-            key={h}
-            className="text-[10px] px-2 py-0.5 rounded-full"
-            style={{ background: 'var(--glass-bg)', color: 'var(--text-muted)' }}
-          >
-            {h}
-          </span>
-        ))}
       </div>
 
       {/* Analyze CTA */}
