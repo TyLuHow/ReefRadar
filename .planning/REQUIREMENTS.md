@@ -56,7 +56,7 @@
 - [ ] **PLAT-01**: Dashboard runs on Next.js 16 / React 19 with legacy routes still functional during migration
 - [ ] **PLAT-02**: Duplicate stacks are removed: one map engine (MapLibre), one chart approach (Observable Plot + d3), no unused dependencies (wavesurfer, deck.gl, Leaflet, recharts, Streamlit dashboard) [CAP-86]
 - [ ] **PLAT-03**: New code lives in feature modules with a lint fence preventing imports from legacy components
-- [ ] **PLAT-04**: Unit, component, end-to-end, accessibility (axe) and screenshot visual-regression tests run in CI on every push
+- [x] **PLAT-04**: Unit, component, end-to-end, accessibility (axe) and screenshot visual-regression tests run in CI on every push
 - [ ] **PLAT-05**: Uploads go directly to S3 via presigned URL with server-enforced size and duration caps (60 s at 96 kHz succeeds)
 - [ ] **PLAT-06**: The public API enforces rate limits on upload and analyze, and upload filenames are sanitized
 - [ ] **PLAT-07**: Analysis progress is driven by real pipeline stages from `/status`, with backoff and cancel [CAP-35, CAP-36]
@@ -248,7 +248,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PLAT-01 | Phase 3 | Pending |
 | PLAT-02 | Phase 3 | Pending |
 | PLAT-03 | Phase 3 | Pending |
-| PLAT-04 | Phase 1 | Pending |
+| PLAT-04 | Phase 1 | Complete |
 | PLAT-05 | Phase 10 | Pending |
 | PLAT-06 | Phase 10 | Pending |
 | PLAT-07 | Phase 10 | Pending |
@@ -328,6 +328,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MIGR-03 | Phase 17 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 113 total
 - Mapped to phases: 113
 - Unmapped: 0 ✓

@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 01
 current_phase_name: Truth & Reproducibility
 status: executing
-stopped_at: Phase 1 context gathered
-last_updated: "2026-10-01T05:49:55.756Z"
+stopped_at: Completed 01-01-PLAN.md
+last_updated: "2026-10-01T06:03:09.839Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 01 execution started
-state_head: 7a6ff01af933d4f1ea58074476a163f1e2e246ec
+state_head: 8c3d800c207c9bb3951e593225f3b632de31d405
 progress:
   total_phases: 17
   completed_phases: 0
   total_plans: 20
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 01 (Truth & Reproducibility) — EXECUTING
-Plan: 1 of 20
-Status: Executing Phase 01
+Plan: 2 of 20
+Status: Ready to execute
 Last activity: 2026-10-01 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -56,6 +56,11 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 01 P01 | 15min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -69,6 +74,9 @@ Recent decisions affecting current work:
 - [Roadmap]: Leave-one-site-out harness lands in Phase 5 (before batch embedding and retrain); retrain is Phase 12.
 - [Roadmap]: Analysis-as-search split into results (Phase 9, via precomputed sample analyses) then guarded public upload (Phase 10).
 - [Roadmap]: Time features (Phase 14) build against coverage flags; the phase completes only when Phase 11 aggregates are published and activation is verified.
+- [Phase 01]: Cleared Task 1 package-legitimacy gate via owner standing approval recorded in DRIVING-QUESTIONS.md, cross-verified against live npm/PyPI lookups
+- [Phase 01]: Bumped @types/node to 24.13.6 to satisfy vitest@5.0.3 peer dependency (Rule 3 blocking-issue fix)
+- [Phase 01]: Used oxc.jsx.runtime automatic instead of esbuild.jsx in vitest.config.ts (Vite 8 ignores esbuild JSX option)
 
 ### Pending Todos
 
@@ -92,6 +100,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T04:34:45.948Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-truth-reproducibility/01-CONTEXT.md
+Last session: 2026-10-01T06:03:09.822Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: None
