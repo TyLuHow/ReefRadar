@@ -5,6 +5,8 @@
     {"source": "lambdas/classifier/handler.py", "archive_path": "handler.py"},
     {"source": "lambdas/classifier/region_detection.py", "archive_path": "region_detection.py"},
     {"source": "lambdas/shared/site_provenance.py", "archive_path": "site_provenance.py"},
-    {"source": "data/site-label-provenance.json", "archive_path": "site_label_provenance.json"}
+    {"source": "data/site-label-provenance.json", "archive_path": "site_label_provenance.json"},
+    {"source": "lambdas/shared/contract_stamp.py", "archive_path": "contract_stamp.py"},
+    {"source": "contracts/bucket/v1/stamp.json", "archive_path": "contract_stamp.json"}
   ]
 }

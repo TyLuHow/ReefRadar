@@ -164,12 +164,15 @@ def test_load_spec_loads_real_classifier_spec_with_region_detection():
     spec = pkg.load_spec("classifier")
     archive_paths = {m["archive_path"] for m in spec["members"]}
     # Plan 01-11 (D-17) adds the shared label-provenance members the
-    # classifier handler now imports alongside region_detection.py.
+    # classifier handler now imports alongside region_detection.py; plan 02-05
+    # (CONTRACT-04) adds the bundled version-stamp module and its JSON.
     assert archive_paths == {
         "handler.py",
         "region_detection.py",
         "site_provenance.py",
         "site_label_provenance.json",
+        "contract_stamp.py",
+        "contract_stamp.json",
     }
 
 

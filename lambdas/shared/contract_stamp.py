@@ -55,10 +55,22 @@ def load_stamp(path: Optional[str] = None) -> dict:
 def stamp_for_model(loaded_model_version: Optional[str], stamp: dict) -> dict:
     """Return the four-key stamp for a result produced by `loaded_model_version`.
 
-    model_version is always the running model's own version. (The staleness
-    guard that nulls the other three when the model differs from the bundled
-    stamp is added in the next task.)
+    Staleness guard (T-02-05-01): model_version is always the running model's
+    own version (the truth from the loaded config). contract_version,
+    dataset_version and preprocessing_spec_version describe the model the
+    bundled stamp was written for, so they are copied only when the loaded
+    model IS that model; otherwise they are null -- an honest "not covered by
+    a published contract" rather than a stale claim. A model without a version
+    is never covered.
     """
-    out: dict[str, Any] = {key: stamp.get(key) for key in STAMP_KEYS}
-    out["model_version"] = loaded_model_version
+    covered = (
+        loaded_model_version is not None
+        and loaded_model_version == stamp.get("model_version")
+    )
+    out: dict[str, Any] = {
+        "contract_version": stamp.get("contract_version") if covered else None,
+        "dataset_version": stamp.get("dataset_version") if covered else None,
+        "model_version": loaded_model_version,
+        "preprocessing_spec_version": stamp.get("preprocessing_spec_version") if covered else None,
+    }
     return out
