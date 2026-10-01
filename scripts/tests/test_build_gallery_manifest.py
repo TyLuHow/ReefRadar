@@ -19,6 +19,7 @@ REPO_ROOT = SCRIPTS_DIR.parent
 
 sys.path.insert(0, str(SCRIPTS_DIR))
 import build_gallery_manifest as bgm  # noqa: E402
+import build_api_fixtures as baf  # noqa: E402
 
 MANIFEST_PATH = REPO_ROOT / "data" / "audio-manifest.json"
 
@@ -124,3 +125,11 @@ def test_regenerating_manifest_is_idempotent(generated_manifest, tmp_path):
     after = MANIFEST_PATH.read_bytes()
     before = backup.read_bytes()
     assert after == before
+
+
+def test_build_api_fixtures_check_mode_passes():
+    # D-22 (Task 3): scripts/build_api_fixtures.py --check must exit 0 once
+    # both committed fixtures match a fresh render from the same overlay.
+    baf.write_json(baf.SITES_FIXTURE_PATH, baf.render_sites_fixture())
+    baf.write_json(baf.SAMPLES_FIXTURE_PATH, baf.render_samples_fixture())
+    assert baf.check() == 0
