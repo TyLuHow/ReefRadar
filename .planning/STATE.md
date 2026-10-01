@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 01
 current_phase_name: Truth & Reproducibility
 status: executing
-stopped_at: Completed 01-18-PLAN.md
-last_updated: "2026-10-01T09:55:53.235Z"
+stopped_at: Completed 01-19-PLAN.md
+last_updated: "2026-10-01T10:07:58.970Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 01 execution started
-state_head: 4732ee191be7720c18c2fcef58d9b741d3bf8e0d
+state_head: e4072f78978c4e549dfcc6375933f80b9ea70765
 progress:
   total_phases: 17
   completed_phases: 0
   total_plans: 20
-  completed_plans: 17
+  completed_plans: 18
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 01 (Truth & Reproducibility) — EXECUTING
-Plan: 18 of 20
+Plan: 19 of 20
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 01 execution started
 
@@ -77,6 +77,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-truth-reproducibility P16 | 70min | 3 tasks | 11 files |
 | Phase 01 P17 | 70min | 3 tasks | 21 files |
 | Phase 01-truth-reproducibility P18 | 55min | 3 tasks | 7 files |
+| Phase 01-truth-reproducibility P19 | 55min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -125,6 +126,7 @@ Recent decisions affecting current work:
 - [Phase 01]: [Phase 01] 01-17 Rule 2 deviation: extended the honest-copy fix beyond Task 2's declared files to dashboard/compare/page.tsx and the shared FrequencyBands.ts/FrequencyBandLabels.tsx, which made unlabelled species/behaviour claims on the same audio surfaces
 - [Phase 01]: [Phase 01] 01-18: Reference-label lookup uses existing getExcerpt(sample.id) from audio-manifest.ts (sample id == manifest excerpt_id) rather than adding a new site_id-keyed export outside the plan's declared files
 - [Phase 01]: [Phase 01] 01-18 Rule 1 fix: SampleGallery.tsx's STORY_ORDER referenced the pre-manifest 'restoration_timeline' key instead of 'restoration_ladder', silently dropping that story section
+- [Phase 01]: [Phase 01] 01-19 D-17/D-18 UI: SiteCard/SitePopup use label_assigned_by as the primary 'assigned by' attribution, falling back to label_source_name; sites with no label_original show status_basis instead of a redundant 'Label: Unknown' line
 
 ### Pending Todos
 
@@ -148,6 +150,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T09:55:46.220Z
-Stopped at: Completed 01-18-PLAN.md
+Last session: 2026-10-01T10:07:58.950Z
+Stopped at: Completed 01-19-PLAN.md
 Resume file: None

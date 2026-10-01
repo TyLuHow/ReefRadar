@@ -144,7 +144,7 @@ Plans:
 
 **Wave 11** *(blocked on Wave 10 completion)*
 
-- [ ] 01-19-PLAN.md — Label provenance on site surfaces, derived counts, about page citations
+- [x] 01-19-PLAN.md — Label provenance on site surfaces, derived counts, about page citations
 
 **Wave 12** *(blocked on Wave 11 completion)*
 
