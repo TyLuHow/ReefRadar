@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 01
 current_phase_name: Truth & Reproducibility
 status: executing
-stopped_at: Completed 01-12-PLAN.md
-last_updated: "2026-10-01T08:48:50.599Z"
+stopped_at: Completed 01-13-PLAN.md
+last_updated: "2026-10-01T08:56:00.340Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 01 execution started
-state_head: 851b044075239ae83e5732e2edf4d56e0e193a9f
+state_head: ad45cebd5f365a1e940f6da5ae0b553340e220f0
 progress:
   total_phases: 17
   completed_phases: 0
   total_plans: 20
-  completed_plans: 12
+  completed_plans: 13
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 01 (Truth & Reproducibility) — EXECUTING
-Plan: 13 of 20
+Plan: 14 of 20
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 01 execution started
 
@@ -72,6 +72,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P10 | 45min | 2 tasks | 4 files |
 | Phase 01 P11 | 50min | 2 tasks | 6 files |
 | Phase 01-truth-reproducibility P12 | 35min | 2 tasks | 4 files |
+| Phase 01 P13 | 20min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,7 @@ Recent decisions affecting current work:
 - [Phase 01]: [Phase 01] D-13/D-17: generate_visualization() deleted entirely (legacy UI already handles its absence); find_similar_sites() routes every match through the shared apply_label_provenance()
 - [Phase 01]: Deleted CURATED_SAMPLES/SAMPLE_STORIES outright instead of keeping as fallback -- missing audio manifest now returns 500 SAMPLES_UNAVAILABLE per D-05/D-09
 - [Phase 01]: router.json's 3 new bundled members (site_provenance.py, site_label_provenance.json, audio_manifest.json) added incrementally, one task's worth per commit
+- [Phase 01]: D-11 interim model: trained interim-real-only 3-class MLP (degraded, healthy, restored_early) on the 100 real rows in training_test_20.json, dropping restored_mid (zero real rows); weights proven byte-compatible with the deployed classifier's forward pass
 
 ### Pending Todos
 
@@ -133,6 +135,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T08:48:50.579Z
-Stopped at: Completed 01-12-PLAN.md
+Last session: 2026-10-01T08:56:00.319Z
+Stopped at: Completed 01-13-PLAN.md
 Resume file: None
