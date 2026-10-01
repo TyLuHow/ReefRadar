@@ -171,3 +171,15 @@ describe('CaveatsFooter and CaveatsBanner', () => {
     }
   });
 });
+
+describe('AnalysisResults similar sites', () => {
+  it('says similarity is unavailable (with the reason) when the list is empty', () => {
+    const result = {
+      ...noCoordsResult,
+      similar_sites: [],
+      similar_sites_error: 'Reference embeddings could not be loaded, so similar-site comparison is unavailable.',
+    } as AnalysisResult;
+    render(<AnalysisResults result={result} />);
+    expect(screen.getByText(/similar-site comparison is unavailable/i)).toBeInTheDocument();
+  });
+});

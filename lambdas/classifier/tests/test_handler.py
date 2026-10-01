@@ -447,3 +447,56 @@ def test_classify_probabilities_sum_to_one(classifier_handler):
     out = classifier_handler.classify_embedding(rng.normal(size=EMBEDDING_DIM))
     assert sum(out["probabilities"].values()) == pytest.approx(1.0, abs=1e-9)
     assert set(out["probabilities"]) == set(IDX_TO_LABEL.values())
+
+
+# --- WR-05: similar-site lookup is honest about failure ----------------------
+
+
+def test_similar_sites_reports_reason_when_no_comparable_embeddings(classifier_handler):
+    s3 = boto3.client("s3", region_name="us-east-1")
+    s3.put_object(
+        Bucket=EMBEDDINGS_BUCKET,
+        Key="reference/metadata.json",
+        Body=json.dumps({"sites": [{"site_id": "ind_H4", "country": "Indonesia", "status": "healthy",
+                                    "mean_embedding": [0.1] * 64}]}),
+    )
+    sites, note = classifier_handler.find_similar_sites_with_status(np.ones(EMBEDDING_DIM))
+    assert sites == []
+    assert "unavailable" in note
+
+
+def test_similar_sites_reports_reason_when_reference_cannot_load(classifier_handler):
+    s3 = boto3.client("s3", region_name="us-east-1")
+    s3.delete_object(Bucket=EMBEDDINGS_BUCKET, Key="reference/metadata.json")
+    sites, note = classifier_handler.find_similar_sites_with_status(np.ones(EMBEDDING_DIM))
+    assert sites == []
+    assert "could not be loaded" in note
+
+
+def test_reference_lookup_prefers_router_key_order(classifier_handler):
+    s3 = boto3.client("s3", region_name="us-east-1")
+    rng = np.random.RandomState(1)
+    s3.put_object(
+        Bucket=EMBEDDINGS_BUCKET,
+        Key="reference/metadata_v6.json",
+        Body=json.dumps({"sites": [{"site_id": "ken_H1", "country": "Kenya", "status": "healthy",
+                                    "mean_embedding": rng.normal(size=EMBEDDING_DIM).tolist()}]}),
+    )
+    sites, key = classifier_handler.load_reference_sites()
+    assert key == "reference/metadata_v6.json"
+    assert [s["site_id"] for s in sites] == ["ken_H1"]
+
+
+def test_handler_stores_similar_sites_error_note(classifier_handler):
+    s3 = boto3.client("s3", region_name="us-east-1")
+    s3.delete_object(Bucket=EMBEDDINGS_BUCKET, Key="reference/metadata.json")
+    event = {
+        "upload_id": "upload-s1",
+        "analysis_id": "analysis-s1",
+        "segments_key": "segments/analysis-1.json",
+        "num_segments": 2,
+    }
+    assert classifier_handler.handler(event, context=None)["statusCode"] == 200
+    item = _get_result_item(classifier_handler, "analysis-s1")
+    assert item["similar_sites"] == []
+    assert "unavailable" in item["similar_sites_error"]

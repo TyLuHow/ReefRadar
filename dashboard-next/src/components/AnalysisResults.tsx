@@ -31,7 +31,7 @@ interface AnalysisResultsProps {
 }
 
 export function AnalysisResults({ result }: AnalysisResultsProps) {
-  const { classification, similar_sites, caveats } = result;
+  const { classification, similar_sites, similar_sites_error, caveats } = result;
 
   if (!classification) {
     return (
@@ -181,6 +181,20 @@ export function AnalysisResults({ result }: AnalysisResultsProps) {
               </p>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Similar sites unavailable: say so instead of hiding the section */}
+      {(!similar_sites || similar_sites.length === 0) && (
+        <div className="glass-panel p-6" role="status">
+          <h3 className="text-lg font-semibold mb-2 flex items-center" style={{ color: 'var(--text-primary)' }}>
+            <TrendingUp className="w-5 h-5 mr-2 text-ochre" />
+            Most Similar Reference Sites
+          </h3>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            {similar_sites_error ||
+              'Similar-site comparison is not available for this analysis, so no reference sites are shown.'}
+          </p>
         </div>
       )}
 

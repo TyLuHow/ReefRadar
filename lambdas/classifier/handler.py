@@ -124,7 +124,7 @@ def handler(event, context):
         region_result = detect_region(latitude, longitude, training_sites=training_sites)
         classification = adjust_classification(classification, region_result)
 
-        similar_sites = find_similar_sites(mean_embedding)
+        similar_sites, similar_sites_error = find_similar_sites_with_status(mean_embedding)
 
         # Store results - synthetic is ALWAYS false now
         result_item = {
@@ -135,6 +135,7 @@ def handler(event, context):
             'status': 'complete',
             'classification': classification,
             'similar_sites': similar_sites,
+            **({'similar_sites_error': similar_sites_error} if similar_sites_error else {}),
             'embedding_summary': {
                 'dimension': int(len(mean_embedding)),
                 'num_segments': num_segments,
@@ -602,34 +603,52 @@ def classify_embedding(embedding, model=None):
     }
 
 
-def load_reference_embeddings():
-    """Load pre-computed reference embeddings from S3.
+REFERENCE_KEYS = (
+    'reference/metadata_v6.json',
+    'reference/metadata_v5.json',
+    'reference/metadata.json',
+)
 
-    Caches in memory for warm Lambda invocations.
-    Supports both old format (list of sites) and new format (object with 'sites' key).
-    New format (v2.0) includes metadata like source, version, and richer site info.
+
+def load_reference_sites():
+    """Load reference sites (with mean embeddings) from S3.
+
+    Uses the SAME key order as the router's /sites (v6 -> v5 -> legacy
+    metadata.json) and takes the first object that parses and contains at
+    least one site with a `mean_embedding`, so the sites a user sees listed
+    and the sites the similarity step compares against come from one source.
+    Returns (sites, source_key). Only successful loads are cached; failures
+    are logged and raised, never swallowed into an empty list.
     """
     global _reference_embeddings
 
     if _reference_embeddings is not None:
         return _reference_embeddings
 
-    try:
-        response = s3.get_object(Bucket=EMBEDDINGS_BUCKET, Key='reference/metadata.json')
-        metadata = json.loads(response['Body'].read().decode())
+    errors = []
+    for key in REFERENCE_KEYS:
+        try:
+            response = s3.get_object(Bucket=EMBEDDINGS_BUCKET, Key=key)
+            metadata = json.loads(response['Body'].read().decode())
+        except Exception as e:
+            errors.append(f"{key}: {type(e).__name__}")
+            continue
 
-        # Handle new format (v2.0) with 'sites' key
+        # New format (v2.0+) has a 'sites' key; old format is a direct list.
         if isinstance(metadata, dict) and 'sites' in metadata:
-            _reference_embeddings = metadata['sites']
-        # Handle old format (direct list)
+            sites = metadata['sites']
         elif isinstance(metadata, list):
-            _reference_embeddings = metadata
+            sites = metadata
         else:
-            _reference_embeddings = []
+            sites = []
 
-        return _reference_embeddings
-    except Exception:
-        return []
+        if any(isinstance(s, dict) and s.get('mean_embedding') for s in sites):
+            _reference_embeddings = (sites, key)
+            return _reference_embeddings
+        errors.append(f"{key}: no sites with embeddings")
+
+    print(f"WARN reference lookup failed: {'; '.join(errors)}")
+    raise RuntimeError("no reference object with site embeddings could be loaded")
 
 
 def get_label_provenance():
@@ -645,8 +664,13 @@ def get_label_provenance():
     return _label_provenance
 
 
-def find_similar_sites(embedding, top_k=3):
+def find_similar_sites_with_status(embedding, top_k=3):
     """Find most similar reference sites using cosine similarity.
+
+    Returns (similar_sites, error_note). `error_note` is None when the lookup
+    worked; otherwise a short, user-presentable reason why the list is empty
+    ("similarity unavailable") so an empty list is never ambiguous between
+    "no neighbours exist" and "the lookup is broken".
 
     Each result carries its label provenance (D-17): `label_source` names
     the dataset that assigned the status, and `label_original` is that
@@ -655,34 +679,58 @@ def find_similar_sites(embedding, top_k=3):
     -- their `status` is whatever apply_label_provenance resolves to
     (typically "unknown"), not a value this function makes up.
     """
-    reference_data = load_reference_embeddings()
-
-    if not reference_data:
-        raise Exception("No reference embeddings available for similarity comparison")
+    try:
+        reference_data, source_key = load_reference_sites()
+    except Exception as e:
+        print(f"ERROR similar sites: reference load failed: {type(e).__name__}: {e}")
+        return [], 'Reference embeddings could not be loaded, so similar-site comparison is unavailable.'
 
     prov = get_label_provenance()
     similarities = []
+    skipped_dim = 0
     status_map = {'H': 'healthy', 'D': 'degraded', 'R': 'restored_early', 'N': 'restored_early'}
 
     for ref in reference_data:
-        ref_embedding = np.array(ref.get('mean_embedding', []))
-        if len(ref_embedding) == len(embedding):
-            sim = cosine_similarity(embedding, ref_embedding)
-            # Use 'status' field directly if available (new format), else map from site_type
-            status = ref.get('status') or status_map.get(ref.get('site_type', 'U'), 'unknown')
+        ref_embedding = np.array(ref.get('mean_embedding') or [])
+        if len(ref_embedding) != len(embedding):
+            skipped_dim += 1
+            continue
+        sim = cosine_similarity(embedding, ref_embedding)
+        # Use 'status' field directly if available (new format), else map from site_type
+        status = ref.get('status') or status_map.get(ref.get('site_type', 'U'), 'unknown')
+        try:
             labeled = apply_label_provenance({'site_id': ref.get('site_id', 'unknown'), 'status': status}, prov)
-            similarities.append({
-                'site_id': labeled['site_id'],
-                'similarity': float(sim),
-                'country': ref.get('country', 'Unknown'),
-                'status': labeled['status'],
-                'label_source': labeled['label_source'],
-                'label_original': labeled['label_original'],
-            })
+        except KeyError:
+            print(f"WARN similar sites: no provenance for {ref.get('site_id')!r}; skipped")
+            continue
+        similarities.append({
+            'site_id': labeled['site_id'],
+            'similarity': float(sim),
+            'country': ref.get('country', 'Unknown'),
+            'status': labeled['status'],
+            'label_source': labeled['label_source'],
+            'label_original': labeled['label_original'],
+        })
+
+    if skipped_dim:
+        print(f"WARN similar sites: {skipped_dim}/{len(reference_data)} reference sites from {source_key} "
+              f"have no {len(embedding)}-dim embedding and were skipped")
+
+    if not similarities:
+        return [], (
+            f'No reference site has a comparable {len(embedding)}-dimensional embedding '
+            f'({skipped_dim} of {len(reference_data)} reference sites skipped), '
+            'so similar-site comparison is unavailable.'
+        )
 
     # Sort by similarity and return top_k
     similarities.sort(key=lambda x: x['similarity'], reverse=True)
-    return similarities[:top_k]
+    return similarities[:top_k], None
+
+
+def find_similar_sites(embedding, top_k=3):
+    """List-only wrapper around find_similar_sites_with_status."""
+    return find_similar_sites_with_status(embedding, top_k=top_k)[0]
 
 
 def cosine_similarity(a, b):

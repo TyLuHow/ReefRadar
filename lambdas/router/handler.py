@@ -453,6 +453,7 @@ def handle_visualize(analysis_id):
             'status': 'complete',
             'classification': item.get('classification', {}),
             'similar_sites': item.get('similar_sites', []),
+            'similar_sites_error': item.get('similar_sites_error'),
             'visualization': item.get('visualization', {}),
             'embedding_summary': item.get('embedding_summary', {}),
             'caveats': item.get('caveats', '')

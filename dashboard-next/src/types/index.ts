@@ -146,6 +146,8 @@ export interface AnalysisResult {
   status: 'pending' | 'processing' | 'complete' | 'failed';
   classification?: Classification;
   similar_sites?: SimilarSite[];
+  /** Present (non-empty) when the similar-site lookup failed or had nothing comparable. */
+  similar_sites_error?: string | null;
   visualization?: Visualization;
   caveats?: string;
   // stage/request_id/retry_count: handle_visualize (lambdas/router/handler.py)
