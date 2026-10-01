@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 2
 current_phase_name: Data Contract v1
 status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-10-01T22:59:12.043Z"
+stopped_at: Completed 02-05-PLAN.md
+last_updated: "2026-10-01T23:13:10.402Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 2 execution started
-state_head: f5eea4589bc5cfac83f12b3ca0f6680cb00ab434
+state_head: 1d28afa691d0baf58ddb3cac203f707da4edfbe0
 progress:
   total_phases: 17
   completed_phases: 1
   total_plans: 32
-  completed_plans: 23
+  completed_plans: 24
   percent: 6
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 ## Current Position
 
 Phase: 2 (Data Contract v1) — EXECUTING
-Plan: 4 of 12
+Plan: 5 of 12
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 2 execution started
 
@@ -83,6 +83,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 02 P01 | 11min | 3 tasks | 26 files |
 | Phase 02 P02 | 20min | 2 tasks | 4 files |
 | Phase 02 P03 | 45min | 2 tasks | 31 files |
+| Phase 02 P05 | 25min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -140,6 +141,7 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-02: managed SimpleCORS (wildcard origin, no credentials) for the public contract CDN; storage confirm gated on a verified budget alarm; contract CloudFront domain d7dr1fzple2sg.cloudfront.net
 - [Phase 2]: 02-03: once a version is in PUBLISHED.json its bundled schema copies are frozen; copy-equals-source and rebuild comparison are skipped for it, immutability guarded by manifest sha256 plus structural --additive
 - [Phase 2]: 02-03: projection.json/embeddings.f32 reused unless --recompute-projection/--reference-metadata; PCA verified by tolerance (1e-8 components, 2e-6 coordinates), not hash, so numpy 1.26.4 and 2.5.3 agree
+- [Phase 2]: [Phase 02] 02-05: stamp_for_model nulls contract/dataset/preprocessing versions unless the loaded model version equals the bundled stamp's model; an unloadable stamp writes nulls instead of failing the analysis
 
 ### Pending Todos
 
@@ -163,6 +165,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T22:59:11.860Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-10-01T23:13:10.236Z
+Stopped at: Completed 02-05-PLAN.md
 Resume file: None
