@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 01
 current_phase_name: Truth & Reproducibility
 status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-10-01T06:17:46.826Z"
+stopped_at: Completed 01-03-PLAN.md
+last_updated: "2026-10-01T06:35:33.233Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 01 execution started
-state_head: ced9b63dc385b0d9c4ea4a5ad74e56504467cfc0
+state_head: c641fb7c5ce97d4c0b9ce2fd14abf969a12ccba2
 progress:
   total_phases: 17
   completed_phases: 0
   total_plans: 20
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-09-30)
 ## Current Position
 
 Phase: 01 (Truth & Reproducibility) — EXECUTING
-Plan: 3 of 20
+Plan: 4 of 20
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 01 execution started
 
@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 |------|----------|-------|-------|
 | Phase 01 P01 | 15min | 3 tasks | 14 files |
 | Phase 01 P02 | 15min | 3 tasks | 12 files |
+| Phase 01 P03 | 35min | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -81,6 +82,8 @@ Recent decisions affecting current work:
 - [Phase 01]: MARRS citations.json uses the figshare dataset's own 2 registered authors (Williams, Jones), not the bioRxiv paper's 16-author list; paper linked as a related entry
 - [Phase 01]: Irma and CoralSoundExplorer dataset registry records list fewer/different authors than their companion papers; de-duplicated a registry-level duplicate author entry on Irma (Dryad + Zenodo mirror both affected)
 - [Phase 01]: SanctSound has no single collection-level DOI upstream; recorded doi: null with the project landing page as url, per plan fallback
+- [Phase 01]: Spectral synthetic-audio checker requires low flatness AND high concentration jointly (not OR), calibrated against real MARRS excerpt data to avoid false-flagging real fish-chorus tonality
+- [Phase 01]: .gitignore marrs WAV exception added in Task 1 (not Task 2 as planned) since Task 1's done-criteria requires a committed WAV
 
 ### Pending Todos
 
@@ -104,6 +107,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-01T06:17:46.807Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-10-01T06:35:33.214Z
+Stopped at: Completed 01-03-PLAN.md
 Resume file: None
