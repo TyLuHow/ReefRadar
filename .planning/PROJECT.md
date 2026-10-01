@@ -83,6 +83,7 @@ See `.planning/REQUIREMENTS.md` for the full, ID'd list. Summary of the mileston
 | Stay on Next.js, incremental strangler in `dashboard-next/` | Small data, client-heavy instrument, Vercel already wired | — Pending |
 | MapLibre only; Observable Plot + d3; React Aria Components; Tailwind v4 tokens; nuqs + zustand + TanStack Query | Single engine per concern; accessible primitives; URL state | — Pending |
 | Data & Model track runs parallel to UI tracks behind a versioned data contract | Large ingestion must not block UI progress | — Pending |
+| Hold production frontend merge until the overhaul is worth a visible launch (owner, 2026-10-01) | Phase 1 is honesty fixes on the legacy UI; launch the redesign when visibly new | — Pending |
 
 ## Evolution
 

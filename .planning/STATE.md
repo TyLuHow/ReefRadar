@@ -131,13 +131,15 @@ Recent decisions affecting current work:
 - [Phase 01]: [Phase 01] 01-19 D-17/D-18 UI: SiteCard/SitePopup use label_assigned_by as the primary 'assigned by' attribution, falling back to label_source_name; sites with no label_original show status_basis instead of a redundant 'Label: Unknown' line
 - [Phase 01]: [Phase 01] 01-20: visual baselines hide canvases (visibility:hidden) instead of masking, since a masked fixed background canvas hid all top-of-page content; preview verified via vercel curl + local prod build because Deployment Protection is on
 
+- [Owner, 2026-10-01]: Hold the merge of `redesign/v2-discovery` to `main` (production frontend) until the UI/UX overhaul is far enough along to be worth a visible launch (after Phases 4/6 at the earliest). Backend truth fixes are already live; production frontend stays on the legacy UI meanwhile.
+- [Phase 01 review]: Router now answers CORS preflight (OPTIONS, 204); before 6aca641 every browser POST /upload was blocked (pre-existing). Experience entry copy "classify reef health" logged for the Phase 4/7 copy pass.
+
 ### Pending Todos
 
 None yet.
 
 ### Blockers/Concerns
 
-- [Phase 1]: Uncommitted gallery/samples files currently break a clean-clone build; deployed `/samples` route source is not in git.
 - [Phase 1+]: Owner credentials (AWS, Vercel, GitHub) required for drift checks and deploys; AWS CLI v2 needs admin install (CLI v1 via `py -3.12 -m awscli` available).
 - [Phase 8]: Owner must set the AWS spend ceiling before any transfer or compute job; MARRS filename timezone unverified (correctness gate for diel features).
 - [Phase 11/12]: GPU vs CPU embedding throughput, Spot pricing and the Perch 2.0 Kaggle handle need re-verification before committing budget; calibration method at 5–10 real sites per class unresolved.
