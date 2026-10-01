@@ -407,3 +407,409 @@ def test_no_credentials_in_script_source():
     assert "gmail.com" not in src
     assert "AKIA" not in src
     assert "X-Amz-Signature" not in src
+
+
+# ============================================================ storage (Task 2)
+
+import boto3  # noqa: E402
+from moto import mock_aws  # noqa: E402
+
+BUCKET = "reefradar-2477-contract"
+READ_ONLY = ("describe_", "list_", "get_", "head_")
+
+
+class Recorder:
+    """Wraps a boto3 client; records (operation, kwargs) for every call."""
+
+    def __init__(self, inner):
+        self._inner = inner
+        self.calls = []
+
+    def __getattr__(self, name):
+        attr = getattr(self._inner, name)
+        if name.startswith("_") or not callable(attr):
+            return attr
+
+        def wrapper(*args, **kwargs):
+            self.calls.append((name, kwargs))
+            return attr(*args, **kwargs)
+
+        return wrapper
+
+    def names(self):
+        return [n for n, _ in self.calls]
+
+    def mutating(self):
+        return [n for n in self.names() if not n.startswith(READ_ONLY)]
+
+    def kwargs_of(self, op):
+        return [k for n, k in self.calls if n == op]
+
+
+class CloudFrontRecorder(Recorder):
+    """moto 5.2.3 drops OriginAccessControlId and S3OriginConfig from get_distribution_config
+    (real CloudFront returns them), so read-backs overlay the origins that were sent at create."""
+
+    def __init__(self, inner):
+        super().__init__(inner)
+        self._created_origins = {}
+
+    def create_distribution_with_tags(self, **kwargs):
+        self.calls.append(("create_distribution_with_tags", kwargs))
+        resp = self._inner.create_distribution_with_tags(**kwargs)
+        sent = kwargs["DistributionConfigWithTags"]["DistributionConfig"]
+        self._created_origins[resp["Distribution"]["Id"]] = json.loads(json.dumps(sent["Origins"]))
+        return resp
+
+    def get_distribution_config(self, **kwargs):
+        self.calls.append(("get_distribution_config", kwargs))
+        resp = self._inner.get_distribution_config(**kwargs)
+        if kwargs["Id"] in self._created_origins:
+            resp["DistributionConfig"]["Origins"] = json.loads(json.dumps(self._created_origins[kwargs["Id"]]))
+        return resp
+
+
+class FakeHttp:
+    def __init__(self, direct=403, missing=403, latest=403, root=403, root_body="<Error>AccessDenied</Error>"):
+        self.responses = {"direct": (direct, ""), "missing": (missing, ""), "latest": (latest, ""), "root": (root, root_body)}
+        self.urls = []
+
+    def __call__(self, url):
+        self.urls.append(url)
+        if url.startswith(f"https://{BUCKET}.s3."):
+            return self.responses["direct"]
+        if url.endswith("probe-missing-key.json"):
+            return self.responses["missing"]
+        if url.endswith("latest.json"):
+            return self.responses["latest"]
+        return self.responses["root"]
+
+
+@pytest.fixture
+def world(monkeypatch):
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+    with mock_aws():
+        budgets = FakeBudgets()
+        s3 = Recorder(boto3.client("s3", region_name="us-east-1"))
+        cf = CloudFrontRecorder(boto3.client("cloudfront", region_name="us-east-1"))
+        yield {"budgets": budgets, "s3": s3, "cloudfront": cf, "sts": FakeSts(), "http": FakeHttp()}
+
+
+def run_with(argv, world, capsys, **overrides):
+    clients = {**world, **overrides}
+    code = sci.main(list(argv), clients=clients)
+    out = capsys.readouterr()
+    return code, out.out, out.err
+
+
+def arm_budget(world, capsys):
+    code, _, _ = run_with(["--step", "budget", "--confirm", "--notify-email", EMAIL], world, capsys)
+    assert code == 0
+
+
+def storage_confirm(world, capsys):
+    arm_budget(world, capsys)
+    code, out, err = run_with(["--step", "storage", "--confirm"], world, capsys)
+    assert code == 0, err
+    return out
+
+
+def only_distribution(world):
+    items = world["cloudfront"].list_distributions()["DistributionList"]["Items"]
+    assert len(items) == 1
+    return items[0]
+
+
+def test_storage_dry_run_lists_every_action_and_makes_no_mutating_call(world, capsys):
+    arm_budget(world, capsys)
+    for key in ("s3", "cloudfront"):
+        world[key].calls.clear()
+    code, out, _ = run_with(["--step", "storage", "--dry-run"], world, capsys)
+    assert code == 0
+    assert world["s3"].mutating() == [] and world["cloudfront"].mutating() == []
+    planned = [j["action"] for j in json_lines(out) if j["step"] == "storage" and j["status"] == "planned"]
+    for action in (
+        "create_bucket",
+        "put_public_access_block",
+        "put_bucket_ownership_controls",
+        "put_bucket_tagging",
+        "create_origin_access_control",
+        "create_distribution",
+        "put_bucket_policy",
+    ):
+        assert action in planned
+    assert world["cloudfront"].list_distributions()["DistributionList"]["Quantity"] == 0
+
+
+def test_storage_confirm_requires_the_budget_alarm_first(world, capsys):
+    code, _, err = run_with(["--step", "storage", "--confirm"], world, capsys)
+    assert code == 1
+    assert "budget" in err
+    assert world["s3"].mutating() == [] and world["cloudfront"].mutating() == []
+
+
+def test_storage_confirm_creates_a_private_bucket(world, capsys):
+    storage_confirm(world, capsys)
+    s3 = world["s3"]
+    create = s3.kwargs_of("create_bucket")[0]
+    assert create["Bucket"] == BUCKET
+    assert "CreateBucketConfiguration" not in create  # us-east-1: no LocationConstraint
+    pab = s3.get_public_access_block(Bucket=BUCKET)["PublicAccessBlockConfiguration"]
+    assert pab == {
+        "BlockPublicAcls": True,
+        "IgnorePublicAcls": True,
+        "BlockPublicPolicy": True,
+        "RestrictPublicBuckets": True,
+    }
+    own = s3.get_bucket_ownership_controls(Bucket=BUCKET)["OwnershipControls"]["Rules"]
+    assert [r["ObjectOwnership"] for r in own] == ["BucketOwnerEnforced"]
+    enc = s3.get_bucket_encryption(Bucket=BUCKET)["ServerSideEncryptionConfiguration"]["Rules"]
+    assert enc[0]["ApplyServerSideEncryptionByDefault"]["SSEAlgorithm"] == "AES256"
+    tags = {t["Key"]: t["Value"] for t in s3.get_bucket_tagging(Bucket=BUCKET)["TagSet"]}
+    assert tags["Project"] == "reefradar-2477"
+    # no website hosting and no bucket CORS (the response-headers policy supplies CORS)
+    assert not [n for n in s3.names() if n in ("put_bucket_website", "put_bucket_cors")]
+
+
+def test_storage_confirm_creates_oac_and_exact_distribution_config(world, capsys):
+    storage_confirm(world, capsys)
+    cf = world["cloudfront"]
+    oac = cf.list_origin_access_controls()["OriginAccessControlList"]["Items"]
+    assert [o["Name"] for o in oac] == ["reefradar-2477-contract-oac"]
+    assert (oac[0]["SigningProtocol"], oac[0]["SigningBehavior"], oac[0]["OriginAccessControlOriginType"]) == (
+        "sigv4",
+        "always",
+        "s3",
+    )
+    dist = only_distribution(world)
+    cfg = cf.get_distribution_config(Id=dist["Id"])["DistributionConfig"]
+    assert cfg["Comment"] == "reefradar-2477-contract"
+    assert cfg["CallerReference"] == "reefradar-2477-contract-v1"
+    assert cfg["Enabled"] is True
+    origin = cfg["Origins"]["Items"][0]
+    assert origin["DomainName"] == "reefradar-2477-contract.s3.us-east-1.amazonaws.com"
+    assert origin["OriginAccessControlId"] == oac[0]["Id"]
+    assert origin["S3OriginConfig"]["OriginAccessIdentity"] == ""
+    behavior = cfg["DefaultCacheBehavior"]
+    assert behavior["ViewerProtocolPolicy"] == "redirect-to-https"
+    assert sorted(behavior["AllowedMethods"]["Items"]) == ["GET", "HEAD"]
+    assert behavior["Compress"] is True
+    assert behavior["CachePolicyId"] == "658327ea-f89d-4fab-a63d-7e88639e58f6"
+    assert behavior["ResponseHeadersPolicyId"] == "60669652-455b-4ae9-85a4-c4c02393f86c"
+    assert cfg["HttpVersion"] == "http2and3"
+    assert cfg["IsIPV6Enabled"] is True
+    assert cfg["PriceClass"] == "PriceClass_All"
+    errors = {e["ErrorCode"]: e for e in cfg["CustomErrorResponses"]["Items"]}
+    assert sorted(errors) == [403, 404]
+    for e in errors.values():
+        assert e["ErrorCachingMinTTL"] == 10
+        assert not e.get("ResponsePagePath")
+    tags = cf.list_tags_for_resource(Resource=dist["ARN"])["Tags"]["Items"]
+    assert {"Key": "Project", "Value": "reefradar-2477"} in tags
+    # created through the pay-as-you-go API with tags; no invalidation
+    assert "create_distribution_with_tags" in cf.names()
+    assert not [n for n in cf.names() if "invalidation" in n]
+
+
+def test_bucket_policy_is_one_getobject_statement_for_this_distribution_only(world, capsys):
+    storage_confirm(world, capsys)
+    dist = only_distribution(world)
+    policy = json.loads(world["s3"].get_bucket_policy(Bucket=BUCKET)["Policy"])
+    assert len(policy["Statement"]) == 1
+    st = policy["Statement"][0]
+    assert st["Effect"] == "Allow"
+    assert st["Principal"] == {"Service": "cloudfront.amazonaws.com"}
+    assert st["Action"] == "s3:GetObject"
+    assert st["Resource"] == f"arn:aws:s3:::{BUCKET}/*"
+    assert st["Condition"] == {
+        "StringEquals": {"AWS:SourceArn": f"arn:aws:cloudfront::781978598306:distribution/{dist['Id']}"}
+    }
+    assert "ListBucket" not in json.dumps(policy)
+    assert st["Principal"] != "*"
+
+
+def test_policy_is_put_after_the_distribution_is_created_and_awaited(world, capsys):
+    storage_confirm(world, capsys)
+    cf_names = world["cloudfront"].names()
+    assert "create_distribution_with_tags" in cf_names and "get_waiter" in cf_names
+    assert "put_bucket_policy" in world["s3"].names()
+    assert cf_names.index("create_distribution_with_tags") < cf_names.index("get_waiter")
+
+
+def test_second_storage_confirm_creates_nothing(world, capsys):
+    storage_confirm(world, capsys)
+    for key in ("s3", "cloudfront"):
+        world[key].calls.clear()
+    code, out, _ = run_with(["--step", "storage", "--confirm"], world, capsys)
+    assert code == 0
+    assert world["s3"].mutating() == [] and world["cloudfront"].mutating() == []
+    assert not [j for j in json_lines(out) if j["status"] in ("done", "planned", "waiting")]
+    assert world["cloudfront"].list_distributions()["DistributionList"]["Quantity"] == 1
+
+
+def test_all_step_dry_run_after_setup_lists_no_create_or_update(world, capsys):
+    arm_budget(world, capsys)
+    code, _, err = run_with(["--step", "all", "--confirm", "--notify-email", EMAIL], world, capsys)
+    assert code == 0, err
+    for key in ("s3", "cloudfront"):
+        world[key].calls.clear()
+    world["budgets"].calls.clear()
+    code, out, _ = run_with(["--step", "all", "--dry-run", "--notify-email", EMAIL], world, capsys)
+    assert code == 0
+    assert not [j for j in json_lines(out) if j["status"] == "planned"]
+    assert world["budgets"].mutating_calls() == []
+    assert world["s3"].mutating() == [] and world["cloudfront"].mutating() == []
+
+
+def test_existing_bucket_gets_only_the_missing_settings(world, capsys):
+    arm_budget(world, capsys)
+    world["s3"].create_bucket(Bucket=BUCKET)
+    world["s3"].calls.clear()
+    code, _, err = run_with(["--step", "storage", "--confirm"], world, capsys)
+    assert code == 0, err
+    assert "create_bucket" not in world["s3"].names()
+    assert "put_public_access_block" in world["s3"].names()
+
+
+def test_existing_distribution_with_wrong_settings_is_not_altered_or_duplicated(world, capsys):
+    storage_confirm(world, capsys)
+    dist = only_distribution(world)
+    cf = world["cloudfront"]
+    got = cf.get_distribution_config(Id=dist["Id"])
+    cfg = got["DistributionConfig"]
+    cfg["DefaultCacheBehavior"]["ViewerProtocolPolicy"] = "allow-all"
+    cf.update_distribution(Id=dist["Id"], IfMatch=got["ETag"], DistributionConfig=cfg)
+    cf.calls.clear()
+    code, _, err = run_with(["--step", "storage", "--confirm"], world, capsys)
+    assert code == 1
+    assert "viewer protocol" in err
+    assert cf.mutating() == []
+    assert cf.list_distributions()["DistributionList"]["Quantity"] == 1
+
+
+# ------------------------------------------------------------- storage verify
+
+
+def test_storage_verify_fails_before_setup_and_passes_after(world, capsys):
+    arm_budget(world, capsys)
+    code, _, _ = run_with(["--step", "storage", "--verify"], world, capsys)
+    assert code == 1
+    assert run_with(["--step", "storage", "--confirm"], world, capsys)[0] == 0
+    code, out, _ = run_with(["--step", "storage", "--verify"], world, capsys)
+    assert code == 0
+    lines = [j for j in json_lines(out) if j["step"] == "storage"]
+    assert all(j["status"] == "ok" for j in lines)
+    assert {j["action"] for j in lines} >= {
+        "direct_s3_get_denied",
+        "cloudfront_missing_key_denied",
+        "cloudfront_root_not_a_listing",
+    }
+
+
+def test_storage_verify_probes_use_only_public_https_urls(world, capsys):
+    storage_confirm(world, capsys)
+    run_with(["--step", "storage", "--verify"], world, capsys)
+    urls = world["http"].urls
+    assert urls[0] == "https://reefradar-2477-contract.s3.us-east-1.amazonaws.com/contract/latest.json"
+    assert all(u.startswith("https://") for u in urls)
+    assert all("X-Amz" not in u and "?" not in u for u in urls)
+
+
+@pytest.mark.parametrize(
+    "http",
+    [
+        FakeHttp(direct=200),
+        FakeHttp(missing=200),
+        FakeHttp(root=200, root_body="<ListBucketResult><Name>b</Name></ListBucketResult>"),
+        FakeHttp(root=500),
+    ],
+)
+def test_storage_verify_flags_public_exposure(world, capsys, http):
+    storage_confirm(world, capsys)
+    code, _, _ = run_with(["--step", "storage", "--verify"], world, capsys, http=http)
+    assert code == 1
+
+
+def test_storage_verify_accepts_a_published_latest_json_but_not_a_listing(world, capsys):
+    storage_confirm(world, capsys)
+    published = FakeHttp()
+    published.responses["latest"] = (200, '{"contract_version": 1}')
+    assert run_with(["--step", "storage", "--verify"], world, capsys, http=published)[0] == 0
+    listing = FakeHttp()
+    listing.responses["latest"] = (200, "<ListBucketResult></ListBucketResult>")
+    assert run_with(["--step", "storage", "--verify"], world, capsys, http=listing)[0] == 1
+
+
+def test_storage_verify_flags_a_widened_bucket_policy(world, capsys):
+    storage_confirm(world, capsys)
+    policy = sci.desired_policy(only_distribution(world)["Id"])
+    policy["Statement"][0]["Action"] = ["s3:GetObject", "s3:ListBucket"]
+    world["s3"].put_bucket_policy(Bucket=BUCKET, Policy=json.dumps(policy))
+    code, out, _ = run_with(["--step", "storage", "--verify"], world, capsys)
+    assert code == 1
+    assert "Action" in out
+
+
+def test_storage_verify_flags_public_principal(world, capsys):
+    storage_confirm(world, capsys)
+    policy = sci.desired_policy(only_distribution(world)["Id"])
+    policy["Statement"][0]["Principal"] = "*"
+    world["s3"].put_bucket_policy(Bucket=BUCKET, Policy=json.dumps(policy))
+    assert run_with(["--step", "storage", "--verify"], world, capsys)[0] == 1
+
+
+def test_storage_verify_flags_missing_public_access_block(world, capsys):
+    storage_confirm(world, capsys)
+    world["s3"].delete_public_access_block(Bucket=BUCKET)
+    assert run_with(["--step", "storage", "--verify"], world, capsys)[0] == 1
+
+
+# ------------------------------------------------------- storage record-resources
+
+
+def test_record_resources_after_storage_adds_bucket_and_distribution_and_keeps_the_rest(world, capsys, tmp_path):
+    storage_confirm(world, capsys)
+    source = (sci.REPO_ROOT / "infrastructure" / "resources.json").read_text(encoding="utf-8")
+    target = tmp_path / "resources.json"
+    target.write_text(source, encoding="utf-8")
+    before = json.loads(source)
+    code, _, err = run_with(["--step", "all", "--record-resources", "--resources-file", str(target)], world, capsys)
+    assert code == 0, err
+    after = json.loads(target.read_text(encoding="utf-8"))
+    dist = only_distribution(world)
+    contract = after["cloudfront"]["distributions"]["contract"]
+    assert contract["id"] == dist["Id"]
+    assert contract["domain_name"] == dist["DomainName"]
+    assert contract["domain_name"].endswith(".cloudfront.net")
+    assert contract["comment"] == "reefradar-2477-contract"
+    assert contract["origin_access_control_id"]
+    assert contract["cache_policy"] == "Managed-CachingOptimized"
+    assert contract["response_headers_policy"] == "Managed-SimpleCORS"
+    assert contract["error_caching_min_ttl"] == 10
+    assert after["s3"]["buckets"]["contract"] == {
+        "name": BUCKET,
+        "arn": f"arn:aws:s3:::{BUCKET}",
+        "region": "us-east-1",
+        "folders": ["contract/", "v1/"],
+    }
+    assert after["s3"]["buckets"]["audio"] == before["s3"]["buckets"]["audio"]
+    assert after["budgets"]["ceiling"]["name"] == "reefradar-2477-ceiling-25"
+    assert list(after)[-1] == "budgets"
+    for key in before:
+        if key not in ("s3", "budgets"):
+            assert after[key] == before[key]
+    assert EMAIL not in target.read_text(encoding="utf-8")
+    first = target.read_bytes()
+    run_with(["--step", "all", "--record-resources", "--resources-file", str(target)], world, capsys)
+    assert target.read_bytes() == first
+
+
+def test_record_resources_refuses_when_storage_is_missing(world, capsys, tmp_path):
+    arm_budget(world, capsys)
+    target = tmp_path / "resources.json"
+    original = (sci.REPO_ROOT / "infrastructure" / "resources.json").read_text(encoding="utf-8")
+    target.write_text(original, encoding="utf-8")
+    code, _, _ = run_with(["--step", "storage", "--record-resources", "--resources-file", str(target)], world, capsys)
+    assert code == 1
+    assert target.read_text(encoding="utf-8") == original

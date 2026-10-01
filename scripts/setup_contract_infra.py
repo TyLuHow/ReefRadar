@@ -2,6 +2,10 @@
 """
 Create the AWS side of the data contract (plan 02-02, CONTRACT-01):
 
+  storage  private bucket reefradar-2477-contract served only through CloudFront (origin
+           access control, HTTPS, managed CachingOptimized + SimpleCORS policies, 10 s
+           error caching) with a bucket policy that grants s3:GetObject to that one
+           distribution and nothing else (no listing).
   budget   the owner's 25 USD/month cost budget with email alerts (80% and 100%
            of actual spend, 100% of forecast spend). It replaces the alert-less
            reefradar-2477-budget (50 USD), which is deleted only after the new
@@ -17,7 +21,7 @@ missing is created.
   --verify            read-only report; exit 1 on any deviation from the desired state
   --record-resources  rewrite the matching sections of infrastructure/resources.json
                       from read-only describe calls (no AWS write, no --confirm)
-  --step              budget | all (default all)
+  --step              budget | storage | all (default all; budget always runs first)
   --notify-email      owner alert address (falls back to env REEFRADAR_ALERT_EMAIL).
                       Pass it on the command line only; it is never written to a file
                       and is printed only in redacted form.
@@ -30,6 +34,14 @@ Usage:
     py -3.12 scripts/setup_contract_infra.py --step budget --confirm --notify-email <address>
     py -3.12 scripts/setup_contract_infra.py --step budget --verify
     py -3.12 scripts/setup_contract_infra.py --step budget --record-resources
+    py -3.12 scripts/setup_contract_infra.py --step storage --dry-run
+    py -3.12 scripts/setup_contract_infra.py --step storage --confirm
+    py -3.12 scripts/setup_contract_infra.py --step all --verify
+    py -3.12 scripts/setup_contract_infra.py --step all --record-resources
+
+--verify with the storage step also makes unauthenticated HTTPS probes (status codes
+only): direct S3 must answer 403, a missing key through CloudFront 403 or 404, and
+neither the CloudFront root nor latest.json may ever be a bucket listing.
 """
 
 from __future__ import annotations
@@ -58,7 +70,23 @@ EMAIL_ENV = "REEFRADAR_ALERT_EMAIL"
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s.]+$")
 JSON_INLINE_WIDTH = 100
 
-STEPS = ("budget", "all")
+BUCKET_NAME = "reefradar-2477-contract"
+BUCKET_DOMAIN = f"{BUCKET_NAME}.s3.{REGION}.amazonaws.com"
+OAC_NAME = "reefradar-2477-contract-oac"
+DISTRIBUTION_COMMENT = "reefradar-2477-contract"
+CALLER_REFERENCE = "reefradar-2477-contract-v1"
+ORIGIN_ID = "reefradar-2477-contract-s3"
+PROJECT_TAG = "reefradar-2477"
+PAB_FLAGS = ("BlockPublicAcls", "IgnorePublicAcls", "BlockPublicPolicy", "RestrictPublicBuckets")
+# AWS managed policies (identical in every account)
+CACHE_POLICY_ID = "658327ea-f89d-4fab-a63d-7e88639e58f6"  # Managed-CachingOptimized
+RESPONSE_HEADERS_POLICY_ID = "60669652-455b-4ae9-85a4-c4c02393f86c"  # Managed-SimpleCORS
+ERROR_CACHING_MIN_TTL = 10
+WAITER_CONFIG = {"Delay": 30, "MaxAttempts": 60}
+LATEST_KEY = "contract/latest.json"
+MISSING_PROBE_KEY = "contract/probe-missing-key.json"
+
+STEPS = ("budget", "storage", "all")
 
 
 class SetupError(RuntimeError):
@@ -137,6 +165,8 @@ class Clients:
         self._session = None
 
     def get(self, name):
+        if name == "http" and name not in self._injected:
+            return _public_probe
         if name not in self._injected:
             if self._session is None:
                 import boto3
@@ -414,6 +444,406 @@ def budget_verify_quiet(budgets) -> bool:
     )
 
 
+# ------------------------------------------------------------------- storage
+
+
+def _optional(call, *missing_codes):
+    """Run a read call; return None when AWS answers one of the 'not configured' codes."""
+    from botocore.exceptions import ClientError
+
+    try:
+        return call()
+    except ClientError as exc:
+        if _code(exc) in missing_codes:
+            return None
+        raise
+
+
+def _list_all(fn, list_key: str):
+    """Yield Items across pages of a CloudFront list call (Marker/NextMarker pagination)."""
+    marker = None
+    while True:
+        resp = fn(Marker=marker) if marker else fn()
+        listing = resp.get(list_key) or {}
+        yield from listing.get("Items") or []
+        if listing.get("IsTruncated") and listing.get("NextMarker"):
+            marker = listing["NextMarker"]
+        else:
+            return
+
+
+def desired_policy(distribution_id: str) -> dict:
+    return {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "AllowCloudFrontServicePrincipalReadOnly",
+                "Effect": "Allow",
+                "Principal": {"Service": "cloudfront.amazonaws.com"},
+                "Action": "s3:GetObject",
+                "Resource": f"arn:aws:s3:::{BUCKET_NAME}/*",
+                "Condition": {
+                    "StringEquals": {"AWS:SourceArn": f"arn:aws:cloudfront::{ACCOUNT_ID}:distribution/{distribution_id}"}
+                },
+            }
+        ],
+    }
+
+
+def policy_problems(policy: dict | None, distribution_id: str) -> list[str]:
+    if policy is None:
+        return ["bucket policy missing"]
+    problems = []
+    statements = policy.get("Statement", [])
+    if not isinstance(statements, list) or len(statements) != 1:
+        return [f"bucket policy must have exactly one statement, found {len(statements) if isinstance(statements, list) else 1}"]
+    got, want = statements[0], desired_policy(distribution_id)["Statement"][0]
+    for field in ("Effect", "Principal", "Resource", "Condition"):
+        if got.get(field) != want[field]:
+            problems.append(f"bucket policy {field} differs from the desired value")
+    actions = got.get("Action")
+    if (actions if isinstance(actions, list) else [actions]) != ["s3:GetObject"]:
+        problems.append("bucket policy Action must be exactly s3:GetObject")
+    return problems
+
+
+def desired_distribution_config(oac_id: str) -> dict:
+    return {
+        "CallerReference": CALLER_REFERENCE,
+        "Comment": DISTRIBUTION_COMMENT,
+        "Enabled": True,
+        "Origins": {
+            "Quantity": 1,
+            "Items": [
+                {
+                    "Id": ORIGIN_ID,
+                    "DomainName": BUCKET_DOMAIN,
+                    "OriginPath": "",
+                    "CustomHeaders": {"Quantity": 0},
+                    "S3OriginConfig": {"OriginAccessIdentity": ""},
+                    "OriginAccessControlId": oac_id,
+                }
+            ],
+        },
+        "DefaultCacheBehavior": {
+            "TargetOriginId": ORIGIN_ID,
+            "ViewerProtocolPolicy": "redirect-to-https",
+            "AllowedMethods": {"Quantity": 2, "Items": ["GET", "HEAD"], "CachedMethods": {"Quantity": 2, "Items": ["GET", "HEAD"]}},
+            "Compress": True,
+            "CachePolicyId": CACHE_POLICY_ID,
+            "ResponseHeadersPolicyId": RESPONSE_HEADERS_POLICY_ID,
+        },
+        "CustomErrorResponses": {
+            "Quantity": 2,
+            "Items": [{"ErrorCode": code, "ErrorCachingMinTTL": ERROR_CACHING_MIN_TTL} for code in (403, 404)],
+        },
+        "HttpVersion": "http2and3",
+        "IsIPV6Enabled": True,
+        "PriceClass": "PriceClass_All",
+        "DefaultRootObject": "",
+    }
+
+
+def distribution_problems(config: dict, oac_id: str | None) -> list[str]:
+    """Compare the settings that matter for security, caching and CORS."""
+    problems = []
+    behavior = config.get("DefaultCacheBehavior", {})
+    origins = (config.get("Origins") or {}).get("Items") or []
+    checks = [
+        ("enabled", config.get("Enabled") is True),
+        ("single origin", len(origins) == 1),
+        ("origin domain", bool(origins) and origins[0].get("DomainName") == BUCKET_DOMAIN),
+        ("origin access control", bool(origins) and bool(oac_id) and origins[0].get("OriginAccessControlId") == oac_id),
+        ("S3 origin without legacy identity", bool(origins) and (origins[0].get("S3OriginConfig") or {}).get("OriginAccessIdentity") == ""),
+        ("viewer protocol redirect-to-https", behavior.get("ViewerProtocolPolicy") == "redirect-to-https"),
+        ("allowed methods GET/HEAD", sorted((behavior.get("AllowedMethods") or {}).get("Items") or []) == ["GET", "HEAD"]),
+        ("compress", behavior.get("Compress") is True),
+        ("cache policy Managed-CachingOptimized", behavior.get("CachePolicyId") == CACHE_POLICY_ID),
+        ("response headers policy Managed-SimpleCORS", behavior.get("ResponseHeadersPolicyId") == RESPONSE_HEADERS_POLICY_ID),
+        ("http2and3", config.get("HttpVersion") == "http2and3"),
+        ("IPv6", config.get("IsIPV6Enabled") is True),
+        ("price class all", config.get("PriceClass") == "PriceClass_All"),
+        ("no default root object", not config.get("DefaultRootObject")),
+    ]
+    for label, good in checks:
+        if not good:
+            problems.append(label)
+    errors = {e.get("ErrorCode"): e for e in (config.get("CustomErrorResponses") or {}).get("Items") or []}
+    for code in (403, 404):
+        e = errors.get(code)
+        if not e or e.get("ErrorCachingMinTTL") != ERROR_CACHING_MIN_TTL or e.get("ResponsePagePath"):
+            problems.append(f"{code} error caching {ERROR_CACHING_MIN_TTL}s without a custom page")
+    return problems
+
+
+def _find_oac(cloudfront):
+    for item in _list_all(cloudfront.list_origin_access_controls, "OriginAccessControlList"):
+        if item.get("Name") == OAC_NAME:
+            return item
+    return None
+
+
+def _find_distribution(cloudfront):
+    for item in _list_all(cloudfront.list_distributions, "DistributionList"):
+        if item.get("Comment") == DISTRIBUTION_COMMENT:
+            return item
+    return None
+
+
+def _oac_problems(oac: dict) -> list[str]:
+    want = {"SigningProtocol": "sigv4", "SigningBehavior": "always", "OriginAccessControlOriginType": "s3"}
+    return [f"OAC {k} is {oac.get(k)}, expected {v}" for k, v in want.items() if oac.get(k) != v]
+
+
+def inspect_storage(s3, cloudfront) -> dict:
+    """Read-only snapshot of the storage resources and the problems found in them."""
+    from botocore.exceptions import ClientError
+
+    st = {"bucket": False, "problems": [], "missing": []}
+    try:
+        s3.head_bucket(Bucket=BUCKET_NAME)
+        st["bucket"] = True
+    except ClientError as exc:
+        if _code(exc) not in ("404", "NoSuchBucket", "NotFound"):
+            raise SetupError(f"bucket {BUCKET_NAME} is not accessible ({_code(exc)}); refusing to continue")
+    if st["bucket"]:
+        pab = _optional(
+            lambda: s3.get_public_access_block(Bucket=BUCKET_NAME)["PublicAccessBlockConfiguration"],
+            "NoSuchPublicAccessBlockConfiguration",
+        )
+        st["pab_ok"] = bool(pab) and all(pab.get(k) is True for k in PAB_FLAGS)
+        own = _optional(
+            lambda: s3.get_bucket_ownership_controls(Bucket=BUCKET_NAME)["OwnershipControls"], "OwnershipControlsNotFoundError"
+        )
+        st["ownership_ok"] = bool(own) and [r.get("ObjectOwnership") for r in own.get("Rules", [])] == ["BucketOwnerEnforced"]
+        enc = _optional(
+            lambda: s3.get_bucket_encryption(Bucket=BUCKET_NAME)["ServerSideEncryptionConfiguration"],
+            "ServerSideEncryptionConfigurationNotFoundError",
+        )
+        algos = [
+            r.get("ApplyServerSideEncryptionByDefault", {}).get("SSEAlgorithm") for r in (enc or {}).get("Rules", [])
+        ]
+        st["encryption_ok"] = algos == ["AES256"]
+        tags = _optional(lambda: s3.get_bucket_tagging(Bucket=BUCKET_NAME)["TagSet"], "NoSuchTagSet") or []
+        st["tags"] = tags
+        st["tags_ok"] = any(t.get("Key") == "Project" and t.get("Value") == PROJECT_TAG for t in tags)
+        raw = _optional(lambda: s3.get_bucket_policy(Bucket=BUCKET_NAME)["Policy"], "NoSuchBucketPolicy")
+        st["policy"] = json.loads(raw) if raw else None
+        for label in ("pab", "ownership", "encryption", "tags"):
+            if not st[f"{label}_ok"]:
+                st["problems"].append(f"bucket {label} not as desired")
+    else:
+        st["problems"].append("bucket missing")
+
+    oac = _find_oac(cloudfront)
+    st["oac"] = oac
+    if oac is None:
+        st["problems"].append("origin access control missing")
+    else:
+        st["problems"] += _oac_problems(oac)
+
+    dist = _find_distribution(cloudfront)
+    st["distribution"] = dist
+    if dist is None:
+        st["problems"].append("distribution missing")
+        st["dist_config"] = None
+    else:
+        cfg = cloudfront.get_distribution_config(Id=dist["Id"])["DistributionConfig"]
+        st["dist_config"] = cfg
+        if dist.get("Status") != "Deployed":
+            st["problems"].append("distribution is not deployed yet")
+        st["problems"] += [f"distribution: {p}" for p in distribution_problems(cfg, (oac or {}).get("Id"))]
+        st["policy_problems"] = policy_problems(st.get("policy"), dist["Id"]) if st["bucket"] else ["bucket policy missing"]
+        st["problems"] += st["policy_problems"]
+    if st["bucket"] and dist is None and st.get("policy") is not None:
+        st["problems"].append("bucket policy exists but the distribution is missing")
+    return st
+
+
+def _public_access_block() -> dict:
+    return {k: True for k in PAB_FLAGS}
+
+
+def storage_step(aws, write: bool) -> None:
+    s3, cloudfront, budgets = aws.get("s3"), aws.get("cloudfront"), aws.get("budgets")
+    if write and not budget_verify_quiet(budgets):
+        raise SetupError(f"budget alarm {BUDGET_NAME} must exist and verify before the contract storage is created")
+    st = inspect_storage(s3, cloudfront)
+    status = "done" if write else "planned"
+
+    def act(action, resource, call=None, **extra):
+        if write and call:
+            call()
+        emit("storage", action, resource, status, **extra)
+
+    def present(action, resource):
+        emit("storage", action, resource, "ok")
+
+    if not st["bucket"]:
+        act("create_bucket", BUCKET_NAME, lambda: s3.create_bucket(Bucket=BUCKET_NAME), region=REGION)
+    if not st["bucket"] or not st.get("pab_ok"):
+        act(
+            "put_public_access_block", BUCKET_NAME,
+            lambda: s3.put_public_access_block(Bucket=BUCKET_NAME, PublicAccessBlockConfiguration=_public_access_block()),
+        )
+    else:
+        present("public_access_block", BUCKET_NAME)
+    if not st["bucket"] or not st.get("ownership_ok"):
+        act(
+            "put_bucket_ownership_controls", BUCKET_NAME,
+            lambda: s3.put_bucket_ownership_controls(
+                Bucket=BUCKET_NAME, OwnershipControls={"Rules": [{"ObjectOwnership": "BucketOwnerEnforced"}]}
+            ),
+        )
+    else:
+        present("bucket_ownership_controls", BUCKET_NAME)
+    if not st["bucket"] or not st.get("encryption_ok"):
+        act(
+            "put_bucket_encryption", BUCKET_NAME,
+            lambda: s3.put_bucket_encryption(
+                Bucket=BUCKET_NAME,
+                ServerSideEncryptionConfiguration={"Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]},
+            ),
+        )
+    else:
+        present("bucket_encryption", BUCKET_NAME)
+    if not st["bucket"] or not st.get("tags_ok"):
+        merged = [t for t in st.get("tags", []) if t.get("Key") != "Project"] + [{"Key": "Project", "Value": PROJECT_TAG}]
+        act("put_bucket_tagging", BUCKET_NAME, lambda: s3.put_bucket_tagging(Bucket=BUCKET_NAME, Tagging={"TagSet": merged}))
+    else:
+        present("bucket_tagging", BUCKET_NAME)
+
+    oac = st["oac"]
+    if oac is not None and _oac_problems(oac):
+        raise SetupError(f"origin access control {OAC_NAME} exists with unexpected settings; not altering it")
+    if oac is None:
+        created = {}
+
+        def make_oac():
+            resp = cloudfront.create_origin_access_control(
+                OriginAccessControlConfig={
+                    "Name": OAC_NAME,
+                    "Description": "reefradar-2477 contract bucket",
+                    "SigningProtocol": "sigv4",
+                    "SigningBehavior": "always",
+                    "OriginAccessControlOriginType": "s3",
+                }
+            )
+            created["id"] = resp["OriginAccessControl"]["Id"]
+
+        act("create_origin_access_control", OAC_NAME, make_oac)
+        oac = {"Id": created.get("id")}
+    else:
+        present("origin_access_control", OAC_NAME)
+
+    dist = st["distribution"]
+    if dist is not None and st["dist_config"] is not None:
+        problems = distribution_problems(st["dist_config"], oac.get("Id"))
+        if problems:
+            raise SetupError("distribution exists with unexpected settings (" + "; ".join(problems) + "); not altering it")
+        present("distribution", DISTRIBUTION_COMMENT)
+    else:
+        made = {}
+
+        def make_distribution():
+            resp = cloudfront.create_distribution_with_tags(
+                DistributionConfigWithTags={
+                    "DistributionConfig": desired_distribution_config(oac["Id"]),
+                    "Tags": {"Items": [{"Key": "Project", "Value": PROJECT_TAG}]},
+                }
+            )
+            made.update(resp["Distribution"])
+
+        act("create_distribution", DISTRIBUTION_COMMENT, make_distribution,
+            origin=BUCKET_DOMAIN, cache_policy="Managed-CachingOptimized", response_headers_policy="Managed-SimpleCORS")
+        dist = {"Id": made.get("Id"), "DomainName": made.get("DomainName"), "Status": made.get("Status")}
+
+    if write and (st["distribution"] is None or dist.get("Status") != "Deployed"):
+        emit("storage", "wait_distribution_deployed", DISTRIBUTION_COMMENT, "waiting")
+        cloudfront.get_waiter("distribution_deployed").wait(Id=dist["Id"], WaiterConfig=WAITER_CONFIG)
+        emit("storage", "wait_distribution_deployed", DISTRIBUTION_COMMENT, "ok", domain_name=dist.get("DomainName"))
+
+    dist_id = dist.get("Id")
+    policy_ok = bool(st["bucket"] and st["distribution"] is not None and dist_id and not policy_problems(st.get("policy"), dist_id))
+    if policy_ok:
+        present("bucket_policy", BUCKET_NAME)
+    else:
+        act(
+            "put_bucket_policy", BUCKET_NAME,
+            lambda: s3.put_bucket_policy(Bucket=BUCKET_NAME, Policy=json.dumps(desired_policy(dist["Id"]))),
+            effect="Allow s3:GetObject to cloudfront.amazonaws.com for this distribution only",
+            distribution_id=dist_id or "<distribution-id-after-create>",
+        )
+
+
+def _public_probe(url: str):
+    import requests
+
+    resp = requests.get(url, timeout=30, allow_redirects=False, headers={"User-Agent": "reefradar-contract-verify"})
+    return resp.status_code, resp.text[:2000]
+
+
+def storage_verify(aws) -> bool:
+    ok = True
+    st = inspect_storage(aws.get("s3"), aws.get("cloudfront"))
+
+    def report(action, good, detail=None):
+        nonlocal ok
+        ok = ok and good
+        emit("storage", action, BUCKET_NAME, "ok" if good else "deviation", **({"detail": detail} if detail else {}))
+
+    report("state_matches_desired", not st["problems"], "; ".join(st["problems"]) or None)
+    dist = st["distribution"]
+    if dist is None:
+        report("public_probes", False, "distribution missing; probes skipped")
+        return False
+    probe = aws.get("http")
+    base = f"https://{dist['DomainName']}"
+    direct_status, _ = probe(f"https://{BUCKET_DOMAIN}/{LATEST_KEY}")
+    report("direct_s3_get_denied", direct_status == 403, f"status {direct_status}")
+    missing_status, _ = probe(f"{base}/{MISSING_PROBE_KEY}")
+    report("cloudfront_missing_key_denied", missing_status in (403, 404), f"status {missing_status}")
+    latest_status, latest_body = probe(f"{base}/{LATEST_KEY}")
+    report(
+        "cloudfront_latest_not_a_listing",
+        latest_status in (200, 403, 404) and "ListBucketResult" not in latest_body,
+        f"status {latest_status}",
+    )
+    root_status, root_body = probe(f"{base}/")
+    report("cloudfront_root_not_a_listing", root_status in (403, 404) and "ListBucketResult" not in root_body, f"status {root_status}")
+    return ok
+
+
+def storage_record(aws, resources: dict) -> dict:
+    st = inspect_storage(aws.get("s3"), aws.get("cloudfront"))
+    if st["problems"]:
+        raise SetupError("storage does not match the desired state; refusing to record it: " + "; ".join(st["problems"]))
+    dist = st["distribution"]
+    buckets = resources.setdefault("s3", {}).setdefault("buckets", {})
+    buckets["contract"] = {
+        "name": BUCKET_NAME,
+        "arn": f"arn:aws:s3:::{BUCKET_NAME}",
+        "region": REGION,
+        "folders": ["contract/", "v1/"],
+    }
+    resources.pop("cloudfront", None)
+    resources["cloudfront"] = {
+        "distributions": {
+            "contract": {
+                "id": dist["Id"],
+                "arn": f"arn:aws:cloudfront::{ACCOUNT_ID}:distribution/{dist['Id']}",
+                "domain_name": dist["DomainName"],
+                "comment": DISTRIBUTION_COMMENT,
+                "origin_access_control_id": st["oac"]["Id"],
+                "cache_policy": "Managed-CachingOptimized",
+                "response_headers_policy": "Managed-SimpleCORS",
+                "error_caching_min_ttl": ERROR_CACHING_MIN_TTL,
+            }
+        }
+    }
+    return resources
+
+
 # ----------------------------------------------------------------------- CLI
 
 
@@ -434,7 +864,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _selected(step: str) -> list[str]:
-    return ["budget"] if step in ("budget", "all") else []
+    return {"budget": ["budget"], "storage": ["storage"], "all": ["budget", "storage"]}[step]
 
 
 def main(argv=None, clients=None) -> int:
@@ -456,18 +886,26 @@ def main(argv=None, clients=None) -> int:
             ok = True
             if "budget" in steps:
                 ok = budget_verify(aws.get("budgets"), email) and ok
+            if "storage" in steps:
+                ok = storage_verify(aws) and ok
             return 0 if ok else 1
 
         if args.record_resources:
             resources = json.loads(args.resources_file.read_text(encoding="utf-8"))
             if "budget" in steps:
                 resources = budget_record(aws.get("budgets"), resources)
+            if "storage" in steps:
+                resources = storage_record(aws, resources)
+            if "budgets" in resources:  # keep the budgets section last
+                resources["budgets"] = resources.pop("budgets")
             args.resources_file.write_bytes(render_json(resources).encode("utf-8"))
             emit("resources", "record", str(args.resources_file.name), "done")
             return 0
 
         if "budget" in steps:
             budget_step(aws.get("budgets"), email, write)
+        if "storage" in steps:
+            storage_step(aws, write)
         if not write:
             print("[dry-run] no AWS write made" if args.dry_run else "[no --confirm] no AWS write made")
         return 0
