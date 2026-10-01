@@ -103,3 +103,33 @@ backend fixes land, before Phase 3's redesign) and is what CI pixel
 assertions compare against going forward. `pre-truth/` in this directory is
 the earlier, pre-phase snapshot — useful for human visual review across the
 whole phase, not for automated pixel assertions.
+
+# Phase 1 exit baseline (`tests/e2e/visual.spec.ts-snapshots/`)
+
+The post-truth counterpart of the pre-truth archive above. These are the pixel
+baselines CI compares against on every push (`visual` job, `--project=visual`).
+
+- **Generated from commit:** `a05e197` (branch `redesign/v2-discovery`), by the
+  `CI` workflow run with `update_snapshots=true`:
+  https://github.com/TyLuHow/ReefRadar/actions/runs/36896818307
+  (artifact `visual-snapshots`, downloaded and committed unchanged).
+- **Renderer:** official Playwright Docker image
+  `mcr.microsoft.com/playwright:v1.63.0-noble` (Linux, Chromium). Files are named
+  `<state>-<width>-visual-linux.png`. Windows-rendered images must never be
+  committed here.
+- **States x widths:** the same 11 states as the pre-truth archive (`landing`,
+  `about`, `sites`, `dashboard`, `analyze`, `compare`, `map`, `experience`,
+  `experience-demo`, `experience-compare`, `experience-sample`) x 1440, 1024 and
+  390 px = 33 full-page PNGs. The API is fixture-mocked (`support/mock-api.ts`)
+  and map tiles are blanked, so the images are deterministic.
+- **Canvases and maps are hidden, not masked** (`visibility: hidden`), because a
+  mask over the fixed full-viewport background canvas painted an opaque block
+  over the top of every page. Canvas/map pixels are therefore NOT part of the
+  baseline; everything else (layout, copy, labels, attribution) is.
+- **Regenerate only deliberately:** run the workflow with `update_snapshots=true`,
+  inspect the PNGs, and commit them in the same change that intentionally altered
+  the UI.
+- **Phase 3 rule:** visual diffs from the Next.js 16 / React 19 upgrade and the
+  stack consolidation are reviewed against these snapshots and against the
+  pre-truth archive (`pre-truth/`). Expected differences are approved explicitly;
+  unexplained ones are regressions.
