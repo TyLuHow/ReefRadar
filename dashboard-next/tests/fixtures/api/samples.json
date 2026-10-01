@@ -1,0 +1,234 @@
+{
+  "samples": [
+    {
+      "attribution": {
+        "citation_id": "marrs",
+        "doi": "10.5522/04/29958062",
+        "licence": "CC BY 4.0",
+        "short": "Williams & Jones 2025"
+      },
+      "audio_url": "/audio/marrs/aus_D1_20230208_120000.wav",
+      "category": "degraded",
+      "coordinates": {
+        "lat": -16.84732,
+        "lng": 146.22907
+      },
+      "country": "Australia",
+      "country_code": "AUS",
+      "description": "aus_D1: labelled \"Degraded (D)\" by MARRS research team (Williams, Jones et al. 2025) (Comparable to restored sites prior to restoration (rubble).) Recorded 2023-02-08 at 12:00:00 (recorder-clock time, timezone unverified). 30-second excerpt.",
+      "duration_seconds": 30.0,
+      "frequency_highlights": [],
+      "id": "aus_D1_20230208_120000",
+      "name": "Degraded reference reef, Great Barrier Reef (aus_D1)",
+      "site_id": "aus_D1"
+    },
+    {
+      "attribution": {
+        "citation_id": "marrs",
+        "doi": "10.5522/04/29958062",
+        "licence": "CC BY 4.0",
+        "short": "Williams & Jones 2025"
+      },
+      "audio_url": "/audio/marrs/aus_H1_20230208_120000.wav",
+      "category": "healthy",
+      "coordinates": {
+        "lat": -16.84761,
+        "lng": 146.22839
+      },
+      "country": "Australia",
+      "country_code": "AUS",
+      "description": "aus_H1: labelled \"Healthy (H)\" by MARRS research team (Williams, Jones et al. 2025) (Least disturbed reef habitat in the local area.) Recorded 2023-02-08 at 12:00:00 (recorder-clock time, timezone unverified). 30-second excerpt.",
+      "duration_seconds": 30.0,
+      "frequency_highlights": [],
+      "id": "aus_H1_20230208_120000",
+      "name": "Healthy reference reef, Great Barrier Reef (aus_H1)",
+      "site_id": "aus_H1"
+    },
+    {
+      "attribution": {
+        "citation_id": "marrs",
+        "doi": "10.5522/04/29958062",
+        "licence": "CC BY 4.0",
+        "short": "Williams & Jones 2025"
+      },
+      "audio_url": "/audio/marrs/aus_H2_20230208_120000.wav",
+      "category": "healthy",
+      "coordinates": {
+        "lat": -16.84782,
+        "lng": 146.22798
+      },
+      "country": "Australia",
+      "country_code": "AUS",
+      "description": "aus_H2: labelled \"Healthy (H)\" by MARRS research team (Williams, Jones et al. 2025) (Least disturbed reef habitat in the local area.) Recorded 2023-02-08 at 12:00:00 (recorder-clock time, timezone unverified). 30-second excerpt.",
+      "duration_seconds": 30.0,
+      "frequency_highlights": [],
+      "id": "aus_H2_20230208_120000",
+      "name": "Healthy reference reef, Great Barrier Reef (aus_H2)",
+      "site_id": "aus_H2"
+    },
+    {
+      "attribution": {
+        "citation_id": "marrs",
+        "doi": "10.5522/04/29958062",
+        "licence": "CC BY 4.0",
+        "short": "Williams & Jones 2025"
+      },
+      "audio_url": "/audio/marrs/aus_R1_20230208_120000.wav",
+      "category": "restored_mid",
+      "coordinates": {
+        "lat": -16.84719,
+        "lng": 146.22866
+      },
+      "country": "Australia",
+      "country_code": "AUS",
+      "description": "aus_R1: labelled \"Mid Restoration (R / KML: MR)\" by MARRS research team (Williams, Jones et al. 2025) (Restored 32 to 53 months before recording.) Recorded 2023-02-08 at 12:00:00 (recorder-clock time, timezone unverified). 30-second excerpt.",
+      "duration_seconds": 30.0,
+      "frequency_highlights": [],
+      "id": "aus_R1_20230208_120000",
+      "name": "Restored mid reference reef, Great Barrier Reef (aus_R1)",
+      "site_id": "aus_R1"
+    },
+    {
+      "attribution": {
+        "citation_id": "marrs",
+        "doi": "10.5522/04/29958062",
+        "licence": "CC BY 4.0",
+        "short": "Williams & Jones 2025"
+      },
+      "audio_url": "/audio/marrs/ind_D1_20220830_120000.wav",
+      "category": "degraded",
+      "coordinates": {
+        "lat": -4.928784,
+        "lng": 119.316541
+      },
+      "country": "Indonesia",
+      "country_code": "IDN",
+      "description": "ind_D1: labelled \"Degraded (D)\" by MARRS research team (Williams, Jones et al. 2025) (Comparable to restored sites prior to restoration (rubble).) Recorded 2022-08-30 at 12:00:00 (recorder-clock time, timezone unverified). 30-second excerpt.",
+      "duration_seconds": 30.0,
+      "frequency_highlights": [],
+      "id": "ind_D1_20220830_120000",
+      "name": "Degraded reference reef, South Sulawesi (ind_D1)",
+      "site_id": "ind_D1"
+    },
+    {
+      "attribution": {
+        "citation_id": "marrs",
+        "doi": "10.5522/04/29958062",
+        "licence": "CC BY 4.0",
+        "short": "Williams & Jones 2025"
+      },
+      "audio_url": "/audio/marrs/ind_H1_20220830_120000.wav",
+      "category": "healthy",
+      "coordinates": {
+        "lat": -4.9216,
+        "lng": 119.316922
+      },
+      "country": "Indonesia",
+      "country_code": "IDN",
+      "description": "ind_H1: labelled \"Healthy (H)\" by MARRS research team (Williams, Jones et al. 2025) (Least disturbed reef habitat in the local area.) Recorded 2022-08-30 at 12:00:00 (recorder-clock time, timezone unverified). 30-second excerpt.",
+      "duration_seconds": 30.0,
+      "frequency_highlights": [],
+      "id": "ind_H1_20220830_120000",
+      "name": "Healthy reference reef, South Sulawesi (ind_H1)",
+      "site_id": "ind_H1"
+    },
+    {
+      "attribution": {
+        "citation_id": "marrs",
+        "doi": "10.5522/04/29958062",
+        "licence": "CC BY 4.0",
+        "short": "Williams & Jones 2025"
+      },
+      "audio_url": "/audio/marrs/ind_N1_20220907_120000.wav",
+      "category": "restored_early",
+      "coordinates": {
+        "lat": -4.9310799,
+        "lng": 119.3159127
+      },
+      "country": "Indonesia",
+      "country_code": "IDN",
+      "description": "ind_N1: labelled \"Early Restoration (N / KML: ER)\" by MARRS research team (Williams, Jones et al. 2025) (Reef stars installed less than 3 months before recording.) Recorded 2022-09-07 at 12:00:00 (recorder-clock time, timezone unverified). 30-second excerpt.",
+      "duration_seconds": 30.0,
+      "frequency_highlights": [],
+      "id": "ind_N1_20220907_120000",
+      "name": "Restored early reference reef, South Sulawesi (ind_N1)",
+      "site_id": "ind_N1"
+    },
+    {
+      "attribution": {
+        "citation_id": "marrs",
+        "doi": "10.5522/04/29958062",
+        "licence": "CC BY 4.0",
+        "short": "Williams & Jones 2025"
+      },
+      "audio_url": "/audio/marrs/ind_R1_20220830_120000.wav",
+      "category": "restored_mid",
+      "coordinates": {
+        "lat": -4.922214,
+        "lng": 119.317036
+      },
+      "country": "Indonesia",
+      "country_code": "IDN",
+      "description": "ind_R1: labelled \"Mid Restoration (R / KML: MR)\" by MARRS research team (Williams, Jones et al. 2025) (Restored 32 to 53 months before recording.) Recorded 2022-08-30 at 12:00:00 (recorder-clock time, timezone unverified). 30-second excerpt.",
+      "duration_seconds": 30.0,
+      "frequency_highlights": [],
+      "id": "ind_R1_20220830_120000",
+      "name": "Restored mid reference reef, South Sulawesi (ind_R1)",
+      "site_id": "ind_R1"
+    },
+    {
+      "attribution": {
+        "citation_id": "marrs",
+        "doi": "10.5522/04/29958062",
+        "licence": "CC BY 4.0",
+        "short": "Williams & Jones 2025"
+      },
+      "audio_url": "/audio/marrs/mex_R1_20230529_120000.wav",
+      "category": "restored_mid",
+      "coordinates": {
+        "lat": 18.34107,
+        "lng": -87.807348
+      },
+      "country": "Mexico",
+      "country_code": "MEX",
+      "description": "mex_R1: labelled \"Mid Restoration (R / KML: MR)\" by MARRS research team (Williams, Jones et al. 2025) (Restored 32 to 53 months before recording.) Recorded 2023-05-29 at 12:00:00 (recorder-clock time, timezone unverified). 30-second excerpt.",
+      "duration_seconds": 30.0,
+      "frequency_highlights": [],
+      "id": "mex_R1_20230529_120000",
+      "name": "Restored mid reference reef, Caribbean Coast (mex_R1)",
+      "site_id": "mex_R1"
+    }
+  ],
+  "stories": {
+    "geographic_diversity": {
+      "sample_ids": [
+        "ind_H1_20220830_120000",
+        "aus_H1_20230208_120000",
+        "aus_H2_20230208_120000",
+        "aus_D1_20230208_120000",
+        "aus_R1_20230208_120000",
+        "mex_R1_20230529_120000"
+      ],
+      "subtitle": "MARRS labels are relative to each location, so a healthy reef in one country is not directly comparable with another.",
+      "title": "Reference reefs in three countries"
+    },
+    "healthy_vs_degraded": {
+      "sample_ids": [
+        "ind_H1_20220830_120000",
+        "ind_D1_20220830_120000"
+      ],
+      "subtitle": "Both are South Sulawesi MARRS sites, recorded at the same recorder-clock time of day.",
+      "title": "Healthy and degraded reefs at one location"
+    },
+    "restoration_ladder": {
+      "sample_ids": [
+        "ind_D1_20220830_120000",
+        "ind_N1_20220907_120000",
+        "ind_R1_20220830_120000",
+        "ind_H1_20220830_120000"
+      ],
+      "subtitle": "These are different South Sulawesi sites labelled by MARRS, not one reef changing over time.",
+      "title": "Four reef conditions at one location"
+    }
+  }
+}
