@@ -1,0 +1,65 @@
+{
+  "amplitude_scaling": {
+    "mono_pcm16": "divide by 32768",
+    "mono_pcm32": "divide by 2147483648",
+    "mono_pcm8": "unsigned 8-bit minus 128 held as int16, then divide by 32768",
+    "multichannel": "channels are averaged first, which yields float64; that falls through to the final branch, which divides by the peak absolute value",
+    "peak_normalised_mono_pcm16_pcm32": false,
+    "peak_normalised_multichannel": true,
+    "unsupported": "24-bit PCM is rejected"
+  },
+  "channel_mix": "mean",
+  "embedding_model": {
+    "dimension": 1280,
+    "name": "surfperch",
+    "version": "1.0"
+  },
+  "hop_s": 5.0,
+  "known_gaps": [
+    {
+      "id": "F8a",
+      "owner_phase": "Phase 5",
+      "reference": ".planning/audit/DATA-MODEL.md F8",
+      "status": "open",
+      "summary": "Training audio and reference-site audio were peak-normalised per file. Live uploads are peak-normalised only when they have more than one channel; mono 16-bit and 32-bit PCM uploads are only scaled to the -1..1 range."
+    },
+    {
+      "id": "F8b",
+      "owner_phase": "Phase 5",
+      "reference": ".planning/audit/DATA-MODEL.md F8",
+      "status": "open",
+      "summary": "The classifier was trained on single 5 s windows but is applied to the mean of all window embeddings of an upload."
+    },
+    {
+      "id": "F8c",
+      "owner_phase": "Phase 5",
+      "reference": ".planning/audit/DATA-MODEL.md F8",
+      "status": "open",
+      "summary": "Resampling is linear interpolation with no anti-alias low-pass filter, so content above the 16 kHz Nyquist limit aliases when 44.1, 48 or 96 kHz uploads are downsampled to 32 kHz, while reference audio sampled at 16 kHz has no content above 8 kHz."
+    },
+    {
+      "id": "F8d",
+      "owner_phase": "Phase 5",
+      "reference": ".planning/audit/DATA-MODEL.md F8",
+      "status": "open",
+      "summary": "Reference vectors were built differently per dataset (5-window means, about 30-file means, or 10 random windows, with and without normalisation)."
+    }
+  ],
+  "max_duration_s": 600,
+  "min_duration_s": 5.0,
+  "resampling": {
+    "anti_alias_filter": false,
+    "method": "linear_interpolation"
+  },
+  "sample_rate_hz": 32000,
+  "schema_version": 1,
+  "serving": {
+    "window_pooling": "mean"
+  },
+  "source": "lambdas/preprocessor/handler.py (constants, scaling, resampling); lambdas/classifier/handler.py (embedding identity, mean pooling)",
+  "spec_version": "preproc-2026.10.0-as-deployed",
+  "status": "as-deployed",
+  "trailing_partial_window": "dropped",
+  "window_s": 5.0,
+  "window_samples": 160000
+}

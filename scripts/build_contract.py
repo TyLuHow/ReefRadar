@@ -9,8 +9,9 @@ can be rebuilt and diffed in CI:
   contracts/bucket/contract/v<N>.json     the immutable manifest for version N
   contracts/bucket/v<N>/sites.json        every Site record with full provenance
   contracts/bucket/v<N>/schema/*.json     byte-for-byte copies of contracts/schema/*
-  (model_version.json, preprocessing_spec.json and stamp.json are added by the
-   same builder; see the functions below)
+  contracts/bucket/v<N>/model_version.json       honest ModelVersion (no accuracy figure)
+  contracts/bucket/v<N>/preprocessing_spec.json  what production does today + known gaps
+  contracts/bucket/v<N>/stamp.json               the version stamp bundled into the classifier
 
 Provenance rules (never relaxed):
   - Statuses and every label field come ONLY from
@@ -51,6 +52,12 @@ SNAPSHOT_PATH = REPO_ROOT / "data" / "snapshots" / "api-sites.json"
 PROVENANCE_PATH = REPO_ROOT / "data" / "site-label-provenance.json"
 CITATIONS_PATH = REPO_ROOT / "dashboard-next" / "src" / "data" / "citations.json"
 LEGACY_TYPES_PATH = REPO_ROOT / "dashboard-next" / "src" / "types" / "index.ts"
+MODEL_DIR = REPO_ROOT / "models" / "interim-real-only"
+MODEL_CONFIG_PATH = MODEL_DIR / "model_config.json"
+MODEL_WEIGHTS_PATH = MODEL_DIR / "reef_classifier_weights.npz"
+DEPLOYED_LOCK_PATH = REPO_ROOT / "docs" / "model" / "deployed-model.lock.json"
+PREPROCESSOR_PATH = REPO_ROOT / "lambdas" / "preprocessor" / "handler.py"
+CLASSIFIER_PATH = REPO_ROOT / "lambdas" / "classifier" / "handler.py"
 
 # The legacy UI shows these three Bora-Bora points as "Bora-Bora, French Polynesia",
 # not "<region>, <country>" (region is "Society Islands"). Keep that text so the
@@ -235,14 +242,31 @@ def build_bundle(version: int, frozen_at: str, contracts_dir: pathlib.Path) -> d
     sites_bytes = contract_lib.canonical_json_bytes({"schema_version": 1, "sites": sites})
     files[f"bucket/{prefix}/sites.json"] = sites_bytes
 
+    schema_dir = contracts_dir / "schema"
+    model = build_model_version()
+    spec = build_preprocessing_spec()
+    stamp = build_stamp(version, model)
+    contract_lib.validate(model, "model-version", schema_dir)
+    contract_lib.validate(spec, "preprocessing-spec", schema_dir)
+    contract_lib.validate(stamp, "analysis-result", schema_dir)
+    model_bytes = contract_lib.canonical_json_bytes(model)
+    spec_bytes = contract_lib.canonical_json_bytes(spec)
+    stamp_bytes = contract_lib.canonical_json_bytes(stamp)
+    files[f"bucket/{prefix}/model_version.json"] = model_bytes
+    files[f"bucket/{prefix}/preprocessing_spec.json"] = spec_bytes
+    files[f"bucket/{prefix}/stamp.json"] = stamp_bytes
+
     schema_entries = {}
-    for stem, data in _schema_sources(contracts_dir / "schema").items():
+    for stem, data in _schema_sources(schema_dir).items():
         uri = f"{prefix}/schema/{stem}{contract_lib.SCHEMA_SUFFIX}"
         files[f"bucket/{uri}"] = data
         schema_entries[SCHEMA_STEM_TO_KEY.get(stem, stem.replace("-", "_"))] = artifact_entry(uri, data)
 
     artifacts = {
         "sites": artifact_entry(f"{prefix}/sites.json", sites_bytes, count=len(sites)),
+        "model_version": artifact_entry(f"{prefix}/model_version.json", model_bytes),
+        "preprocessing_spec": artifact_entry(f"{prefix}/preprocessing_spec.json", spec_bytes),
+        "stamp": artifact_entry(f"{prefix}/stamp.json", stamp_bytes),
         "schemas": schema_entries,
         "aggregates_diel": {"present": False},
         "aggregates_effort": {"present": False},
@@ -276,23 +300,187 @@ def build_bundle(version: int, frozen_at: str, contracts_dir: pathlib.Path) -> d
             },
         },
     }
-    manifest.update(version_fields(inputs))
-    contract_lib.validate(manifest, "contract-manifest", contracts_dir / "schema")
+    manifest.update(
+        {
+            "dataset_version": stamp["dataset_version"],
+            "model_version": stamp["model_version"],
+            "preprocessing_spec_version": stamp["preprocessing_spec_version"],
+        }
+    )
+    contract_lib.validate(manifest, "contract-manifest", schema_dir)
     files[f"bucket/contract/v{version}.json"] = contract_lib.canonical_json_bytes(manifest)
     return files
 
 
+# ---------------------------------------------------------------------------
+# Model, preprocessing spec and version stamp
+# ---------------------------------------------------------------------------
+
 # Fixed once for contract v1 and reused by every later plan (Claude's discretion
-# per CONTEXT). model_version is not fixed here: it is read from the live config.
+# per CONTEXT). The model version is never fixed here: it is the live config's
+# own version string.
 DATASET_VERSION = "reefradar-reference-2026.10.0"
 PREPROCESSING_SPEC_VERSION = "preproc-2026.10.0-as-deployed"
-MODEL_VERSION_PLACEHOLDER = "interim-real-only"
+
+WEIGHTS_LOCATION = "s3://reefradar-2477-embeddings/models/reef_classifier_weights.npz"
+DATA_MODEL_REFERENCE = ".planning/audit/DATA-MODEL.md F8"
 
 
-def version_fields(inputs: dict) -> dict:
+def _parse_constant(source: str, name: str):
+    matches = re.findall(rf"^{name}\s*=\s*([0-9]+(?:\.[0-9]+)?)", source, re.MULTILINE)
+    if len(matches) != 1:
+        raise ContractError(f"expected exactly one {name} constant in lambdas/preprocessor/handler.py")
+    text = matches[0]
+    return float(text) if "." in text else int(text)
+
+
+def _parse_classifier_string(source: str, key: str) -> str:
+    matches = re.findall(rf"'{key}':\s*'([^']+)'", source)
+    if len(matches) != 1:
+        raise ContractError(f"expected exactly one {key!r} string in lambdas/classifier/handler.py")
+    return matches[0]
+
+
+def build_model_version() -> dict:
+    """ModelVersion from the committed config and weights. Never carries an accuracy figure."""
+    config_lf = contract_lib.read_text_input_bytes(MODEL_CONFIG_PATH)
+    config = json.loads(config_lf.decode("utf-8"))
+    weights = MODEL_WEIGHTS_PATH.read_bytes()  # binary: hashed as-is, never normalised
+    lock = json.loads(contract_lib.read_text_input_bytes(DEPLOYED_LOCK_PATH).decode("utf-8"))
+    classifier_source = contract_lib.read_text_input_bytes(CLASSIFIER_PATH).decode("utf-8")
+
+    num_classes = config["num_classes"]
+    classes = [config["idx_to_label"][str(i)] for i in range(num_classes)]
+    if config.get("synthetic_rows_excluded") != 0:
+        raise ContractError("model config reports excluded synthetic rows; review before publishing")
+    retired = lock["classes_without_real_rows"]
     return {
+        "schema_version": 1,
+        "model_version": config["version"],
+        "architecture": {
+            "input_dim": config["input_dim"],
+            "hidden_dims": config["hidden_dims"],
+            "num_classes": num_classes,
+        },
+        "classes": classes,
+        "embedding_model": {
+            "name": _parse_classifier_string(classifier_source, "embedding_model"),
+            "version": _parse_classifier_string(classifier_source, "embedding_version"),
+            "dimension": config["input_dim"],
+        },
+        "preprocessing_spec_version": PREPROCESSING_SPEC_VERSION,
+        "training": {
+            "rows": config["training_samples"],
+            "sites": [site["site_id"] for site in config["training_sites"]],
+            "countries": config["training_countries"],
+            "synthetic_data": False,
+            "synthetic_rows_excluded": config["synthetic_rows_excluded"],
+            "seed": config["seed"],
+        },
+        "evaluation": None,
+        "evaluation_note": config["evaluation_note"],
+        "config_sha256": contract_lib.sha256_hex(config_lf),
+        # The config object in the embeddings bucket was uploaded from a Windows
+        # checkout and has CRLF line endings (recorded in docs/deploy/DEPLOY-LOG.md);
+        # it differs from the git blob only by line endings.
+        "config_sha256_deployed": contract_lib.sha256_hex(config_lf.replace(b"\n", b"\r\n")),
+        "weights_sha256": contract_lib.sha256_hex(weights),
+        "weights_location": WEIGHTS_LOCATION,
+        "predecessor": {
+            "model_version": lock["artifacts"]["version"],
+            "retired_reason": (
+                f"Class {', '.join(retired)} had no real training rows: it was trained entirely on "
+                "synthetically generated audio, so this model was retired and replaced by one "
+                "trained on real recordings only (docs/model/DEPLOYED-MODEL-AUDIT.md)."
+            ),
+        },
+    }
+
+
+def build_preprocessing_spec() -> dict:
+    """What production does today, read from the constants in lambdas/preprocessor/handler.py."""
+    source = contract_lib.read_text_input_bytes(PREPROCESSOR_PATH).decode("utf-8")
+    classifier_source = contract_lib.read_text_input_bytes(CLASSIFIER_PATH).decode("utf-8")
+    config = json.loads(contract_lib.read_text_input_bytes(MODEL_CONFIG_PATH).decode("utf-8"))
+    window_s = _parse_constant(source, "SEGMENT_DURATION")
+
+    def gap(gap_id: str, summary: str) -> dict:
+        return {
+            "id": gap_id,
+            "summary": summary,
+            "owner_phase": "Phase 5",
+            "status": "open",
+            "reference": DATA_MODEL_REFERENCE,
+        }
+
+    return {
+        "schema_version": 1,
+        "spec_version": PREPROCESSING_SPEC_VERSION,
+        "status": "as-deployed",
+        "sample_rate_hz": _parse_constant(source, "TARGET_SAMPLE_RATE"),
+        "window_s": window_s,
+        "window_samples": _parse_constant(source, "SEGMENT_SAMPLES"),
+        "hop_s": window_s,
+        "min_duration_s": _parse_constant(source, "MIN_AUDIO_DURATION"),
+        "max_duration_s": _parse_constant(source, "MAX_AUDIO_DURATION"),
+        "trailing_partial_window": "dropped",
+        "channel_mix": "mean",
+        "amplitude_scaling": {
+            "mono_pcm16": "divide by 32768",
+            "mono_pcm32": "divide by 2147483648",
+            "mono_pcm8": "unsigned 8-bit minus 128 held as int16, then divide by 32768",
+            "multichannel": (
+                "channels are averaged first, which yields float64; that falls through to the "
+                "final branch, which divides by the peak absolute value"
+            ),
+            "peak_normalised_mono_pcm16_pcm32": False,
+            "peak_normalised_multichannel": True,
+            "unsupported": "24-bit PCM is rejected",
+        },
+        "resampling": {"method": "linear_interpolation", "anti_alias_filter": False},
+        "embedding_model": {
+            "name": _parse_classifier_string(classifier_source, "embedding_model"),
+            "version": _parse_classifier_string(classifier_source, "embedding_version"),
+            "dimension": config["input_dim"],
+        },
+        "serving": {"window_pooling": "mean"},
+        "known_gaps": [
+            gap(
+                "F8a",
+                "Training audio and reference-site audio were peak-normalised per file. Live uploads "
+                "are peak-normalised only when they have more than one channel; mono 16-bit and "
+                "32-bit PCM uploads are only scaled to the -1..1 range.",
+            ),
+            gap(
+                "F8b",
+                "The classifier was trained on single 5 s windows but is applied to the mean of all "
+                "window embeddings of an upload.",
+            ),
+            gap(
+                "F8c",
+                "Resampling is linear interpolation with no anti-alias low-pass filter, so content "
+                "above the 16 kHz Nyquist limit aliases when 44.1, 48 or 96 kHz uploads are "
+                "downsampled to 32 kHz, while reference audio sampled at 16 kHz has no content "
+                "above 8 kHz.",
+            ),
+            gap(
+                "F8d",
+                "Reference vectors were built differently per dataset (5-window means, about "
+                "30-file means, or 10 random windows, with and without normalisation).",
+            ),
+        ],
+        "source": (
+            "lambdas/preprocessor/handler.py (constants, scaling, resampling); "
+            "lambdas/classifier/handler.py (embedding identity, mean pooling)"
+        ),
+    }
+
+
+def build_stamp(version: int, model: dict) -> dict:
+    return {
+        "contract_version": version,
         "dataset_version": DATASET_VERSION,
-        "model_version": MODEL_VERSION_PLACEHOLDER,
+        "model_version": model["model_version"],
         "preprocessing_spec_version": PREPROCESSING_SPEC_VERSION,
     }
 

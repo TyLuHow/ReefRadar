@@ -103,6 +103,9 @@
       },
       "required": [
         "sites",
+        "model_version",
+        "preprocessing_spec",
+        "stamp",
         "schemas",
         "aggregates_diel",
         "aggregates_effort",

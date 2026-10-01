@@ -1,0 +1,165 @@
+{
+  "$id": "urn:reefradar:contract:preprocessing-spec",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "What the production audio pipeline does to an upload before embedding, exactly as deployed, with the known train/serve gaps listed rather than claimed fixed.",
+  "properties": {
+    "amplitude_scaling": {
+      "minProperties": 1,
+      "type": "object"
+    },
+    "channel_mix": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "embedding_model": {
+      "properties": {
+        "dimension": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "dimension"
+      ],
+      "type": "object"
+    },
+    "hop_s": {
+      "exclusiveMinimum": 0,
+      "type": "number"
+    },
+    "known_gaps": {
+      "items": {
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "owner_phase": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "reference": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "status": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "summary": {
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "summary",
+          "owner_phase",
+          "status",
+          "reference"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "max_duration_s": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "min_duration_s": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "resampling": {
+      "properties": {
+        "anti_alias_filter": {
+          "type": "boolean"
+        },
+        "method": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "method",
+        "anti_alias_filter"
+      ],
+      "type": "object"
+    },
+    "sample_rate_hz": {
+      "minimum": 1,
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "serving": {
+      "properties": {
+        "window_pooling": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "window_pooling"
+      ],
+      "type": "object"
+    },
+    "source": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "spec_version": {
+      "pattern": "^[a-z0-9][a-z0-9.+-]*$",
+      "type": "string"
+    },
+    "status": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "trailing_partial_window": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "window_s": {
+      "exclusiveMinimum": 0,
+      "type": "number"
+    },
+    "window_samples": {
+      "minimum": 1,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "spec_version",
+    "status",
+    "sample_rate_hz",
+    "window_s",
+    "window_samples",
+    "hop_s",
+    "min_duration_s",
+    "max_duration_s",
+    "trailing_partial_window",
+    "channel_mix",
+    "amplitude_scaling",
+    "resampling",
+    "embedding_model",
+    "serving",
+    "known_gaps",
+    "source"
+  ],
+  "title": "PreprocessingSpec",
+  "type": "object"
+}

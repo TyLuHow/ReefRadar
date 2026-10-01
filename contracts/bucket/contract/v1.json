@@ -9,11 +9,29 @@
     "detections": {
       "present": false
     },
+    "model_version": {
+      "bytes": 1651,
+      "content_type": "application/json",
+      "sha256": "13a6ada8fb699558887b5fdfb4d9b7c78d2c528afdebfcf60303ddf63af12cd5",
+      "uri": "v1/model_version.json"
+    },
+    "preprocessing_spec": {
+      "bytes": 2568,
+      "content_type": "application/json",
+      "sha256": "4b02ca76c6fa5ff7c3032641ad59d52f15b579b6278f902e1b30b472ea0711e9",
+      "uri": "v1/preprocessing_spec.json"
+    },
     "schemas": {
-      "contract_manifest": {
-        "bytes": 5918,
+      "analysis_result": {
+        "bytes": 1733,
         "content_type": "application/json",
-        "sha256": "ac980e90a1e4fca6ee511a349b9e4d52ad29eb2febea3b8b269559d36a7130af",
+        "sha256": "1c7810236fa4c5398e30f67d950e0946efca8d3a9979edbabc699e48acb1fa32",
+        "uri": "v1/schema/analysis-result.schema.json"
+      },
+      "contract_manifest": {
+        "bytes": 5990,
+        "content_type": "application/json",
+        "sha256": "54d54860269c87f9c076753a3cb339fca8d0a0bafb5b67da575092849f1ccd4d",
         "uri": "v1/schema/contract-manifest.schema.json"
       },
       "contract_pointer": {
@@ -21,6 +39,18 @@
         "content_type": "application/json",
         "sha256": "d101ccab16f01084d8c180fed71dd04b78665b606d7b1fe70aa9a126d48a31bf",
         "uri": "v1/schema/contract-pointer.schema.json"
+      },
+      "model_version": {
+        "bytes": 4124,
+        "content_type": "application/json",
+        "sha256": "b1cf898d3a637b347c549790879b39c617b2ceb146d32673f8ec2818fe2a8407",
+        "uri": "v1/schema/model-version.schema.json"
+      },
+      "preprocessing_spec": {
+        "bytes": 3406,
+        "content_type": "application/json",
+        "sha256": "df569d3867ddd604380304e1684e9d0f24445e187c652cc7107a8647097075f1",
+        "uri": "v1/schema/preprocessing-spec.schema.json"
       },
       "site": {
         "bytes": 3945,
@@ -35,6 +65,12 @@
       "count": 54,
       "sha256": "10a4e0567107c76b4e6b788fdcc6792f5b18302a05f7354d3672169f7b321406",
       "uri": "v1/sites.json"
+    },
+    "stamp": {
+      "bytes": 187,
+      "content_type": "application/json",
+      "sha256": "4f67a0569b99b4e2fd2af2d462520b4aa1fe8a80f46e636b38c85b10121e79b6",
+      "uri": "v1/stamp.json"
     }
   },
   "contract_version": 1,

@@ -1,0 +1,50 @@
+{
+  "architecture": {
+    "hidden_dims": [
+      256,
+      64
+    ],
+    "input_dim": 1280,
+    "num_classes": 3
+  },
+  "classes": [
+    "degraded",
+    "healthy",
+    "restored_early"
+  ],
+  "config_sha256": "b38552d39a3bc806d809937293276b608b9642652b5ce5667b36085042fd1205",
+  "config_sha256_deployed": "9781d1ab16794402057b7ac405432952e2d8ce84bf2dfac6e752a8e78fdbf658",
+  "embedding_model": {
+    "dimension": 1280,
+    "name": "surfperch",
+    "version": "1.0"
+  },
+  "evaluation": null,
+  "evaluation_note": "Accuracy is from a random per-window split; windows from the same site appear in train and test, so it is not an estimate of performance on new sites or regions. Grouped leave-one-site-out evaluation is Phase 5; retraining on more real data is Phase 12.",
+  "model_version": "interim-real-only",
+  "predecessor": {
+    "model_version": "2.0",
+    "retired_reason": "Class restored_mid had no real training rows: it was trained entirely on synthetically generated audio, so this model was retired and replaced by one trained on real recordings only (docs/model/DEPLOYED-MODEL-AUDIT.md)."
+  },
+  "preprocessing_spec_version": "preproc-2026.10.0-as-deployed",
+  "schema_version": 1,
+  "training": {
+    "countries": [
+      "Indonesia",
+      "Kenya"
+    ],
+    "rows": 100,
+    "seed": 42,
+    "sites": [
+      "ind_D2",
+      "ind_D3",
+      "ind_H4",
+      "ind_N1",
+      "ken_H1"
+    ],
+    "synthetic_data": false,
+    "synthetic_rows_excluded": 0
+  },
+  "weights_location": "s3://reefradar-2477-embeddings/models/reef_classifier_weights.npz",
+  "weights_sha256": "ab9e383043ef1bd9e693facf43fdcdac76a640e693b2f834f4fa567561dedcf4"
+}

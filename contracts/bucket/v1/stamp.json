@@ -1,0 +1,6 @@
+{
+  "contract_version": 1,
+  "dataset_version": "reefradar-reference-2026.10.0",
+  "model_version": "interim-real-only",
+  "preprocessing_spec_version": "preproc-2026.10.0-as-deployed"
+}

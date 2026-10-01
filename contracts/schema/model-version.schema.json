@@ -1,0 +1,176 @@
+{
+  "$id": "urn:reefradar:contract:model-version",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Identity and provenance of the classifier model a contract version describes. States only what the training report supports: evaluation is null unless a grouped, site-held-out evaluation exists, and no accuracy figure is carried.",
+  "properties": {
+    "architecture": {
+      "properties": {
+        "hidden_dims": {
+          "items": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "input_dim": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "num_classes": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "input_dim",
+        "hidden_dims",
+        "num_classes"
+      ],
+      "type": "object"
+    },
+    "classes": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "config_sha256": {
+      "description": "sha256 of models/<version>/model_config.json over LF bytes (equal to its git blob on any checkout).",
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "config_sha256_deployed": {
+      "description": "sha256 of the config object as it was uploaded to the embeddings bucket (a CRLF-line-ending copy from a Windows checkout, recorded in docs/deploy/DEPLOY-LOG.md). Differs from config_sha256 only by line endings.",
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    },
+    "embedding_model": {
+      "properties": {
+        "dimension": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "dimension"
+      ],
+      "type": "object"
+    },
+    "evaluation": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "evaluation_note": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "model_version": {
+      "pattern": "^[a-z0-9][a-z0-9.+-]*$",
+      "type": "string"
+    },
+    "predecessor": {
+      "properties": {
+        "model_version": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "retired_reason": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "model_version",
+        "retired_reason"
+      ],
+      "type": "object"
+    },
+    "preprocessing_spec_version": {
+      "pattern": "^[a-z0-9][a-z0-9.+-]*$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "training": {
+      "properties": {
+        "countries": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "rows": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "seed": {
+          "type": "integer"
+        },
+        "sites": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "synthetic_data": {
+          "const": false
+        },
+        "synthetic_rows_excluded": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "rows",
+        "sites",
+        "countries",
+        "synthetic_data",
+        "synthetic_rows_excluded",
+        "seed"
+      ],
+      "type": "object"
+    },
+    "weights_location": {
+      "pattern": "^s3://[a-z0-9.-]+/\\S+$",
+      "type": "string"
+    },
+    "weights_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "model_version",
+    "architecture",
+    "classes",
+    "embedding_model",
+    "preprocessing_spec_version",
+    "training",
+    "evaluation",
+    "evaluation_note",
+    "config_sha256",
+    "weights_sha256",
+    "weights_location",
+    "predecessor"
+  ],
+  "title": "ModelVersion",
+  "type": "object"
+}

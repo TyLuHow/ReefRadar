@@ -1,0 +1,68 @@
+{
+  "$id": "urn:reefradar:contract:analysis-result",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "allOf": [
+    {
+      "description": "Pre-contract results carry no dataset or preprocessing-spec version.",
+      "if": {
+        "properties": {
+          "contract_version": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "contract_version"
+        ]
+      },
+      "then": {
+        "properties": {
+          "dataset_version": {
+            "type": "null"
+          },
+          "preprocessing_spec_version": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ],
+  "description": "The version-stamp block carried by every new analysis result. All four keys are required. contract_version null means 'pre-contract' (a result produced before any contract existed or not covered by a published contract); the UI shows that, never an invented version. The per-window result shape is defined by later phases and is not part of this schema.",
+  "properties": {
+    "contract_version": {
+      "minimum": 1,
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "dataset_version": {
+      "pattern": "^[a-z0-9][a-z0-9.+-]*$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "model_version": {
+      "pattern": "^[a-z0-9][a-z0-9.+-]*$",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "preprocessing_spec_version": {
+      "pattern": "^[a-z0-9][a-z0-9.+-]*$",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "contract_version",
+    "dataset_version",
+    "model_version",
+    "preprocessing_spec_version"
+  ],
+  "title": "AnalysisResultVersionStamp",
+  "type": "object"
+}
