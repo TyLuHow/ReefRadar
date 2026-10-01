@@ -1,0 +1,9 @@
+# Pinned Python dev/test dependencies (owner-approved, 2026-10-01).
+# Install with: py -3.12 -m pip install --user -r requirements-dev.txt
+pytest==9.1.1
+moto[s3,dynamodb]==5.2.3
+boto3==1.43.106
+# Matches the reefradar-2477-numpy Lambda layer (pinned for Python 3.11)
+numpy==1.26.4
+# Already used by scripts/ (e.g. download_marrs_samples.py, figshare API calls)
+requests
