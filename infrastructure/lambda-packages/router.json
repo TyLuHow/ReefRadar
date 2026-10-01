@@ -4,6 +4,7 @@
   "members": [
     {"source": "lambdas/router/handler.py", "archive_path": "handler.py"},
     {"source": "lambdas/shared/site_provenance.py", "archive_path": "site_provenance.py"},
-    {"source": "data/site-label-provenance.json", "archive_path": "site_label_provenance.json"}
+    {"source": "data/site-label-provenance.json", "archive_path": "site_label_provenance.json"},
+    {"source": "data/audio-manifest.json", "archive_path": "audio_manifest.json"}
   ]
 }

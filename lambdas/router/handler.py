@@ -328,148 +328,59 @@ def handle_get_sites(event):
         })
 
 
-CURATED_SAMPLES = [
-    {
-        'id': 'idn_healthy_dawn',
-        'site_id': 'ind_H1',
-        'name': 'Dawn Chorus, Sulawesi',
-        'country': 'Indonesia',
-        'country_code': 'IDN',
-        'category': 'healthy',
-        'stories': ['healthy_vs_degraded', 'restoration_timeline', 'geographic_diversity'],
-        'description': 'A thriving reef at sunrise \u2014 fish calls, snapping shrimp, and parrotfish grazing.',
-        'duration_seconds': 30,
-        's3_key': 'samples/idn_healthy_dawn.wav',
-        'frequency_highlights': ['Fish chorus (200\u20132000 Hz)', 'Snapping shrimp (2\u201320 kHz)'],
-        'coordinates': {'lat': -4.9216, 'lng': 119.316922},
-    },
-    {
-        'id': 'aus_degraded_reef',
-        'site_id': 'aus_D1',
-        'name': 'Silent Reef, Great Barrier Reef',
-        'country': 'Australia',
-        'country_code': 'AUS',
-        'category': 'degraded',
-        'stories': ['healthy_vs_degraded', 'restoration_timeline'],
-        'description': 'A bleached reef \u2014 sparse clicks, almost no fish chorus. The sound of absence.',
-        'duration_seconds': 30,
-        's3_key': 'samples/aus_degraded_reef.wav',
-        'frequency_highlights': ['Sparse clicks (2\u20135 kHz)', 'Background noise dominates'],
-        'coordinates': {'lat': -16.84732, 'lng': 146.22907},
-    },
-    {
-        'id': 'idn_restored_mid',
-        'site_id': 'ind_R1',
-        'name': 'Reef Restoration Site, Sulawesi',
-        'country': 'Indonesia',
-        'country_code': 'IDN',
-        'category': 'restored_mid',
-        'stories': ['restoration_timeline'],
-        'description': 'Two years into restoration \u2014 fish are returning, shrimp populations rebuilding.',
-        'duration_seconds': 30,
-        's3_key': 'samples/idn_restored_mid.wav',
-        'frequency_highlights': ['Emerging fish calls (500\u20131500 Hz)', 'Growing shrimp activity'],
-        'coordinates': {'lat': -4.922214, 'lng': 119.317036},
-    },
-    {
-        'id': 'aus_healthy_gbr',
-        'site_id': 'aus_H1',
-        'name': 'Healthy Reef, Great Barrier Reef',
-        'country': 'Australia',
-        'country_code': 'AUS',
-        'category': 'healthy',
-        'stories': ['geographic_diversity'],
-        'description': 'Dense acoustic landscape on Australia\'s iconic reef \u2014 constant biological activity.',
-        'duration_seconds': 30,
-        's3_key': 'samples/aus_healthy_gbr.wav',
-        'frequency_highlights': ['Fish chorus (200\u20132000 Hz)', 'Reef invertebrates (3\u201315 kHz)'],
-        'coordinates': {'lat': -16.84761, 'lng': 146.22839},
-    },
-    {
-        'id': 'aus_restored_reef',
-        'site_id': 'aus_R1',
-        'name': 'Restored Reef, Great Barrier Reef',
-        'country': 'Australia',
-        'country_code': 'AUS',
-        'category': 'restored_early',
-        'stories': ['restoration_timeline'],
-        'description': 'Early-stage recovery \u2014 the first signs of biological sound returning.',
-        'duration_seconds': 30,
-        's3_key': 'samples/aus_restored_reef.wav',
-        'frequency_highlights': ['Pioneer species calls', 'Increasing low-frequency activity'],
-        'coordinates': {'lat': -16.84719, 'lng': 146.22866},
-    },
-    {
-        'id': 'mex_restored_carib',
-        'site_id': 'mex_R1',
-        'name': 'Restored Reef, Caribbean Mexico',
-        'country': 'Mexico',
-        'country_code': 'MEX',
-        'category': 'restored_mid',
-        'stories': ['geographic_diversity'],
-        'description': 'Caribbean restoration project \u2014 damselfish territorial calls beginning to dominate.',
-        'duration_seconds': 30,
-        's3_key': 'samples/mex_restored_carib.wav',
-        'frequency_highlights': ['Damselfish calls (300\u20131200 Hz)', 'Urchin grazing sounds'],
-        'coordinates': {'lat': 18.34107, 'lng': -87.807348},
-    },
-    {
-        'id': 'phl_degraded_reef',
-        'site_id': 'phl_D1',
-        'name': 'Degraded Reef, Philippines',
-        'country': 'Philippines',
-        'country_code': 'PHL',
-        'category': 'degraded',
-        'stories': ['geographic_diversity'],
-        'description': 'Overfished reef in the Coral Triangle \u2014 wave noise with very little biology.',
-        'duration_seconds': 30,
-        's3_key': 'samples/phl_degraded_reef.wav',
-        'frequency_highlights': ['Dominant wave noise (<500 Hz)', 'Minimal biotic sound'],
-        'coordinates': {'lat': 9.85, 'lng': 124.02},
-    },
-    {
-        'id': 'aus_healthy_outer',
-        'site_id': 'aus_H2',
-        'name': 'Outer Reef, Great Barrier Reef',
-        'country': 'Australia',
-        'country_code': 'AUS',
-        'category': 'healthy',
-        'stories': [],
-        'description': 'Outer reef wall alive with sound \u2014 grouper booms and clownfish chirps.',
-        'duration_seconds': 30,
-        's3_key': 'samples/aus_healthy_outer.wav',
-        'frequency_highlights': ['Grouper booms (100\u2013400 Hz)', 'Clownfish chirps (600\u20131500 Hz)'],
-        'coordinates': {'lat': -16.84782, 'lng': 146.22798},
-    },
-]
+def get_audio_manifest():
+    """Load and cache data/audio-manifest.json (or bundled copy).
 
-SAMPLE_STORIES = {
-    'healthy_vs_degraded': {
-        'title': 'The Sound of Health',
-        'subtitle': 'Hear the difference between a thriving reef and a silent one',
-        'sample_ids': ['idn_healthy_dawn', 'aus_degraded_reef'],
-    },
-    'restoration_timeline': {
-        'title': 'Recovery in Sound',
-        'subtitle': 'How a reef\'s voice returns after restoration',
-        'sample_ids': ['aus_degraded_reef', 'aus_restored_reef', 'idn_restored_mid', 'idn_healthy_dawn'],
-    },
-    'geographic_diversity': {
-        'title': 'Reefs Around the World',
-        'subtitle': 'Every reef has its own acoustic signature',
-        'sample_ids': ['idn_healthy_dawn', 'aus_healthy_gbr', 'mex_restored_carib', 'phl_degraded_reef'],
-    },
-}
+    D-05/D-09: single source for the sample gallery -- real MARRS
+    excerpts only, served from committed, git-tracked data instead of
+    the old static CURATED_SAMPLES catalog (recovered in plan 01-09).
+    Prefers audio_manifest.json bundled next to this module (the Lambda
+    package layout this plan produces) and falls back to the repository
+    file resolved relative to this module, so tests (repo checkout) and
+    deployed Lambdas (bundled copy) share the same loading code path --
+    mirrors site_provenance.load_provenance()'s identical strategy.
+    """
+    global _audio_manifest
+    if _audio_manifest is None:
+        module_dir = os.path.dirname(os.path.abspath(__file__))
+        bundled_path = os.path.join(module_dir, 'audio_manifest.json')
+        if os.path.exists(bundled_path):
+            path = bundled_path
+        else:
+            path = os.path.join(module_dir, '..', '..', 'data', 'audio-manifest.json')
+        with open(path, 'r', encoding='utf-8') as f:
+            _audio_manifest = json.load(f)
+    return _audio_manifest
 
 
 def handle_get_samples(event):
-    """Return curated sample audio with pre-signed S3 URLs."""
+    """Return the real-audio sample gallery with pre-signed S3 URLs (D-05/D-09).
+
+    Every sample is a real MARRS excerpt from the committed audio
+    manifest -- no synthetic clips, no sites outside the reference
+    dataset. Audio URLs are presigned GETs for
+    s3://{AUDIO_BUCKET}/samples/marrs/<excerpt file name> (the S3
+    objects themselves are uploaded by plan 01-14 before this code is
+    deployed).
+    """
     try:
+        manifest = get_audio_manifest()
+    except Exception as e:
+        return response(500, {
+            'error': {
+                'code': 'SAMPLES_UNAVAILABLE',
+                'message': f'Audio manifest unavailable: {str(e)}'
+            }
+        })
+
+    try:
+        gallery = manifest.get('gallery', {})
         samples = []
-        for sample in CURATED_SAMPLES:
+        for sample in gallery.get('samples', []):
+            file_name = os.path.basename(sample['audio_path'])
             audio_url = s3.generate_presigned_url(
                 'get_object',
-                Params={'Bucket': AUDIO_BUCKET, 'Key': sample['s3_key']},
+                Params={'Bucket': AUDIO_BUCKET, 'Key': f'samples/marrs/{file_name}'},
                 ExpiresIn=3600,
             )
             samples.append({
@@ -482,13 +393,14 @@ def handle_get_samples(event):
                 'description': sample['description'],
                 'duration_seconds': sample['duration_seconds'],
                 'audio_url': audio_url,
-                'frequency_highlights': sample['frequency_highlights'],
+                'frequency_highlights': sample.get('frequency_highlights', []),
                 'coordinates': sample['coordinates'],
+                'attribution': sample['attribution'],
             })
 
         return response(200, {
             'samples': samples,
-            'stories': SAMPLE_STORIES,
+            'stories': gallery.get('stories', {}),
         })
     except Exception as e:
         return response(500, {'error': {'code': 'SAMPLES_FAILED', 'message': str(e)}})
