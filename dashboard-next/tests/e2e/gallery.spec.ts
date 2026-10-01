@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { mockApi } from './support/mock-api';
+import { mockApi, expectNoUnhandledApiCalls } from './support/mock-api';
+
+test.afterEach(({ page }) => {
+  expectNoUnhandledApiCalls(page);
+});
 
 /**
  * Landing gallery and /experience sample view e2e (01-18, D-05/D-09/D-17,

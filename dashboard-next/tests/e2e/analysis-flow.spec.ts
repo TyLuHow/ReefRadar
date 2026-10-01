@@ -1,7 +1,11 @@
 import { test, expect, type Route } from '@playwright/test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { mockApi } from './support/mock-api';
+import { mockApi, expectNoUnhandledApiCalls } from './support/mock-api';
+
+test.afterEach(({ page }) => {
+  expectNoUnhandledApiCalls(page);
+});
 
 /**
  * Fixture-driven upload -> analyze -> /status sequence -> result e2e for

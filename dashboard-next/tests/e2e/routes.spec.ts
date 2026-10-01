@@ -1,6 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
-import { mockApi } from './support/mock-api';
+import { mockApi, expectNoUnhandledApiCalls } from './support/mock-api';
 import { STATES } from './support/states';
+
+test.afterEach(({ page }) => {
+  expectNoUnhandledApiCalls(page);
+});
 
 /**
  * Route smoke suite (01-08, D-22).

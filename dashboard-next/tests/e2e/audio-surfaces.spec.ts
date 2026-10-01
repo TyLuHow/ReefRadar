@@ -1,5 +1,9 @@
 import { test, expect, type Page } from '@playwright/test';
-import { mockApi } from './support/mock-api';
+import { mockApi, expectNoUnhandledApiCalls } from './support/mock-api';
+
+test.afterEach(({ page }) => {
+  expectNoUnhandledApiCalls(page);
+});
 
 /**
  * Audio-surface truth suite (01-17, TRUTH-03/07/08, D-05/D-07/D-09/D-16).

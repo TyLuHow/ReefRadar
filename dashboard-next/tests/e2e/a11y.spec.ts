@@ -2,8 +2,12 @@ import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { mockApi } from './support/mock-api';
+import { mockApi, expectNoUnhandledApiCalls } from './support/mock-api';
 import { STATES } from './support/states';
+
+test.afterEach(({ page }) => {
+  expectNoUnhandledApiCalls(page);
+});
 
 /**
  * Accessibility regression gate (01-08, D-21/D-22).

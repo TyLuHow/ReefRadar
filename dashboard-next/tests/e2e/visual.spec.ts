@@ -1,8 +1,12 @@
 import { test, expect, type Page } from '@playwright/test';
-import { mockApi } from './support/mock-api';
+import { mockApi, expectNoUnhandledApiCalls } from './support/mock-api';
 import { STATES, WIDTHS } from './support/states';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+
+test.afterEach(({ page }) => {
+  expectNoUnhandledApiCalls(page);
+});
 
 /**
  * Screenshot visual-regression suite (01-08, D-21).
@@ -20,6 +24,11 @@ const SNAPSHOT_DIR = path.join(__dirname, 'visual.spec.ts-snapshots');
 function snapshotsExist(): boolean {
   return fs.existsSync(SNAPSHOT_DIR) && fs.readdirSync(SNAPSHOT_DIR).length > 0;
 }
+
+// In CI the visual gate must never silently turn into a no-op: a deleted or
+// empty baseline directory would otherwise skip every test and leave CI green
+// with zero visual verification (REVIEW WR-20). Locally it still skips.
+const FAIL_WITHOUT_BASELINES = process.env.CI === 'true' || process.env.CI === '1';
 
 // 1x1 transparent PNG, used to fulfil third-party map tile requests so
 // screenshots are deterministic regardless of live tile-server content.
@@ -44,11 +53,18 @@ for (const state of STATES) {
         process.env.PW_VISUAL !== '1',
         'Visual regression only runs with PW_VISUAL=1 (Docker-pinned Linux CI).'
       );
-      test.skip(
-        process.env.PW_UPDATE !== '1' && !snapshotsExist(),
-        'No committed snapshots yet — plan 01-20 commits the Linux baseline. ' +
-          'Run with PW_UPDATE=1 --update-snapshots to generate them.'
-      );
+      if (process.env.PW_UPDATE !== '1' && !snapshotsExist()) {
+        if (FAIL_WITHOUT_BASELINES) {
+          throw new Error(
+            'PW_VISUAL=1 in CI but no visual baselines exist in tests/e2e/visual.spec.ts-snapshots. ' +
+              'Refusing to skip: regenerate them with the update_snapshots workflow input.'
+          );
+        }
+        test.skip(
+          true,
+          'No committed snapshots found. Run with PW_UPDATE=1 --update-snapshots to generate them.'
+        );
+      }
 
       await mockApi(page);
       await blockMapTiles(page);

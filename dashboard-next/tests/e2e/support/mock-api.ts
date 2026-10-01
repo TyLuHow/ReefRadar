@@ -11,6 +11,30 @@ import * as path from 'node:path';
  * fixtures instead of the network. e2e tests must never hit the live API.
  */
 
+/**
+ * Unhandled API calls recorded per page. A throw inside a page.route handler
+ * is not reliably propagated to the running test (and the request can hang
+ * until the test times out), so an unhandled call is recorded, the request is
+ * aborted (the app sees a network failure instead of hanging), and each spec
+ * asserts the list is empty in an afterEach via expectNoUnhandledApiCalls().
+ */
+const UNHANDLED = new WeakMap<Page, string[]>();
+
+export function unhandledApiCalls(page: Page): string[] {
+  return UNHANDLED.get(page) ?? [];
+}
+
+/** Call from `test.afterEach`: fails the test if any API call had no fixture/override. */
+export function expectNoUnhandledApiCalls(page: Page): void {
+  const calls = unhandledApiCalls(page);
+  if (calls.length > 0) {
+    throw new Error(
+      `mockApi: ${calls.length} unhandled API call(s) -- add a fixture/override or a DEFAULT_FIXTURES entry in ` +
+        `tests/e2e/support/mock-api.ts:\n  ${calls.join('\n  ')}`
+    );
+  }
+}
+
 const API_HOST_PATTERN = /https:\/\/[a-z0-9]+\.execute-api\.[a-z0-9-]+\.amazonaws\.com\/prod\/.*/;
 
 const FIXTURES_DIR = path.join(__dirname, '..', '..', 'fixtures', 'api');
@@ -75,6 +99,7 @@ async function applyOverride(route: Route, override: FixtureOverride): Promise<v
  * to replace a default (e.g. a non-200 /health for an error-state test).
  */
 export async function mockApi(page: Page, overrides: MockApiOverrides = {}): Promise<void> {
+  UNHANDLED.set(page, []);
   await page.route(API_HOST_PATTERN, async (route) => {
     const request = route.request();
     const method = request.method();
@@ -99,11 +124,9 @@ export async function mockApi(page: Page, overrides: MockApiOverrides = {}): Pro
     }
 
     // No fixture/override/default matched: this is either a test gap or a
-    // live-API leak. Fail loudly with method + path rather than letting the
-    // request hang or silently reach the network.
-    throw new Error(
-      `mockApi: unhandled API call ${method} ${apiPath} (full url: ${request.url()}). ` +
-        `Add a fixture/override or a DEFAULT_FIXTURES entry in tests/e2e/support/mock-api.ts.`
-    );
+    // live-API leak. Record it (method + path only), abort the request so the
+    // app does not hang, and let the spec's afterEach fail the test.
+    unhandledApiCalls(page).push(`${method} ${apiPath}`);
+    await route.abort('failed');
   });
 }
