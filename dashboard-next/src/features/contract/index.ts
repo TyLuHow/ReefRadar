@@ -1,0 +1,18 @@
+/**
+ * The contract module's one public surface (02-07). Application code imports
+ * from '@/features/contract' only; client.ts, schema.ts and config.ts are
+ * internal and are not imported from outside this folder (tests excepted).
+ */
+export { useContract, useReferenceSites } from './hooks';
+export type { ContractQueryResult } from './hooks';
+export { useLegacySitesResponse, toLegacySitesResponse } from './legacy';
+export {
+  ContractError,
+  ContractConfigError,
+  ContractFetchError,
+  ContractIntegrityError,
+  ContractNotFoundError,
+  ContractSchemaError,
+  ContractUriError,
+} from './errors';
+export type { ContractManifest, ContractPointer, ContractSite, Coverage } from './schema';

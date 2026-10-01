@@ -1,19 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useQuery } from '@tanstack/react-query';
 import { Upload, GitCompare, MapPin, Compass, Waves, Globe2 } from 'lucide-react';
 import { GlowCard } from '@/components/ui/GlowCard';
 import { AnimatedCounter } from '@/components/ui/AnimatedCounter';
-import { api } from '@/lib/api';
+import { useLegacySitesResponse } from '@/features/contract';
 import { deriveSiteStats } from '@/lib/site-stats';
 
 export default function DashboardHomePage() {
-  const { data: sitesData } = useQuery({
-    queryKey: ['sites'],
-    queryFn: () => api.getSites(),
-    staleTime: 60_000,
-  });
+  const { data: sitesData } = useLegacySitesResponse();
   const stats = deriveSiteStats(sitesData);
 
   const cards = [

@@ -105,6 +105,23 @@ py -3.12 scripts/publish_contract.py --set-latest 1 --confirm   # roll the point
 - Rolling back means pointing `latest.json` at an earlier published version with
   `--set-latest`.
 
+## Web app
+
+The dashboard reads the contract only through `dashboard-next/src/features/contract/`
+(import from `@/features/contract`). It follows `contract/latest.json`, then
+`contract/v{N}.json`, then each artifact, checks the sha256 of every response against the
+pointer or manifest, and parses it with the hand-mirrored Zod schemas. A hash mismatch, a
+403/404 or a schema failure is a typed error, never silently accepted data.
+
+- `NEXT_PUBLIC_CONTRACT_BASE_URL` overrides the base URL. The default is the CloudFront
+  domain recorded in `infrastructure/resources.json`
+  (`cloudfront.distributions.contract.domain_name`), and a unit test keeps the two equal.
+  Only `https` URLs (or `http` on `localhost` / `127.0.0.1`) are accepted.
+- Unit tests (`tests/unit/support/contract-fetch.ts`) and every Playwright spec
+  (`mockContract()` in `tests/e2e/support/mock-api.ts`, installed by `mockApi()`) serve the
+  contract from `contracts/bucket` and `contracts/fixtures` on disk. No test reaches a real
+  CloudFront host.
+
 ## Known limitations
 
 - The backend `/sites` response still carries an out-of-date embedded-site count in its

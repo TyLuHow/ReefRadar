@@ -9,6 +9,10 @@ import * as path from 'node:path';
  * src/lib/api.ts's default NEXT_PUBLIC_API_URL and the hard-coded
  * API_BASE in src/app/experience/page.tsx point at) through committed
  * fixtures instead of the network. e2e tests must never hit the live API.
+ *
+ * It also installs mockContract() (02-07): the published data contract is
+ * served from the committed files under contracts/, so no spec reaches a real
+ * CloudFront host (CONTRACT-05).
  */
 
 /**
@@ -38,6 +42,79 @@ export function expectNoUnhandledApiCalls(page: Page): void {
 const API_HOST_PATTERN = /https:\/\/[a-z0-9]+\.execute-api\.[a-z0-9-]+\.amazonaws\.com\/prod\/.*/;
 
 const FIXTURES_DIR = path.join(__dirname, '..', '..', 'fixtures', 'api');
+
+// ---- data contract (02-07) ------------------------------------------------
+
+// tests/e2e/support -> e2e -> tests -> dashboard-next -> repo root
+const REPO_ROOT = path.join(__dirname, '..', '..', '..', '..');
+const CONTRACT_BUCKET_DIR = path.join(REPO_ROOT, 'contracts', 'bucket');
+const CONTRACT_FIXTURES_DIR = path.join(REPO_ROOT, 'contracts', 'fixtures');
+
+/** Any CloudFront host: the app's contract base URL (src/features/contract/config.ts). */
+const CONTRACT_HOST_PATTERN = /^https:\/\/[a-z0-9]+\.cloudfront\.net\/.*/;
+
+export interface ContractMockController {
+  /** Choose which pointer fixture contract/latest.json serves (contracts/fixtures/latest-v<n>.json). */
+  setLatest(version: number): void;
+  /** Contract-relative paths requested through this mock, in order. */
+  requests: string[];
+}
+
+function contractFile(contractPath: string, latest: number): string | null {
+  let file: string;
+  if (contractPath === 'contract/latest.json') {
+    file = path.join(CONTRACT_FIXTURES_DIR, `latest-v${latest}.json`);
+  } else if (contractPath === 'contract/v2.json') {
+    file = path.join(CONTRACT_FIXTURES_DIR, 'bucket', 'contract', 'v2.json');
+  } else {
+    file = path.join(CONTRACT_BUCKET_DIR, ...contractPath.split('/'));
+  }
+  const resolved = path.resolve(file);
+  if (!resolved.startsWith(path.resolve(REPO_ROOT, 'contracts') + path.sep)) return null;
+  return fs.existsSync(resolved) && fs.statSync(resolved).isFile() ? resolved : null;
+}
+
+/**
+ * Serve the data contract from disk, exactly as CloudFront would: latest.json
+ * from the chosen pointer fixture, v2.json from the flipped-flag fixture,
+ * everything else from contracts/bucket. An absent key answers 403 (what the
+ * production bucket answers). Responses carry access-control-allow-origin "*"
+ * and the production Cache-Control (latest 60 s, everything else immutable).
+ * Contract fixtures are never imported from src/ or public/.
+ *
+ * mockApi() installs this for every spec; a spec that needs another version
+ * calls mockContract(page, { latest: 2 }) afterwards (the later route wins).
+ */
+export async function mockContract(page: Page, options: { latest?: number } = {}): Promise<ContractMockController> {
+  let latest = options.latest ?? 1;
+  const requests: string[] = [];
+  await page.route(CONTRACT_HOST_PATTERN, async (route) => {
+    const contractPath = decodeURIComponent(new URL(route.request().url()).pathname.replace(/^\//, ''));
+    requests.push(contractPath);
+    const file = contractFile(contractPath, latest);
+    const cors = { 'access-control-allow-origin': '*' };
+    if (file === null) {
+      await route.fulfill({ status: 403, headers: cors, contentType: 'application/xml', body: '<Error><Code>AccessDenied</Code></Error>' });
+      return;
+    }
+    const isLatest = contractPath === 'contract/latest.json';
+    await route.fulfill({
+      status: 200,
+      headers: {
+        ...cors,
+        'cache-control': isLatest ? 'public, max-age=60' : 'public, max-age=31536000, immutable',
+      },
+      contentType: file.endsWith('.json') ? 'application/json' : 'application/octet-stream',
+      body: fs.readFileSync(file),
+    });
+  });
+  return {
+    setLatest(version: number) {
+      latest = version;
+    },
+    requests,
+  };
+}
 
 export type FixtureOverride =
   | string // JSON fixture filename under tests/fixtures/api/
@@ -98,8 +175,9 @@ async function applyOverride(route: Route, override: FixtureOverride): Promise<v
  * sensible global default (dynamic analysis ids, upload/analyze POSTs) or
  * to replace a default (e.g. a non-200 /health for an error-state test).
  */
-export async function mockApi(page: Page, overrides: MockApiOverrides = {}): Promise<void> {
+export async function mockApi(page: Page, overrides: MockApiOverrides = {}): Promise<ContractMockController> {
   UNHANDLED.set(page, []);
+  const contract = await mockContract(page);
   await page.route(API_HOST_PATTERN, async (route) => {
     const request = route.request();
     const method = request.method();
@@ -129,4 +207,5 @@ export async function mockApi(page: Page, overrides: MockApiOverrides = {}): Pro
     unhandledApiCalls(page).push(`${method} ${apiPath}`);
     await route.abort('failed');
   });
+  return contract;
 }
