@@ -22,3 +22,17 @@ env-var values appear in this document.
 
 See per-function sections below. Full per-function config is recorded without secret
 values in `infrastructure/deployed-state.json`.
+
+### router (`reefradar-2477-router`)
+
+- **CodeSha256:** `bfU0WTb89Oa/EKB0VOneG86u2ISzO4MzedRujHsjOxE=`
+- **LastModified:** `2026-03-07T19:16:30.000+0000`
+- **CodeSize:** 5777 bytes
+- **Members:** `handler.py` only (single file, matches `infrastructure/lambda-packages/router.json` unchanged — no spec edit needed)
+- **Secret scan:** no hits (AWS key id patterns, `aws_secret_access_key`, PEM private-key headers, `.env` filenames, hardcoded `Authorization`/token assignments) across the one zip member
+- **Vendored packages:** none — single first-party `handler.py`, no `dist-info`/`site-packages` trees
+- **Diff vs git (before this commit):** one route added to the dispatch table (`('GET', '/samples'): handle_get_samples`) and three new module-level additions near the end of the file:
+  - `CURATED_SAMPLES` — a **static Python list** of 8 curated samples (id, site_id, name, country, category, description, duration, `s3_key`, frequency highlights, coordinates). This is the live `/samples` source referenced by `01-CONTEXT.md` D-02/D-09 — static metadata, not an S3-stored manifest.
+  - `SAMPLE_STORIES` — a static dict of 3 curated story groupings (`healthy_vs_degraded`, `restoration_timeline`, `geographic_diversity`), each referencing `sample_ids` from `CURATED_SAMPLES`.
+  - `handle_get_samples(event)` — for each `CURATED_SAMPLES` entry, calls `s3.generate_presigned_url('get_object', Params={'Bucket': AUDIO_BUCKET, 'Key': sample['s3_key']}, ExpiresIn=3600)` and returns `{samples: [...], stories: SAMPLE_STORIES}`. The audio bytes themselves live in S3 (`AUDIO_BUCKET`/`samples/*.wav`); only the catalog (name, description, coordinates, category) is static in code.
+- **Result:** `py -3.12 scripts/drift-check.py --function router` → `MATCH` (exit 0). `grep -c "/samples" lambdas/router/handler.py` → 1. `py -3.12 -m pytest lambdas -x` → 28 passed. No `.zip` files left in the repo (downloaded to OS temp dir, outside the working tree).
