@@ -28,7 +28,11 @@ export const STATES: StateDef[] = [
   { name: 'experience', path: '/experience/' },
   { name: 'experience-demo', path: '/experience/?mode=demo' },
   { name: 'experience-compare', path: '/experience/?mode=compare' },
-  { name: 'experience-sample', path: '/experience/?sample=idn_healthy_dawn' },
+  // 01-18: idn_healthy_dawn was an old synthetic id, deleted when samples.ts
+  // became manifest-derived (D-05/D-09). aus_D1_20230208_120000 is the first
+  // real manifest gallery sample id -- the state name is unchanged so the
+  // axe baseline lookup (keyed by name, not path) still matches.
+  { name: 'experience-sample', path: '/experience/?sample=aus_D1_20230208_120000' },
 ];
 
 export const WIDTHS: WidthDef[] = [

@@ -13,9 +13,10 @@ import { ComparisonPanel } from '@/components/experience/ComparisonPanel';
 import { CaveatsFooter } from '@/components/experience/CaveatsFooter';
 import { DemoState } from '@/components/experience/DemoState';
 import { LocationCompare } from '@/components/experience/LocationCompare';
-import { validateWavFile } from '@/lib/utils';
+import { validateWavFile, formatStatus } from '@/lib/utils';
 import { api, AnalysisError } from '@/lib/api';
 import { FALLBACK_SAMPLES } from '@/lib/samples';
+import { getExcerpt, attributionLine } from '@/lib/audio-manifest';
 import { useVitalityStore } from '@/stores/vitality-store';
 import type { AnalysisResult, Sample } from '@/types';
 
@@ -470,12 +471,27 @@ const ML_TO_VITALITY: Record<string, number> = {
   degraded: 0.0,
 };
 
-const STATUS_BADGE: Record<string, { label: string; color: string }> = {
-  healthy: { label: 'Healthy', color: 'var(--status-healthy)' },
-  degraded: { label: 'Degraded', color: 'var(--status-degraded)' },
-  restored_early: { label: 'Early Restoration', color: 'var(--status-restoring-early)' },
-  restored_mid: { label: 'Mid Restoration', color: 'var(--status-restoring-mid)' },
+const STATUS_COLOR: Record<string, string> = {
+  healthy: 'var(--status-healthy)',
+  degraded: 'var(--status-degraded)',
+  restored_early: 'var(--status-restoring-early)',
+  restored_mid: 'var(--status-restoring-mid)',
 };
+
+/**
+ * The dataset's own label_original for a sample, looked up in the audio
+ * manifest by the sample's id (the manifest excerpt_id for every
+ * manifest-derived sample). Falls back to a formatted status when the
+ * manifest has no matching excerpt (01-18, D-17/TRUTH-07/09): mirrors
+ * SampleCard.tsx's wording so the gallery and the sample view agree.
+ */
+function referenceLabelFor(sample: Sample): string {
+  try {
+    return getExcerpt(sample.id).label?.label_original ?? formatStatus(sample.category);
+  } catch {
+    return formatStatus(sample.category);
+  }
+}
 
 function SamplePlaybackState({
   sampleId,
@@ -576,7 +592,8 @@ function SamplePlaybackState({
     );
   }
 
-  const badge = STATUS_BADGE[sample.category] || { label: sample.category, color: 'var(--text-muted)' };
+  const badgeColor = STATUS_COLOR[sample.category] || 'var(--text-muted)';
+  const referenceLabel = referenceLabelFor(sample);
 
   return (
     <motion.div
@@ -598,7 +615,7 @@ function SamplePlaybackState({
         </GlassButton>
         <div className="flex items-center gap-2">
           <span className="text-sm font-light text-bone">ReefRadar</span>
-          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: badge.color }} />
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: badgeColor }} />
         </div>
       </div>
 
@@ -606,15 +623,16 @@ function SamplePlaybackState({
       <div className="relative z-10 flex-1 flex items-center justify-center px-4">
         <div className="max-w-xl w-full">
           <GlassPanel className="p-8 space-y-6">
-            {/* Badge + country */}
-            <div className="flex items-center justify-between">
+            {/* Reference label badge + country */}
+            <div className="flex items-center justify-between gap-2">
               <span
-                className="text-[10px] uppercase tracking-widest font-medium px-2.5 py-1 rounded-full border"
-                style={{ color: badge.color, borderColor: badge.color + '40' }}
+                className="text-[10px] font-medium px-2.5 py-1 rounded-full border bg-transparent"
+                style={{ color: badgeColor, borderColor: badgeColor + '80' }}
+                title="A reference label assigned by the dataset, not a model output"
               >
-                {badge.label}
+                Reference label: {referenceLabel} &middot; assigned by MARRS
               </span>
-              <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              <span className="text-xs shrink-0" style={{ color: 'var(--text-muted)' }}>
                 {sample.country}
               </span>
             </div>
@@ -625,6 +643,9 @@ function SamplePlaybackState({
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 {sample.description}
               </p>
+              <p className="text-[10px] mt-2" style={{ color: 'var(--text-dim)' }}>
+                {attributionLine()}
+              </p>
             </div>
 
             {/* Play button + progress */}
@@ -633,7 +654,7 @@ function SamplePlaybackState({
                 <button
                   onClick={togglePlay}
                   className="flex items-center justify-center w-14 h-14 rounded-full border-2 transition-colors"
-                  style={{ borderColor: badge.color, color: badge.color }}
+                  style={{ borderColor: badgeColor, color: badgeColor }}
                   aria-label={isPlaying ? 'Pause' : 'Play'}
                 >
                   {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-0.5" />}
@@ -642,7 +663,7 @@ function SamplePlaybackState({
                   <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--glass-bg)' }}>
                     <div
                       className="h-full rounded-full transition-[width] duration-200"
-                      style={{ width: `${progress * 100}%`, background: badge.color }}
+                      style={{ width: `${progress * 100}%`, background: badgeColor }}
                     />
                   </div>
                   <p className="text-[10px] font-mono mt-1" style={{ color: 'var(--text-dim)' }}>
@@ -651,19 +672,6 @@ function SamplePlaybackState({
                 </div>
               </div>
             )}
-
-            {/* Frequency highlights */}
-            <div className="flex flex-wrap gap-2">
-              {sample.frequency_highlights.map((h) => (
-                <span
-                  key={h}
-                  className="text-[10px] px-2.5 py-1 rounded-full"
-                  style={{ background: 'var(--glass-bg)', color: 'var(--text-muted)' }}
-                >
-                  {h}
-                </span>
-              ))}
-            </div>
 
             {/* Actions */}
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
