@@ -5,6 +5,7 @@ import type { BandId } from '@/components/spectrogram/FrequencyBands';
 import { ALL_BANDS } from '@/components/spectrogram/FrequencyBands';
 import { useAudioVisualBridge } from '@/hooks/useAudioVisualBridge';
 import { useVitalityStore, ReefBandId } from '@/stores/vitality-store';
+import { demoPair } from '@/lib/audio-manifest';
 
 interface DemoAudioReturn {
   isPlaying: boolean;
@@ -76,9 +77,10 @@ export function useDemoAudio(): DemoAudioReturn {
       const ctx = new AudioContextClass();
       audioCtxRef.current = ctx;
 
+      const pair = demoPair();
       const [hRes, dRes] = await Promise.all([
-        fetch('/audio/healthy-reef.wav'),
-        fetch('/audio/degraded-reef.wav'),
+        fetch(pair.a.url_path),
+        fetch(pair.b.url_path),
       ]);
       if (!hRes.ok || !dRes.ok) throw new Error('Failed to load audio');
 

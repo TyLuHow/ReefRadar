@@ -12,6 +12,7 @@ import { SpectrogramCanvas } from './SpectrogramCanvas';
 import { FrequencyBandLabels } from './FrequencyBandLabels';
 import { ABCrossfader } from './ABCrossfader';
 import { cn } from '@/lib/utils';
+import { demoPair } from '@/lib/audio-manifest';
 
 interface AudioCompareProps {
   /** When true, uses a smaller vertical layout with a CTA to the full page */
@@ -64,10 +65,11 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
       const ctx = new AudioContextClass();
       audioCtxRef.current = ctx;
 
-      // Fetch real MARRS reef audio files
+      // Fetch real MARRS reef audio files (D-05/D-07: demoPair, no gain or normalisation applied)
+      const pair = demoPair();
       const [healthyResponse, degradedResponse] = await Promise.all([
-        fetch('/audio/healthy-reef.wav'),
-        fetch('/audio/degraded-reef.wav'),
+        fetch(pair.a.url_path),
+        fetch(pair.b.url_path),
       ]);
 
       if (!healthyResponse.ok || !degradedResponse.ok) {
