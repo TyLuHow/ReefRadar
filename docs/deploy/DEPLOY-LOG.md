@@ -150,9 +150,50 @@ embedding-space similarity data; nothing is displayed from it).
 Lambda account concurrency is still 10 until the Service Quotas request is granted. Until then, avoid running several
 analyses at once, and warm the inference container (one `lambda invoke` with payload `{}`) before a burst or a verification run.
 
+## Post-review redeploy (2026-10-01): SUCCEEDED, verified live
+
+### Approving decision
+
+After the Phase 1 code review (`.planning/phases/01-truth-reproducibility/01-REVIEW.md`, 3 critical / 21 warning), the
+owner chose "Fix all + redeploy": apply the critical and warning fixes (including Lambda code) and redeploy router and
+classifier through `scripts/deploy-lambdas.py` with serial live verification. This included setting the classifier's
+async `MaximumRetryAttempts` to 0 (review WR-03).
+
+### What changed in production
+
+| Function | CodeSha256 before | CodeSha256 after | Commit | Deployed (UTC) |
+|---|---|---|---|---|
+| classifier | `jCDobm45tCUpCPAVxGfB0aCBCnWbV7xi2sodsA3uKMI=` | `sgWyJBm6O7QhimTQnGiR73wB2KrFsZLbwct8EyqJJ10=` | `1efa3a1` | 19:06:54 |
+| router | `QAN8peUHi+MGf/S/KtehybiadQPtC4+A6RW5iV/EOS4=` | `2PdfLkQ7cJgs8QTcxKEIdfWmcrhpdqDnazJstkOaul4=` | `1efa3a1` | 19:07:02 |
+| classifier | `sgWyJBm6O7QhimTQnGiR73wB2KrFsZLbwct8EyqJJ10=` | `PTJpriO5u+Z6PKvVzJh+vBtuqKILBiD5+XBYJfd1LQg=` | `6e2e962` | 19:14:19 |
+
+- Classifier event-invoke config: `MaximumRetryAttempts=0` (was the Lambda default, 2).
+- No S3 or model changes.
+- The second classifier deploy fixed a defect that the WR-05 change surfaced. The published reference objects store
+  per-site vectors under `embedding`, but the classifier only read `mean_embedding`. As a result, similar-site matching
+  had silently returned nothing in every production analysis to date. After the WR-05 fix, the result carried an
+  honest `similar_sites_error` note instead of an empty list.
+
+### Verification
+
+- Pre-flight: `/health` 200. Account ConcurrentExecutions had no datapoints in the previous 5 minutes. One inference warm-up invoke returned StatusCode 200.
+- `py -3.12 scripts/verify_live_truth.py` exited 0 after each deploy.
+  - Final run, with coordinates: analysis `3f5375f1-da8b-4655-bb11-1d443277ba04`.
+  - Final run, without coordinates: analysis `a23ed17e-acd2-4902-97e3-d9ffa75e4298`.
+  - Both used model `interim-real-only`, had a probability sum of 0.999999999 and returned `similar_sites_count` 3.
+- Similar sites for the `ind_H1` excerpt were `ind_H2` 0.823, `ind_R5` 0.799 and `ind_H1` 0.789, all MARRS-labelled.
+- Observation for Phase 5/12: the interim model classifies this healthy-labelled excerpt as `degraded` (0.956). This is the honest interim model output, not a deploy defect.
+- `py -3.12 scripts/drift-check.py --function all`: router, preprocessor, classifier and inference all MATCH, exit 0.
+
 ## Rollback
 
 Exact commands, valid for any future deploy of this plan.
+
+Since review fix CR-03, `--ref` builds the package from the ref's own spec, so a rollback deploys exactly what that
+commit contained. To return to the attempt-2 code (before the review fixes), use `--ref 1433f08`. To restore the
+classifier's previous async retry behaviour:
+`py -3.12 -m awscli lambda put-function-event-invoke-config --function-name reefradar-2477-classifier --maximum-retry-attempts 2 --profile reefradar --region us-east-1`.
+`scripts/publish_model.py --rollback <archive-prefix>` now restores an archived model through the scripted path, as an alternative to step 2 below.
 
 1. Lambdas (restores the 01-09 recovery code; works with the working tree dirty):
 
