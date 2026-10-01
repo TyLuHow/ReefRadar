@@ -19,6 +19,7 @@ from datetime import datetime
 from decimal import Decimal
 from region_detection import detect_region, adjust_classification, DEFAULT_TRAINING_SITES
 from site_provenance import load_provenance, apply_label_provenance
+from contract_stamp import load_stamp, stamp_for_model, STAMP_KEYS
 
 s3 = boto3.client('s3')
 lambda_client = boto3.client('lambda')
@@ -63,6 +64,7 @@ _model_etags = None
 _model_checked_at = 0.0
 _reference_embeddings = None
 _label_provenance = None
+_contract_stamp = None
 
 # Retry configuration
 MAX_RETRIES = 3
@@ -183,6 +185,8 @@ def handler(event, context):
             'classification': classification,
             'similar_sites': similar_sites,
             **({'similar_sites_error': similar_sites_error} if similar_sites_error else {}),
+            # CONTRACT-04: the versions this result was produced with.
+            **result_version_stamp(model_config.get('version')),
             'embedding_summary': {
                 'dimension': int(len(mean_embedding)),
                 'num_segments': num_segments,
@@ -744,6 +748,34 @@ def get_label_provenance():
     if _label_provenance is None:
         _label_provenance = load_provenance()
     return _label_provenance
+
+
+def get_contract_stamp():
+    """Load and cache the bundled version stamp (contract_stamp.json).
+
+    Raises if the bundled file is missing or unreadable; the caller decides
+    how to degrade. Only a successful load is cached, so a transient problem
+    is retried on the next invocation.
+    """
+    global _contract_stamp
+    if _contract_stamp is None:
+        _contract_stamp = load_stamp()
+    return _contract_stamp
+
+
+def result_version_stamp(loaded_model_version):
+    """CONTRACT-04: the four version keys for a new RESULT item.
+
+    A stamp that cannot be loaded (a packaging defect) must not fail the
+    analysis, so log it and write the four keys as null -- honest
+    "pre-contract". The post-deploy live verifier requires non-null stamps,
+    so such a defect cannot pass unnoticed.
+    """
+    try:
+        return stamp_for_model(loaded_model_version, get_contract_stamp())
+    except Exception as e:
+        print(f"ERROR could not load the bundled contract stamp: {type(e).__name__}: {e}")
+        return {key: None for key in STAMP_KEYS}
 
 
 def find_similar_sites_with_status(embedding, top_k=3):

@@ -500,9 +500,18 @@ def handle_visualize(analysis_id):
             return response(404, {'error': {'code': 'ANALYSIS_NOT_FOUND', 'message': f'No analysis found with ID: {analysis_id}'}})
 
         item = result['Item']
+        # CONTRACT-04 version stamps. Results written before the stamps existed
+        # have none of the four keys and return null ("pre-contract"). DynamoDB
+        # numbers are Decimal and DecimalEncoder emits float, so cast
+        # contract_version to int or it would serialise as 1.0.
+        contract_version = item.get('contract_version')
         return response(200, {
             'analysis_id': analysis_id,
             'status': 'complete',
+            'contract_version': int(contract_version) if contract_version is not None else None,
+            'dataset_version': item.get('dataset_version'),
+            'model_version': item.get('model_version'),
+            'preprocessing_spec_version': item.get('preprocessing_spec_version'),
             'classification': item.get('classification', {}),
             'similar_sites': item.get('similar_sites', []),
             'similar_sites_error': item.get('similar_sites_error'),
