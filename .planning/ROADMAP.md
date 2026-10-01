@@ -57,7 +57,7 @@ flowchart LR
 
 Decimal phases appear between their surrounding integers in numeric order. Numeric order is a valid execution order; the **Depends on** fields allow Data & ML phases to run in parallel with UI phases.
 
-- [ ] **Phase 1: Truth & Reproducibility** - Real audio only, verified model, reproducible build from git, CI test harness and pre-redesign baselines
+- [x] **Phase 1: Truth & Reproducibility** - Real audio only, verified model, reproducible build from git, CI test harness and pre-redesign baselines (completed 2026-10-01)
 - [ ] **Phase 2: Data Contract v1** - Versioned, immutable contract with full per-site provenance and coverage flags becomes the app's only reference-data source
 - [ ] **Phase 3: Platform Upgrade & Stack Consolidation** - Next.js 16 / React 19, one map and chart stack, feature-module fence, monitoring, vitality layer retired
 - [ ] **Phase 4: Design System & Instrument Primitives** - Light scientific-editorial tokens, CVD-safe status palette, dark spectrogram wells, accessible primitives, fixtures route
@@ -433,7 +433,7 @@ Numeric order (1 → 17) is a valid order. With parallelization, Data & ML phase
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Truth & Reproducibility | 20/20 | In Progress|  |
+| 1. Truth & Reproducibility | 20/20 | Complete    | 2026-10-01 |
 | 2. Data Contract v1 | 0/TBD | Not started | - |
 | 3. Platform Upgrade & Stack Consolidation | 0/TBD | Not started | - |
 | 4. Design System & Instrument Primitives | 0/TBD | Not started | - |

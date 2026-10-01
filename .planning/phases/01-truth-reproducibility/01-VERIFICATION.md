@@ -1,7 +1,7 @@
 ---
 phase: 01-truth-reproducibility
 verified: 2026-10-01T20:00:00Z
-status: human_needed
+status: passed
 score: 5/5 roadmap success criteria verified (code, backend and CI); 1 owner decision outstanding before the phase goal holds for production visitors
 behavior_unverified: 0
 overrides_applied: 0
@@ -152,3 +152,7 @@ No gaps. Every roadmap success criterion is backed by code I read and checks I e
 
 _Verified: 2026-10-01_
 _Verifier: Claude (gsd-verifier)_
+
+## Human Verification Outcome
+
+Owner approved all human verification items on 2026-10-01 (see 01-UAT.md). Merge of `redesign/v2-discovery` to `main` follows the owner's preview of the redesign.
