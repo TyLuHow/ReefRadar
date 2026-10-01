@@ -163,7 +163,7 @@ def _desired_notification(ntype: str, threshold: int) -> dict:
 
 
 def _nkey(n: dict) -> tuple:
-    return (n["NotificationType"], n["ComparisonOperator"], float(n["Threshold"]), n["ThresholdType"])
+    return (n["NotificationType"], n["ComparisonOperator"], float(n["Threshold"]), n.get("ThresholdType", THRESHOLD_TYPE))
 
 
 def _desired_keys() -> set:
@@ -298,33 +298,34 @@ def budget_step(budgets, email: str | None, write: bool) -> None:
     desired = [_desired_notification(t, v) for t, v in THRESHOLDS]
 
     if not state["exists"]:
-        emit("budget", "create_budget", BUDGET_NAME, status, limit_usd=int(BUDGET_LIMIT_USD), time_unit="MONTHLY",
-             notifications=[_describe_key(_nkey(n)) for n in desired], subscriber=shown)
         if write:
             budgets.create_budget(
                 AccountId=ACCOUNT_ID,
                 Budget=_new_budget_body(),
                 NotificationsWithSubscribers=[{"Notification": n, "Subscribers": [_subscriber(email)]} for n in desired],
             )
+        emit("budget", "create_budget", BUDGET_NAME, status, limit_usd=int(BUDGET_LIMIT_USD), time_unit="MONTHLY",
+             notifications=[_describe_key(_nkey(n)) for n in desired], subscriber=shown)
     else:
         for n in desired:
             if _nkey(n) in state["missing"]:
-                emit("budget", "create_notification", BUDGET_NAME, status, notification=_describe_key(_nkey(n)), subscriber=shown)
                 if write:
                     budgets.create_notification(
                         AccountId=ACCOUNT_ID, BudgetName=BUDGET_NAME, Notification=n, Subscribers=[_subscriber(email)]
                     )
+                emit("budget", "create_notification", BUDGET_NAME, status, notification=_describe_key(_nkey(n)), subscriber=shown)
         for key in sub_fixes:
             n = _desired_notification(key[0], int(key[2]))
-            emit("budget", "create_subscriber", BUDGET_NAME, status, notification=_describe_key(key), subscriber=shown)
             if write:
                 budgets.create_subscriber(
                     AccountId=ACCOUNT_ID, BudgetName=BUDGET_NAME, Notification=n, Subscriber=_subscriber(email)
                 )
+            emit("budget", "create_subscriber", BUDGET_NAME, status, notification=_describe_key(key), subscriber=shown)
 
     if legacy is not None:
         emit("budget", "legacy_budget_before_delete", LEGACY_BUDGET_NAME, "info", **legacy)
-        emit("budget", "delete_legacy_budget", LEGACY_BUDGET_NAME, status)
+        if not write:
+            emit("budget", "delete_legacy_budget", LEGACY_BUDGET_NAME, "planned")
 
     if not write:
         if not (needs_write):
@@ -351,6 +352,7 @@ def budget_step(budgets, email: str | None, write: bool) -> None:
                 f"{LEGACY_BUDGET_NAME} has {legacy['notification_count']} notification(s); not deleting it automatically"
             )
         budgets.delete_budget(AccountId=ACCOUNT_ID, BudgetName=LEGACY_BUDGET_NAME)
+        emit("budget", "delete_legacy_budget", LEGACY_BUDGET_NAME, "done")
 
 
 def budget_verify(budgets, email: str | None) -> bool:

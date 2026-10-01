@@ -42,7 +42,7 @@ class FakeBudgets:
     # ---- helpers
     @staticmethod
     def _key(n):
-        return (n["NotificationType"], n["ComparisonOperator"], float(n["Threshold"]), n["ThresholdType"])
+        return (n["NotificationType"], n["ComparisonOperator"], float(n["Threshold"]), n.get("ThresholdType", "PERCENTAGE"))
 
     def seed_legacy(self, name="reefradar-2477-budget", amount="50.0", notifications=0):
         self.budgets[name] = {
@@ -103,7 +103,14 @@ class FakeBudgets:
         self.calls.append("describe_notifications_for_budget")
         if BudgetName not in self.budgets:
             raise _notfound("DescribeNotificationsForBudget")
-        return {"Notifications": [n for n, _ in self.budgets[BudgetName]["notifications"].values()]}
+        # Real AWS omits ThresholdType when it is the default (PERCENTAGE); mirror that.
+        out = []
+        for n, _ in self.budgets[BudgetName]["notifications"].values():
+            n = dict(n)
+            if n.get("ThresholdType") == "PERCENTAGE":
+                del n["ThresholdType"]
+            out.append(n)
+        return {"Notifications": out}
 
     def describe_subscribers_for_notification(self, AccountId, BudgetName, Notification):
         self.calls.append("describe_subscribers_for_notification")
