@@ -58,7 +58,10 @@ for (const state of STATES) {
 
       await expect(page).toHaveScreenshot(`${state.name}-${w.label}.png`, {
         fullPage: true,
-        mask: [page.locator('canvas'), page.locator('.maplibregl-map'), page.locator('.leaflet-container')],
+        // Hide (not mask) nondeterministic canvases/maps: a mask paints an opaque block
+        // over the whole element, and the fixed full-viewport background canvas would
+        // then hide the page content above it. visibility:hidden keeps layout intact.
+        style: 'canvas, .maplibregl-map, .leaflet-container { visibility: hidden !important; }',
       });
     });
   }
