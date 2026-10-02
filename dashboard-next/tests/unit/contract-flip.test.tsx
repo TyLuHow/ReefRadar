@@ -2,7 +2,7 @@ import { createElement, useEffect, useRef, type ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { act, render, waitFor } from '@testing-library/react';
-import { useCoverage } from '@/features/contract';
+import { useCoverage, useReferenceSites } from '@/features/contract';
 import { installContractFetch, resetContractStore, setContractPin, type ContractFetchHandle } from './support/contract-fetch';
 
 /**
@@ -86,5 +86,28 @@ describe('latest.json flip without a reload', () => {
     });
     expect(view.container.querySelector('output')?.getAttribute('data-diel')).toBe('false');
     expect(handle.requests.filter((p) => p === 'contract/latest.json')).toEqual([]);
+  });
+  it('a failed pointer refresh keeps the verified data and reports no error (WR-01)', async () => {
+    function Probe(): ReactNode {
+      const sites = useReferenceSites();
+      return createElement('output', {
+        'data-sites': String(sites.data?.length ?? 0),
+        'data-error': sites.error ? 'error' : 'none',
+        'data-refresh-error': sites.refreshError ? 'refresh-error' : 'none',
+      });
+    }
+    const view = render(createElement(QueryClientProvider, { client }, createElement(Probe)));
+    const output = () => view.container.querySelector('output');
+    await waitFor(() => expect(Number(output()?.getAttribute('data-sites'))).toBeGreaterThan(0));
+    const loaded = output()?.getAttribute('data-sites');
+
+    // The next 60 s pointer refresh answers garbage (a failed refresh).
+    handle.mutate('contract/latest.json', () => 'not json');
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    await waitFor(() => expect(output()?.getAttribute('data-refresh-error')).toBe('refresh-error'));
+    expect(output()?.getAttribute('data-error'), 'verified data must not be replaced by an error').toBe('none');
+    expect(output()?.getAttribute('data-sites')).toBe(loaded);
   });
 });

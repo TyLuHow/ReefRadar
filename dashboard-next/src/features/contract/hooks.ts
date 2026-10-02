@@ -43,8 +43,38 @@ export interface ContractQueryResult<T> {
   following: boolean;
   /** True only while there is neither data nor an error anywhere in the dependent chain. */
   isLoading: boolean;
+  /**
+   * A load failure with nothing to show. A failed background refresh (a
+   * pointer refetch blip, a failed manual refetch) never lands here while
+   * verified data is on screen; it is exposed as `refreshError` instead (WR-01).
+   */
   error: Error | null;
+  /** The most recent failed background refresh while data is still being served, else null. */
+  refreshError: Error | null;
   refetch: () => Promise<void>;
+}
+
+interface ErrorSource {
+  error: Error | null;
+  data: unknown;
+  isPlaceholderData: boolean;
+}
+
+/**
+ * Split query errors into a visible error and a refresh error (WR-01). An error
+ * from a query that holds its own real (non-placeholder) data is a failed
+ * refresh of data that was already verified and displayed, so it must not
+ * replace that data on screen.
+ */
+function splitErrors(sources: ErrorSource[]): { error: Error | null; refreshError: Error | null } {
+  let error: Error | null = null;
+  let refreshError: Error | null = null;
+  for (const source of sources) {
+    if (!source.error) continue;
+    if (source.data !== undefined && !source.isPlaceholderData) refreshError ??= source.error;
+    else error ??= source.error;
+  }
+  return { error, refreshError };
 }
 
 /**
@@ -110,7 +140,20 @@ export function useContract(version?: number): ContractQueryResult<ContractManif
     await refetchManifest();
   }, [pinned, refetchPointer, refetchManifest]);
 
-  const error = (paramError ?? manifest.error ?? pointer.error ?? null) as Error | null;
+  // WR-01: a failed pointer refresh is only an error while there is no manifest
+  // to show; once the current version's manifest is held, it is a refreshError.
+  const pointerSource: ErrorSource = {
+    error: pointer.error as Error | null,
+    data: manifest.data,
+    isPlaceholderData: false,
+  };
+  const manifestSource: ErrorSource = {
+    error: manifest.error as Error | null,
+    data: manifest.data,
+    isPlaceholderData: manifest.isPlaceholderData,
+  };
+  const split = splitErrors([manifestSource, pointerSource]);
+  const error = (paramError ?? split.error ?? null) as Error | null;
   return {
     data: manifest.data,
     // The version the data belongs to: while a flip loads, the kept manifest's own version.
@@ -118,6 +161,7 @@ export function useContract(version?: number): ContractQueryResult<ContractManif
     following,
     isLoading: manifest.data === undefined && error === null,
     error,
+    refreshError: split.refreshError,
     refetch,
   };
 }
@@ -144,13 +188,15 @@ export function useModelVersion(version?: number): ContractQueryResult<ModelVers
     await refetchModel();
   }, [refetchContract, refetchModel]);
 
-  const error = (model.error ?? contract.error ?? null) as Error | null;
+  const split = splitErrors([{ ...model, error: model.error as Error | null }]);
+  const error = (split.error ?? contract.error ?? null) as Error | null;
   return {
     data: model.data,
     version: contract.version,
     following: contract.following,
     isLoading: model.data === undefined && error === null,
     error,
+    refreshError: split.refreshError ?? contract.refreshError,
     refetch,
   };
 }
@@ -164,6 +210,7 @@ export function useCoverage(version?: number): ContractQueryResult<Coverage> {
     following: contract.following,
     isLoading: contract.isLoading,
     error: contract.error,
+    refreshError: contract.refreshError,
     refetch: contract.refetch,
   };
 }
@@ -190,7 +237,8 @@ export function useReferenceSites(version?: number): ContractQueryResult<Contrac
     await refetchSites();
   }, [refetchContract, refetchSites]);
 
-  const error = (sites.error ?? contract.error ?? null) as Error | null;
+  const split = splitErrors([{ ...sites, error: sites.error as Error | null }]);
+  const error = (split.error ?? contract.error ?? null) as Error | null;
   return {
     data: sites.data,
     version: contract.version,
@@ -198,6 +246,7 @@ export function useReferenceSites(version?: number): ContractQueryResult<Contrac
     manifest,
     isLoading: sites.data === undefined && error === null,
     error,
+    refreshError: split.refreshError ?? contract.refreshError,
     refetch,
   };
 }
