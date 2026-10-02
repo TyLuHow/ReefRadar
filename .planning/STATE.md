@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 2
 current_phase_name: Data Contract v1
 status: executing
-stopped_at: Completed 02-06-PLAN.md
-last_updated: "2026-10-02T01:01:20.773Z"
+stopped_at: Completed 02-08-PLAN.md
+last_updated: "2026-10-02T01:14:19.044Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 2 execution started
-state_head: 070e0a6922ef0757ad43d945837fe5aadf45c644
+state_head: 147ea45dedb700cffa76c5b1b31bf980482aff73
 progress:
   total_phases: 17
   completed_phases: 1
   total_plans: 32
-  completed_plans: 27
+  completed_plans: 28
   percent: 6
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 ## Current Position
 
 Phase: 2 (Data Contract v1) — EXECUTING
-Plan: 8 of 12
+Plan: 9 of 12
 Status: Ready to execute
 Last activity: 2026-10-01 — Phase 2 execution started
 
@@ -87,6 +87,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 02 P04 | 40min | 3 tasks | 4 files |
 | Phase 02 P07 | 25 min | 3 tasks | 17 files |
 | Phase 02 P06 | 65 min | 3 tasks | 2 files |
+| Phase 02 P08 | 20 min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -148,6 +149,7 @@ Recent decisions affecting current work:
 - [Phase 2]: [Phase 02] 02-04: contract publisher uses S3 If-None-Match for immutability with a read-only preflight, pointer last via If-Match on its ETag; --confirm is gated on the ceiling budget alarm; --set-latest rollback verifies the bucket against PUBLISHED.json
 - [Phase 2]: [Phase 02] 02-04: clean-tree requirement applies to publish --confirm only; --set-latest and --dry-run are not blocked by an uncommitted tree
 - [Phase 02]: 02-07: zod 4.4.3 pinned on the owner's standing approval; the contract module is the only web fetch path, verifying sha256 of every response and Zod-parsing it; Zod mirror equals Python verdicts on all 483 corpus entries
+- [Phase 2]: [Phase 02] 02-08: ?cv pins an exact contract version via one Suspense leaf writing a store the hooks wait on; a missing or malformed pin shows an alert and never falls back to latest; unpinned pages follow latest.json with keepPreviousData so a flip does not blank the view
 
 ### Pending Todos
 
@@ -171,6 +173,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-02T01:01:20.518Z
-Stopped at: Completed 02-06-PLAN.md
+Last session: 2026-10-02T01:14:18.782Z
+Stopped at: Completed 02-08-PLAN.md
 Resume file: None
