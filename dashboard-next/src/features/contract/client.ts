@@ -1,5 +1,6 @@
 import type { ZodType } from 'zod';
 import { contractBaseUrl } from './config';
+import { PUBLISHED_MANIFEST_SHA256 } from './published';
 import {
   ContractFetchError,
   ContractIntegrityError,
@@ -128,14 +129,33 @@ export async function loadLatestPointer(): Promise<ContractPointer> {
 }
 
 /**
+ * The sha256 a manifest must have: the pointer's when following latest, else
+ * the bundled published hash for that version (WR-02), else null (a version
+ * newer than this build: served, but unverified). When both a pointer hash and
+ * a bundled hash exist they must agree, or the version has been rewritten.
+ */
+export function expectedManifestSha256(version: number, pointerSha256: string | null): string | null {
+  const published = PUBLISHED_MANIFEST_SHA256[version] ?? null;
+  if (pointerSha256 !== null && published !== null && pointerSha256 !== published) {
+    throw new ContractIntegrityError('The latest pointer names a manifest that differs from the published one for its version.', {
+      version,
+      path: `contract/v${version}.json`,
+    });
+  }
+  return pointerSha256 ?? published;
+}
+
+/**
  * contract/v<version>.json. `expectedSha256` comes from the pointer when
- * following latest, and is null when a version is pinned (there is no
- * pointer to vouch for it; immutability plus the artifact hashes it carries
- * still hold).
+ * following latest. When a version is pinned (no pointer to vouch for it) it
+ * is null and the bundled published hash for that version is used when known;
+ * a version unknown to this build is the only unverified case (immutability
+ * plus the artifact hashes it carries still hold).
  */
 export async function loadManifest(version: number, expectedSha256: string | null): Promise<ContractManifest> {
   const path = `contract/v${version}.json`;
-  const manifest = await fetchVerified(`${contractBaseUrl()}${path}`, expectedSha256, ContractManifest, { version, path });
+  const expected = expectedManifestSha256(version, expectedSha256);
+  const manifest = await fetchVerified(`${contractBaseUrl()}${path}`, expected, ContractManifest, { version, path });
   if (manifest.contract_version !== version) {
     throw new ContractIntegrityError('The manifest is for a different contract version than the one requested.', { version, path });
   }

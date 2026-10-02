@@ -87,6 +87,7 @@ function StampedLine({ version, onColor, ...stamp }: ContractStampLineProps & { 
       {label}
       {contract.data === undefined ? ' (resolving)' : ''}
       {parts.length > 0 ? ` · ${parts.join(' · ')}` : ''}
+      {contract.data !== undefined && !contract.verified ? ' · manifest not independently verified' : ''}
       {mismatches.length > 0
         ? ` · differs from the published ${label.toLowerCase()} manifest: ${mismatches
             .map((field) => MISMATCH_FIELD_LABEL[field])

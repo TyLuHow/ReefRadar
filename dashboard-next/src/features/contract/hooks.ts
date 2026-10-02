@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { loadArtifact, loadContractSites, loadLatestPointer, loadManifest } from './client';
+import { expectedManifestSha256, loadArtifact, loadContractSites, loadLatestPointer, loadManifest } from './client';
 import { ContractFetchError, ContractVersionParamError } from './errors';
 import { echoParam, useContractVersionStore } from './version';
 import { ModelVersion, type ContractManifest, type ContractSite, type Coverage } from './schema';
@@ -30,6 +30,11 @@ import { ModelVersion, type ContractManifest, type ContractSite, type Coverage }
 
 const POINTER_REFRESH_MS = 60_000;
 
+/** Versioned artifact key; data reached through an unverified manifest never shares an entry with verified data (WR-02). */
+function versionedKey(version: number | undefined, artifact: string, verified: boolean) {
+  return verified ? ['contract', version, artifact] : ['contract', version, artifact, 'unverified'];
+}
+
 /** Retry only what a retry can fix: a 5xx or network failure. Never a 403/404, integrity or schema error. */
 function retryTransient(failureCount: number, error: unknown): boolean {
   return error instanceof ContractFetchError && failureCount < 2;
@@ -41,6 +46,12 @@ export interface ContractQueryResult<T> {
   version: number | undefined;
   /** True when this result follows latest.json (no pin, no explicit version). */
   following: boolean;
+  /**
+   * True when the manifest was checked against a sha256 (the pointer's, or the
+   * bundled published hash). False only for a pinned version published after
+   * this build, which is served unverified (WR-02).
+   */
+  verified: boolean;
   /** True only while there is neither data nor an error anywhere in the dependent chain. */
   isLoading: boolean;
   /**
@@ -115,17 +126,27 @@ function useContractVersion(version?: number) {
     pointer,
     paramError,
     resolvedVersion,
-    manifestSha256: pinnedVersion !== undefined ? null : (pointer.data?.manifest_sha256 ?? null),
+    pointerSha256: pinnedVersion !== undefined ? null : (pointer.data?.manifest_sha256 ?? null),
   };
 }
 
 /** The manifest of the pinned or latest contract version. */
 export function useContract(version?: number): ContractQueryResult<ContractManifest> {
-  const { pinned, following, pointer, paramError, resolvedVersion, manifestSha256 } = useContractVersion(version);
+  const { pinned, following, pointer, paramError, resolvedVersion, pointerSha256 } = useContractVersion(version);
+
+  // WR-02: the key records whether the manifest is hash-verified, so a manifest
+  // fetched unverified can never satisfy the verified path in the same session.
+  let manifestSha256: string | null = null;
+  try {
+    manifestSha256 = resolvedVersion === undefined ? null : expectedManifestSha256(resolvedVersion, pointerSha256);
+  } catch {
+    manifestSha256 = pointerSha256; // the mismatch is raised by loadManifest, as a typed error
+  }
+  const verified = manifestSha256 !== null;
 
   const manifest = useQuery({
-    queryKey: ['contract', resolvedVersion, 'manifest'],
-    queryFn: () => loadManifest(resolvedVersion as number, manifestSha256),
+    queryKey: verified ? ['contract', resolvedVersion, 'manifest'] : ['contract', resolvedVersion, 'manifest', 'unverified'],
+    queryFn: () => loadManifest(resolvedVersion as number, pointerSha256),
     enabled: resolvedVersion !== undefined,
     staleTime: Infinity,
     gcTime: Infinity,
@@ -159,6 +180,7 @@ export function useContract(version?: number): ContractQueryResult<ContractManif
     // The version the data belongs to: while a flip loads, the kept manifest's own version.
     version: manifest.data?.contract_version ?? resolvedVersion,
     following,
+    verified,
     isLoading: manifest.data === undefined && error === null,
     error,
     refreshError: split.refreshError,
@@ -172,7 +194,7 @@ export function useModelVersion(version?: number): ContractQueryResult<ModelVers
   const manifest = contract.data;
 
   const model = useQuery({
-    queryKey: ['contract', contract.version, 'model_version'],
+    queryKey: versionedKey(contract.version, 'model_version', contract.verified),
     queryFn: () => loadArtifact(manifest as ContractManifest, 'model_version', ModelVersion),
     enabled: manifest !== undefined,
     staleTime: Infinity,
@@ -194,6 +216,7 @@ export function useModelVersion(version?: number): ContractQueryResult<ModelVers
     data: model.data,
     version: contract.version,
     following: contract.following,
+    verified: contract.verified,
     isLoading: model.data === undefined && error === null,
     error,
     refreshError: split.refreshError ?? contract.refreshError,
@@ -208,6 +231,7 @@ export function useCoverage(version?: number): ContractQueryResult<Coverage> {
     data: contract.data?.coverage,
     version: contract.version,
     following: contract.following,
+    verified: contract.verified,
     isLoading: contract.isLoading,
     error: contract.error,
     refreshError: contract.refreshError,
@@ -221,7 +245,7 @@ export function useReferenceSites(version?: number): ContractQueryResult<Contrac
   const manifest = contract.data;
 
   const sites = useQuery({
-    queryKey: ['contract', contract.version, 'sites'],
+    queryKey: versionedKey(contract.version, 'sites', contract.verified),
     queryFn: () => loadContractSites(manifest as ContractManifest),
     enabled: manifest !== undefined,
     staleTime: Infinity,
@@ -243,6 +267,7 @@ export function useReferenceSites(version?: number): ContractQueryResult<Contrac
     data: sites.data,
     version: contract.version,
     following: contract.following,
+    verified: contract.verified,
     manifest,
     isLoading: sites.data === undefined && error === null,
     error,
