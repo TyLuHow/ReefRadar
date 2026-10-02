@@ -1,6 +1,6 @@
 {
-  "_comment": "D-01 recovery snapshot (plan 01-09), refreshed after the 01-14 production deploy (attempt 2, git 1433f08). Records what was actually deployed in each reefradar-2477-* Lambda at captured_at, read-only via boto3 (profile reefradar). Environment variable NAMES only -- never values. Regenerate after any future deploy.",
-  "captured_at": "2026-10-01T19:24:56Z",
+  "_comment": "D-01 recovery snapshot (plan 01-09), refreshed after the 02-11 contract stamp deploy (git c721554). Records what was actually deployed in each reefradar-2477-* Lambda at captured_at, read-only via boto3 (profile reefradar). Environment variable NAMES only -- never values. Regenerate after any future deploy.",
+  "captured_at": "2026-10-02T02:23:28Z",
   "account_id": "781978598306",
   "region": "us-east-1",
   "functions": {
@@ -12,9 +12,9 @@
       "MemorySize": 256,
       "Timeout": 30,
       "Layers": [],
-      "CodeSha256": "2PdfLkQ7cJgs8QTcxKEIdfWmcrhpdqDnazJstkOaul4=",
-      "CodeSize": 13613,
-      "LastModified": "2026-10-01T19:06:52.000+0000",
+      "CodeSha256": "/YmvAjuu3+dtOkhbXpMJHNPBhFqosNm608d5+UiuJeE=",
+      "CodeSize": 13978,
+      "LastModified": "2026-10-02T02:16:32.000+0000",
       "EnvironmentVariableNames": [
         "AUDIO_BUCKET",
         "EMBEDDINGS_BUCKET",
@@ -52,9 +52,9 @@
       "Layers": [
         "arn:aws:lambda:us-east-1:781978598306:layer:reefradar-2477-numpy:1"
       ],
-      "CodeSha256": "PTJpriO5u+Z6PKvVzJh+vBtuqKILBiD5+XBYJfd1LQg=",
-      "CodeSize": 19330,
-      "LastModified": "2026-10-01T19:14:09.000+0000",
+      "CodeSha256": "BPtnJNIFeWYJx3lq/08+HrmiDzeC3OI3dwWv0b98mxo=",
+      "CodeSize": 21377,
+      "LastModified": "2026-10-02T02:16:22.000+0000",
       "EnvironmentVariableNames": [
         "AUDIO_BUCKET",
         "EMBEDDINGS_BUCKET",

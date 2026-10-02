@@ -435,3 +435,78 @@ pointer `contract/latest.json`.
 - Rehearsal (2026-10-02): `py -3.12 scripts/publish_contract.py --set-latest 1 --dry-run` exited 0. It verified 14
   published objects against `PUBLISHED.json`, passed the budget gate, reported `pointer_unchanged` for
   `contract/latest.json` (155 bytes, sha256 `9ec73e4a...`, already naming v1) and made no S3 write.
+
+## Phase 2: contract stamp deploy (2026-10-01 local, 2026-10-02 UTC)
+
+Plan 02-11. Ships result version stamping (plan 02-05) to production: the classifier writes `contract_version`,
+`dataset_version`, `model_version` and `preprocessing_spec_version` on every new RESULT item and the router returns them from
+`/visualize`. No credentials, environment values or signed URLs appear in this section.
+
+### Approving decision
+
+The owner's standing approval for production deployment decisions within the 25 USD/month ceiling
+(`.planning/research/DRIVING-QUESTIONS.md`, "Standing owner approvals (2026-10-01)"), and the Phase 2 discussion decision in
+`02-CONTEXT.md` that stamping needs one classifier deploy through the scripted path with serial live verification.
+
+### Source and pre-flight
+
+| Item | Value |
+|---|---|
+| Git sha deployed from | `c7215544295a0fd3bd3ea6f5bf958a5e20f9a315` (branch `redesign/v2-discovery`, clean tree, includes the stamp-aware verifier) |
+| Contract live | `py -3.12 scripts/verify_contract_live.py --expect-latest 1` exit 0 (contract v1 live before the deploy) |
+| Deployed model | `models/model_config.json` version `interim-real-only` (read-only S3 copy), so the stamp guard yields non-null stamps |
+| `GET /health` | 200 before the deploy |
+| Warm-up | one `lambda invoke` of `reefradar-2477-inference` with payload `{}`: StatusCode 200 (response file kept in the scratchpad) |
+| Dry-run | `deploy-lambdas.py --function classifier --function router --dry-run`: classifier 6 members (`BPtnJNIFeWYJx3lq/08+HrmiDzeC3OI3dwWv0b98mxo=`), router 4 members (`/YmvAjuu3+dtOkhbXpMJHNPBhFqosNm608d5+UiuJeE=`) |
+
+### Pre-deploy drift baseline (`drift-check.py --function all --json`)
+
+- router: `handler.py` changed. The router in production was built from `6aca641` (the CORS preflight fix, deployed
+  2026-10-01 20:26:20Z outside the earlier log entries; a dry-run of `--ref 6aca641` reproduces the live hash exactly). This
+  deploy therefore ships the `/visualize` stamp fields (02-05) on top of that CORS fix. Nothing else changed in the router.
+- preprocessor: MATCH. inference: MATCH.
+- classifier: `handler.py` changed and `contract_stamp.json` / `contract_stamp.py` missing, as expected (the package gained the
+  stamp members). The live hash equalled a dry-run of `--ref 6e2e962`.
+
+### What changed in production
+
+Deployed with `py -3.12 scripts/deploy-lambdas.py --function classifier --confirm` then
+`py -3.12 scripts/deploy-lambdas.py --function router --confirm` (one function per call; both from the clean tree at `c721554`).
+
+| Function | CodeSha256 before | CodeSha256 after | Deployed (UTC) |
+|---|---|---|---|
+| reefradar-2477-classifier | `PTJpriO5u+Z6PKvVzJh+vBtuqKILBiD5+XBYJfd1LQg=` (git `6e2e962`) | `BPtnJNIFeWYJx3lq/08+HrmiDzeC3OI3dwWv0b98mxo=` | 2026-10-02 02:16:22 |
+| reefradar-2477-router | `n8JWB5laVgPi5yvBIfpresn1a2o27Hy9zDgA/xCDugk=` (git `6aca641`) | `/YmvAjuu3+dtOkhbXpMJHNPBhFqosNm608d5+UiuJeE=` | 2026-10-02 02:16:32 |
+
+Preprocessor and inference were not touched. No S3, model, DynamoDB or configuration change (the classifier's async
+`MaximumRetryAttempts=0` is unchanged).
+
+### Verification (`py -3.12 scripts/verify_live_truth.py`, exit 0, first run; analyses strictly serial)
+
+PASS /sites provenance; PASS /samples ids; PASS /samples audio real and hash-matched (9 clips); PASS analysis with
+coordinates (33 s); PASS analysis without coordinates (14 s). No 5xx, no throttling.
+
+| Check | Analysis id | Stamp |
+|---|---|---|
+| With coordinates (ind_H1 excerpt) | `de0f3271-587e-49f8-9e3a-f157561d21b5` | contract_version `1` (integer), dataset_version `reefradar-reference-2026.10.0`, model_version `interim-real-only`, preprocessing_spec_version `preproc-2026.10.0-as-deployed`; region INDONESIA, probability sum 0.999999999, 3 similar sites |
+| Without coordinates | `762e1327-be27-475f-9c16-ea3cb3e79ea7` | the same four stamp values; region UNKNOWN, coordinates_provided false, probability sum 0.999999999, 3 similar sites |
+
+Both stamps equal `contracts/bucket/v1/stamp.json` and resolve against the live, immutable `contract/v1.json` on CloudFront.
+
+### Drift after the deploy
+
+`py -3.12 scripts/drift-check.py --function all`: router MATCH, preprocessor MATCH, classifier MATCH, inference MATCH, exit 0.
+`infrastructure/deployed-state.json` was refreshed from a read-only boto3 query (environment variable names only).
+
+### Rollback (this deploy)
+
+Recorded per-function refs (each reproduces the pre-deploy hash exactly). Both work with the working tree dirty:
+
+```
+py -3.12 scripts/deploy-lambdas.py --function classifier --ref 6e2e962 --confirm
+py -3.12 scripts/deploy-lambdas.py --function router --ref 6aca641 --confirm
+```
+
+Then confirm `GET /health` returns 200 (drift-check will report drift against HEAD until the next deploy, which is expected). Results written while
+stamping was live keep their stamps in DynamoDB; they stay truthful because contract v1 is immutable, and the older router
+simply does not return the fields. To go back further than this deploy, see the Rollback section above.
