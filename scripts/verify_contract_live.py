@@ -16,6 +16,14 @@ script sees exactly what a browser on the public internet sees. It checks:
   privacy     the regional S3 URL answers 403 (the bucket is reachable only through the CDN),
               a version that does not exist answers 403 or 404, and the CDN root is never a
               bucket listing.
+  browser     for the pointer, the manifest and the sites artifact: GETs carrying the headers a
+              real browser adds (the `priority` profile: Priority; the `no-cache` profile:
+              Cache-Control and Pragma, as on a hard reload; the `chrome` profile: a Chrome-like
+              header set) must still be answered with Access-Control-Allow-Origin "*", and an
+              OPTIONS preflight asking for GET with the headers priority and cache-control must
+              answer 2xx with CORS. Browsers always add non-safelisted headers, and the AWS managed
+              Managed-SimpleCORS policy answers only simple CORS requests, so an Origin-only GET
+              passes while every real browser read is blocked.
 
 One PASS or FAIL line per check; exit 1 on any failure. Output carries status codes, byte
 counts and hashes only, never response bodies, credentials or signed URLs.
@@ -51,6 +59,24 @@ DEFAULT_BUCKET_URL = f"https://{BUCKET_NAME}.s3.us-east-1.amazonaws.com/"
 DEFAULT_BUNDLE = REPO_ROOT / "contracts" / "bucket"
 RESOURCES_PATH = REPO_ROOT / "infrastructure" / "resources.json"
 
+# Headers a real browser adds to a cross-origin fetch after the CORS decision is made.
+BROWSER_PROFILES = (
+    ("priority", {"Priority": "u=1, i"}),
+    ("no-cache", {"Cache-Control": "no-cache", "Pragma": "no-cache"}),
+    (
+        "chrome",
+        {
+            "Accept": "*/*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "cross-site",
+            "Sec-Fetch-Dest": "empty",
+            "Priority": "u=1, i",
+        },
+    ),
+)
+PREFLIGHT_REQUEST_HEADERS = "priority,cache-control"
+
 
 def default_base_url():
     """https://<contract distribution domain>/ from infrastructure/resources.json, or None."""
@@ -84,10 +110,25 @@ class Report:
         return ok
 
 
-def _fetch(session, url: str, report: Report, name: str):
+def _fetch(session, url: str, report: Report, name: str, extra_headers=None):
     """One unauthenticated GET; a transport error is reported as a failed check, not raised."""
+    headers = {"Origin": ORIGIN, **(extra_headers or {})}
     try:
-        return session.get(url, headers={"Origin": ORIGIN}, timeout=TIMEOUT_SECONDS, allow_redirects=False)
+        return session.get(url, headers=headers, timeout=TIMEOUT_SECONDS, allow_redirects=False)
+    except Exception as exc:  # noqa: BLE001 - the message could embed the URL, so report the class only
+        report.check(name, False, f"request failed: {type(exc).__name__}")
+        return None
+
+
+def _preflight(session, url: str, report: Report, name: str):
+    """One unauthenticated CORS preflight (OPTIONS); a transport error is a failed check."""
+    headers = {
+        "Origin": ORIGIN,
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": PREFLIGHT_REQUEST_HEADERS,
+    }
+    try:
+        return session.options(url, headers=headers, timeout=TIMEOUT_SECONDS, allow_redirects=False)
     except Exception as exc:  # noqa: BLE001 - the message could embed the URL, so report the class only
         report.check(name, False, f"request failed: {type(exc).__name__}")
         return None
@@ -104,6 +145,42 @@ def _status_ok(report: Report, name: str, resp) -> bool:
 def _cors_ok(report: Report, name: str, resp) -> bool:
     value = _header(resp, "Access-Control-Allow-Origin")
     return report.check(f"{name}: CORS allows any origin", value == "*", f"Access-Control-Allow-Origin {value!r}")
+
+
+def _token_list(value):
+    return {part.strip().lower() for part in (value or "").split(",") if part.strip()}
+
+
+def _browser_cors_checks(session, url: str, report: Report, name: str) -> None:
+    """GETs with browser header profiles, then an OPTIONS preflight, for one URL."""
+    for profile, extra in BROWSER_PROFILES:
+        check = f"{name}: browser CORS ({profile}) allows any origin"
+        resp = _fetch(session, url, report, check, extra_headers=extra)
+        if resp is None:
+            continue
+        value = _header(resp, "Access-Control-Allow-Origin")
+        report.check(check, resp.status_code == 200 and value == "*", f"status {resp.status_code}, Access-Control-Allow-Origin {value!r}")
+
+    check = f"{name}: CORS preflight answered"
+    resp = _preflight(session, url, report, check)
+    if resp is None:
+        return
+    allow_origin = _header(resp, "Access-Control-Allow-Origin")
+    allow_methods = _header(resp, "Access-Control-Allow-Methods")
+    allow_headers = _header(resp, "Access-Control-Allow-Headers")
+    wanted = _token_list(PREFLIGHT_REQUEST_HEADERS)
+    ok = (
+        200 <= resp.status_code <= 299
+        and allow_origin == "*"
+        and "get" in _token_list(allow_methods)
+        and ("*" in _token_list(allow_headers) or wanted <= _token_list(allow_headers))
+    )
+    report.check(
+        check,
+        ok,
+        f"status {resp.status_code}, Access-Control-Allow-Origin {allow_origin!r}, "
+        f"Access-Control-Allow-Methods {allow_methods!r}, Access-Control-Allow-Headers {allow_headers!r}",
+    )
 
 
 def verify(session, base_url: str, bucket_url: str, bundle: pathlib.Path, version=None, expect_latest=None) -> int:
@@ -135,6 +212,7 @@ def verify(session, base_url: str, bucket_url: str, bundle: pathlib.Path, versio
                 version == expect_latest,
                 f"pointer names version {version}",
             )
+        _browser_cors_checks(session, base + POINTER_PATH, report, "pointer")
 
     manifest_path = f"contract/v{version}.json"
     manifest_resp = _fetch(session, base + manifest_path, report, "manifest")
@@ -157,6 +235,7 @@ def verify(session, base_url: str, bucket_url: str, bundle: pathlib.Path, versio
         cache = _header(manifest_resp, "Cache-Control")
         report.check("manifest: served immutable", cache == IMMUTABLE_CACHE, f"Cache-Control {cache!r}")
         _cors_ok(report, "manifest", manifest_resp)
+        _browser_cors_checks(session, base + manifest_path, report, "manifest")
         try:
             manifest = json.loads(body.decode("utf-8"))
             artifacts = manifest["artifacts"]
@@ -165,9 +244,12 @@ def verify(session, base_url: str, bucket_url: str, bundle: pathlib.Path, versio
             manifest = None
 
     if manifest is not None:
+        sites_uri = None
         for label, entry in check_contract._iter_artifacts(artifacts):
             if not isinstance(entry, dict) or entry.get("present") is False:
                 continue
+            if label == "sites" and isinstance(entry.get("uri"), str):
+                sites_uri = entry["uri"]
             name = f"artifact {label}"
             resp = _fetch(session, base + entry["uri"], report, name)
             if resp is None or not _status_ok(report, name, resp):
@@ -181,8 +263,12 @@ def verify(session, base_url: str, bucket_url: str, bundle: pathlib.Path, versio
             cache = _header(resp, "Cache-Control")
             report.check(f"{name}: served immutable", cache == IMMUTABLE_CACHE, f"Cache-Control {cache!r}")
             _cors_ok(report, name, resp)
+        if sites_uri is not None:
+            _browser_cors_checks(session, base + sites_uri, report, "artifact sites")
+        else:
+            report.check("browser CORS: manifest lists no sites artifact", False)
 
-    direct = _fetch(session, bucket_url.rstrip("/") + "/" + POINTER_PATH, report, "direct S3")
+    direct =_fetch(session, bucket_url.rstrip("/") + "/" + POINTER_PATH, report, "direct S3")
     if direct is not None:
         report.check("direct S3 access is denied", direct.status_code == 403, f"status {direct.status_code}")
 
