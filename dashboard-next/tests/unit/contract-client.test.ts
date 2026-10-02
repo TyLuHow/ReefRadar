@@ -20,7 +20,7 @@ import {
 import { useLegacySitesResponse } from '@/features/contract/legacy';
 import { useContract, useReferenceSites } from '@/features/contract/hooks';
 import type { ContractManifest } from '@/features/contract/schema';
-import { installContractFetch, type ContractFetchHandle } from './support/contract-fetch';
+import { installContractFetch, resetContractStore, setContractPin, type ContractFetchHandle } from './support/contract-fetch';
 
 const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
 
@@ -197,10 +197,12 @@ describe('contract hooks', () => {
   beforeEach(() => {
     handle = installContractFetch({ latest: 1 });
     client = new QueryClient();
+    setContractPin({ kind: 'unpinned' });
   });
   afterEach(() => {
     handle.restore();
     client.clear();
+    resetContractStore();
   });
 
   it('useLegacySitesResponse is loading until the sites resolve, never "idle with nothing", then has 54 sites', async () => {

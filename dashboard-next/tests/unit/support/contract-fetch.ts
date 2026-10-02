@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { vi } from 'vitest';
 import { DEFAULT_CONTRACT_BASE_URL } from '@/features/contract/config';
+import { useContractVersionStore, type ContractPin } from '@/features/contract/version';
 
 /**
  * Offline fetch harness for the contract module (02-07).
@@ -97,6 +98,20 @@ export function installContractFetch(options: { latest?: number } = {}): Contrac
       globalThis.fetch = original;
     },
   };
+}
+
+/**
+ * Mark the contract version store as resolved (02-08). Hooks called without an
+ * explicit version stay disabled until ContractVersionSync (or this helper) has
+ * read the URL, so a unit test of an unversioned hook must call this first.
+ */
+export function setContractPin(pin: ContractPin = { kind: 'unpinned' }): void {
+  useContractVersionStore.getState().setPin(pin);
+}
+
+/** Return the store to its initial (unresolved) state. */
+export function resetContractStore(): void {
+  useContractVersionStore.getState().reset();
 }
 
 /** Parse a committed contract file (for expectations). */

@@ -8,7 +8,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { DEFAULT_CONTRACT_BASE_URL } from '@/features/contract/config';
 import * as schema from '@/features/contract/schema';
 import { useCoverage, useModelVersion } from '@/features/contract/hooks';
-import { installContractFetch, REPO_ROOT, type ContractFetchHandle } from './support/contract-fetch';
+import { installContractFetch, REPO_ROOT, resetContractStore, setContractPin, type ContractFetchHandle } from './support/contract-fetch';
 
 /**
  * 02-07: the hand-mirrored Zod schemas must agree with the JSON Schemas.
@@ -185,10 +185,12 @@ describe('model and coverage hooks', () => {
   beforeEach(() => {
     handle = installContractFetch({ latest: 1 });
     client = new QueryClient();
+    setContractPin({ kind: 'unpinned' });
   });
   afterEach(() => {
     handle.restore();
     client.clear();
+    resetContractStore();
   });
 
   it('useModelVersion resolves the v1 model_version.json verified against the manifest', async () => {
