@@ -9,9 +9,9 @@ import { similarSiteLabelText } from '@/lib/label-source';
 import { ContractStampLine } from '@/features/contract';
 import { Check, TrendingUp, MapPin, Map } from 'lucide-react';
 
-// Dynamic import for MiniMap to avoid SSR issues with Leaflet
+// Dynamic import for MiniMap: MapLibre needs the browser (WebGL), so it never renders on the server
 const MiniMap = dynamic(
-  () => import('@/components/maps').then((m) => m.MiniMap),
+  () => import('@/features/map').then((m) => m.MiniMap),
   {
     ssr: false,
     loading: () => (

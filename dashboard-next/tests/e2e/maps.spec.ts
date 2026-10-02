@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import * as path from 'node:path';
 import { mockApi, expectNoUnhandledApiCalls } from './support/mock-api';
 
 test.afterEach(({ page }) => {
@@ -308,5 +309,67 @@ test.describe('sites world map (MapLibre, OSM raster)', () => {
     await expect(page.getByText('WebGL is required for the interactive map')).toBeVisible();
     await expect(page.locator('.maplibregl-canvas')).toHaveCount(0);
     await expect(page.getByRole('heading', { name: 'All Sites' })).toBeVisible();
+  });
+});
+
+/**
+ * Analysis-result mini map on MapLibre (03-10, PLAT-02). Tiles are stubbed like the
+ * /sites map; the result comes from a mocked analysis, so nothing reaches the live API.
+ */
+
+const ANALYZE_PATH = '/dashboard/analyze/';
+const AUDIO_FIXTURE = path.join(__dirname, '..', '..', 'public', 'audio', 'marrs', 'aus_D1_20230208_120000.wav');
+
+async function runMockedAnalysis(page: Page) {
+  await mockApi(page, {
+    'POST /upload': { upload_id: 'up-mm', filename: 'aus_D1_20230208_120000.wav', size: 1000, status: 'uploaded' },
+    'POST /analyze': { analysis_id: 'fixture-mini-map', upload_id: 'up-mm', status: 'processing' },
+    'GET /status/*': 'status-complete.json',
+    'GET /visualize/*': 'visualize-3class-no-coords.json',
+  });
+  await stubOsmTiles(page);
+  await page.goto(ANALYZE_PATH, { waitUntil: 'load' });
+  await page.setInputFiles('input[type="file"]', AUDIO_FIXTURE);
+  await page.getByRole('button', { name: /analyze audio/i }).click();
+  await expect(page.getByRole('button', { name: /analyze another file/i })).toBeVisible({ timeout: 20_000 });
+}
+
+test.describe('analysis result mini map (MapLibre)', () => {
+  test('shows the similar sites with rank badges and visible OSM attribution', async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+    await runMockedAnalysis(page);
+    test.skip(!(await recordWebGL2(page)), 'No WebGL2 in this browser: the real-render branch cannot run here.');
+
+    const results = page.getByRole('region', { name: 'Map of similar reference sites' });
+    await expect(results).toBeVisible();
+    await expect(results.locator('.maplibregl-canvas')).toBeVisible();
+    // Rank badge for the top site (unchanged from the Leaflet version).
+    await expect(results.getByText('ind_H4', { exact: true })).toBeVisible();
+    await expect(results.getByText('91%', { exact: true })).toBeVisible();
+
+    const attribution = results.locator('.maplibregl-ctrl-attrib');
+    await expect(attribution).toBeVisible();
+    await expect(attribution).toContainText('OpenStreetMap');
+    // No zoom control on the mini map, and the map is 200px high.
+    await expect(results.getByRole('button', { name: 'Zoom in' })).toHaveCount(0);
+    const box = await results.locator('.maplibregl-map').boundingBox();
+    expect(Math.round(box!.height)).toBe(200);
+    expect(pageErrors).toEqual([]);
+  });
+
+  test('without WebGL the 200px fallback shows its single line', async ({ page }) => {
+    await page.addInitScript(() => {
+      const original = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
+        if (/webgl/i.test(type)) return null;
+        return (original as (...a: unknown[]) => unknown).call(this, type, ...rest);
+      } as typeof HTMLCanvasElement.prototype.getContext;
+    });
+    await runMockedAnalysis(page);
+
+    await expect(page.getByText('WebGL is required for the interactive map')).toBeVisible();
+    await expect(page.getByText(/Your browser or device does not support WebGL/)).toHaveCount(0);
+    await expect(page.locator('.maplibregl-canvas')).toHaveCount(0);
   });
 });

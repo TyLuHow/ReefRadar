@@ -34,7 +34,7 @@ const subscribeNever = () => () => {};
 
 // --- WebGL fallback UI -------------------------------------------------------
 
-function WebGLFallback({ height }: { height: string }) {
+function WebGLFallback({ height, compact = false }: { height: string; compact?: boolean }) {
   return (
     <div
       style={{
@@ -49,13 +49,13 @@ function WebGLFallback({ height }: { height: string }) {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '16px',
-        padding: '32px',
+        gap: compact ? '8px' : '16px',
+        padding: compact ? '16px' : '32px',
       }}
     >
       <svg
-        width="48"
-        height="48"
+        width={compact ? 32 : 48}
+        height={compact ? 32 : 48}
         viewBox="0 0 24 24"
         fill="none"
         stroke="#cd853f"
@@ -69,10 +69,12 @@ function WebGLFallback({ height }: { height: string }) {
       <p style={{ color: '#e9dcc9', fontSize: '16px', fontWeight: 500, textAlign: 'center' }}>
         WebGL is required for the interactive map
       </p>
-      <p style={{ color: '#a8a29e', fontSize: '13px', textAlign: 'center', maxWidth: '360px' }}>
-        Your browser or device does not support WebGL, which is needed to render
-        the 3D map. Please try a recent version of Chrome, Edge, or Safari.
-      </p>
+      {!compact && (
+        <p style={{ color: '#a8a29e', fontSize: '13px', textAlign: 'center', maxWidth: '360px' }}>
+          Your browser or device does not support WebGL, which is needed to render
+          the 3D map. Please try a recent version of Chrome, Edge, or Safari.
+        </p>
+      )}
     </div>
   );
 }
@@ -158,6 +160,8 @@ interface MapShellProps {
   className?: string;
   /** Accessible name of the map region (for example "Monitoring network map"). */
   ariaLabel: string;
+  /** Small-map variant of the WebGL fallback: icon and the single line only (MiniMap, 200px). */
+  compactFallback?: boolean;
   children: React.ReactNode;
 }
 
@@ -166,7 +170,7 @@ interface MapShellProps {
  * panel when WebGL2 is missing, an error boundary around the map, and a role=region
  * wrapper carrying the accessible name.
  */
-export function MapShell({ height, className, ariaLabel, children }: MapShellProps) {
+export function MapShell({ height, className, ariaLabel, compactFallback = false, children }: MapShellProps) {
   // false on the server and during hydration, true once on the client: detection runs
   // after that point, exactly once per mount, without a setState-in-effect.
   const mounted = useSyncExternalStore(
@@ -205,7 +209,7 @@ export function MapShell({ height, className, ariaLabel, children }: MapShellPro
   if (!webglSupported) {
     return (
       <div className={className}>
-        <WebGLFallback height={height} />
+        <WebGLFallback height={height} compact={compactFallback} />
       </div>
     );
   }
