@@ -236,7 +236,7 @@ All pre-existing copy (maps, legend, WebGL fallbacks, popups, provenance lines s
 
 ## UI Considerations
 
-Applicable state considerations resolved: 11 covered, 4 backstop, 1 unresolved.
+Applicable state considerations resolved: 11 covered, 8 backstop, 1 unresolved, 2 manual-review (probe run 2026-10-02 in autonomous mode over 6 surfaces E1–E6; 27 applicable categories, folded into the rows below).
 
 | Category | Element(s) | Status | Resolution / Reason |
 |----------|------------|--------|---------------------|
@@ -255,6 +255,12 @@ Applicable state considerations resolved: 11 covered, 4 backstop, 1 unresolved.
 | error | error.tsx focus management | 🧪 backstop | RTL test asserts the `h1` receives focus on mount and `reset` is called by "Try again" |
 | visual | vitality removal and map port | 🧪 backstop | Review-only unhidden captures plus owner sign-off (protocol step 6 and 7); canvases are hidden in the gating baseline |
 | a11y | Plot figures (if built) | 🧪 backstop | Unit test asserts `aria-label`, `aria-description` and the hidden data table exist and match the plotted values |
+| loading / error | crossfader (E4) and legacy pages without vitality canvas (E5) | 🧪 backstop | Existing loading/error panels on each legacy page unchanged; e2e routes + axe suite and visual baselines must stay green after canvas removal (no blank page while contract or audio loads) |
+| populated / zero-one-many / partial | legacy pages (E5): gallery, sites list with filters, dashboard counts | 🧪 backstop | Contract-driven counts and lists unchanged by this phase; covered by existing Phase 2 unit/e2e tests (sites filters, gallery cards, derived counts) re-run on Next 16 / React 19 |
+| long-text / overflow | error page (E3) and crossfader captions (E4) at 390 px | 🧪 backstop | No horizontal scroll at 390 px: asserted by the 390-px visual baselines and an RTL wrap assertion for the error page |
+| empty / partial | crossfader (E4) before audio loads | 🧪 backstop | Slider stays operable and reflects position before first play (parity with the WR-15 fix); unit test on the slider's initial gain mapping |
+| unclassified | ReefMap layer port (E2) | 👁 manual review | Covered by the map rows above (loading, error, partial, keyboard); probe could not classify the surface |
+| unclassified | error reporter + Speed Insights (E6) | 👁 manual review | Adds no visible UI; verify no DOM/visual change in baselines and that a failed report never surfaces to the user |
 | overflow | many markers / dense clusters at low zoom | ⚠ unresolved | 54 sites overlap in regions (e.g. South Sulawesi); no clustering is specified because today has none; treat as parity, defer clustering to Phase 6 |
 
 ---
