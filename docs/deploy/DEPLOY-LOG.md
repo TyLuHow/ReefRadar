@@ -350,3 +350,88 @@ site data with it, so publish a replacement first.
 4. Delete the empty bucket:
    `py -3.12 -m awscli s3api delete-bucket --bucket reefradar-2477-contract --profile reefradar`
 5. Remove the `s3.buckets.contract` and `cloudfront` entries from `infrastructure/resources.json`.
+
+## Contract v1 publish (2026-10-02)
+
+First production publish of the data contract. Published 2026-10-02T00:58:50Z (UTC; local date 2026-10-01).
+
+### Approving decision
+
+The owner's standing approval for all production deployment decisions and S3 object changes within the 25 USD/month
+ceiling (`.planning/research/DRIVING-QUESTIONS.md`, "Standing owner approvals (2026-10-01)"), together with the Phase 2
+decision in `02-CONTEXT.md` to freeze the post-Phase-1 data as v1 and publish it with `scripts/publish_contract.py`.
+Nothing in the production frontend reads the contract yet (merge to main is on hold).
+
+### Source and endpoint
+
+| Item | Value |
+|---|---|
+| Git sha published from | `a4b2f81954a031e41f0f3c202d45f33ac56bd895` (branch `redesign/v2-discovery`, `contracts/` clean) |
+| Bucket | `reefradar-2477-contract` (private, served only through CloudFront) |
+| CloudFront domain | `d7dr1fzple2sg.cloudfront.net` (distribution `E1SD3UZ4FZ1GWL`) |
+| Budget gate | passed: `reefradar-2477-ceiling-25`, 3 notifications |
+| Manifest sha256 | `c9d520addac040f4e7f2c74dce2678e4b3365779f176f8f90a004bf04db7bcb2` |
+
+### Commands run
+
+```
+py -3.12 scripts/check_contract.py --check --additive
+py -3.12 scripts/setup_contract_infra.py --step all --verify
+py -3.12 scripts/publish_contract.py --version 1 --dry-run
+py -3.12 scripts/publish_contract.py --version 1 --confirm
+py -3.12 scripts/verify_contract_live.py --expect-latest 1
+py -3.12 scripts/publish_contract.py --set-latest 1 --dry-run
+```
+
+### Published keys (all `created`; the pointer was written last)
+
+| Key | Bytes | sha256 |
+|---|---|---|
+| `v1/embeddings.f32` | 245760 | `f73ab3a45422d43227ba0006d229fd801a541b3c36138012b42ccb40517816ec` |
+| `v1/model_version.json` | 1651 | `13a6ada8fb699558887b5fdfb4d9b7c78d2c528afdebfcf60303ddf63af12cd5` |
+| `v1/preprocessing_spec.json` | 2568 | `4b02ca76c6fa5ff7c3032641ad59d52f15b579b6278f902e1b30b472ea0711e9` |
+| `v1/projection.json` | 77509 | `da2ab7cc4142e36e3ff2dccfd10e135d3328f2a10635e63cd77d7046ea026c14` |
+| `v1/schema/analysis-result.schema.json` | 1733 | `1c7810236fa4c5398e30f67d950e0946efca8d3a9979edbabc699e48acb1fa32` |
+| `v1/schema/contract-manifest.schema.json` | 7470 | `ffbe3072befcf2a40aee62ea26b8592cc711e0b8875b153f206d679488292a5b` |
+| `v1/schema/contract-pointer.schema.json` | 677 | `d101ccab16f01084d8c180fed71dd04b78665b606d7b1fe70aa9a126d48a31bf` |
+| `v1/schema/model-version.schema.json` | 4124 | `b1cf898d3a637b347c549790879b39c617b2ceb146d32673f8ec2818fe2a8407` |
+| `v1/schema/preprocessing-spec.schema.json` | 3406 | `df569d3867ddd604380304e1684e9d0f24445e187c652cc7107a8647097075f1` |
+| `v1/schema/projection.schema.json` | 2241 | `2c493734705abbd2bc24a10a8c411b375258007ebfb57a0e265f64fc0438ff22` |
+| `v1/schema/site.schema.json` | 5882 | `7961edb8f6d26eceaf04af39f94fda019916d6a865519d08af6972343cb1f79a` |
+| `v1/sites.json` | 59384 | `26325470e84fc51dd1a6cabd43c9a0100bb0358bf386ede855f8cf8902352661` |
+| `v1/stamp.json` | 187 | `4f67a0569b99b4e2fd2af2d462520b4aa1fe8a80f46e636b38c85b10121e79b6` |
+| `contract/v1.json` (manifest) | 7583 | `c9d520addac040f4e7f2c74dce2678e4b3365779f176f8f90a004bf04db7bcb2` |
+| `contract/latest.json` (pointer) | 155 | `9ec73e4a2bab2746d9f0261f9dc162fbda28481ba1c1555899674054ae559b65` |
+
+### Verification (`verify_contract_live.py --expect-latest 1`, exit 0, "OK: contract verified live")
+
+- Pointer: HTTP 200, `Cache-Control: public, max-age=60`, `Access-Control-Allow-Origin: *`, valid against the pointer
+  schema, names version 1.
+- Manifest: HTTP 200, sha256 equals the pointer's `manifest_sha256` and the committed `contracts/bucket/contract/v1.json`
+  (byte-identical), `Cache-Control: public, max-age=31536000, immutable`, CORS `*`.
+- All 13 artifacts (embeddings, model version, preprocessing spec, projection, sites, stamp, and the 7 schema copies):
+  HTTP 200, sha256 equals the manifest, one-year immutable `Cache-Control`, CORS `*`.
+- Direct S3 access: 403. A version that does not exist (`contract/v999999.json`): 403. CDN root: 403, not a bucket
+  listing.
+- `check_contract.py --check --additive` still exits 0 with `contracts/PUBLISHED.json` committed, so the CI
+  immutability guard accepts the published state and now fails if the committed v1 manifest ever changes.
+
+### Rollback
+
+Published versions are never deleted or edited. Contract objects are immutable, so the only live mutable object is the
+pointer `contract/latest.json`.
+
+- Move the pointer back to an already-published version `<N>` (the publisher first re-verifies every object of that
+  version against `contracts/PUBLISHED.json`):
+
+  ```
+  py -3.12 scripts/publish_contract.py --set-latest <N> --dry-run
+  py -3.12 scripts/publish_contract.py --set-latest <N> --confirm
+  py -3.12 scripts/verify_contract_live.py --expect-latest <N>
+  ```
+
+- A bad v1 is superseded, not edited: publish v2 and move the pointer to it (`--version 2 --confirm`). Stamped results
+  and pinned URLs keep resolving the exact v1 bytes.
+- Rehearsal (2026-10-02): `py -3.12 scripts/publish_contract.py --set-latest 1 --dry-run` exited 0. It verified 14
+  published objects against `PUBLISHED.json`, passed the budget gate, reported `pointer_unchanged` for
+  `contract/latest.json` (155 bytes, sha256 `9ec73e4a...`, already naming v1) and made no S3 write.
