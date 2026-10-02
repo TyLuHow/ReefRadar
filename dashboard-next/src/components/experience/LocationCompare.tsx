@@ -1,18 +1,12 @@
 'use client';
 
 import { useEffect } from 'react';
-import dynamic from 'next/dynamic';
 import { Play, Pause, ArrowLeft, MapPin } from 'lucide-react';
 import { GlassPanel, GlassButton } from '@/components/ui/glass';
 import { BANDS, BAND_IDS } from '@/components/spectrogram/FrequencyBands';
 import { CaveatsFooter } from './CaveatsFooter';
 import { useLocationAudio, HealthStatus, ExcerptMeta } from './useLocationAudio';
 import { useVitalityStore } from '@/stores/vitality-store';
-
-const SpectrogramCanvas = dynamic(
-  () => import('@/components/spectrogram/SpectrogramCanvas'),
-  { ssr: false },
-);
 
 interface LocationCompareProps {
   onGoLanding: () => void;
@@ -99,16 +93,6 @@ export function LocationCompare({ onGoLanding, onGoDemo }: LocationCompareProps)
 
   return (
     <div className="relative min-h-screen flex flex-col">
-      {/* Background spectrogram */}
-      <div className="absolute inset-0 z-0">
-        <SpectrogramCanvas
-          state={audio.isPlaying ? 'playing' : 'idle'}
-          activeBands={audio.activeBands}
-          audioAnalyser={audio.analyserNode}
-          opacity={0.25}
-        />
-      </div>
-
       {/* Header */}
       <div className="relative z-10 flex items-center justify-between px-6 py-4">
         <GlassButton variant="ghost" href="/">

@@ -18,6 +18,9 @@ const REMOVED_FILES = [
   'hooks/useBackgroundCanvas.ts',
   'hooks/useVitality.ts',
   'lib/color-engine.ts',
+  'components/spectrogram/SpectrogramCanvas.tsx',
+  'components/spectrogram/useSpectrogramAnimation.ts',
+  'components/dev/VitalityDebugPanel.tsx',
 ];
 
 /** Import specifier tails that must not be imported anywhere under src. */
@@ -26,6 +29,9 @@ const REMOVED_SPECIFIER_TAILS = [
   'useBackgroundCanvas',
   'useVitality',
   'color-engine',
+  'useSpectrogramAnimation',
+  'components/spectrogram/SpectrogramCanvas',
+  'VitalityDebugPanel',
 ];
 
 const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);
@@ -74,6 +80,31 @@ describe('DS-07 ambient layer removed', () => {
     expect(removedImports(`import { x } from '@/lib/color-engine';`)).toHaveLength(1);
     expect(removedImports(`import { SpectrogramCanvas } from '@/components/audio/SpectrogramCanvas';`)).toEqual([]);
     expect(removedImports(`import { BANDS } from '@/components/spectrogram';`)).toEqual([]);
+  });
+
+  it('no file under src imports the dev components directory', () => {
+    const offenders: string[] = [];
+    for (const file of walk(SRC_ROOT)) {
+      const text = fs.readFileSync(file, 'utf8');
+      if (/from\s+['"]@\/components\/dev(\/|['"])/.test(text)) offenders.push(path.relative(SRC_ROOT, file));
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('components/spectrogram exports exactly the frequency-band table', () => {
+    const text = fs.readFileSync(path.join(SRC_ROOT, 'components/spectrogram/index.ts'), 'utf8');
+    const names = [...text.matchAll(/export\s+(?:type\s+)?\{([^}]*)\}/g)]
+      .flatMap((m) => m[1].split(','))
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .sort();
+    expect(names).toEqual(['ALL_BANDS', 'BANDS', 'BAND_IDS', 'BandConfig', 'BandId'].sort());
+    expect(text).not.toMatch(/export\s+default|export\s+\*/);
+    expect(fs.existsSync(path.join(SRC_ROOT, 'components/spectrogram/FrequencyBands.ts'))).toBe(true);
+  });
+
+  it('the real analysis spectrogram component still exists', () => {
+    expect(fs.existsSync(path.join(SRC_ROOT, 'components/audio/SpectrogramCanvas.tsx'))).toBe(true);
   });
 
   it('providers.tsx has no next/dynamic and keeps the query defaults', () => {

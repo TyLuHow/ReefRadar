@@ -1,18 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import dynamic from 'next/dynamic';
 import { Play, Pause, ArrowLeft } from 'lucide-react';
 import { GlassPanel, GlassButton } from '@/components/ui/glass';
 import { BANDS, BAND_IDS } from '@/components/spectrogram/FrequencyBands';
 import { CaveatsFooter } from './CaveatsFooter';
 import { useDemoAudio } from './useDemoAudio';
 import { demoPair } from '@/lib/audio-manifest';
-
-const SpectrogramCanvas = dynamic(
-  () => import('@/components/spectrogram/SpectrogramCanvas'),
-  { ssr: false }
-);
 
 interface DemoStateProps {
   onGoLanding: () => void;
@@ -41,15 +35,6 @@ export function DemoState({ onGoLanding, onGoCompare }: DemoStateProps) {
 
   return (
     <div className="relative min-h-screen flex flex-col">
-      <div className="absolute inset-0 z-0">
-        <SpectrogramCanvas
-          state={audio.isPlaying ? 'playing' : 'idle'}
-          activeBands={audio.activeBands}
-          audioAnalyser={audio.analyserNode}
-          opacity={0.25}
-        />
-      </div>
-
       <div className="relative z-10 flex items-center justify-between px-6 py-4">
         <GlassButton variant="ghost" href="/">
           <ArrowLeft className="w-4 h-4 mr-2" />

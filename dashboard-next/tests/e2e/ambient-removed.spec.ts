@@ -11,7 +11,7 @@ test.afterEach(({ page }) => {
  * The background particle layer and the decorative spectrogram were canvas
  * elements; with them removed, these pages render no canvas at all.
  */
-const STATIC_PAGES = ['/about/'];
+const STATIC_PAGES = ['/', '/about/', '/dashboard/', '/experience/'];
 
 test.describe('no ambient canvas', () => {
   for (const pagePath of STATIC_PAGES) {

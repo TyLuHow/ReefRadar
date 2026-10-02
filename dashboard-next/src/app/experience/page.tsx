@@ -2,7 +2,6 @@
 
 import { useReducer, useEffect, useRef, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft, Upload, Play, Pause } from 'lucide-react';
 import { GlassPanel, GlassButton } from '@/components/ui/glass';
@@ -19,11 +18,6 @@ import { FALLBACK_SAMPLES } from '@/lib/samples';
 import { getExcerpt, attributionLine } from '@/lib/audio-manifest';
 import { useVitalityStore } from '@/stores/vitality-store';
 import type { AnalysisResult, Sample } from '@/types';
-
-const SpectrogramCanvas = dynamic(
-  () => import('@/components/spectrogram/SpectrogramCanvas'),
-  { ssr: false }
-);
 
 // --- State machine -----------------------------------------------------------
 
@@ -161,10 +155,6 @@ function LandingState({ dispatch }: { dispatch: React.Dispatch<ExperienceAction>
       exit={{ opacity: 0, scale: 0.96 }}
       transition={{ duration: 0.5, ease: 'easeInOut' }}
     >
-      <div className="absolute inset-0 z-0">
-        <SpectrogramCanvas state="idle" opacity={0.15} />
-      </div>
-
       <div className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-4">
         <GlassButton variant="ghost" href="/">
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -263,9 +253,6 @@ function UploadingState({
       exit={{ opacity: 0, y: -12 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
     >
-      <div className="absolute inset-0 z-0">
-        <SpectrogramCanvas state="idle" opacity={0.1} />
-      </div>
       <div className="relative z-10 px-4">
         <CoordinateModal
           file={file}
@@ -319,9 +306,6 @@ function ProcessingState({
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
     >
-      <div className="absolute inset-0 z-0">
-        <SpectrogramCanvas state="analyzing" opacity={0.2} />
-      </div>
       <div className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-4">
         <div />
         <div className="flex items-center gap-2">
@@ -364,10 +348,6 @@ function ResultsState({
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
     >
-      <div className="absolute inset-0 z-0">
-        <SpectrogramCanvas state="idle" opacity={0.12} />
-      </div>
-
       <div className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-4">
         <GlassButton variant="ghost" onClick={() => dispatch({ type: 'GO_LANDING' })}>
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -427,10 +407,6 @@ function ErrorState({
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
     >
-      <div className="absolute inset-0 z-0">
-        <SpectrogramCanvas state="idle" opacity={0.1} />
-      </div>
-
       <div className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-4">
         <GlassButton variant="ghost" href="/">
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -592,9 +568,6 @@ function SamplePlaybackState({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
-        <div className="absolute inset-0 z-0">
-          <SpectrogramCanvas state="idle" opacity={0.1} />
-        </div>
         <p className="relative z-10 text-sm" style={{ color: 'var(--text-muted)' }}>
           Loading sample...
         </p>
@@ -613,10 +586,6 @@ function SamplePlaybackState({
       exit={{ opacity: 0, scale: 0.96 }}
       transition={{ duration: 0.5, ease: 'easeInOut' }}
     >
-      <div className="absolute inset-0 z-0">
-        <SpectrogramCanvas state={isPlaying ? 'playing' : 'idle'} opacity={0.2} />
-      </div>
-
       {/* Top bar */}
       <div className="relative z-10 flex items-center justify-between px-4 sm:px-6 py-4">
         <GlassButton variant="ghost" href="/">

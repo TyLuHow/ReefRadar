@@ -1,20 +1,9 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useLegacySitesResponse } from '@/features/contract';
 import { deriveSiteStats } from '@/lib/site-stats';
 import { SampleGallery } from '@/components/gallery/SampleGallery';
-
-const SpectrogramCanvas = dynamic(
-  () => import('@/components/spectrogram/SpectrogramCanvas'),
-  { ssr: false }
-);
-
-const VitalityDebugPanel = dynamic(
-  () => import('@/components/dev/VitalityDebugPanel'),
-  { ssr: false }
-);
 
 export default function LandingPage() {
   const { data: sitesData } = useLegacySitesResponse();
@@ -22,11 +11,6 @@ export default function LandingPage() {
 
   return (
     <div className="relative min-h-screen bg-abyss">
-      {/* Background spectrogram */}
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <SpectrogramCanvas state="idle" opacity={0.08} />
-      </div>
-
       {/* Content */}
       <div className="relative z-10">
         {/* Hero */}
@@ -60,8 +44,6 @@ export default function LandingPage() {
           <SampleGallery />
         </main>
       </div>
-
-      {process.env.NODE_ENV === 'development' && <VitalityDebugPanel />}
     </div>
   );
 }
