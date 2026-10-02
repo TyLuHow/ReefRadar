@@ -7,13 +7,11 @@
 ```
                                     +-------------------------------------+
                                     |           USER INTERFACE            |
-                                    |  +-----------+  +-----------+       |
-                                    |  |  Next.js  |  | Streamlit |       |
-                                    |  | Dashboard |  | Dashboard |       |
-                                    |  +-----+-----+  +-----+-----+      |
-                                    +--------|--------------|-----------+
-                                             |              |
-                                             +------+-------+
+                                    |          +-----------+          |
+                                    |          |  Next.js  |          |
+                                    |          | Dashboard |          |
+                                    |          +-----+-----+          |
+                                    +---------------|-----------------+
                                                     | HTTPS
                                     +---------------v-----------------+
                                     |         API GATEWAY (HTTP)       |
@@ -243,12 +241,6 @@ Trained on real SurfPerch embeddings from 7 MARRS sites (ind_H4, ind_H5, ind_N1,
 - Animated probability distribution bars
 - Interactive Leaflet map of similar sites
 - Region detection warnings for out-of-distribution
-
-#### Streamlit Dashboard (Legacy)
-**Location:** `dashboard/app.py`
-**Port:** 8501
-
-3-tab interface: Analyze Audio, Reference Sites, About
 
 ## Security Considerations
 

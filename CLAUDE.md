@@ -29,9 +29,6 @@ ReefRadar/
 │   ├── src/lib/api.ts          # Typed API client
 │   └── src/types/index.ts      # TypeScript types
 │
-├── dashboard/                  # Streamlit web UI (legacy)
-│   └── app.py                  # 3-tab dashboard
-│
 ├── data/
 │   └── embeddings/             # Pre-computed reference site embeddings
 │       ├── metadata.json       # 54 sites with real 1280-dim SurfPerch embeddings

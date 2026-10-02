@@ -29,7 +29,7 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 
 - Python 3.11 / 3.12 - AWS Lambda functions (`lambdas/`, `infrastructure/lambda_container/`)
 - TypeScript - Next.js dashboard (`dashboard-next/src/`)
-- Python 3.x (unpinned) - Streamlit legacy dashboard (`dashboard/app.py`) and tooling scripts (`scripts/`)
+- Python 3.x (unpinned) - tooling scripts (`scripts/`)
 - Bash - deploy/ops scripts (`scripts/*.sh`)
 - YAML/JSON - infra config (`infrastructure/resources.json`, `infrastructure/ec2_transfer_template.yaml`, `infrastructure/lambda_container/buildspec.yml`)
 
@@ -46,7 +46,6 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 
 - Next.js 14.2.5 (App Router) - `dashboard-next/src/app/` — dashboard frontend
 - React 18.3.1 / React DOM 18.3.1
-- Streamlit >=1.28.0 - `dashboard/app.py` — legacy 3-tab dashboard
 - TensorFlow-cpu >=2.18.0 - ML inference runtime inside the `inference` Lambda container (`infrastructure/lambda_container/requirements.txt`)
 - `maplibre-gl` ^4.0 + `react-map-gl` ^7.1 (`/maplibre` subpath) - primary map renderer, `dashboard-next/src/components/map/ReefMap.tsx`
 - `@deck.gl/core`, `@deck.gl/layers`, `@deck.gl/react` ^9.0 - deck.gl overlay layers (transpiled via `next.config.js` `transpilePackages`)
@@ -56,7 +55,6 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 - `framer-motion` ^11.0 - animation
 - `zustand` ^4.5 - client state
 - `@tanstack/react-query` ^5.51.21 - data fetching/caching
-- `folium` >=0.15.0 + `streamlit-folium` >=0.15.0 - maps in the legacy Streamlit dashboard
 - No test framework/config detected in `dashboard-next/` (no jest/vitest config) or in Python components (no pytest config found); `scripts/test-all.sh`, `scripts/test_inference_lambda.py`, `scripts/test_region_detection.py` appear to be ad hoc manual test scripts, not a formal suite.
 - TypeScript 5.5.4, ESLint 8.57.0 (`eslint-config-next` 14.2.5), Tailwind CSS 3.4.7, PostCSS 8.4.40, Autoprefixer 10.4.19 (all dev deps in `dashboard-next/package.json`)
 - Docker (via CodeBuild and local `scripts/deploy_inference_lambda.sh`) for building Lambda container images
@@ -68,7 +66,6 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 - `boto3` >=1.28.0/1.34.0 - AWS SDK used in every Lambda (`router`, `preprocessor`, `classifier`, `inference` container)
 - `numpy` >=1.24.0 - audio/embedding math in `preprocessor` and `classifier` Lambdas (deployed via a shared Lambda layer `reefradar-2477-numpy` pinned to NumPy 1.26.4 for Python 3.11, per `infrastructure/resources.json`)
 - `setuptools` >=69.0.0, force-reinstalled last in the inference Dockerfile because `tensorflow-cpu` clobbers it
-- `pandas`, `plotly`, `requests` (Streamlit dashboard only, `dashboard/requirements.txt`)
 
 ## Configuration
 
@@ -88,7 +85,7 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 - Node.js + npm for `dashboard-next/`
 - Python 3.11/3.12 locally to match Lambda runtimes when testing handlers
 - AWS: API Gateway (`reefradar-2477-api`), Lambda (3 zip-deployed functions + 1 container-image function), S3 (2 buckets), DynamoDB (1 table), ECR (2 repositories), CloudWatch Logs, IAM — all in `us-east-1` under account `781978598306`
-- Vercel for `dashboard-next/` (per `vercel.json`); the legacy `dashboard/` Streamlit app has no deployment config found in-repo (likely run manually or via Streamlit Community Cloud — unconfirmed)
+- Vercel for `dashboard-next/` (per `vercel.json`)
 - SageMaker previously used for inference; explicitly deleted per `infrastructure/resources.json` (`"sagemaker": {"status": "DELETED", "deleted_at": "2026-02-20"}`) — inference now runs entirely in the Lambda container
 
 <!-- GSD:stack-end -->
@@ -198,7 +195,6 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 | Region detection | Biogeographic region naming + distance to the nearest real training site (never scales probabilities) | `lambdas/classifier/region_detection.py` |
 | Inference container | SurfPerch embedding extraction | `infrastructure/lambda_container/inference.py` |
 | Next.js dashboard | Upload/analyze UX, site explorer, immersive experience | `dashboard-next/src/app/` |
-| Streamlit dashboard | Legacy 3-tab UI (Analyze / Reference Sites / About) | `dashboard/app.py` |
 | Zustand analysis-store | Client state machine for upload→analyze→poll→results | `dashboard-next/src/stores/analysis-store.ts` |
 | Zustand vitality-store | Reef "health glow" animation target + band energy | `dashboard-next/src/stores/vitality-store.ts` |
 | API client | Typed fetch wrapper + polling loop | `dashboard-next/src/lib/api.ts` |
@@ -226,10 +222,6 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 - Location: `dashboard-next/src/app/`
 - Depends on: `lib/api.ts` (HTTP), zustand stores, hooks, components
 - Used by: end users
-- Purpose: original 3-tab demo UI, kept for reference/fallback
-- Location: `dashboard/app.py`
-- Depends on: same API Gateway endpoint
-- Used by: not linked from the Next.js app; standalone deployment
 
 ## Data Flow
 
