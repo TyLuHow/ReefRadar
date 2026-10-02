@@ -14,7 +14,7 @@
 //   - the old hard-coded site-coordinate table
 //
 // It is the second line of defence behind the ESLint override in
-// dashboard-next/.eslintrc.json: it also covers comments, JSON and .js/.mjs
+// dashboard-next/eslint.config.mjs: it also covers comments, JSON and .js/.mjs
 // files that ESLint's selectors do not see.
 //
 // Usage:

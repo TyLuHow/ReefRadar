@@ -4,14 +4,15 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Transpile deck.gl ESM packages for Next.js compatibility
+  // Stop `next dev` writing AGENTS.md / CLAUDE.md into this folder (Next 16 default is on).
+  agentRules: false,
+  // Transpile deck.gl ESM packages for Next.js compatibility.
+  // Remove with deck.gl itself (plan 03-08).
   transpilePackages: [
     '@deck.gl/core',
     '@deck.gl/layers',
     '@deck.gl/react',
   ],
-  // WSL2: dev and start scripts bind to 0.0.0.0 via -H flag in package.json
-  // If upgrading to Next.js 15+, add allowedDevOrigins for CORS support
 };
 
 module.exports = nextConfig;

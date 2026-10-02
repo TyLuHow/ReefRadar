@@ -25,7 +25,6 @@ interface LintResult {
 interface EslintLike {
   lintText(code: string, options: { filePath: string }): Promise<LintResult[]>;
 }
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { ESLint } = require('eslint') as { ESLint: new (options: { cwd: string }) => EslintLike };
 
 const FENCE_RULES = ['no-restricted-syntax', 'no-restricted-imports'];

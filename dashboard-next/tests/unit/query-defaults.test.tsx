@@ -7,6 +7,7 @@
  * Providers: those collaborators are neutralised through browser-API stubs, never by
  * mocking their module paths.
  */
+import { useEffect } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { useQuery, useQueryClient, type QueryObserverOptions } from '@tanstack/react-query';
@@ -21,7 +22,11 @@ vi.mock('next/navigation', () => ({
 let captured: QueryObserverOptions | undefined;
 
 function DefaultsProbe() {
-  captured = useQueryClient().getDefaultOptions().queries as QueryObserverOptions | undefined;
+  const defaults = useQueryClient().getDefaultOptions().queries as QueryObserverOptions | undefined;
+  // Capture in an effect (not during render): the React Compiler lint rules reject writes to outer variables in render.
+  useEffect(() => {
+    captured = defaults;
+  }, [defaults]);
   return <div data-testid="defaults-probe">ready</div>;
 }
 
