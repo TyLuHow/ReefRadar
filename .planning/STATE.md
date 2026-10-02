@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 2
 current_phase_name: Data Contract v1
 status: verifying
-stopped_at: Completed 02-13-PLAN.md
-last_updated: "2026-10-02T07:42:05.655Z"
+stopped_at: Completed 02-12-PLAN.md
+last_updated: "2026-10-02T07:57:54.316Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 2 execution started
-state_head: add73efc0ecfd8f3e86e25fa266568e4decf7dd0
+state_head: badf419ecf7cbc2fcf009529da90fb12c9b3ed35
 progress:
   total_phases: 17
   completed_phases: 1
   total_plans: 33
-  completed_plans: 32
+  completed_plans: 33
   percent: 6
 ---
 
@@ -92,6 +92,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 02 P10 | 35min | 2 tasks | 13 files |
 | Phase 02 P11 | ~50min | 2 tasks | 4 files |
 | Phase 02 P13 | 110 min | 3 tasks | 8 files |
+| Phase 02 P12 | 45min active (plus pause for 02-13) | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -156,6 +157,7 @@ Recent decisions affecting current work:
 - [Phase 2]: [Phase 02] 02-08: ?cv pins an exact contract version via one Suspense leaf writing a store the hooks wait on; a missing or malformed pin shows an alert and never falls back to latest; unpinned pages follow latest.json with keepPreviousData so a flip does not blank the view
 - [Phase 02]: 02-13: contract CDN uses custom wildcard CORS policy reefradar-2477-contract-cors (GET/HEAD/OPTIONS allowed, GET/HEAD cached); Managed-SimpleCORS answered only simple CORS requests so real browser reads were blocked
 - [Phase 02]: 02-13 (owner 2026-10-02): accept that the CDN answers CORS preflights 403 (OPTIONS relayed to S3); verifier preflight probe is report-only and a unit guard (contract-no-preflight.test.ts) keeps the contract client from ever setting request headers
+- [Phase 2]: 02-12: live contract proof runs against a local production build of the branch (Vercel preview protected); the tracer found the CDN browser CORS defect, fixed by 02-13
 
 ### Pending Todos
 
@@ -179,6 +181,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-02T07:42:05.435Z
-Stopped at: Completed 02-13-PLAN.md
+Last session: 2026-10-02T07:57:54.151Z
+Stopped at: Completed 02-12-PLAN.md
 Resume file: None
