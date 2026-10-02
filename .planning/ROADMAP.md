@@ -166,7 +166,7 @@ Plans:
   4. A URL or result pinned to a contract version resolves exactly that version even after a newer version is published as latest, and the analysis-result schema carries dataset, model and preprocessing version stamps.
   5. The app runs end to end against committed contract fixtures with no dependency on ingestion or ML jobs.
 
-**Plans**: 6/12 plans executed (8 waves)
+**Plans**: 7/12 plans executed (8 waves)
 
 Plans:
 
@@ -187,7 +187,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 02-06-PLAN.md — Publish contract v1 to CloudFront (one-way, approval) and verify live
+- [x] 02-06-PLAN.md — Publish contract v1 to CloudFront (one-way, approval) and verify live
 - [ ] 02-08-PLAN.md — ?cv= version pinning and latest-flip pickup (unit + browser proof)
 
 **Wave 5** *(blocked on Wave 4 completion)*
@@ -473,7 +473,7 @@ Numeric order (1 → 17) is a valid order. With parallelization, Data & ML phase
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Truth & Reproducibility | 20/20 | Complete    | 2026-10-01 |
-| 2. Data Contract v1 | 6/12 | In Progress|  |
+| 2. Data Contract v1 | 7/12 | In Progress|  |
 | 3. Platform Upgrade & Stack Consolidation | 0/TBD | Not started | - |
 | 4. Design System & Instrument Primitives | 0/TBD | Not started | - |
 | 5. Preprocessing Parity & Grouped Evaluation | 0/TBD | Not started | - |
