@@ -19,11 +19,15 @@ script sees exactly what a browser on the public internet sees. It checks:
   browser     for the pointer, the manifest and the sites artifact: GETs carrying the headers a
               real browser adds (the `priority` profile: Priority; the `no-cache` profile:
               Cache-Control and Pragma, as on a hard reload; the `chrome` profile: a Chrome-like
-              header set) must still be answered with Access-Control-Allow-Origin "*", and an
-              OPTIONS preflight asking for GET with the headers priority and cache-control must
-              answer 2xx with CORS. Browsers always add non-safelisted headers, and the AWS managed
-              Managed-SimpleCORS policy answers only simple CORS requests, so an Origin-only GET
-              passes while every real browser read is blocked.
+              header set) must still be answered with Access-Control-Allow-Origin "*". An OPTIONS
+              preflight asking for GET with the headers priority and cache-control is probed too,
+              but REPORT-ONLY (PASS, or WARN with the reason, never a failure): the CDN relays
+              OPTIONS to its S3 origin, which has no bucket CORS, and the contract client never
+              preflights (owner decision 2026-10-02; the unit guard
+              dashboard-next/tests/unit/contract-no-preflight.test.ts keeps it that way). Browsers
+              always add non-safelisted headers, and the AWS managed Managed-SimpleCORS policy
+              answers only simple CORS requests, so an Origin-only GET passed while every real
+              browser read was blocked.
 
 One PASS or FAIL line per check; exit 1 on any failure. Output carries status codes, byte
 counts and hashes only, never response bodies, credentials or signed URLs.
@@ -76,6 +80,11 @@ BROWSER_PROFILES = (
     ),
 )
 PREFLIGHT_REQUEST_HEADERS = "priority,cache-control"
+# The preflight probe is advisory (owner decision 2026-10-02, plan 02-13): the CDN relays OPTIONS to its
+# S3 origin, which has no bucket CORS, so a preflight is answered 403. Real browser reads never preflight.
+PREFLIGHT_REPORT_ONLY_REASON = (
+    "CDN relays OPTIONS to S3 (no bucket CORS); contract client never preflights - owner decision 2026-10-02"
+)
 
 
 def default_base_url():
@@ -109,6 +118,15 @@ class Report:
             self.failed += 1
         return ok
 
+    def advisory(self, name: str, ok: bool, detail: str = "") -> bool:
+        """A report-only probe: PASS when it holds, WARN (never a failure) when it does not."""
+        suffix = f" ({detail})" if detail else ""
+        if ok:
+            print(f"PASS: {name}{suffix}")
+        else:
+            print(f"WARN: {name}{suffix}; report-only: {PREFLIGHT_REPORT_ONLY_REASON}")
+        return ok
+
 
 def _fetch(session, url: str, report: Report, name: str, extra_headers=None):
     """One unauthenticated GET; a transport error is reported as a failed check, not raised."""
@@ -121,7 +139,7 @@ def _fetch(session, url: str, report: Report, name: str, extra_headers=None):
 
 
 def _preflight(session, url: str, report: Report, name: str):
-    """One unauthenticated CORS preflight (OPTIONS); a transport error is a failed check."""
+    """One unauthenticated CORS preflight (OPTIONS); a transport error is reported as a WARN."""
     headers = {
         "Origin": ORIGIN,
         "Access-Control-Request-Method": "GET",
@@ -130,7 +148,7 @@ def _preflight(session, url: str, report: Report, name: str):
     try:
         return session.options(url, headers=headers, timeout=TIMEOUT_SECONDS, allow_redirects=False)
     except Exception as exc:  # noqa: BLE001 - the message could embed the URL, so report the class only
-        report.check(name, False, f"request failed: {type(exc).__name__}")
+        report.advisory(name, False, f"request failed: {type(exc).__name__}")
         return None
 
 
@@ -152,7 +170,7 @@ def _token_list(value):
 
 
 def _browser_cors_checks(session, url: str, report: Report, name: str) -> None:
-    """GETs with browser header profiles, then an OPTIONS preflight, for one URL."""
+    """GETs with browser header profiles (checks), then an OPTIONS preflight (report-only), for one URL."""
     for profile, extra in BROWSER_PROFILES:
         check = f"{name}: browser CORS ({profile}) allows any origin"
         resp = _fetch(session, url, report, check, extra_headers=extra)
@@ -175,7 +193,7 @@ def _browser_cors_checks(session, url: str, report: Report, name: str) -> None:
         and "get" in _token_list(allow_methods)
         and ("*" in _token_list(allow_headers) or wanted <= _token_list(allow_headers))
     )
-    report.check(
+    report.advisory(
         check,
         ok,
         f"status {resp.status_code}, Access-Control-Allow-Origin {allow_origin!r}, "

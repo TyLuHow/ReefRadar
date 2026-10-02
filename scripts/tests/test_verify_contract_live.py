@@ -298,14 +298,25 @@ def test_a_fixed_deployment_passes_all_twelve_browser_checks(capsys):
         assert any(line.startswith("PASS") and name in line for line in out), name
 
 
-def test_a_managed_simple_cors_cdn_fails_exactly_the_twelve_browser_checks(capsys):
+REPORT_ONLY_REASON = "CDN relays OPTIONS to S3 (no bucket CORS); contract client never preflights"
+PREFLIGHT_NAMES = [f"{name}: CORS preflight answered" for name in BROWSER_NAMES]
+GET_NAMES = [n for n in browser_check_names() if n not in PREFLIGHT_NAMES]
+
+
+def test_a_managed_simple_cors_cdn_fails_exactly_the_nine_browser_get_checks(capsys):
+    """The preflight probes are report-only (owner decision 2026-10-02): they WARN, they do not FAIL."""
     assert run(FakeSession(cors_mode="simple")) == 1
 
     out = capsys.readouterr().out.splitlines()
     fails = [line for line in out if line.startswith("FAIL") and "FAILED" not in line]
-    assert len(fails) == 12, fails
-    for name in browser_check_names():
+    assert len(fails) == 9, fails
+    for name in GET_NAMES:
         assert any(name in line for line in fails), name
+    warns = [line for line in out if line.startswith("WARN")]
+    assert len(warns) == 3, warns
+    for name in PREFLIGHT_NAMES:
+        assert any(name in line for line in warns), name
+    assert not [line for line in fails if "preflight" in line]
     # The blind spot that let the defect through: an Origin-only GET is still answered.
     assert any(line.startswith("PASS") and "pointer: CORS allows any origin" in line for line in out)
     assert any(line.startswith("PASS") and "manifest: CORS allows any origin" in line for line in out)
@@ -353,11 +364,27 @@ def preflight_override(**kwargs):
         pytest.param({"headers": {"Access-Control-Allow-Origin": "https://example.org"}}, id="origin-not-star"),
     ],
 )
-def test_a_bad_preflight_fails_only_the_preflight_check(override, capsys):
-    assert run(FakeSession(preflight_override(**override))) == 1
+def test_a_bad_preflight_only_warns_and_never_fails_the_run(override, capsys):
+    assert run(FakeSession(preflight_override(**override))) == 0
 
-    fails = [line for line in out_lines(capsys, "FAIL") if "FAILED" not in line]
-    assert len(fails) == 1 and "pointer: CORS preflight answered" in fails[0], fails
+    out = capsys.readouterr().out.splitlines()
+    assert not [line for line in out if line.startswith("FAIL")]
+    warns = [line for line in out if line.startswith("WARN")]
+    assert len(warns) == 1 and "pointer: CORS preflight answered" in warns[0], warns
+    assert "report-only" in warns[0]
+    assert REPORT_ONLY_REASON in warns[0] and "owner decision 2026-10-02" in warns[0]
+    assert "OK: contract verified live" in "\n".join(out)
+
+
+def test_a_get_without_allow_origin_still_fails_even_though_the_preflight_is_report_only(capsys):
+    overrides = {u("v1/sites.json"): {"drop": ["Access-Control-Allow-Origin"], "when": lambda h: "Priority" in h}}
+    overrides.update(preflight_override(status=403))
+    assert run(FakeSession(overrides)) == 1
+
+    out = capsys.readouterr().out.splitlines()
+    fails = [line for line in out if line.startswith("FAIL") and "FAILED" not in line]
+    assert fails and all("browser CORS" in line for line in fails), fails
+    assert any(line.startswith("WARN") and "pointer: CORS preflight answered" in line for line in out)
 
 
 @pytest.mark.parametrize(
@@ -416,7 +443,8 @@ def test_a_preflight_transport_error_is_reported_without_the_url(capsys):
         def options(self, url, **kwargs):
             raise ConnectionError(f"could not reach {url}?X-Amz-Signature=secret")
 
-    assert run(NoOptions()) == 1
+    assert run(NoOptions()) == 0  # report-only: a failed preflight request does not fail the run
 
     out = capsys.readouterr().out
-    assert "ConnectionError" in out and "X-Amz-Signature" not in out and "secret" not in out
+    assert "ConnectionError" in out and "WARN" in out
+    assert "X-Amz-Signature" not in out and "secret" not in out
