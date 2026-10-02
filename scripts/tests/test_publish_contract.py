@@ -530,3 +530,70 @@ def test_set_latest_is_blocked_without_the_budget_alarm(s3, contracts, published
 def test_version_and_set_latest_are_mutually_exclusive():
     with pytest.raises(SystemExit):
         publish_contract.main(["--version", "1", "--set-latest", "1"])
+
+
+# ------------------------------------------------------------------ WR-04: 409 on a conditional put
+
+
+class RaisingPut:
+    """Answers put_object for one key with a ClientError, optionally after a racing writer stored the same bytes."""
+
+    def __init__(self, inner, key, code, racing_body=None):
+        self._inner = inner
+        self._key = key
+        self._code = code
+        self._racing_body = racing_body
+
+    def put_object(self, **kwargs):
+        if kwargs["Key"] == self._key:
+            if self._racing_body is not None:
+                self._inner.put_object(
+                    Bucket=kwargs["Bucket"], Key=self._key, Body=self._racing_body,
+                    ContentType=kwargs["ContentType"], CacheControl=kwargs["CacheControl"],
+                    Metadata=kwargs["Metadata"],
+                )
+                self._racing_body = None
+            raise ClientError({"Error": {"Code": self._code, "Message": "boom"}}, "PutObject")
+        return self._inner.put_object(**kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
+
+
+def test_a_409_from_a_racing_identical_writer_is_treated_as_exists_identical(s3, contracts, manifest, tmp_path, monkeypatch):
+    monkeypatch.setattr(publish_contract, "CONFLICT_RETRY_SECONDS", 0)
+    uri = artifact_uris(manifest)[0]
+    body = (contracts / "bucket" / uri).read_bytes()
+    racing = RaisingPut(s3, uri, "ConditionalRequestConflict", racing_body=body)
+    assert run(contracts, tmp_path / "PUBLISHED.json", "--confirm", s3_client=racing) == 0
+    assert sha(s3.get_object(Bucket=BUCKET, Key=uri)["Body"].read()) == sha(body)
+
+
+def test_a_409_whose_key_never_appears_reports_a_lost_race_without_a_traceback(s3, contracts, manifest, tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(publish_contract, "CONFLICT_RETRY_SECONDS", 0)
+    uri = artifact_uris(manifest)[0]
+    racing = RaisingPut(s3, uri, "ConditionalRequestConflict")
+    assert run(contracts, tmp_path / "PUBLISHED.json", "--confirm", s3_client=racing) == 1
+    err = capsys.readouterr().err
+    assert "another publisher" in err
+    assert "Traceback" not in err
+    assert not (tmp_path / "PUBLISHED.json").exists()
+    assert "contract/latest.json" not in keys_in(s3)
+
+
+def test_a_409_with_different_bytes_is_still_refused(s3, contracts, manifest, tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(publish_contract, "CONFLICT_RETRY_SECONDS", 0)
+    uri = artifact_uris(manifest)[0]
+    racing = RaisingPut(s3, uri, "ConditionalRequestConflict", racing_body=b"someone else's bytes")
+    assert run(contracts, tmp_path / "PUBLISHED.json", "--confirm", s3_client=racing) == 1
+    assert "different content" in capsys.readouterr().err
+
+
+def test_any_other_aws_error_ends_with_its_code_and_no_traceback(s3, contracts, manifest, tmp_path, capsys):
+    uri = artifact_uris(manifest)[0]
+    failing = RaisingPut(s3, uri, "AccessDenied")
+    assert run(contracts, tmp_path / "PUBLISHED.json", "--confirm", s3_client=failing) == 1
+    err = capsys.readouterr().err
+    assert "AccessDenied" in err
+    assert "Traceback" not in err
+    assert "boom" not in err

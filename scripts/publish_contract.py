@@ -42,6 +42,7 @@ import json
 import pathlib
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -78,6 +79,10 @@ def sha256_hex(data: bytes) -> str:
 
 def content_type_for(key: str) -> str:
     return "application/octet-stream" if key.endswith(".f32") else "application/json"
+
+
+# Pause before re-reading a key that a 409 ConditionalRequestConflict said is mid-write.
+CONFLICT_RETRY_SECONDS = 2.0
 
 
 def _code(exc) -> str:
@@ -215,12 +220,41 @@ def put_immutable(s3, bucket: str, item: dict) -> str:
         )
         return ACTION_CREATED
     except ClientError as exc:
-        if _code(exc) not in ("PreconditionFailed", "412"):
+        # 412: the key already exists. 409 ConditionalRequestConflict: another writer is
+        # putting the same key right now. Either way the byte-compare below decides
+        # (WR-04); any other error propagates and main() reports only its code.
+        if _code(exc) not in ("PreconditionFailed", "412", "ConditionalRequestConflict", "409"):
             raise
-    existing = _get(s3, bucket, item["key"])["Body"].read()
+        conflict = _code(exc) in ("ConditionalRequestConflict", "409")
+    existing = _read_existing(s3, bucket, item["key"], retry_missing=conflict)
     if sha256_hex(existing) != item["sha256"]:
         raise PublishError(f"{item['key']} exists with different content; versions are immutable")
     return ACTION_EXISTS_IDENTICAL
+
+
+def _read_existing(s3, bucket: str, key: str, retry_missing: bool) -> bytes:
+    """Read an object that a conditional put reported as existing or being written.
+
+    After a 409 the racing writer may not have finished, so a missing key is retried once
+    after a short pause before it is reported as a lost race.
+    """
+    from botocore.exceptions import ClientError
+
+    attempts = 2 if retry_missing else 1
+    for attempt in range(attempts):
+        try:
+            return _get(s3, bucket, key)["Body"].read()
+        except ClientError as exc:
+            if retry_missing and attempt + 1 < attempts and _code(exc) in ("NoSuchKey", "404"):
+                time.sleep(CONFLICT_RETRY_SECONDS)
+                continue
+            if retry_missing and _code(exc) in ("NoSuchKey", "404"):
+                raise PublishError(
+                    f"{key} is being written by another publisher (HTTP 409) and is not readable yet; "
+                    "nothing was overwritten, re-run to retry"
+                ) from exc
+            raise PublishError(f"{key}: cannot be read back after a conditional write ({_code(exc) or 'error'})") from exc
+    raise AssertionError("unreachable")  # pragma: no cover
 
 
 def verify_objects(s3, bucket: str, items: list[dict]) -> None:
@@ -604,6 +638,12 @@ def main(argv=None, s3_client=None, budgets_client=None) -> int:
     except PublishError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
+    except Exception as exc:  # noqa: BLE001 - never print a traceback (it can carry request detail)
+        # botocore ClientError and friends: report only the AWS error code (WR-04).
+        if type(exc).__name__ == "ClientError":
+            print(f"error: AWS call failed ({_code(exc) or 'error'}); no further objects were written", file=sys.stderr)
+            return 1
+        raise
 
 
 if __name__ == "__main__":
