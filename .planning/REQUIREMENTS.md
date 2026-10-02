@@ -54,7 +54,7 @@
 ### Platform & Engineering (PLAT)
 
 - [x] **PLAT-01**: Dashboard runs on Next.js 16 / React 19 with legacy routes still functional during migration
-- [ ] **PLAT-02**: Duplicate stacks are removed: one map engine (MapLibre), one chart approach (Observable Plot + d3), no unused dependencies (wavesurfer, deck.gl, Leaflet, recharts, Streamlit dashboard) [CAP-86]
+- [x] **PLAT-02**: Duplicate stacks are removed: one map engine (MapLibre), one chart approach (Observable Plot + d3), no unused dependencies (wavesurfer, deck.gl, Leaflet, recharts, Streamlit dashboard) [CAP-86]
 - [ ] **PLAT-03**: New code lives in feature modules with a lint fence preventing imports from legacy components
 - [x] **PLAT-04**: Unit, component, end-to-end, accessibility (axe) and screenshot visual-regression tests run in CI on every push
 - [ ] **PLAT-05**: Uploads go directly to S3 via presigned URL with server-enforced size and duration caps (60 s at 96 kHz succeeds)
@@ -246,7 +246,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ML-07 | Phase 12 | Pending |
 | ML-08 | Phase 5 | Pending |
 | PLAT-01 | Phase 3 | Complete |
-| PLAT-02 | Phase 3 | Pending |
+| PLAT-02 | Phase 3 | Complete |
 | PLAT-03 | Phase 3 | Pending |
 | PLAT-04 | Phase 1 | Complete |
 | PLAT-05 | Phase 10 | Pending |
