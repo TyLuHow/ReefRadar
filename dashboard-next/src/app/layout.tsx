@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { ConditionalShell } from '@/components/layout/ConditionalShell';
 import { ToastProvider } from '@/components/Toast';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Providers } from './providers';
 
 const inter = Inter({
@@ -41,6 +42,7 @@ export default function RootLayout({
           </ConditionalShell>
           <ToastProvider />
         </Providers>
+        <SpeedInsights />
       </body>
     </html>
   );

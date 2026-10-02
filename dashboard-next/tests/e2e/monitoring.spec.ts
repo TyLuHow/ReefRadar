@@ -70,3 +70,45 @@ test.describe('client error reporter', () => {
     expect(await page.locator('body').innerText()).toBe(textBefore);
   });
 });
+
+/**
+ * 03-13 (PLAT-09): Vercel Speed Insights is in the root layout. It adds no visible DOM;
+ * locally the e2e mock answers /_vercel/speed-insights/* so the script request is not a 404.
+ */
+test.describe('Speed Insights', () => {
+  async function snapshot(page: import('@playwright/test').Page) {
+    return {
+      // The /about status line carries a wall-clock time; it is not part of what is being compared.
+      text: (await page.locator('body').innerText()).replace(/Last checked: .*/g, 'Last checked: <time>'),
+      announcements: await page.locator(REPORT_UI).count(),
+    };
+  }
+
+  test('requests its script from /_vercel/speed-insights/ and changes nothing visible', async ({ page }) => {
+    await mockApi(page);
+    const insightsRequests: string[] = [];
+    page.on('request', (request) => {
+      const { pathname } = new URL(request.url());
+      if (pathname.startsWith('/_vercel/speed-insights/')) insightsRequests.push(pathname);
+    });
+
+    const scriptResponse = page.waitForResponse((response) =>
+      new URL(response.url()).pathname.startsWith('/_vercel/speed-insights/')
+    );
+    await page.goto('/about/', { waitUntil: 'networkidle' });
+    expect((await scriptResponse).status()).toBe(200);
+    expect(insightsRequests.length).toBeGreaterThan(0);
+    const withInsights = await snapshot(page);
+
+    // Same page with the Speed Insights route aborted: nothing visible differs.
+    const aborted = await page.context().newPage();
+    await mockApi(aborted);
+    await aborted.route(/\/_vercel\/speed-insights\//, (route) => route.abort('failed'));
+    await aborted.goto('/about/', { waitUntil: 'networkidle' });
+    const withoutInsights = await snapshot(aborted);
+    await aborted.close();
+
+    expect(withInsights).toEqual(withoutInsights);
+    expect(withInsights.announcements).toBe(0);
+  });
+});

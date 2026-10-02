@@ -167,6 +167,19 @@ async function applyOverride(route: Route, override: FixtureOverride): Promise<v
   });
 }
 
+/** Vercel Speed Insights script and beacons (03-13). Local `next start` has no /_vercel routes, so without a stub the script request is a 404. */
+const SPEED_INSIGHTS_PATTERN = /\/_vercel\/speed-insights\//;
+
+/**
+ * Answer /_vercel/speed-insights/* with an empty script (research Pitfall 6).
+ * Not an API call, so it never lands in the unhandled list. mockApi() installs it.
+ */
+export async function mockSpeedInsights(page: Page): Promise<void> {
+  await page.route(SPEED_INSIGHTS_PATTERN, async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/javascript', body: '' });
+  });
+}
+
 /**
  * Install API mocking on `page`. Must be called before `page.goto(...)`.
  *
@@ -176,6 +189,7 @@ async function applyOverride(route: Route, override: FixtureOverride): Promise<v
  */
 export async function mockApi(page: Page, overrides: MockApiOverrides = {}): Promise<ContractMockController> {
   UNHANDLED.set(page, []);
+  await mockSpeedInsights(page);
   const contract = await mockContract(page);
   await page.route(API_HOST_PATTERN, async (route) => {
     const request = route.request();
