@@ -254,21 +254,33 @@ def verify(session, base_url: str, bucket_url: str, bundle: pathlib.Path, versio
         report.check("manifest: served immutable", cache == IMMUTABLE_CACHE, f"Cache-Control {cache!r}")
         _cors_ok(report, "manifest", manifest_resp)
         _browser_cors_checks(session, base + manifest_path, report, "manifest")
+        artifacts = None
         try:
             manifest = json.loads(body.decode("utf-8"))
-            artifacts = manifest["artifacts"]
-        except (UnicodeDecodeError, ValueError, KeyError, TypeError):
+        except (UnicodeDecodeError, ValueError):
             report.check("manifest: readable", False)
             manifest = None
+        if manifest is not None:
+            # WR-05: a malformed served manifest is a FAIL line, never a traceback. Validate it
+            # against the contract-manifest schema before trusting its shape.
+            errors = contract_lib.validation_errors(manifest, "contract-manifest", contract_lib.SCHEMA_DIR)
+            report.check("manifest: valid contract manifest", not errors, f"{len(errors)} schema error(s)")
+            artifacts = manifest.get("artifacts") if isinstance(manifest, dict) else None
+            if not isinstance(artifacts, dict):
+                report.check("manifest: artifacts is an object", False)
+                manifest = None
 
     if manifest is not None:
         sites_uri = None
         for label, entry in check_contract._iter_artifacts(artifacts):
             if not isinstance(entry, dict) or entry.get("present") is False:
                 continue
-            if label == "sites" and isinstance(entry.get("uri"), str):
-                sites_uri = entry["uri"]
             name = f"artifact {label}"
+            if not isinstance(entry.get("uri"), str):
+                report.check(f"{name}: has a uri", False)
+                continue
+            if label == "sites":
+                sites_uri = entry["uri"]
             resp = _fetch(session, base + entry["uri"], report, name)
             if resp is None or not _status_ok(report, name, resp):
                 continue
@@ -317,7 +329,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv=None, session=None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.version is not None and args.expect_latest is not None:
+        # --version skips the pointer, so --expect-latest would be silently ignored (WR-05).
+        parser.error("--expect-latest reads the pointer and cannot be combined with --version")
     base_url = args.base_url or default_base_url()
     if not base_url:
         print("error: no --base-url given and infrastructure/resources.json has no contract distribution", file=sys.stderr)

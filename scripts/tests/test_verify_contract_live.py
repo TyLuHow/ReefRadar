@@ -448,3 +448,44 @@ def test_a_preflight_transport_error_is_reported_without_the_url(capsys):
     out = capsys.readouterr().out
     assert "ConnectionError" in out and "WARN" in out
     assert "X-Amz-Signature" not in out and "secret" not in out
+
+
+# ------------------------------------------------------------------ WR-05: a malformed served manifest is a FAIL, not a crash
+
+
+def _served_manifest(mutate):
+    manifest = json.loads(MANIFEST_BYTES)
+    manifest = mutate(manifest) or manifest
+    return json.dumps(manifest).encode("utf-8")
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda m: {**m, "artifacts": []},
+        lambda m: {**m, "artifacts": "nope"},
+        lambda m: m["artifacts"].update(sites={"sha256": "0" * 64, "bytes": 1}),
+        lambda m: m["artifacts"].update(sites={"uri": 5, "sha256": "0" * 64, "bytes": 1}),
+        lambda m: m["artifacts"].update(sites="a string"),
+        lambda m: [],
+    ],
+    ids=["artifacts-list", "artifacts-string", "entry-without-uri", "entry-uri-not-a-string", "entry-not-an-object", "manifest-not-an-object"],
+)
+def test_a_malformed_served_manifest_fails_without_a_traceback(mutate, capsys):
+    body = _served_manifest(mutate)
+    assert run(FakeSession({u("contract/v1.json"): {"content": body}}), "--version", "1") == 1
+    out = capsys.readouterr().out
+    assert any(line.startswith("FAIL") and "manifest" in line for line in out.splitlines()), out
+    assert "Traceback" not in out
+
+
+def test_a_valid_served_manifest_reports_the_schema_check_as_passed(capsys):
+    assert run(FakeSession(), "--version", "1") == 0
+    assert "PASS: manifest: valid contract manifest" in capsys.readouterr().out
+
+
+def test_expect_latest_cannot_be_combined_with_version(capsys):
+    with pytest.raises(SystemExit) as raised:
+        run(FakeSession(), "--version", "1", "--expect-latest", "1")
+    assert raised.value.code == 2
+    assert "--expect-latest" in capsys.readouterr().err
