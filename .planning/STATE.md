@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 3
 current_phase_name: Platform Upgrade & Stack Consolidation
 status: executing
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-10-02T18:39:44.186Z"
+stopped_at: Completed 03-05-PLAN.md
+last_updated: "2026-10-02T18:53:25.239Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 3 execution started
-state_head: 8e668c744d64cffed1d5e6bd3f60e3d062667420
+state_head: 571895f82300e9296db378bd19b7e6cc59f70e9a
 progress:
   total_phases: 17
   completed_phases: 2
   total_plans: 48
-  completed_plans: 37
+  completed_plans: 38
   percent: 12
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-02)
 ## Current Position
 
 Phase: 3 (Platform Upgrade & Stack Consolidation) — EXECUTING
-Plan: 5 of 15
+Plan: 6 of 15
 Status: Ready to execute
 Last activity: 2026-10-02 — Phase 3 execution started
 
@@ -98,6 +98,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 03 P02 | 15min | 2 tasks | 7 files |
 | Phase 03 P03 | 20 min | 3 tasks | 3 files |
 | Phase 03 P04 | 25min | 3 tasks | 12 files |
+| Phase 03 P05 | 15 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -167,6 +168,7 @@ Recent decisions affecting current work:
 - [Phase 3]: 03-02: stack-consolidation.test.ts is the single growing gate; REMOVED_PACKAGES is append-only for 03-08/03-10/03-11
 - [Phase 03]: 03-03: Hop 1 (Next 15.5.26 / React 19.3.0) via official codemod; codemod's eslint 9, --turbopack dev script and @types overrides rejected; react-leaflet-scoped peer override is temporary (delete in 03-10); PLAT-01 stays open until Next 16
 - [Phase 3]: 03-04: Hop 2 (Next 16.3.8, ESLint 9.39.5 flat config); codemod's eslint 10, @types overrides and Cache Components 'instant' opt-outs rejected; contract fence carried with String.raw selectors; PLAT-01 complete
+- [Phase 03]: 03-05: feature fence uses narrow alias group @/components(/**) in ESLint (never **/components/**); relative paths and require() fenced by scripts/check-feature-fence.mjs; per-block rule repetition because flat-config blocks replace, not merge
 
 ### Pending Todos
 
@@ -190,6 +192,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-02T18:39:43.625Z
-Stopped at: Completed 03-04-PLAN.md
+Last session: 2026-10-02T18:53:24.821Z
+Stopped at: Completed 03-05-PLAN.md
 Resume file: None
