@@ -33,7 +33,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`scroll-smooth ${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" data-scroll-behavior="smooth" className={`scroll-smooth ${inter.variable} ${jetbrainsMono.variable}`}>
       <body className={`${inter.className} bg-abyss text-bone`}>
         <Providers>
           <ConditionalShell>
