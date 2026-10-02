@@ -2,7 +2,7 @@
 
 import { Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
-import { Site, STATUS_COLORS, SITE_COORDINATES } from '@/types';
+import { Site, STATUS_COLORS } from '@/types';
 import { formatStatus } from '@/lib/utils';
 
 interface SiteMarkerProps {
@@ -37,9 +37,9 @@ function createMarkerIcon(color: string, isHighlighted: boolean = false): L.DivI
 }
 
 export function SiteMarker({ site, isHighlighted = false, similarity, onClick }: SiteMarkerProps) {
-  // Try to get coordinates from site or fallback to SITE_COORDINATES
-  const lat = site.latitude ?? SITE_COORDINATES[site.site_id]?.lat;
-  const lon = site.longitude ?? SITE_COORDINATES[site.site_id]?.lon;
+  // Coordinates and location come from the contract record (02-09).
+  const lat = site.latitude;
+  const lon = site.longitude;
 
   if (lat === undefined || lon === undefined) {
     return null;
@@ -73,10 +73,10 @@ export function SiteMarker({ site, isHighlighted = false, similarity, onClick }:
               <span className="font-medium mr-1">Country:</span>
               {site.country}
             </p>
-            {SITE_COORDINATES[site.site_id]?.location && (
+            {site.location && (
               <p className="flex items-center">
                 <span className="font-medium mr-1">Region:</span>
-                {SITE_COORDINATES[site.site_id].location.split(',')[0]}
+                {site.location.split(',')[0]}
               </p>
             )}
             <p className="text-xs text-gray-400">

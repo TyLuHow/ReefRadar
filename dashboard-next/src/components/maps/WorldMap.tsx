@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { Site, SITE_COORDINATES, ReefStatus } from '@/types';
+import { Site, ReefStatus } from '@/types';
 import { SiteMarker } from './SiteMarker';
 
 // Import Leaflet CSS
@@ -26,20 +26,12 @@ function FitBoundsController({ sites }: { sites: Site[] }) {
   useEffect(() => {
     if (sites.length === 0) return;
 
-    const validSites = sites.filter((site) => {
-      const lat = site.latitude ?? SITE_COORDINATES[site.site_id]?.lat;
-      const lon = site.longitude ?? SITE_COORDINATES[site.site_id]?.lon;
-      return lat !== undefined && lon !== undefined;
-    });
+    const validSites = sites.filter((site) => site.latitude !== undefined && site.longitude !== undefined);
 
     if (validSites.length === 0) return;
 
     const bounds = L.latLngBounds(
-      validSites.map((site) => {
-        const lat = site.latitude ?? SITE_COORDINATES[site.site_id]?.lat ?? 0;
-        const lon = site.longitude ?? SITE_COORDINATES[site.site_id]?.lon ?? 0;
-        return [lat, lon] as [number, number];
-      })
+      validSites.map((site) => [site.latitude as number, site.longitude as number] as [number, number])
     );
 
     // Add padding to bounds
@@ -115,20 +107,12 @@ export function WorldMap({
   const initialCenter = useMemo<[number, number]>(() => {
     if (sites.length === 0) return [0, 80]; // Global center at equator
 
-    const validSites = sites.filter((site) => {
-      const lat = site.latitude ?? SITE_COORDINATES[site.site_id]?.lat;
-      const lon = site.longitude ?? SITE_COORDINATES[site.site_id]?.lon;
-      return lat !== undefined && lon !== undefined;
-    });
+    const validSites = sites.filter((site) => site.latitude !== undefined && site.longitude !== undefined);
 
     if (validSites.length === 0) return [0, 80];
 
-    const lats = validSites.map(
-      (s) => s.latitude ?? SITE_COORDINATES[s.site_id]?.lat ?? 0
-    );
-    const lons = validSites.map(
-      (s) => s.longitude ?? SITE_COORDINATES[s.site_id]?.lon ?? 0
-    );
+    const lats = validSites.map((s) => s.latitude as number);
+    const lons = validSites.map((s) => s.longitude as number);
 
     return [
       (Math.min(...lats) + Math.max(...lats)) / 2,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Site, SITE_COORDINATES, STATUS_COLORS } from '@/types';
+import { Site, STATUS_COLORS } from '@/types';
 import { formatStatus, cn } from '@/lib/utils';
 import { MapPin, Globe, ChevronDown, Database, Navigation } from 'lucide-react';
 
@@ -12,7 +12,10 @@ interface SiteCardProps {
 
 export function SiteCard({ site, expanded: initialExpanded = false }: SiteCardProps) {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
-  const coords = SITE_COORDINATES[site.site_id];
+  // Location and coordinates come from the contract record itself (02-09).
+  const lat = site.latitude;
+  const lon = site.longitude;
+  const hasLocation = Boolean(site.location) && typeof lat === 'number' && typeof lon === 'number';
   const statusColor = STATUS_COLORS[site.status] || '#666';
 
   // D-17/TRUTH-09: who assigned this site's label and what it means, from
@@ -51,14 +54,14 @@ export function SiteCard({ site, expanded: initialExpanded = false }: SiteCardPr
         </div>
 
         {/* Location */}
-        {coords && (
+        {hasLocation && (
           <div className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
             <div className="flex items-start">
               <MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" style={{ color: 'var(--text-dim)' }} />
               <div>
-                <p>{coords.location}</p>
+                <p>{site.location}</p>
                 <p className="text-xs mt-1 font-mono" style={{ color: 'var(--text-dim)' }}>
-                  {coords.lat.toFixed(4)}, {coords.lon.toFixed(4)}
+                  {lat!.toFixed(4)}, {lon!.toFixed(4)}
                 </p>
               </div>
             </div>
@@ -93,9 +96,9 @@ export function SiteCard({ site, expanded: initialExpanded = false }: SiteCardPr
             </div>
 
             {/* Navigation Link */}
-            {coords && (
+            {hasLocation && (
               <a
-                href={`https://www.google.com/maps?q=${coords.lat},${coords.lon}`}
+                href={`https://www.google.com/maps?q=${lat},${lon}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center text-sm text-ochre hover:text-pale-gold transition-colors"

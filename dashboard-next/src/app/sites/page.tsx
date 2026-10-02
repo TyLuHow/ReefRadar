@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
-import { api } from '@/lib/api';
+import { useLegacySitesResponse } from '@/features/contract';
 import { SiteCard, SiteCardSkeleton } from '@/components/SiteCard';
 import { SiteFilters } from '@/components/sites';
 import { STATUS_COLORS, Site } from '@/types';
@@ -45,10 +44,7 @@ export default function SitesPage() {
     isLoading,
     error,
     refetch,
-  } = useQuery({
-    queryKey: ['sites'],
-    queryFn: () => api.getSites(),
-  });
+  } = useLegacySitesResponse();
 
   // D-18/TRUTH-07: every count on this page is derived from /sites, not
   // hard-coded.
