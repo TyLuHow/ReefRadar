@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Suspense, useState } from 'react';
 import { ContractVersionSync } from '@/features/contract';
+import { ClientErrorReporter } from '@/features/monitoring';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -23,6 +24,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <Suspense fallback={null}>
         <ContractVersionSync />
       </Suspense>
+      {/* Leaf: uncaught errors and unhandled rejections, reported silently (no UI). */}
+      <ClientErrorReporter />
       {children}
     </QueryClientProvider>
   );
