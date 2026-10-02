@@ -38,6 +38,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: node ../scripts/check-contract-fence.mjs
+      - run: node ../scripts/check-feature-fence.mjs
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
