@@ -516,9 +516,9 @@ simply does not return the fields. To go back further than this deploy, see the 
 Plan 02-13 (gap closure for plan 02-12). Gives the contract CDN a custom response headers policy so a real browser can read
 the live contract cross-origin. No credentials, signed URLs or addresses appear in this section.
 
-**Status:** the browser read path is fixed and verified (real Chromium, all four fetch cache modes). The CORS *preflight*
-(an OPTIONS request) is still answered 403 by the CDN; this is recorded below and awaits an owner decision (see "Preflight
-outcome"). The new policy stays attached.
+**Status:** complete. The browser read path is fixed and verified (real Chromium, all four fetch cache modes). The CORS
+*preflight* (an OPTIONS request) is still answered 403 by the CDN; the owner accepted that on 2026-10-02 (see "Preflight
+outcome and owner decision"). The new policy stays attached.
 
 ### Approving decision
 
@@ -568,13 +568,14 @@ origin." The policy applies at response time, so cached objects are correct as t
 | just before 03:14 | `py -3.12 scripts/setup_contract_infra.py --step cors --dry-run` | 0 (planned `create_response_headers_policy` and `update_distribution`, "[dry-run] no AWS write made") |
 | 03:14:19 to 03:14:53 | `py -3.12 scripts/setup_contract_infra.py --step cors --confirm` | 0 (policy created, distribution updated, Deployed after about 35 s, read-back ok) |
 | 03:15:09 | `py -3.12 scripts/setup_contract_infra.py --step all --verify` | 0 (budget, storage with the public probes, and the 4 cors checks all ok) |
-| 03:15:24, 03:15:53, 03:17:59 | `py -3.12 scripts/verify_contract_live.py --expect-latest 1` | 1, identical each time (see below) |
+| 03:15:24, 03:15:53, 03:17:59 | `py -3.12 scripts/verify_contract_live.py --expect-latest 1` | 1, identical each time (3 preflight checks failed; see below) |
+| 2026-10-02 07:37 | `py -3.12 scripts/verify_contract_live.py --expect-latest 1` (after the report-only decision) | 0, "OK: contract verified live" (74 PASS, 3 WARN) |
 | 03:15:41, 03:16:32 | `npm --prefix dashboard-next run test:live -- tests/e2e/contract-cdn-cors-live.spec.ts` | see below |
 | later | `py -3.12 scripts/setup_contract_infra.py --step all --record-resources` | 0 |
 | later | `py -3.12 scripts/setup_contract_infra.py --step all --dry-run` | 0, no planned action (idempotent) |
 | later | `py -3.12 scripts/setup_contract_infra.py --step cors-rollback --dry-run` | 0, one planned `update_distribution` back to Managed-SimpleCORS and GET/HEAD (rehearsal only, never confirmed) |
 
-### Verification results (check names and counts only, no bodies)
+### Verification results (check names and counts only, no bodies; state before the 2026-10-02 owner decision)
 
 - `verify_contract_live.py --expect-latest 1`: 74 checks PASS, 3 FAIL. All pre-existing checks (pointer, manifest, 13 artifacts,
   privacy: direct S3 403, missing version 403, root not a listing) PASS, and all 9 browser GET checks PASS
@@ -588,7 +589,7 @@ origin." The policy applies at response time, so cached objects are correct as t
   preflights itself and disables the HTTP cache, so that test passed vacuously on its first run. The spec now uses a real
   server (commit `adb9bdf`) and the preflight test fails honestly.
 
-### Preflight outcome
+### Preflight outcome and owner decision
 
 OPTIONS to `contract/latest.json`, `contract/v1.json` and `v1/sites.json` with `Access-Control-Request-Method: GET` and
 `Access-Control-Request-Headers: priority,cache-control` answers **HTTP 403** with `Access-Control-Allow-Origin: *`,
@@ -597,11 +598,22 @@ is not 2xx). A browser rejects a preflight that is not 2xx. This is consistent w
 S3 origin, which has no bucket CORS configuration. Real browser reads of the contract do not preflight (the contract client
 sends a plain `fetch(url, { credentials: 'omit' })`; Priority and cache headers are added after the CORS decision), which is
 what the passing Chromium test shows. A preflight would only appear if the app ever sets its own request header. The new
-policy stays attached because it fixes every real browser read. The verifier's pass criteria and the S3 bucket were not
-changed pending the owner's decision. Options: (a) accept that the CDN does not answer preflights and make the preflight
-probe and the Chromium preflight test report-only, with this reason recorded; (b) answer OPTIONS at the edge with a
-CloudFront Function (follow-up gap plan); (c) add S3 bucket CORS plus the AWS managed origin request policy
-Managed-CORS-S3Origin (follow-up gap plan; changes S3 configuration and what reaches the origin).
+policy stays attached because it fixes every real browser read. Options put to the owner: (a) accept that the CDN does not
+answer preflights and make the preflight probe and the Chromium preflight test report-only; (b) answer OPTIONS at the edge with a
+CloudFront Function; (c) add S3 bucket CORS plus the AWS managed origin request policy Managed-CORS-S3Origin.
+
+**Owner decision, 2026-10-02: option (a), "Accept + guard".** No further AWS change was made. Consequences, all in the repo:
+
+- `verify_contract_live.py` prints the three preflight probes as `PASS`, or `WARN ... report-only: CDN relays OPTIONS to S3 (no
+  bucket CORS); contract client never preflights - owner decision 2026-10-02`; they never fail the run. A GET that lacks
+  `Access-Control-Allow-Origin` (the 9 browser profile checks) still FAILs. Final live run: exit 0, 74 PASS, 3 WARN, "OK: contract
+  verified live".
+- The Chromium test "author header forces a preflight that the CDN answers" is `test.fixme` with this reason; the cross-origin
+  cache-mode test remains the gate and passes.
+- Guard against the one thing that would expose the limitation: the unit test
+  `dashboard-next/tests/unit/contract-no-preflight.test.ts` fails if anything in `src/features/contract/` passes a request header,
+  a `Headers`/`Request` object, an XHR, or any fetch option other than `credentials`/`cache` (verified by temporarily adding
+  `headers: { 'X-Probe': '1' }` to the real client: the guard failed, then the change was reverted).
 
 ### Rollback
 
