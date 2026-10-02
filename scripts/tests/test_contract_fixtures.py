@@ -274,6 +274,8 @@ def test_additive_fails_when_a_committed_bundle_stops_validating(contracts_copy,
 # ---------------------------------------------------------------------------
 
 def test_without_a_published_record_the_check_passes(contracts_copy):
+    # v1 is now published, so the committed tree carries PUBLISHED.json; this test is about its absence.
+    (contracts_copy / "PUBLISHED.json").unlink(missing_ok=True)
     assert not (contracts_copy / "PUBLISHED.json").exists()
     assert _run(contracts_copy, "--check") == 0
 
@@ -386,6 +388,8 @@ def test_a_published_version_tolerates_an_additive_schema_change(contracts_copy,
 
 
 def test_an_unpublished_version_still_requires_schema_copies_to_match(contracts_copy, capsys):
+    # Unpublished means no PUBLISHED.json entry; v1 is now recorded in the committed tree.
+    (contracts_copy / "PUBLISHED.json").unlink(missing_ok=True)
     def mutate(schema):
         schema["properties"]["brand_new_optional"] = {"type": "string"}
 
