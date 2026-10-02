@@ -51,9 +51,35 @@ export interface LegacySitesResult {
   refetch: () => Promise<void>;
 }
 
-/** Drop-in replacement for the legacy `useQuery(['sites'], api.getSites)`. */
+/** Drop-in replacement for the retired client query of the backend /sites endpoint. */
 export function useLegacySitesResponse(): LegacySitesResult {
   const { data: sites, isLoading, error, refetch } = useReferenceSites();
   const data = useMemo(() => (sites ? toLegacySitesResponse(sites) : undefined), [sites]);
   return { data, isLoading, error, refetch };
+}
+
+export interface SiteIndexEntry {
+  lat: number;
+  lon: number;
+  location: string;
+}
+
+export interface SiteIndexResult {
+  data: Record<string, SiteIndexEntry> | undefined;
+  isLoading: boolean;
+  error: Error | null;
+}
+
+/** Contract sites keyed by site_id, for components that look up a coordinate by id (the analysis mini map). */
+export function useSiteIndex(): SiteIndexResult {
+  const { data: sites, isLoading, error } = useReferenceSites();
+  const data = useMemo(() => {
+    if (!sites) return undefined;
+    const index: Record<string, SiteIndexEntry> = {};
+    for (const site of sites) {
+      index[site.site_id] = { lat: site.latitude, lon: site.longitude, location: site.location_label };
+    }
+    return index;
+  }, [sites]);
+  return { data, isLoading, error };
 }

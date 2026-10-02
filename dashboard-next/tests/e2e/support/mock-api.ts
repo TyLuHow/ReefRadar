@@ -124,7 +124,7 @@ export type FixtureOverride =
 /**
  * Keys are "METHOD /path", e.g. "GET /status/abc123". A trailing "*" on
  * the path matches as a prefix, e.g. "GET /status/*" matches any analysis
- * id. health/sites/samples already have sane defaults below; everything
+ * id. health/samples already have sane defaults below; everything
  * else (status/{id}, visualize/{id}, results/{id}, upload, analyze) must
  * be supplied via overrides by the test that needs it.
  */
@@ -132,7 +132,6 @@ export type MockApiOverrides = Record<string, FixtureOverride>;
 
 const DEFAULT_FIXTURES: Record<string, string> = {
   'GET /health': 'health.json',
-  'GET /sites': 'sites.json',
   'GET /samples': 'samples.json',
 };
 

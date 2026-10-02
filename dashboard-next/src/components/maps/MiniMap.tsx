@@ -3,9 +3,10 @@
 import { useMemo } from 'react';
 import { MapContainer, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { SimilarSite, SITE_COORDINATES, STATUS_COLORS, Site } from '@/types';
+import { SimilarSite, STATUS_COLORS, Site } from '@/types';
+import { useSiteIndex, type SiteIndexEntry } from '@/features/contract';
 import { SiteMarker } from './SiteMarker';
-import { MapPin } from 'lucide-react';
+import { MapPin, Map } from 'lucide-react';
 
 // Import Leaflet CSS
 import 'leaflet/dist/leaflet.css';
@@ -17,22 +18,25 @@ interface MiniMapProps {
 }
 
 // Component to fit bounds when sites change
-function FitBoundsController({ sites }: { sites: SimilarSite[] }) {
+function FitBoundsController({
+  sites,
+  index,
+}: {
+  sites: SimilarSite[];
+  index: Record<string, SiteIndexEntry>;
+}) {
   const map = useMap();
 
   useMemo(() => {
     if (sites.length === 0) return;
 
-    const validSites = sites.filter((site) => {
-      const coords = SITE_COORDINATES[site.site_id];
-      return coords !== undefined;
-    });
+    const validSites = sites.filter((site) => index[site.site_id] !== undefined);
 
     if (validSites.length === 0) return;
 
     const bounds = L.latLngBounds(
       validSites.map((site) => {
-        const coords = SITE_COORDINATES[site.site_id];
+        const coords = index[site.site_id];
         return [coords.lat, coords.lon] as [number, number];
       })
     );
@@ -41,7 +45,7 @@ function FitBoundsController({ sites }: { sites: SimilarSite[] }) {
       padding: [30, 30],
       maxZoom: 8,
     });
-  }, [sites, map]);
+  }, [sites, index, map]);
 
   return null;
 }
@@ -51,10 +55,14 @@ export function MiniMap({
   highlightCount = 3,
   className = '',
 }: MiniMapProps) {
+  // Coordinates come from the contract (02-09); the index is empty while loading or on error.
+  const { data: siteIndex, isLoading: indexLoading } = useSiteIndex();
+  const index = useMemo(() => siteIndex ?? {}, [siteIndex]);
+
   // Filter to sites that have coordinates
   const sitesWithCoords = useMemo(() => {
-    return similarSites.filter((site) => SITE_COORDINATES[site.site_id]);
-  }, [similarSites]);
+    return similarSites.filter((site) => index[site.site_id]);
+  }, [similarSites, index]);
 
   // Get top sites to highlight
   const highlightedIds = useMemo(() => {
@@ -74,22 +82,39 @@ export function MiniMap({
     site_id: ss.site_id,
     country: ss.country,
     status: ss.status,
-    latitude: SITE_COORDINATES[ss.site_id]?.lat,
-    longitude: SITE_COORDINATES[ss.site_id]?.lon,
+    latitude: index[ss.site_id]?.lat,
+    longitude: index[ss.site_id]?.lon,
+    location: index[ss.site_id]?.location,
   });
 
   // Calculate initial center
   const initialCenter = useMemo<[number, number]>(() => {
     if (sitesWithCoords.length === 0) return [-3.5, 80];
 
-    const lats = sitesWithCoords.map((s) => SITE_COORDINATES[s.site_id].lat);
-    const lons = sitesWithCoords.map((s) => SITE_COORDINATES[s.site_id].lon);
+    const lats = sitesWithCoords.map((s) => index[s.site_id].lat);
+    const lons = sitesWithCoords.map((s) => index[s.site_id].lon);
 
     return [
       (Math.min(...lats) + Math.max(...lats)) / 2,
       (Math.min(...lons) + Math.max(...lons)) / 2,
     ];
-  }, [sitesWithCoords]);
+  }, [sitesWithCoords, index]);
+
+  // While the contract is loading, show the same panel AnalysisResults shows for
+  // the dynamic import, not the "no location data" state.
+  if (indexLoading) {
+    return (
+      <div
+        className={`rounded-lg h-[200px] flex items-center justify-center ${className}`}
+        style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)' }}
+      >
+        <div className="animate-pulse text-center">
+          <Map className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--text-dim)' }} />
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading map...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (sitesWithCoords.length === 0) {
     return (
@@ -120,7 +145,7 @@ export function MiniMap({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <FitBoundsController sites={sitesWithCoords} />
+        <FitBoundsController sites={sitesWithCoords} index={index} />
 
         {sitesWithCoords.map((site) => (
           <SiteMarker

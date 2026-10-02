@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
-import { api } from '@/lib/api';
-import { Site, ReefStatus, SITE_COORDINATES } from '@/types';
+import { useLegacySitesResponse } from '@/features/contract';
+import { Site, ReefStatus } from '@/types';
 import { HealthLegend } from '@/components/map/HealthLegend';
 import { MapControls } from '@/components/map/MapControls';
 import { CaveatsBanner } from '@/components/dashboard/CaveatsBanner';
@@ -53,27 +52,10 @@ export default function MapPage() {
     data: sitesData,
     isLoading,
     error,
-  } = useQuery({
-    queryKey: ['sites'],
-    queryFn: () => api.getSites(),
-  });
+  } = useLegacySitesResponse();
 
-  // Enrich sites with coordinates from SITE_COORDINATES
-  const enrichedSites = useMemo(() => {
-    if (!sitesData?.sites) return [];
-    return sitesData.sites.map((site) => {
-      const coords = SITE_COORDINATES[site.site_id];
-      return {
-        ...site,
-        latitude: site.latitude ?? coords?.lat,
-        longitude: site.longitude ?? coords?.lon,
-        location: site.location ?? coords?.location,
-        country:
-          site.country ||
-          (site.site_id.startsWith('ken') ? 'Kenya' : 'Indonesia'),
-      };
-    });
-  }, [sitesData]);
+  // Contract sites already carry coordinates, location and country (02-09).
+  const enrichedSites = useMemo(() => sitesData?.sites ?? [], [sitesData]);
 
   // Apply filters
   const filteredSites = useMemo(

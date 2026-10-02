@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useLegacySitesResponse } from '@/features/contract';
 import { getCitation, formatCitation } from '@/lib/citations';
 import { deriveSiteStats, formatList } from '@/lib/site-stats';
 import modelCard from '@/data/model-card.json';
@@ -14,11 +15,7 @@ export default function AboutPage() {
     queryFn: () => api.getHealth(),
     refetchInterval: 30000, // Refresh every 30 seconds
   });
-  const { data: sitesData } = useQuery({
-    queryKey: ['sites'],
-    queryFn: () => api.getSites(),
-    staleTime: 60_000,
-  });
+  const { data: sitesData } = useLegacySitesResponse();
   const stats = deriveSiteStats(sitesData);
 
   return (

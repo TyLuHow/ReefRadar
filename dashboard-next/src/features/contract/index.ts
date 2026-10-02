@@ -8,7 +8,8 @@ export type { ContractQueryResult } from './hooks';
 export { ContractVersionSync } from './ContractVersionSync';
 export { parseContractVersionParam, useContractVersionStore } from './version';
 export type { ContractPin } from './version';
-export { useLegacySitesResponse, toLegacySitesResponse } from './legacy';
+export { useLegacySitesResponse, useSiteIndex, toLegacySitesResponse } from './legacy';
+export type { SiteIndexEntry } from './legacy';
 export {
   ContractError,
   ContractConfigError,

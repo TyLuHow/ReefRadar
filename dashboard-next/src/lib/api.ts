@@ -2,7 +2,6 @@
 
 import {
   HealthResponse,
-  SitesResponse,
   UploadResponse,
   AnalyzeResponse,
   AnalysisResult,
@@ -138,11 +137,6 @@ class ApiClient {
   // Health check
   async getHealth(): Promise<HealthResponse> {
     return this.request<HealthResponse>('/health');
-  }
-
-  // Get reference sites
-  async getSites(): Promise<SitesResponse> {
-    return this.request<SitesResponse>('/sites');
   }
 
   // Get gallery samples + stories
