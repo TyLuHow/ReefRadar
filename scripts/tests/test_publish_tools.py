@@ -278,6 +278,62 @@ def test_check_analysis_probability_sum_tolerance_absorbs_six_decimal_rounding()
     assert any("sum to" in f for f in verify_live_truth.check_analysis(body, MODEL_CARD, expect_coordinates=True))
 
 
+STAMP = {
+    "contract_version": 1,
+    "dataset_version": "reefradar-reference-2026.10.0",
+    "model_version": "interim-real-only",
+    "preprocessing_spec_version": "preproc-2026.10.0-as-deployed",
+}
+
+
+def _stamped_analysis(with_coords=True):
+    body = _good_analysis(with_coords)
+    body.update(STAMP)
+    return body
+
+
+def test_check_analysis_stamp_passes_exact_stamp():
+    assert verify_live_truth.check_analysis(_stamped_analysis(), MODEL_CARD, True, expected_stamp=STAMP) == []
+    assert verify_live_truth.check_analysis(_stamped_analysis(False), MODEL_CARD, False, expected_stamp=STAMP) == []
+
+
+def test_check_analysis_stamp_flags_each_violation():
+    def failures(**changes):
+        body = _stamped_analysis()
+        body.update(changes)
+        return " | ".join(verify_live_truth.check_analysis(body, MODEL_CARD, True, expected_stamp=STAMP))
+
+    assert "contract_version" in failures(contract_version=None)
+    assert "contract_version" in failures(contract_version=1.0)  # float, not an integer
+    assert "contract_version" in failures(contract_version=True)  # bool is not a contract version
+    assert "contract_version" in failures(contract_version="1")
+    assert "contract_version" in failures(contract_version=2)
+    assert "dataset_version" in failures(dataset_version="other")
+    assert "model_version" in failures(model_version="2.0")
+    assert "preprocessing_spec_version" in failures(preprocessing_spec_version=None)
+    missing = _stamped_analysis()
+    del missing["contract_version"]
+    assert "contract_version" in " | ".join(
+        verify_live_truth.check_analysis(missing, MODEL_CARD, True, expected_stamp=STAMP)
+    )
+    # Without an expected stamp the existing checks are unchanged.
+    assert verify_live_truth.check_analysis(_good_analysis(), MODEL_CARD, True) == []
+
+
+def test_load_stamp_reads_committed_stamp_json():
+    stamp = verify_live_truth.load_stamp(verify_live_truth.DEFAULT_STAMP)
+    assert stamp["contract_version"] == 1 and isinstance(stamp["contract_version"], int)
+    assert set(stamp) >= {"dataset_version", "model_version", "preprocessing_spec_version"}
+
+
+def test_main_stamp_option_default_and_override(tmp_path):
+    args = verify_live_truth.build_parser().parse_args([])
+    assert args.stamp == verify_live_truth.DEFAULT_STAMP
+    assert verify_live_truth.DEFAULT_STAMP.as_posix().endswith("contracts/bucket/v1/stamp.json")
+    custom = tmp_path / "stamp.json"
+    assert verify_live_truth.build_parser().parse_args(["--stamp", str(custom)]).stamp == custom
+
+
 def test_check_sites():
     sites = [{"site_id": f"ind_{i}", "label_source": "marrs", "status": "healthy"} for i in range(52)]
     sites += [{"site_id": "borabora_tourist", "label_source": "x", "status": "unknown"},

@@ -16,6 +16,10 @@ Exits 0 only if every check passes:
              model_version, no non-empty visualization, region
              coordinates_provided and in_training_region true. A second
              analysis WITHOUT coordinates reports coordinates_provided false.
+             Both analyses must also carry the contract version stamp
+             (plan 02-11): contract_version an integer equal to --stamp
+             (default contracts/bucket/v1/stamp.json), and dataset_version,
+             model_version, preprocessing_spec_version equal to that file.
 
 Presigned audio URLs are never printed or logged (only sample ids and
 outcomes). Run `--no-analysis` to skip the (slow) analysis checks.
@@ -46,6 +50,7 @@ ANALYSIS_SITE = "ind_H1"
 # catching any real defect (a missing class or a scaled distribution is off by
 # orders of magnitude more than this).
 PROBABILITY_TOLERANCE = 1e-5
+DEFAULT_STAMP = REPO_ROOT / "contracts" / "bucket" / "v1" / "stamp.json"
 
 
 # --------------------------------------------------------------------------
@@ -105,10 +110,39 @@ def check_clip(sample_id: str, data: bytes, expected_sha256: str | None) -> list
     return failures
 
 
-def check_analysis(body: dict, model_card: dict, expect_coordinates: bool) -> list[str]:
+STAMP_STRING_KEYS = ("dataset_version", "model_version", "preprocessing_spec_version")
+
+
+def check_stamp(body: dict, expected_stamp: dict) -> list[str]:
+    """Contract version stamps (CONTRACT-04) on a /visualize body.
+
+    contract_version must be an integer (JSON 1, never 1.0 and never a bool)
+    equal to the committed stamp; the three string versions must equal it too.
+    """
+    failures = []
+    got = body.get("contract_version")
+    if got is None:
+        failures.append("contract_version is missing or null (pre-contract result)")
+    elif type(got) is not int:
+        failures.append(f"contract_version {got!r} is a {type(got).__name__}, not an integer")
+    elif got != expected_stamp["contract_version"]:
+        failures.append(f"contract_version {got!r} != stamp {expected_stamp['contract_version']!r}")
+    for key in STAMP_STRING_KEYS:
+        if body.get(key) != expected_stamp[key]:
+            failures.append(f"{key} {body.get(key)!r} != stamp {expected_stamp[key]!r}")
+    return failures
+
+
+def load_stamp(path: pathlib.Path) -> dict:
+    return json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+
+
+def check_analysis(body: dict, model_card: dict, expect_coordinates: bool, expected_stamp: dict | None = None) -> list[str]:
     failures = []
     if body.get("status") != "complete":
         return [f"analysis status is {body.get('status')!r}, not 'complete'"]
+    if expected_stamp is not None:
+        failures.extend(check_stamp(body, expected_stamp))
     classification = body.get("classification") or {}
     probs = classification.get("probabilities") or {}
     total = sum(probs.values()) if probs else 0.0
@@ -144,6 +178,9 @@ def analysis_summary(body: dict, analysis_id: str) -> dict:
         "analysis_id": analysis_id,
         "label": classification.get("label"),
         "model_version": classification.get("model_version"),
+        "stamp": {
+            k: body.get(k) for k in ("contract_version", "dataset_version", "model_version", "preprocessing_spec_version")
+        },
         "probability_sum": round(sum(probs.values()), 9) if probs else None,
         "region": {k: region.get(k) for k in ("detected", "scope", "coordinates_provided", "in_training_region", "training_sites_in_region")},
         "similar_sites_count": len(body.get("similar_sites") or []),
@@ -212,6 +249,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--manifest", type=pathlib.Path, default=REPO_ROOT / "data" / "audio-manifest.json")
     p.add_argument("--model-card", type=pathlib.Path, default=REPO_ROOT / "dashboard-next" / "src" / "data" / "model-card.json")
     p.add_argument("--repo-root", type=pathlib.Path, default=REPO_ROOT)
+    p.add_argument(
+        "--stamp", type=pathlib.Path, default=DEFAULT_STAMP,
+        help="Expected contract version stamp applied to both analyses (default: contracts/bucket/v1/stamp.json)",
+    )
     return p
 
 
@@ -222,6 +263,7 @@ def main(argv=None, session=None) -> int:
     session = session or requests.Session()
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
     model_card = json.loads(args.model_card.read_text(encoding="utf-8"))
+    expected_stamp = load_stamp(args.stamp) if not args.no_analysis else None
     api = args.api_url.rstrip("/")
     failures: list[str] = []
     summary: dict = {}
@@ -269,7 +311,7 @@ def main(argv=None, session=None) -> int:
                 started = time.monotonic()
                 analysis_id, body = run_analysis(session, api, wav, name, coords if use_coords else None, args.timeout)
                 elapsed = time.monotonic() - started
-                found = check_analysis(body, model_card, expect_coordinates=use_coords)
+                found = check_analysis(body, model_card, expect_coordinates=use_coords, expected_stamp=expected_stamp)
                 section(f"analysis {label} ({elapsed:.0f}s)", found)
                 summary[f"analysis_{'with' if use_coords else 'without'}_coordinates"] = analysis_summary(body, analysis_id)
             except Exception as e:  # noqa: BLE001
