@@ -17,7 +17,7 @@ affects: [02-09, 02-10, 02-12, Phase 6 PERSIST-01 URL state, every later UI phas
 actuals:
   tokens: 9800
   tasks: 2
-  commits: 4
+  commits: 5
 
 tech-stack:
   added: []
@@ -118,7 +118,7 @@ status: complete
 
 - **Duration:** about 20 min
 - **Tasks:** 2 (tracer, auto), both TDD
-- **Commits:** 4 (RED and GREEN for each task)
+- **Commits:** 5 (RED and GREEN for each task, plus the CI test fix)
 - **Files:** 13 changed, 618 insertions, 19 deletions
 
 ## Accomplishments
@@ -164,7 +164,14 @@ status: complete
 - **Fix:** specs use a locator that excludes the route announcer; the component keeps `role="alert"` as the plan specified.
 - **Commit:** `8de77b8`
 
-**Total deviations:** 1 auto-fixed plus 6 wording adjustments. No impact on must-have truths.
+**2. [Rule 3 - Blocking] CI python job red since 02-06, fixed so the pushed head could be green**
+- **Found during:** push and CI check. The previous push (`36948925060`, 02-06 docs) had a failing `python (pytest)` job; it was not caused by this plan.
+- **Issue:** `scripts/tests/test_contract_fixtures.py::test_without_a_published_record_the_check_passes` and `::test_an_unpublished_version_still_requires_schema_copies_to_match` assumed the committed tree has no `contracts/PUBLISHED.json`; 02-06 committed it, so both failed on every platform (432 passed, 2 failed).
+- **Fix:** both tests now remove `PUBLISHED.json` from their private `contracts_copy` before asserting (test-only change; no production code touched).
+- **Files modified:** `scripts/tests/test_contract_fixtures.py`
+- **Commit:** `43b5360` (typed `fix(02-06)` because it repairs 02-06's test assumption)
+
+**Total deviations:** 2 auto-fixed plus 6 wording adjustments. No impact on must-have truths.
 
 ## Authentication Gates
 
