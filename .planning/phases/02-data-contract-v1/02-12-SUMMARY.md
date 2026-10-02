@@ -59,7 +59,7 @@ pytest; `build_contract.py --version 1 --check`; `check_contract.py --check --ad
 
 ## Production safety
 
-Branch `redesign/v2-discovery`. `git ls-remote origin refs/heads/main` before: `416561758b5970406c75e5c463747cbbc67df130`; after the push: see the Push section below. No merge to main, no Vercel deploy, no S3 or CloudFront write by this plan.
+Branch `redesign/v2-discovery`. `git ls-remote origin refs/heads/main` before: `416561758b5970406c75e5c463747cbbc67df130`; after the push: `416561758b5970406c75e5c463747cbbc67df130` (unchanged). No merge to main, no Vercel deploy, no S3 or CloudFront write by this plan.
 
 ## Deviations from Plan
 
@@ -89,7 +89,7 @@ CONTRACT-01..05 intentionally not marked complete here (phase verification does 
 
 ## Push and CI
 
-Filled in after the push (see the final report).
+`git push origin redesign/v2-discovery` took the branch from `5fe5215` to `e983463`. Push CI run https://github.com/TyLuHow/ReefRadar/actions/runs/36981399366 on `e983463`: success (citations, python, web, e2e and visual green; live-smoke skipped as designed). `git ls-remote origin refs/heads/main` after the push: `416561758b5970406c75e5c463747cbbc67df130`, identical to before.
 
 ## Self-Check: PASSED
 
