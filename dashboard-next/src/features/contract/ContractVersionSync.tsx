@@ -18,8 +18,11 @@ import { ContractNotFoundError } from './errors';
  *   1. copies the parsed pin into the version store, which every contract hook
  *      waits for before making a request;
  *   2. marks the document with the version actually in use and whether it was
- *      pinned (html data-contract-version / data-contract-pinned), so a test,
- *      a bug report or a screenshot can say which contract it saw;
+ *      pinned (html data-contract-version / data-contract-pinned) and which
+ *      coverage flags it turns on (data-contract-coverage, comma-joined, empty
+ *      when none), so a test, a bug report or a screenshot can say which
+ *      contract it saw. A running page follows latest.json, so these change
+ *      without a reload when a later version is published;
  *   3. renders a visible alert, and nothing else, when the pin is malformed or
  *      the pinned version does not exist. It never substitutes the latest
  *      contract for a version the visitor asked for.
@@ -37,18 +40,27 @@ export function ContractVersionSync() {
 
   const { data: manifest, error } = useContract();
   const version = manifest?.contract_version;
+  // Names of the coverage flags that are true in the manifest in use, e.g. "has_diel,has_effort".
+  const coverageFlags = manifest
+    ? Object.entries(manifest.coverage)
+        .filter(([name, value]) => name.startsWith('has_') && value === true)
+        .map(([name]) => name)
+        .join(',')
+    : undefined;
   const pinned = pin.kind === 'pinned';
 
   useEffect(() => {
     if (!resolved) return;
     const root = document.documentElement;
     root.dataset.contractPinned = String(pinned);
-    if (version !== undefined) {
+    if (version !== undefined && coverageFlags !== undefined) {
       root.dataset.contractVersion = String(version);
+      root.dataset.contractCoverage = coverageFlags;
     } else if (error !== null) {
       delete root.dataset.contractVersion;
+      delete root.dataset.contractCoverage;
     }
-  }, [resolved, pinned, version, error]);
+  }, [resolved, pinned, version, coverageFlags, error]);
 
   if (!resolved) return null;
 
