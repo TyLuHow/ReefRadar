@@ -29,3 +29,24 @@ test.describe('no ambient canvas', () => {
     });
   }
 });
+
+test.describe('static crossfader slider', () => {
+  test('/experience?mode=compare shows a plain crossfader-slider that moves without errors', async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+
+    await mockApi(page);
+    await page.goto('/experience/?mode=compare', { waitUntil: 'load' });
+    await expect(page.getByText('Compare Locations').first()).toBeVisible({ timeout: 15000 });
+
+    const slider = page.locator('input[type=range].crossfader-slider');
+    await expect(slider).toBeVisible();
+    await slider.fill('0.8');
+    await expect(slider).toHaveValue('0.8');
+
+    const touchAction = await slider.evaluate((el) => getComputedStyle(el).touchAction);
+    expect(touchAction).toBe('none');
+
+    expect(pageErrors, 'uncaught page errors on /experience?mode=compare').toEqual([]);
+  });
+});

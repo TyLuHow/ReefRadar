@@ -1,12 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
 import { Play, Pause, ArrowLeft, MapPin } from 'lucide-react';
 import { GlassPanel, GlassButton } from '@/components/ui/glass';
 import { BANDS, BAND_IDS } from '@/components/spectrogram/FrequencyBands';
 import { CaveatsFooter } from './CaveatsFooter';
 import { useLocationAudio, HealthStatus, ExcerptMeta } from './useLocationAudio';
-import { useVitalityStore } from '@/stores/vitality-store';
 
 interface LocationCompareProps {
   onGoLanding: () => void;
@@ -34,23 +32,6 @@ const STATUS_COLORS: Record<HealthStatus, string> = {
   healthy: '#cd853f',
 };
 
-const VITALITY_MAP: Record<HealthStatus, number> = {
-  healthy: 1.0,
-  restored_mid: 0.7,
-  restored_early: 0.4,
-  degraded: 0.0,
-};
-
-function crossfadeToVitality(
-  crossfade: number,
-  leftTrack: HealthStatus,
-  rightTrack: HealthStatus
-): number {
-  const leftV = VITALITY_MAP[leftTrack];
-  const rightV = VITALITY_MAP[rightTrack];
-  return leftV + (rightV - leftV) * crossfade;
-}
-
 /** Ordered from degraded to healthy for the state selector bar */
 const STATUS_ORDER: HealthStatus[] = [
   'degraded',
@@ -74,22 +55,6 @@ function formatTime(s: number): string {
 
 export function LocationCompare({ onGoLanding, onGoDemo }: LocationCompareProps) {
   const audio = useLocationAudio();
-  const setVitality = useVitalityStore(s => s.setVitality);
-
-  // Set vitality when tracks change (reflects initial crossfade=0 state)
-  useEffect(() => {
-    setVitality(
-      crossfadeToVitality(audio.crossfade, audio.leftTrack, audio.rightTrack),
-      'crossfader'
-    );
-  }, [audio.leftTrack, audio.rightTrack, setVitality]);
-
-  // Reset vitality on unmount
-  useEffect(() => {
-    return () => {
-      useVitalityStore.getState().setVitality(0, 'default');
-    };
-  }, []);
 
   return (
     <div className="relative min-h-screen flex flex-col">
@@ -239,14 +204,9 @@ export function LocationCompare({ onGoLanding, onGoDemo }: LocationCompareProps)
                 step="0.01"
                 value={audio.crossfade}
                 onChange={(e) => {
-                  const v = parseFloat(e.target.value);
-                  audio.setCrossfade(v);
-                  setVitality(
-                    crossfadeToVitality(v, audio.leftTrack, audio.rightTrack),
-                    'crossfader'
-                  );
+                  audio.setCrossfade(parseFloat(e.target.value));
                 }}
-                className="flex-1 vitality-slider"
+                className="flex-1 crossfader-slider"
               />
               <span className="text-xs min-w-[80px]" style={{ color: STATUS_COLORS[audio.rightTrack], opacity: 0.4 + 0.6 * audio.crossfade }}>
                 {STATUS_LABELS[audio.rightTrack]}
@@ -329,8 +289,7 @@ export function LocationCompare({ onGoLanding, onGoDemo }: LocationCompareProps)
 
               <p style={{ color: 'var(--text-dim)' }}>
                 Use the crossfade slider to blend between the two recordings. Toggle frequency
-                bands to isolate that range of the audio. The moving background is decorative,
-                not a spectrogram or a visualisation of these bands.
+                bands to isolate that range of the audio.
               </p>
 
               <div className="pt-1 border-t border-white/5">
