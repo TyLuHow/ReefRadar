@@ -159,11 +159,16 @@ export interface AnalysisResult {
    * Contract stamp (02-05): the data-contract version, dataset, model and
    * preprocessing-spec versions the result was produced with. Null (or absent)
    * on results produced before stamping, which the UI labels "pre-contract".
+   * A result with a null contract_version but a model_version was produced by a
+   * model no published contract covers ("uncovered"); stamp_status says how the
+   * classifier resolved the stamp ('stamped' | 'uncovered' | 'load_failed') and
+   * is absent on legacy results.
    */
   contract_version?: number | null;
   dataset_version?: string | null;
   model_version?: string | null;
   preprocessing_spec_version?: string | null;
+  stamp_status?: 'stamped' | 'uncovered' | 'load_failed' | null;
   // stage/request_id/retry_count: handle_visualize (lambdas/router/handler.py)
   // includes these on a failed analysis's error object -- pollAnalysis (D-15)
   // reads request_id from here since /status's error does not carry it.

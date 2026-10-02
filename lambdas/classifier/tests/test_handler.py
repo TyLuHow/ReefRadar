@@ -326,6 +326,8 @@ def test_stale_stamp_is_nulled_when_the_loaded_model_differs(classifier_handler)
     assert item["contract_version"] is None
     assert item["dataset_version"] is None
     assert item["preprocessing_spec_version"] is None
+    # CR-01: distinguishable from a legacy result (which has no stamp_status).
+    assert item["stamp_status"] == "uncovered"
 
 
 def test_unloadable_stamp_writes_nulls_and_does_not_fail_the_analysis(classifier_handler):
@@ -344,8 +346,25 @@ def test_unloadable_stamp_writes_nulls_and_does_not_fail_the_analysis(classifier
     )
     assert result["statusCode"] == 200
     item = _get_result_item(classifier_handler, "analysis-s2")
-    for key in ("contract_version", "dataset_version", "model_version", "preprocessing_spec_version"):
+    for key in ("contract_version", "dataset_version", "preprocessing_spec_version"):
         assert item[key] is None
+    # CR-01: the running model's own version does not depend on the stamp file,
+    # and the failure is flagged distinctly from an uncovered or legacy result.
+    assert item["model_version"] == "interim-real-only-test"
+    assert item["stamp_status"] == "load_failed"
+
+
+def test_unstamped_outcomes_emit_a_cloudwatch_metric(classifier_handler, capsys):
+    def _broken():
+        raise FileNotFoundError("contract_stamp.json missing")
+
+    classifier_handler.get_contract_stamp = _broken
+    out = classifier_handler.result_version_stamp("some-model")
+    assert out["stamp_status"] == "load_failed"
+    assert out["model_version"] == "some-model"
+    emitted = [json.loads(line) for line in capsys.readouterr().out.splitlines() if line.startswith("{")]
+    assert emitted and emitted[0]["Status"] == "load_failed"
+    assert emitted[0]["_aws"]["CloudWatchMetrics"][0]["Metrics"][0]["Name"] == "UnstampedResults"
 
 
 # --- WR-03: one authoritative outcome, no async-retry fighting the UI ---------

@@ -2,7 +2,14 @@
 
 import { useContract } from './hooks';
 import { ContractNotFoundError } from './errors';
-import { PRE_CONTRACT_LABEL, formatContractStamp, stampMismatches, stampVersion, type ContractStamp } from './stamp';
+import {
+  PRE_CONTRACT_LABEL,
+  formatContractStamp,
+  stampMismatches,
+  stampState,
+  stampVersion,
+  type ContractStamp,
+} from './stamp';
 
 interface ContractStampLineProps extends ContractStamp {
   /** Render for a coloured banner (white text) instead of the default muted tone. */
@@ -18,12 +25,18 @@ const MISMATCH_FIELD_LABEL = {
 /**
  * One line stating the data-contract version an analysis result was produced
  * with. A stamped result resolves exactly that version (an explicit version
- * always wins over the latest pointer); a result with no stamp is labelled
- * "pre-contract" and makes no contract request. Never invents a version.
+ * always wins over the latest pointer). A result produced after the contract
+ * existed but not covered by a published contract shows its own model version
+ * under distinct wording (never "pre-contract"); a failed stamp load says so;
+ * only a genuinely legacy result is labelled "pre-contract". Only a stamped
+ * result makes a contract request. Never invents a version.
  */
 export function ContractStampLine(props: ContractStampLineProps) {
   const version = stampVersion(props);
-  return version === null ? <PreContractLine onColor={props.onColor} /> : <StampedLine {...props} version={version} />;
+  if (version !== null) return <StampedLine {...props} version={version} />;
+  const state = stampState(props);
+  if (state === 'pre-contract') return <PreContractLine onColor={props.onColor} />;
+  return <UnstampedLine {...props} />;
 }
 
 function lineProps(onColor?: boolean) {
@@ -36,6 +49,17 @@ function PreContractLine({ onColor }: { onColor?: boolean }) {
   return (
     <p {...lineProps(onColor)} data-testid="contract-stamp">
       {PRE_CONTRACT_LABEL}
+    </p>
+  );
+}
+
+/** Uncovered / stamp-unavailable: shows the running model's own version when the API returned it. */
+function UnstampedLine({ onColor, ...stamp }: ContractStampLineProps) {
+  const model = typeof stamp.model_version === 'string' && stamp.model_version !== '' ? stamp.model_version : null;
+  return (
+    <p {...lineProps(onColor)} data-testid="contract-stamp">
+      {formatContractStamp(stamp)}
+      {model ? ` · ${model}` : ''}
     </p>
   );
 }

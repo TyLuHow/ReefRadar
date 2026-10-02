@@ -73,6 +73,7 @@ export function AnalysisResults({ result }: AnalysisResultsProps) {
                 dataset_version={result.dataset_version}
                 model_version={result.model_version}
                 preprocessing_spec_version={result.preprocessing_spec_version}
+                stamp_status={result.stamp_status}
                 onColor
               />
             </div>

@@ -65,6 +65,7 @@ export function ControlsPanel({
           dataset_version={analysisData.dataset_version}
           model_version={analysisData.model_version}
           preprocessing_spec_version={analysisData.preprocessing_spec_version}
+          stamp_status={analysisData.stamp_status}
         />
       </div>
 

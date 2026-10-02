@@ -136,11 +136,13 @@ def test_classifier_result_is_stamped_and_visualize_returns_it(stack):
     )["Item"]
     for key in STAMP_KEYS:
         assert item[key] == STAMP[key]
+    assert item["stamp_status"] == "stamped"
 
     result, body = _get(router, "/visualize/analysis-1")
     assert result["statusCode"] == 200
     for key in STAMP_KEYS:
         assert body[key] == STAMP[key]
+    assert body["stamp_status"] == "stamped"
     # Serialised as the integer 1, never 1.0.
     assert '"contract_version": 1' in result["body"]
     assert '"contract_version": 1.0' not in result["body"]
@@ -175,5 +177,7 @@ def test_legacy_result_without_stamp_returns_nulls(stack):
     for key in STAMP_KEYS:
         assert key in body
         assert body[key] is None
+    # CR-01: a legacy result has no stamp_status, so it can be told from an uncovered one.
+    assert body["stamp_status"] is None
     alias, _ = _get(router, "/results/legacy-1")
     assert alias["body"] == result["body"]

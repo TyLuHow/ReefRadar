@@ -763,19 +763,68 @@ def get_contract_stamp():
     return _contract_stamp
 
 
-def result_version_stamp(loaded_model_version):
-    """CONTRACT-04: the four version keys for a new RESULT item.
+STAMP_STATUS_STAMPED = 'stamped'
+STAMP_STATUS_UNCOVERED = 'uncovered'
+STAMP_STATUS_LOAD_FAILED = 'load_failed'
 
-    A stamp that cannot be loaded (a packaging defect) must not fail the
-    analysis, so log it and write the four keys as null -- honest
-    "pre-contract". The post-deploy live verifier requires non-null stamps,
-    so such a defect cannot pass unnoticed.
+
+def _emit_stamp_metric(status, model_version):
+    """CR-01: make an unstamped result observable in CloudWatch without failing it.
+
+    One CloudWatch Embedded Metric Format log line (metric ContractStampStatus
+    in namespace ReefRadar/Classifier, dimension Status) so an uncovered model
+    or a stamp-load failure can be graphed and alarmed on; plain log text
+    elsewhere is unaffected. Only emitted for non-stamped outcomes.
     """
     try:
-        return stamp_for_model(loaded_model_version, get_contract_stamp())
+        print(json.dumps({
+            '_aws': {
+                'Timestamp': int(time.time() * 1000),
+                'CloudWatchMetrics': [{
+                    'Namespace': 'ReefRadar/Classifier',
+                    'Dimensions': [['Status']],
+                    'Metrics': [{'Name': 'UnstampedResults', 'Unit': 'Count'}],
+                }],
+            },
+            'Status': status,
+            'UnstampedResults': 1,
+            'model_version': model_version,
+        }))
+    except Exception:
+        pass  # observability must never fail an analysis
+
+
+def result_version_stamp(loaded_model_version):
+    """CONTRACT-04: the four version keys plus `stamp_status` for a new RESULT item.
+
+    `stamp_status` (CR-01) tells a post-contract result apart from a legacy one:
+      - 'stamped':     the loaded model is the one the bundled stamp covers
+      - 'uncovered':   a different model is running than the bundled stamp
+                       covers; model_version is still the running model's own
+      - 'load_failed': the bundled stamp could not be loaded (a packaging
+                       defect); model_version is still the running model's own
+
+    A stamp that cannot be loaded must not fail the analysis, so it is logged,
+    counted in CloudWatch, and the three contract keys are written as null.
+    model_version does not depend on the stamp file, so it is still reported.
+    Legacy results (written before stamping) carry none of these keys.
+    """
+    try:
+        stamp = stamp_for_model(loaded_model_version, get_contract_stamp())
     except Exception as e:
         print(f"ERROR could not load the bundled contract stamp: {type(e).__name__}: {e}")
-        return {key: None for key in STAMP_KEYS}
+        _emit_stamp_metric(STAMP_STATUS_LOAD_FAILED, loaded_model_version)
+        out = {key: None for key in STAMP_KEYS}
+        out['model_version'] = loaded_model_version
+        out['stamp_status'] = STAMP_STATUS_LOAD_FAILED
+        return out
+
+    if stamp.get('contract_version') is None:
+        _emit_stamp_metric(STAMP_STATUS_UNCOVERED, loaded_model_version)
+        stamp['stamp_status'] = STAMP_STATUS_UNCOVERED
+    else:
+        stamp['stamp_status'] = STAMP_STATUS_STAMPED
+    return stamp
 
 
 def find_similar_sites_with_status(embedding, top_k=3):

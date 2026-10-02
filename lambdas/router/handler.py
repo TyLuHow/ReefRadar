@@ -501,7 +501,11 @@ def handle_visualize(analysis_id):
 
         item = result['Item']
         # CONTRACT-04 version stamps. Results written before the stamps existed
-        # have none of the four keys and return null ("pre-contract"). DynamoDB
+        # have none of the four keys and return null ("pre-contract"). Newer
+        # results also carry stamp_status ('stamped' | 'uncovered' |
+        # 'load_failed', CR-01) so a post-contract result that no published
+        # contract covers is never mistaken for a legacy one; legacy results
+        # return null for it. DynamoDB
         # numbers are Decimal and DecimalEncoder emits float, so cast
         # contract_version to int or it would serialise as 1.0.
         contract_version = item.get('contract_version')
@@ -512,6 +516,7 @@ def handle_visualize(analysis_id):
             'dataset_version': item.get('dataset_version'),
             'model_version': item.get('model_version'),
             'preprocessing_spec_version': item.get('preprocessing_spec_version'),
+            'stamp_status': item.get('stamp_status'),
             'classification': item.get('classification', {}),
             'similar_sites': item.get('similar_sites', []),
             'similar_sites_error': item.get('similar_sites_error'),

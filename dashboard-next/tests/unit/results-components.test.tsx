@@ -284,9 +284,50 @@ describe('contract stamp line (CONTRACT-04)', () => {
 
   it('formatContractStamp never invents a version', () => {
     expect(formatContractStamp(stamp)).toBe('Contract v1');
-    expect(formatContractStamp({ ...stamp, contract_version: null })).toBe('pre-contract');
     expect(formatContractStamp({ dataset_version: stamp.dataset_version })).toBe('pre-contract');
     expect(formatContractStamp({})).toBe('pre-contract');
+    expect(formatContractStamp({ contract_version: null, dataset_version: null, model_version: null })).toBe(
+      'pre-contract'
+    );
+  });
+
+  it('formatContractStamp keeps pre-contract, uncovered and unavailable distinct (CR-01)', () => {
+    const uncovered = { contract_version: null, dataset_version: null, model_version: 'newer-model-2027' };
+    expect(formatContractStamp(uncovered)).toBe('Not covered by a published contract');
+    expect(formatContractStamp({ ...uncovered, stamp_status: 'uncovered' })).not.toBe('pre-contract');
+    expect(formatContractStamp({ contract_version: null, stamp_status: 'load_failed' })).toBe(
+      'Version stamp unavailable'
+    );
+  });
+
+  it('shows the model version for an uncovered result and never calls it pre-contract (CR-01)', async () => {
+    render(
+      withClient(
+        <ContractStampLine
+          contract_version={null}
+          dataset_version={null}
+          model_version="newer-model-2027"
+          preprocessing_spec_version={null}
+          stamp_status="uncovered"
+        />
+      )
+    );
+    const text = screen.getByTestId('contract-stamp').textContent ?? '';
+    expect(text).toBe('Not covered by a published contract · newer-model-2027');
+    expect(text).not.toMatch(/pre-contract/);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(handle.requests).toEqual([]);
+  });
+
+  it('says the stamp is unavailable when the classifier could not load it (CR-01)', () => {
+    render(
+      withClient(
+        <ContractStampLine contract_version={null} model_version="newer-model-2027" stamp_status="load_failed" />
+      )
+    );
+    const text = screen.getByTestId('contract-stamp').textContent ?? '';
+    expect(text).toBe('Version stamp unavailable · newer-model-2027');
+    expect(text).not.toMatch(/pre-contract/);
   });
 
   it('resolves exactly v1 while latest is v2 and shows the three stamped versions', async () => {
