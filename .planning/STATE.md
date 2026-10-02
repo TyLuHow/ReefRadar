@@ -4,17 +4,17 @@ milestone: v2
 milestone_name: Reef Soundscape Research Instrument
 current_phase: 2
 current_phase_name: Data Contract v1
-status: executing
-stopped_at: Completed 02-11-PLAN.md
-last_updated: "2026-10-02T02:24:56.492Z"
+status: verifying
+stopped_at: Completed 02-13-PLAN.md
+last_updated: "2026-10-02T07:42:05.655Z"
 last_activity: 2026-10-01
 last_activity_desc: Phase 2 execution started
-state_head: 08f45fa90aa63ee16a5d85d8cab92f3e1f677374
+state_head: add73efc0ecfd8f3e86e25fa266568e4decf7dd0
 progress:
   total_phases: 17
   completed_phases: 1
-  total_plans: 32
-  completed_plans: 31
+  total_plans: 33
+  completed_plans: 32
   percent: 6
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-01)
 
 Phase: 2 (Data Contract v1) — EXECUTING
 Plan: 12 of 12
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-01 — Phase 2 execution started
 
 Progress: [████████████████████] 20/20 plans ([█░░░░░░░░░] 6%)
@@ -91,6 +91,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 02 P09 | 40min | 3 tasks | 17 files |
 | Phase 02 P10 | 35min | 2 tasks | 13 files |
 | Phase 02 P11 | ~50min | 2 tasks | 4 files |
+| Phase 02 P13 | 110 min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,8 @@ Recent decisions affecting current work:
 - [Phase 2]: [Phase 02] 02-04: clean-tree requirement applies to publish --confirm only; --set-latest and --dry-run are not blocked by an uncommitted tree
 - [Phase 02]: 02-07: zod 4.4.3 pinned on the owner's standing approval; the contract module is the only web fetch path, verifying sha256 of every response and Zod-parsing it; Zod mirror equals Python verdicts on all 483 corpus entries
 - [Phase 2]: [Phase 02] 02-08: ?cv pins an exact contract version via one Suspense leaf writing a store the hooks wait on; a missing or malformed pin shows an alert and never falls back to latest; unpinned pages follow latest.json with keepPreviousData so a flip does not blank the view
+- [Phase 02]: 02-13: contract CDN uses custom wildcard CORS policy reefradar-2477-contract-cors (GET/HEAD/OPTIONS allowed, GET/HEAD cached); Managed-SimpleCORS answered only simple CORS requests so real browser reads were blocked
+- [Phase 02]: 02-13 (owner 2026-10-02): accept that the CDN answers CORS preflights 403 (OPTIONS relayed to S3); verifier preflight probe is report-only and a unit guard (contract-no-preflight.test.ts) keeps the contract client from ever setting request headers
 
 ### Pending Todos
 
@@ -176,6 +179,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-02T02:24:56.333Z
-Stopped at: Completed 02-11-PLAN.md
+Last session: 2026-10-02T07:42:05.435Z
+Stopped at: Completed 02-13-PLAN.md
 Resume file: None
