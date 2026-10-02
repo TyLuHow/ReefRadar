@@ -1,9 +1,10 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useVitality } from '@/hooks/useVitality';
+import { ContractVersionSync } from '@/features/contract';
 
 const BackgroundCanvas = dynamic(
   () => import('@/components/BackgroundCanvas').then(m => m.BackgroundCanvas),
@@ -29,6 +30,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <BackgroundCanvas />
+      {/* useSearchParams lives only in this leaf; Suspense keeps every route statically prerenderable. */}
+      <Suspense fallback={null}>
+        <ContractVersionSync />
+      </Suspense>
       {children}
     </QueryClientProvider>
   );

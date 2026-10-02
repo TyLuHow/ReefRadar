@@ -1,5 +1,8 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { mockApi, mockContract, expectNoUnhandledApiCalls } from './support/mock-api';
+
+/** The contract version alert; Next's own route announcer is also role=alert, so it is excluded. */
+const versionAlert = (page: Page) => page.locator('[role="alert"]:not(#__next-route-announcer__)');
 
 test.afterEach(({ page }) => {
   expectNoUnhandledApiCalls(page);
@@ -21,7 +24,7 @@ test.describe('?cv pins a contract version', () => {
     await expect(html).toHaveAttribute('data-contract-version', '1', { timeout: 15000 });
     await expect(html).toHaveAttribute('data-contract-pinned', 'true');
     await expect(page.getByText('Browse 54 reference sites across 7 countries')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(versionAlert(page)).toHaveCount(0);
 
     expect(contract.requests).not.toContain('contract/latest.json');
     expect(contract.requests).toContain('contract/v1.json');
@@ -45,7 +48,7 @@ test.describe('?cv pins a contract version', () => {
 
     await page.goto('/dashboard/?cv=9', { waitUntil: 'load' });
 
-    await expect(page.getByRole('alert')).toContainText('contract version 9 was not found', { timeout: 15000 });
+    await expect(versionAlert(page)).toContainText('contract version 9 was not found', { timeout: 15000 });
     await expect(page.locator('html')).not.toHaveAttribute('data-contract-version', /.+/);
     expect(contract.requests).not.toContain('contract/latest.json');
     expect(contract.requests).not.toContain('contract/v2.json');
@@ -63,7 +66,7 @@ test.describe('?cv pins a contract version', () => {
 
       await page.goto(`/dashboard/?cv=${encodeURIComponent(raw)}`, { waitUntil: 'load' });
 
-      await expect(page.getByRole('alert')).toContainText('not a valid contract version', { timeout: 15000 });
+      await expect(versionAlert(page)).toContainText('not a valid contract version', { timeout: 15000 });
       expect(contract.requests).toEqual([]);
     });
   }
@@ -77,6 +80,6 @@ test.describe('?cv pins a contract version', () => {
     const html = page.locator('html');
     await expect(html).toHaveAttribute('data-contract-version', '2', { timeout: 15000 });
     await expect(html).toHaveAttribute('data-contract-pinned', 'false');
-    await expect(page.getByRole('alert')).toHaveCount(0);
+    await expect(versionAlert(page)).toHaveCount(0);
   });
 });

@@ -48,3 +48,6 @@ export class ContractSchemaError extends ContractError {}
 
 /** An artifact uri that is not a plain relative path inside the contract base URL. Raised before any request. */
 export class ContractUriError extends ContractError {}
+
+/** The ?cv= value is not a positive integer of up to six digits. Raised before any request (02-08). */
+export class ContractVersionParamError extends ContractError {}

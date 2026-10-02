@@ -5,6 +5,9 @@
  */
 export { useContract, useCoverage, useModelVersion, useReferenceSites } from './hooks';
 export type { ContractQueryResult } from './hooks';
+export { ContractVersionSync } from './ContractVersionSync';
+export { parseContractVersionParam, useContractVersionStore } from './version';
+export type { ContractPin } from './version';
 export { useLegacySitesResponse, toLegacySitesResponse } from './legacy';
 export {
   ContractError,
@@ -14,5 +17,6 @@ export {
   ContractNotFoundError,
   ContractSchemaError,
   ContractUriError,
+  ContractVersionParamError,
 } from './errors';
 export type { ContractManifest, ContractPointer, ContractSite, Coverage, ModelVersion } from './schema';
