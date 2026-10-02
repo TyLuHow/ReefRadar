@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 3
 current_phase_name: Platform Upgrade & Stack Consolidation
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-10-02T18:02:44.849Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-10-02T18:19:53.807Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 3 execution started
-state_head: f77999dc054653a603fc99bee3de554b0ce2db37
+state_head: 022623bd97707650675fdfce6ab9c56c8f79255b
 progress:
   total_phases: 17
   completed_phases: 2
   total_plans: 48
-  completed_plans: 35
+  completed_plans: 36
   percent: 12
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-02)
 ## Current Position
 
 Phase: 3 (Platform Upgrade & Stack Consolidation) — EXECUTING
-Plan: 3 of 15
+Plan: 4 of 15
 Status: Ready to execute
 Last activity: 2026-10-02 — Phase 3 execution started
 
@@ -96,6 +96,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 02 P12 | 45min active (plus pause for 02-13) | 2 tasks | 2 files |
 | Phase 03 P01 | 12min | 2 tasks | 3 files |
 | Phase 03 P02 | 15min | 2 tasks | 7 files |
+| Phase 03 P03 | 20 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,7 @@ Recent decisions affecting current work:
 - [Phase 2]: 02-12: live contract proof runs against a local production build of the branch (Vercel preview protected); the tracer found the CDN browser CORS defect, fixed by 02-13
 - [Phase 3]: [Phase 03] 03-01: PLAT-10 guard tests (api-client, query-defaults, security-headers) added with no source change; security-headers test requires the three headers with exact values but tolerates extra ones
 - [Phase 3]: 03-02: stack-consolidation.test.ts is the single growing gate; REMOVED_PACKAGES is append-only for 03-08/03-10/03-11
+- [Phase 03]: 03-03: Hop 1 (Next 15.5.26 / React 19.3.0) via official codemod; codemod's eslint 9, --turbopack dev script and @types overrides rejected; react-leaflet-scoped peer override is temporary (delete in 03-10); PLAT-01 stays open until Next 16
 
 ### Pending Todos
 
@@ -186,6 +188,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-02T18:02:44.443Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-10-02T18:19:53.257Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
