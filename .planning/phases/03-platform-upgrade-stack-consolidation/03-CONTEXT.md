@@ -47,6 +47,14 @@ Out of this phase:
 - New code lives in `dashboard-next/src/features/*`. Phase 2's `features/contract` already follows this. An ESLint rule fails any import from legacy `@/components/**` inside `src/features/**`, using the same mechanism as the Phase 2 contract fence and `scripts/check-contract-fence.mjs`.
 - One API client: `src/lib/api.ts` singleton honours `NEXT_PUBLIC_API_URL` in every flow, with no stray `fetch` to the API elsewhere. React Query caching and the `vercel.json` security headers are preserved, and tests assert both.
 
+### Owner decisions after research (2026-10-02)
+- The owner is on Vercel Hobby and accepts 1-hour runtime-log retention for client error reports in this phase. Keep monitoring Vercel-only and document the retention limit where the owner reads monitoring instructions. Sentry stays deferred and can be revisited later.
+- Research defaults taken (Claude's discretion; no owner objection):
+  - maplibre-gl 6.11.2 with the worker-copy script, matching TECH-LANDSCAPE.
+  - The error page uses Next 16's documented `retry` recovery prop, with the UI-SPEC copy "Try again" unchanged.
+  - CAP-86 closes dependencies plus Streamlit only.
+  - Check WebGL availability in the Linux Playwright image on the first CI dispatch.
+
 ### Claude's Discretion
 - Exact codemod order, how to split plans, React 19 / Next 16 breakage fixes (async request APIs, `useRef` types, etc.), test tooling version bumps needed for compatibility (Vitest, Playwright, eslint-config-next / ESLint 9 flat config if required), and how the Plot charts are wrapped (a small `<PlotFigure>` in a feature module).
 
