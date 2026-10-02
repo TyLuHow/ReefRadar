@@ -120,7 +120,13 @@ test('pointer, manifest and sites are readable cross-origin', async ({ page }) =
   }
 });
 
-test('author header forces a preflight that the CDN answers', async ({ page }) => {
+// Known limitation, owner decision 2026-10-02 (plan 02-13, option a): the CDN relays OPTIONS to its S3
+// origin, which has no bucket CORS, so a real preflight is answered 403 and the browser blocks the
+// request. Real contract reads never preflight (a plain fetch with credentials 'omit' and no author
+// header, which the first test proves), and the unit guard tests/unit/contract-no-preflight.test.ts
+// fails if the contract client ever adds a request header. This test documents the current behaviour
+// without failing the suite; drop the fixme if the CDN ever starts answering preflights.
+test.fixme('author header forces a preflight that the CDN answers', async ({ page }) => {
   await openProbePage(page);
 
   const status = await page.evaluate(async (url) => {
