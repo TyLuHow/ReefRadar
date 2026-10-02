@@ -223,7 +223,7 @@ Plans:
   4. New code lives in feature modules and lint fails on any import from legacy components; all flows go through a single API client honouring the configured API base URL, with React Query caching and security headers preserved.
   5. Production errors and web-vitals are reported to a monitoring destination the owner can open.
 
-**Plans**: 6/15 plans executed (14 waves)
+**Plans**: 7/15 plans executed (14 waves)
 
 Plans:
 
@@ -250,7 +250,7 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 03-07-PLAN.md — Vitality removal B: store, bridge, --reef-* tokens, static crossfader slider, Q7 matrix retirements
+- [x] 03-07-PLAN.md — Vitality removal B: store, bridge, --reef-* tokens, static crossfader slider, Q7 matrix retirements
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
@@ -535,7 +535,7 @@ Numeric order (1 → 17) is a valid order. With parallelization, Data & ML phase
 |-------|----------------|--------|-----------|
 | 1. Truth & Reproducibility | 20/20 | Complete    | 2026-10-01 |
 | 2. Data Contract v1 | 13/13 | Complete    | 2026-10-02 |
-| 3. Platform Upgrade & Stack Consolidation | 6/15 | In Progress|  |
+| 3. Platform Upgrade & Stack Consolidation | 7/15 | In Progress|  |
 | 4. Design System & Instrument Primitives | 0/TBD | Not started | - |
 | 5. Preprocessing Parity & Grouped Evaluation | 0/TBD | Not started | - |
 | 6. Instrument Shell & Atlas | 0/TBD | Not started | - |
