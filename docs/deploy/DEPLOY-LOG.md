@@ -510,3 +510,112 @@ py -3.12 scripts/deploy-lambdas.py --function router --ref 6aca641 --confirm
 Then confirm `GET /health` returns 200 (drift-check will report drift against HEAD until the next deploy, which is expected). Results written while
 stamping was live keep their stamps in DynamoDB; they stay truthful because contract v1 is immutable, and the older router
 simply does not return the fields. To go back further than this deploy, see the Rollback section above.
+
+## Phase 2: contract CDN browser CORS fix (2026-10-01)
+
+Plan 02-13 (gap closure for plan 02-12). Gives the contract CDN a custom response headers policy so a real browser can read
+the live contract cross-origin. No credentials, signed URLs or addresses appear in this section.
+
+**Status:** the browser read path is fixed and verified (real Chromium, all four fetch cache modes). The CORS *preflight*
+(an OPTIONS request) is still answered 403 by the CDN; this is recorded below and awaits an owner decision (see "Preflight
+outcome"). The new policy stays attached.
+
+### Approving decision
+
+The owner explicitly approved this fix on 2026-10-01 ("Yes, fix it"), including the production CloudFront distribution update,
+as gap-closure plan 02-13 (replace the response headers policy with a custom wildcard CORS policy). CloudFront settings are
+Claude's discretion per `02-CONTEXT.md`; the standing approval for AWS changes within the 25 USD/month ceiling also applies
+(a response headers policy and its attachment cost nothing).
+
+### The defect and how it was found
+
+The 02-12 tracer in headless Chrome could not read the contract: "blocked by CORS policy". The distribution used the AWS
+managed `Managed-SimpleCORS` policy, which adds `Access-Control-Allow-Origin` only to *simple* CORS requests. Chrome always adds
+non-safelisted headers to a fetch (`Priority: u=1, i`; `Cache-Control` and `Pragma: no-cache` on a hard reload), so CloudFront
+left the header off every real browser request, on cache hits and misses alike, for `contract/latest.json`,
+`contract/v1.json`, `v1/sites.json` and `v1/stamp.json`. A request carrying only `Origin` still got the header, which is why
+`verify_contract_live.py` passed. The verifier now sends the `priority`, `no-cache` and `chrome` header profiles and an OPTIONS
+preflight for the pointer, the manifest and the sites artifact (12 extra checks), and a Chromium spec
+(`dashboard-next/tests/e2e/contract-cdn-cors-live.spec.ts`) fetches the CDN from `http://localhost:3999` in the cache modes
+default, no-cache, reload and no-store.
+
+Reproduction before any AWS change: `verify_contract_live.py --expect-latest 1` exited 1 with exactly the 12 browser checks
+failing (status 200 and no `Access-Control-Allow-Origin` for the three GET profiles; preflight status 403 with no CORS headers) and every
+older check PASS; both Chromium tests were rejected with `TypeError: Failed to fetch`.
+
+### What changed
+
+| Item | Before | After |
+|---|---|---|
+| Response headers policy | managed `Managed-SimpleCORS` (`60669652-455b-4ae9-85a4-c4c02393f86c`) | new custom policy `reefradar-2477-contract-cors`, id `837522dc-5a65-4b60-9c61-40d7e84e9741` |
+| Policy settings | n/a | origins `*`, headers `*`, methods GET/HEAD/OPTIONS, credentials false, max age 600 s, origin override true; no expose headers and no security, custom, remove or server-timing sections |
+| Distribution `E1SD3UZ4FZ1GWL` default behaviour, `ResponseHeadersPolicyId` | `60669652-455b-4ae9-85a4-c4c02393f86c` | `837522dc-5a65-4b60-9c61-40d7e84e9741` |
+| Distribution `E1SD3UZ4FZ1GWL` default behaviour, `AllowedMethods` | GET, HEAD | GET, HEAD, OPTIONS (`CachedMethods` unchanged: GET, HEAD) |
+
+Unchanged: the cache policy (Managed-CachingOptimized), origin access control `E3JD4NDX1VQA27`, the bucket, the bucket policy,
+error caching and every object. The update was an `update_distribution` with `IfMatch` on the ETag read just before, changing
+only those two fields (asserted by the unit tests). Wildcard origin is kept from 02-02: the data is public, open-licensed and
+immutable, the app fetches with `credentials: 'omit'`, and `*.vercel.app` preview hosts cannot be listed.
+
+**No invalidation was requested.** The AWS documentation ("Add or remove HTTP headers in CloudFront responses with a policy")
+says: "CloudFront modifies the headers in the responses that it serves from the cache and the ones that it forwards from the
+origin." The policy applies at response time, so cached objects are correct as they are.
+
+### Commands run (UTC)
+
+| Time | Command | Exit |
+|---|---|---|
+| just before 03:14 | `py -3.12 scripts/setup_contract_infra.py --step cors --dry-run` | 0 (planned `create_response_headers_policy` and `update_distribution`, "[dry-run] no AWS write made") |
+| 03:14:19 to 03:14:53 | `py -3.12 scripts/setup_contract_infra.py --step cors --confirm` | 0 (policy created, distribution updated, Deployed after about 35 s, read-back ok) |
+| 03:15:09 | `py -3.12 scripts/setup_contract_infra.py --step all --verify` | 0 (budget, storage with the public probes, and the 4 cors checks all ok) |
+| 03:15:24, 03:15:53, 03:17:59 | `py -3.12 scripts/verify_contract_live.py --expect-latest 1` | 1, identical each time (see below) |
+| 03:15:41, 03:16:32 | `npm --prefix dashboard-next run test:live -- tests/e2e/contract-cdn-cors-live.spec.ts` | see below |
+| later | `py -3.12 scripts/setup_contract_infra.py --step all --record-resources` | 0 |
+| later | `py -3.12 scripts/setup_contract_infra.py --step all --dry-run` | 0, no planned action (idempotent) |
+| later | `py -3.12 scripts/setup_contract_infra.py --step cors-rollback --dry-run` | 0, one planned `update_distribution` back to Managed-SimpleCORS and GET/HEAD (rehearsal only, never confirmed) |
+
+### Verification results (check names and counts only, no bodies)
+
+- `verify_contract_live.py --expect-latest 1`: 74 checks PASS, 3 FAIL. All pre-existing checks (pointer, manifest, 13 artifacts,
+  privacy: direct S3 403, missing version 403, root not a listing) PASS, and all 9 browser GET checks PASS
+  (`priority`, `no-cache`, `chrome` for pointer, manifest and `artifact sites`: status 200, `Access-Control-Allow-Origin: *`).
+  The only failures are the three `CORS preflight answered` checks.
+- Chromium, real page origin `http://localhost:3999` served by a real local HTTP server: "pointer, manifest and sites are
+  readable cross-origin" PASSES (pointer, manifest and 54 sites read as `cors` responses in cache modes default, no-cache,
+  reload and no-store, every CDN request carrying `origin: http://localhost:3999`). "author header forces a preflight that the
+  CDN answers" FAILS (`TypeError: Failed to fetch`).
+- The first version of the spec used `page.route()` for the page origin; while interception is active Playwright answers CORS
+  preflights itself and disables the HTTP cache, so that test passed vacuously on its first run. The spec now uses a real
+  server (commit `adb9bdf`) and the preflight test fails honestly.
+
+### Preflight outcome
+
+OPTIONS to `contract/latest.json`, `contract/v1.json` and `v1/sites.json` with `Access-Control-Request-Method: GET` and
+`Access-Control-Request-Headers: priority,cache-control` answers **HTTP 403** with `Access-Control-Allow-Origin: *`,
+`Access-Control-Allow-Methods: GET,HEAD,OPTIONS` and `Access-Control-Allow-Headers: *` (the policy adds its headers, the status
+is not 2xx). A browser rejects a preflight that is not 2xx. This is consistent with CloudFront relaying the OPTIONS to the
+S3 origin, which has no bucket CORS configuration. Real browser reads of the contract do not preflight (the contract client
+sends a plain `fetch(url, { credentials: 'omit' })`; Priority and cache headers are added after the CORS decision), which is
+what the passing Chromium test shows. A preflight would only appear if the app ever sets its own request header. The new
+policy stays attached because it fixes every real browser read. The verifier's pass criteria and the S3 bucket were not
+changed pending the owner's decision. Options: (a) accept that the CDN does not answer preflights and make the preflight
+probe and the Chromium preflight test report-only, with this reason recorded; (b) answer OPTIONS at the edge with a
+CloudFront Function (follow-up gap plan); (c) add S3 bucket CORS plus the AWS managed origin request policy
+Managed-CORS-S3Origin (follow-up gap plan; changes S3 configuration and what reaches the origin).
+
+### Rollback
+
+Re-attaches `Managed-SimpleCORS` (`60669652-455b-4ae9-85a4-c4c02393f86c`) and GET/HEAD in one deployment (minutes). This brings the
+browser defect back. No object, bucket setting or policy is deleted.
+
+```
+py -3.12 scripts/setup_contract_infra.py --step cors-rollback --dry-run
+py -3.12 scripts/setup_contract_infra.py --step cors-rollback --confirm
+py -3.12 scripts/setup_contract_infra.py --step storage --verify
+```
+
+Manual CLI equivalent: `aws cloudfront get-distribution-config --id E1SD3UZ4FZ1GWL`, edit only
+`DefaultCacheBehavior.ResponseHeadersPolicyId` (back to the managed id above) and `DefaultCacheBehavior.AllowedMethods`
+(`Items` GET and HEAD, `Quantity` 2), then `aws cloudfront update-distribution --id E1SD3UZ4FZ1GWL --if-match <ETag>
+--distribution-config file://<edited config>`. Once the policy is unattached it can optionally be removed with
+`aws cloudfront delete-response-headers-policy --id 837522dc-5a65-4b60-9c61-40d7e84e9741 --if-match <its ETag>`.

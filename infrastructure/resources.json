@@ -184,8 +184,29 @@
         "comment": "reefradar-2477-contract",
         "origin_access_control_id": "E3JD4NDX1VQA27",
         "cache_policy": "Managed-CachingOptimized",
-        "response_headers_policy": "Managed-SimpleCORS",
-        "error_caching_min_ttl": 10
+        "response_headers_policy": "reefradar-2477-contract-cors",
+        "error_caching_min_ttl": 10,
+        "response_headers_policy_id": "837522dc-5a65-4b60-9c61-40d7e84e9741",
+        "allowed_methods": ["GET", "HEAD", "OPTIONS"],
+        "cached_methods": ["GET", "HEAD"]
+      }
+    },
+    "response_headers_policies": {
+      "contract_cors": {
+        "id": "837522dc-5a65-4b60-9c61-40d7e84e9741",
+        "name": "reefradar-2477-contract-cors",
+        "allow_origins": ["*"],
+        "allow_headers": ["*"],
+        "allow_methods": ["GET", "HEAD", "OPTIONS"],
+        "allow_credentials": false,
+        "max_age_sec": 600,
+        "origin_override": true,
+        "expose_headers": [],
+        "replaced": {
+          "name": "Managed-SimpleCORS",
+          "id": "60669652-455b-4ae9-85a4-c4c02393f86c",
+          "reason": "adds Access-Control-Allow-Origin only to simple CORS requests; browsers add non-safelisted headers such as Priority"
+        }
       }
     }
   },
