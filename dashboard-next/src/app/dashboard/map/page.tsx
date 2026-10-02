@@ -11,9 +11,9 @@ import { LoadingReef } from '@/components/ui/LoadingReef';
 import { MapPin } from 'lucide-react';
 import type { RegionBounds } from '@/lib/regions';
 
-// Dynamic import for deck.gl map (no SSR)
+// Dynamic import for the MapLibre map (no SSR: needs WebGL2 and the browser)
 const ReefMap = dynamic(
-  () => import('@/components/map/ReefMap').then((m) => m.ReefMap),
+  () => import('@/features/map').then((m) => m.ReefMap),
   {
     ssr: false,
     loading: () => (

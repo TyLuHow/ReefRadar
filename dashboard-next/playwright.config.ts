@@ -20,6 +20,9 @@ export default defineConfig({
     url: 'http://localhost:3100',
     reuseExistingServer: !process.env.CI,
     timeout: 240_000,
+    // Test-only hook: lets maps.spec.ts read the map instance from window.__reefMap.
+    // Never set this in Vercel (T-03-08-02).
+    env: { NEXT_PUBLIC_E2E_HOOKS: '1' },
   },
   use: {
     baseURL: 'http://localhost:3100',

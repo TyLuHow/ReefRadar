@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { SiteCard } from '@/components/SiteCard';
-import { SitePopup } from '@/components/map/SitePopup';
+import { SitePopup } from '@/features/map/SitePopup';
 import type { Site } from '@/types';
 import sitesFixture from '../fixtures/api/sites.json';
 
