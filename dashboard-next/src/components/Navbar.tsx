@@ -28,9 +28,7 @@ const navItems = [
 ];
 
 /**
- * PERF-06: Navbar uses FIXED high-contrast colors.
- * Do NOT add --reef-* or reef-* Tailwind tokens here.
- * Nav must remain readable at all vitality levels.
+ * PERF-06: the navbar uses a fixed high-contrast palette; do not bind it to dynamic theme tokens.
  */
 export function Navbar() {
   const pathname = usePathname();

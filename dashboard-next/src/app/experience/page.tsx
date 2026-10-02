@@ -16,7 +16,6 @@ import { validateWavFile, formatStatus } from '@/lib/utils';
 import { api, AnalysisError } from '@/lib/api';
 import { FALLBACK_SAMPLES } from '@/lib/samples';
 import { getExcerpt, attributionLine } from '@/lib/audio-manifest';
-import { useVitalityStore } from '@/stores/vitality-store';
 import type { AnalysisResult, Sample } from '@/types';
 
 // --- State machine -----------------------------------------------------------
@@ -329,17 +328,6 @@ function ResultsState({
   data: AnalysisResult;
   dispatch: React.Dispatch<ExperienceAction>;
 }) {
-  // Drive vitality from ML classification result
-  useEffect(() => {
-    if (data.classification?.label) {
-      const v = ML_TO_VITALITY[data.classification.label] ?? 0;
-      useVitalityStore.getState().setVitality(v, 'ml');
-    }
-    return () => {
-      useVitalityStore.getState().setVitality(0, 'default');
-    };
-  }, [data.classification?.label]);
-
   return (
     <motion.div
       className="relative min-h-screen flex flex-col"
@@ -440,13 +428,6 @@ function ErrorState({
 
 // --- Sample playback state ---------------------------------------------------
 
-const ML_TO_VITALITY: Record<string, number> = {
-  healthy: 1.0,
-  restored_mid: 0.7,
-  restored_early: 0.4,
-  degraded: 0.0,
-};
-
 const STATUS_COLOR: Record<string, string> = {
   healthy: 'var(--status-healthy)',
   degraded: 'var(--status-degraded)',
@@ -539,17 +520,6 @@ function SamplePlaybackState({
         });
     }
   }, [sample, isPlaying]);
-
-  // Drive vitality from sample category
-  useEffect(() => {
-    if (sample) {
-      const v = ML_TO_VITALITY[sample.category] ?? 0;
-      useVitalityStore.getState().setVitality(v, 'ml');
-    }
-    return () => {
-      useVitalityStore.getState().setVitality(0, 'default');
-    };
-  }, [sample]);
 
   // Cleanup audio on unmount
   useEffect(() => {
