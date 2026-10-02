@@ -223,7 +223,67 @@ Plans:
   4. New code lives in feature modules and lint fails on any import from legacy components; all flows go through a single API client honouring the configured API base URL, with React Query caching and security headers preserved.
   5. Production errors and web-vitals are reported to a monitoring destination the owner can open.
 
-**Plans**: TBD
+**Plans**: 15 plans (14 waves)
+
+Plans:
+
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — PLAT-10 gate tests: single API client base URL and fetch allowlist, React Query defaults/dedupe, vercel.json headers
+- [ ] 03-02-PLAN.md — Delete the Streamlit dashboard/, stack-consolidation gate, factual doc edits
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-03-PLAN.md — Hop 1: Next 15.5.26 + React 19.3.0 via official codemods (legitimacy gate, baseline-neutral, CI-proven)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 03-04-PLAN.md — Hop 2: Next 16.3.8 + ESLint 9.39.5 flat config, Turbopack CSS fix, agentRules, platform pins gate
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 03-05-PLAN.md — Legacy-import fence for src/features (ESLint + check-feature-fence.mjs + CI step + planted-violation tests)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 03-06-PLAN.md — Vitality removal A: background canvas, theming loop, decorative spectrogram, dev panel (baseline-neutral)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 03-07-PLAN.md — Vitality removal B: store, bridge, --reef-* tokens, static crossfader slider, Q7 matrix retirements
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 03-08-PLAN.md — MapLibre tracer: maplibre-gl 6.11.2 + worker copy, ReefMap circle layers in src/features/map, deck.gl removed
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 03-09-PLAN.md — WorldMap + accessible SiteMarker on MapLibre (OSM raster, attribution, Escape/focus return) for /sites
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [ ] 03-10-PLAN.md — MiniMap on MapLibre for analysis results; Leaflet removed (packages, override, CSS, components)
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [ ] 03-11-PLAN.md — Chart engine: recharts/wavesurfer out, Plot 0.6.17 + d3 modules in, accessible PlotFigure, used-dependency gate, CAP-86
+
+**Wave 11** *(blocked on Wave 10 completion)*
+
+- [ ] 03-12-PLAN.md — Client error reporter + /api/client-error route (scrub, caps, rate limit, one-line Vercel log)
+
+**Wave 12** *(blocked on Wave 11 completion)*
+
+- [ ] 03-13-PLAN.md — error.tsx / global-error.tsx, Vercel Speed Insights, docs/MONITORING.md, Vercel preview proof
+
+**Wave 13** *(blocked on Wave 12 completion)*
+
+- [ ] 03-14-PLAN.md — Visual review tooling: review-page generator, unhidden review captures, CI review job on the snapshot dispatch
+
+**Wave 14** *(blocked on Wave 13 completion)*
+
+- [ ] 03-15-PLAN.md — Exit gate: single snapshot dispatch, review page, owner sign-off, stack docs, PHASE-3-EXIT.md
+
 **UI hint**: yes
 
 ### Phase 4: Design System & Instrument Primitives
