@@ -223,13 +223,13 @@ Plans:
   4. New code lives in feature modules and lint fails on any import from legacy components; all flows go through a single API client honouring the configured API base URL, with React Query caching and security headers preserved.
   5. Production errors and web-vitals are reported to a monitoring destination the owner can open.
 
-**Plans**: 15 plans (14 waves)
+**Plans**: 1/15 plans executed (14 waves)
 
 Plans:
 
 **Wave 1**
 
-- [ ] 03-01-PLAN.md — PLAT-10 gate tests: single API client base URL and fetch allowlist, React Query defaults/dedupe, vercel.json headers
+- [x] 03-01-PLAN.md — PLAT-10 gate tests: single API client base URL and fetch allowlist, React Query defaults/dedupe, vercel.json headers
 - [ ] 03-02-PLAN.md — Delete the Streamlit dashboard/, stack-consolidation gate, factual doc edits
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -535,7 +535,7 @@ Numeric order (1 → 17) is a valid order. With parallelization, Data & ML phase
 |-------|----------------|--------|-----------|
 | 1. Truth & Reproducibility | 20/20 | Complete    | 2026-10-01 |
 | 2. Data Contract v1 | 13/13 | Complete    | 2026-10-02 |
-| 3. Platform Upgrade & Stack Consolidation | 0/TBD | Not started | - |
+| 3. Platform Upgrade & Stack Consolidation | 1/15 | In Progress|  |
 | 4. Design System & Instrument Primitives | 0/TBD | Not started | - |
 | 5. Preprocessing Parity & Grouped Evaluation | 0/TBD | Not started | - |
 | 6. Instrument Shell & Atlas | 0/TBD | Not started | - |
