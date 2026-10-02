@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { createServer, type Server } from 'node:http';
 import { resolve } from 'node:path';
 
 import { test, expect, type Page, type Request } from '@playwright/test';
@@ -17,12 +18,16 @@ import { test, expect, type Page, type Request } from '@playwright/test';
  * CDN answered those requests without Access-Control-Allow-Origin and the browser
  * blocked them.
  *
- * It only reads public CDN objects and installs no mocks for the CDN: the page
- * origin is served by a route handler on localhost:3999, and every request to the
- * CDN goes to the network unrouted.
+ * It only reads public CDN objects and installs no mocks for the CDN. The page
+ * origin is a tiny real HTTP server on localhost:3999 started and stopped by this
+ * spec. It deliberately does NOT use page.route(): while request interception is
+ * active Playwright answers CORS preflights itself, so a preflight test would pass
+ * without the CDN ever being asked (the first version of this spec did exactly
+ * that), and interception also disables the HTTP cache the cache modes exercise.
  */
 
 const PAGE_ORIGIN = 'http://localhost:3999';
+const PAGE_PORT = 3999;
 const EXPECTED_SITE_COUNT = 54;
 const CACHE_MODES = ['default', 'no-cache', 'reload', 'no-store'] as const;
 
@@ -33,15 +38,24 @@ const resources = JSON.parse(
 const CDN_HOST = resources.cloudfront.distributions.contract.domain_name;
 const CDN = `https://${CDN_HOST}/`;
 
+let pageServer: Server;
+
+test.beforeAll(async () => {
+  pageServer = createServer((_request, response) => {
+    response.writeHead(200, { 'content-type': 'text/html' });
+    response.end('<!doctype html><title>cors probe</title><p>cors probe</p>');
+  });
+  await new Promise<void>((done, fail) => {
+    pageServer.once('error', fail);
+    pageServer.listen(PAGE_PORT, () => done());
+  });
+});
+
+test.afterAll(async () => {
+  await new Promise<void>((done) => pageServer.close(() => done()));
+});
+
 async function openProbePage(page: Page): Promise<void> {
-  // Only the page origin is routed; requests to the CDN are never intercepted.
-  await page.route(`${PAGE_ORIGIN}/**`, (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'text/html',
-      body: '<!doctype html><title>cors probe</title><p>cors probe</p>',
-    }),
-  );
   await page.goto(`${PAGE_ORIGIN}/cors-probe`);
 }
 
