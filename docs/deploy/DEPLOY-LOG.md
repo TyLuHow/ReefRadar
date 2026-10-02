@@ -185,6 +185,19 @@ async `MaximumRetryAttempts` to 0 (review WR-03).
 - Observation for Phase 5/12: the interim model classifies this healthy-labelled excerpt as `degraded` (0.956). This is the honest interim model output, not a deploy defect.
 - `py -3.12 scripts/drift-check.py --function all`: router, preprocessor, classifier and inference all MATCH, exit 0.
 
+## Phase 2: post-review classifier/router redeploy (2026-10-02)
+
+Owner basis: the Phase 1 "fix all + redeploy" choice for code-review findings, applied to the Phase 2 review (02-REVIEW.md; CR-01 `stamp_status`), under the standing approval for production deploys.
+
+| Function | CodeSha256 before | CodeSha256 after | Commit | Deployed (UTC) |
+|---|---|---|---|---|
+| classifier | `BPtnJNIFeWYJx3lq/08+HrmiDzeC3OI3dwWv0b98mxo=` | `BJgiVBnJeSnIWN3EFWvqxx68gpKEO33FghPdqR/I1u0=` | `cc4789d` | 08:39:34 |
+| router | `/YmvAjuu3+dtOkhbXpMJHNPBhFqosNm608d5+UiuJeE=` | `u92VjjqQL1/Xbolho28Ntg6gn/8hHAq3paxEeILMl+Y=` | `cc4789d` | 08:39:42 |
+
+- Verification: one inference warm-up (StatusCode 200), then `py -3.12 scripts/verify_live_truth.py` exited 0 (analyses `8ebcf44d-e608-4260-9372-ba09fffc5cbf` with coordinates and `ade9aaf6-0e6c-49e2-90c5-1f58c56530cd` without). Both carry the v1 stamp. `GET /visualize/8ebcf44d...` returns `stamp_status: "stamped"`.
+- `py -3.12 scripts/drift-check.py --function all`: all four functions MATCH.
+- Rollback: `py -3.12 scripts/deploy-lambdas.py --function classifier --ref c721554 --confirm` and `py -3.12 scripts/deploy-lambdas.py --function router --ref c721554 --confirm` (the 02-11 deployed commit).
+
 ## Rollback
 
 Exact commands, valid for any future deploy of this plan.
