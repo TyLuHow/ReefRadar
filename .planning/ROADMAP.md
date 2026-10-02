@@ -166,7 +166,7 @@ Plans:
   4. A URL or result pinned to a contract version resolves exactly that version even after a newer version is published as latest, and the analysis-result schema carries dataset, model and preprocessing version stamps.
   5. The app runs end to end against committed contract fixtures with no dependency on ingestion or ML jobs.
 
-**Plans**: 11/12 plans executed (8 waves)
+**Plans**: 11/13 plans executed (8 waves)
 
 Plans:
 
@@ -205,6 +205,7 @@ Plans:
 **Wave 8** *(blocked on Wave 7 completion)*
 
 - [ ] 02-12-PLAN.md — Exit gate: live browser proof against CloudFront, CI green, PHASE-2-EXIT.md
+- [ ] 02-13-PLAN.md — Gap closure (runs before 02-12 resumes): custom CloudFront CORS response headers policy so real browsers can read the contract, browser-realistic live verifier, live Chromium CORS check
 
 **UI hint**: no
 
