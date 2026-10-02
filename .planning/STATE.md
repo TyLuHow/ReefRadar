@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 3
 current_phase_name: Platform Upgrade & Stack Consolidation
 status: executing
-stopped_at: Completed 03-08-PLAN.md
-last_updated: "2026-10-02T19:51:51.515Z"
+stopped_at: Completed 03-09-PLAN.md
+last_updated: "2026-10-02T20:46:34.142Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 3 execution started
-state_head: 23ce190a5b70ce2f76b200f90a4782b2f208d256
+state_head: 3133f62d784c78688b0881eed3bcc43eab6f5f55
 progress:
   total_phases: 17
   completed_phases: 2
   total_plans: 48
-  completed_plans: 41
+  completed_plans: 42
   percent: 12
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-02)
 ## Current Position
 
 Phase: 3 (Platform Upgrade & Stack Consolidation) — EXECUTING
-Plan: 9 of 15
+Plan: 10 of 15
 Status: Ready to execute
 Last activity: 2026-10-02 — Phase 3 execution started
 
@@ -102,6 +102,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 03 P06 | 15min | 2 tasks | 16 files |
 | Phase 03 P07 | 15min | 3 tasks | 12 files |
 | Phase 03 P08 | 45min | 3 tasks | 21 files |
+| Phase 03 P09 | 55min | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -175,6 +176,7 @@ Recent decisions affecting current work:
 - [Phase 3]: 03-06: a11y gate allows color-contrast for four /experience states (previously masked by the canvas); baseline files and text colours untouched, deferred to Phase 16
 - [Phase 3]: 03-07: removed the stale 'moving background is decorative' help sentence from LocationCompare; DS-07 left unmarked until 03-15 regenerates baselines and the owner signs off
 - [Phase 3]: 03-08: ReefMap on MapLibre 6.11.2 + react-map-gl 8.1.3 circle layers in src/features/map; WebGL2-only detection; explicit non-compact attribution; deck.gl removed; Linux CI image provides WebGL2
+- [Phase 3]: 03-09: Attribution control margin forced to 0 so the WorldMap legend never covers OSM attribution (e2e hit-test); site markers are native buttons with Escape/close focus return
 
 ### Pending Todos
 
@@ -198,6 +200,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-02T19:51:51.130Z
-Stopped at: Completed 03-08-PLAN.md
+Last session: 2026-10-02T20:46:33.779Z
+Stopped at: Completed 03-09-PLAN.md
 Resume file: None
