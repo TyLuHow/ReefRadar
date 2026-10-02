@@ -24,6 +24,7 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 - ✓ Methods/limitations content ("what it measures / cannot measure"), dataset citations, architecture diagram — existing
 - ✓ Graceful fallbacks for missing WebGL / Web Audio; partial reduced-motion support — existing
 - ✓ Truth & reproducibility: clean-clone build; CI (unit, e2e, axe, Linux visual regression); all four Lambdas built from git with drift check MATCH; synthetic audio retired and 9 real MARRS excerpts served; interim real-only 3-class model live (restored_mid dropped until real data); raw probabilities; label provenance and canonical citations (TRUTH-01..10, PLAT-04) — Phase 1
+- ✓ Data contract v1: versioned, immutable contract (S3 + CloudFront, browser-readable CORS) with full per-site provenance (54 sites; 48 embedded with disclosed 2-D PCA, 33% variance), coverage flags, `?cv=` pinning, live latest pointer, sha256-verified Zod-parsed client as the app's only reference-data source, lint/CI fence, and contract version stamps on every new analysis result (CONTRACT-01..05) — Phase 2
 
 ### Active
 
@@ -83,7 +84,7 @@ See `.planning/REQUIREMENTS.md` for the full, ID'd list. Summary of the mileston
 | Light scientific-editorial visual system (Q8); spectrograms in dark wells | Publication-grade credibility; reading comfort; print/export | — Pending |
 | Stay on Next.js, incremental strangler in `dashboard-next/` | Small data, client-heavy instrument, Vercel already wired | — Pending |
 | MapLibre only; Observable Plot + d3; React Aria Components; Tailwind v4 tokens; nuqs + zustand + TanStack Query | Single engine per concern; accessible primitives; URL state | — Pending |
-| Data & Model track runs parallel to UI tracks behind a versioned data contract | Large ingestion must not block UI progress | — Pending |
+| Data & Model track runs parallel to UI tracks behind a versioned data contract | Large ingestion must not block UI progress | ✓ Contract v1 live (Phase 2) |
 | Hold production frontend merge until the overhaul is worth a visible launch (owner, 2026-10-01) | Phase 1 is honesty fixes on the legacy UI; launch the redesign when visibly new | — Pending |
 
 ## Evolution
@@ -104,4 +105,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-01 after Phase 1*
+*Last updated: 2026-10-02 after Phase 2*
