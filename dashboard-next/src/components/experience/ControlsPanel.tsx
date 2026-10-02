@@ -9,6 +9,7 @@ import type { AnalysisResult } from '@/types';
 import { formatStatus } from '@/lib/utils';
 import { STATUS_COLORS } from '@/types';
 import { toIntegerPercentages } from '@/lib/probabilities';
+import { ContractStampLine } from '@/features/contract';
 
 interface AudioPlaybackControls {
   play: () => void;
@@ -59,6 +60,12 @@ export function ControlsPanel({
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
           {topPercentage}% model probability
         </p>
+        <ContractStampLine
+          contract_version={analysisData.contract_version}
+          dataset_version={analysisData.dataset_version}
+          model_version={analysisData.model_version}
+          preprocessing_spec_version={analysisData.preprocessing_spec_version}
+        />
       </div>
 
       {/* Playback controls */}

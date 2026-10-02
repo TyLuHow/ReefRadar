@@ -6,6 +6,7 @@ import { formatStatus, formatPercent, cn, getStatusBgColor } from '@/lib/utils';
 import { ProbabilityBars } from '@/components/charts';
 import { toIntegerPercentages } from '@/lib/probabilities';
 import { similarSiteLabelText } from '@/lib/label-source';
+import { ContractStampLine } from '@/features/contract';
 import { Check, TrendingUp, MapPin, Map } from 'lucide-react';
 
 // Dynamic import for MiniMap to avoid SSR issues with Leaflet
@@ -67,6 +68,13 @@ export function AnalysisResults({ result }: AnalysisResultsProps) {
                   Model: {classification.model_version}
                 </p>
               )}
+              <ContractStampLine
+                contract_version={result.contract_version}
+                dataset_version={result.dataset_version}
+                model_version={result.model_version}
+                preprocessing_spec_version={result.preprocessing_spec_version}
+                onColor
+              />
             </div>
             <div className="text-right">
               <p className="text-white/80 text-sm">Model probability</p>

@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, within, fireEvent } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ContractStampLine, formatContractStamp } from '@/features/contract';
+import { installContractFetch, resetContractStore, setContractPin, readContractJson, type ContractFetchHandle } from './support/contract-fetch';
 import { ProbabilityBars } from '@/components/charts';
 import { ComparisonPanel } from '@/components/experience/ComparisonPanel';
 import { ControlsPanel } from '@/components/experience/ControlsPanel';
@@ -10,6 +13,7 @@ import { CaveatsBanner } from '@/components/dashboard/CaveatsBanner';
 import type { AnalysisResult, RegionInfo } from '@/types';
 import threeClassNoCoords from '../fixtures/api/visualize-3class-no-coords.json';
 import threeClassInRegion from '../fixtures/api/visualize-3class-in-region.json';
+import threeClassStamped from '../fixtures/api/visualize-3class-stamped.json';
 
 const noCoordsResult = threeClassNoCoords as unknown as AnalysisResult;
 const inRegionResult = threeClassInRegion as unknown as AnalysisResult;
@@ -251,5 +255,84 @@ describe('AnalysisResults similar-site labels (REVIEW WR-17)', () => {
     } as unknown as AnalysisResult;
     const { container } = render(<AnalysisResults result={result} />);
     expect(container.textContent ?? '').toMatch(/no health label assigned by NOAA SanctSound/);
+  });
+});
+
+describe('contract stamp line (CONTRACT-04)', () => {
+  const stamp = readContractJson('contracts/bucket/v1/stamp.json') as {
+    contract_version: number;
+    dataset_version: string;
+    model_version: string;
+    preprocessing_spec_version: string;
+  };
+  let handle: ContractFetchHandle;
+  let client: QueryClient;
+
+  beforeEach(() => {
+    handle = installContractFetch({ latest: 2 });
+    client = new QueryClient();
+    resetContractStore();
+    setContractPin();
+  });
+  afterEach(() => {
+    handle.restore();
+    client.clear();
+    resetContractStore();
+  });
+
+  const withClient = (ui: React.ReactElement) => <QueryClientProvider client={client}>{ui}</QueryClientProvider>;
+
+  it('formatContractStamp never invents a version', () => {
+    expect(formatContractStamp(stamp)).toBe('Contract v1');
+    expect(formatContractStamp({ ...stamp, contract_version: null })).toBe('pre-contract');
+    expect(formatContractStamp({ dataset_version: stamp.dataset_version })).toBe('pre-contract');
+    expect(formatContractStamp({})).toBe('pre-contract');
+  });
+
+  it('resolves exactly v1 while latest is v2 and shows the three stamped versions', async () => {
+    render(withClient(<ContractStampLine {...stamp} />));
+    await waitFor(() => expect(screen.getByTestId('contract-stamp').textContent).not.toMatch(/resolving/));
+    const text = screen.getByTestId('contract-stamp').textContent ?? '';
+    expect(text).toContain('Contract v1');
+    expect(text).toContain('reefradar-reference-2026.10.0');
+    expect(text).toContain('interim-real-only');
+    expect(text).toContain('preproc-2026.10.0-as-deployed');
+    expect(text).not.toMatch(/differs/);
+    expect(handle.requests).toContain('contract/v1.json');
+    expect(handle.requests).not.toContain('contract/latest.json');
+  });
+
+  it('says so when the result stamp disagrees with the resolved manifest', async () => {
+    render(withClient(<ContractStampLine {...stamp} dataset_version="reefradar-reference-1999.01.0" />));
+    await waitFor(() => expect(screen.getByTestId('contract-stamp').textContent).toMatch(/differs/));
+    expect(screen.getByTestId('contract-stamp').textContent).toMatch(/dataset/);
+  });
+
+  it('says "not found" for a version the bucket does not hold', async () => {
+    render(withClient(<ContractStampLine {...stamp} contract_version={9} />));
+    await waitFor(() => expect(screen.getByTestId('contract-stamp').textContent).toBe('Contract v9 (not found)'));
+  });
+
+  it('labels an unstamped result pre-contract and makes no contract request', async () => {
+    render(withClient(<ContractStampLine contract_version={null} dataset_version={null} />));
+    expect(screen.getByTestId('contract-stamp').textContent).toBe('pre-contract');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(handle.requests).toEqual([]);
+  });
+
+  it('AnalysisResults and ControlsPanel render the line for a stamped and an unstamped result', async () => {
+    const stamped = threeClassStamped as unknown as AnalysisResult;
+    const { unmount } = render(withClient(<AnalysisResults result={stamped} />));
+    await waitFor(() => expect(screen.getByTestId('contract-stamp').textContent).toContain('Contract v1'));
+    unmount();
+
+    const panel = render(withClient(<ControlsPanel analysisData={stamped} />));
+    await waitFor(() => expect(screen.getByTestId('contract-stamp').textContent).toContain('Contract v1'));
+    expect(screen.getByText(/58% model probability/i)).toBeInTheDocument();
+    panel.unmount();
+
+    render(withClient(<AnalysisResults result={noCoordsResult} />));
+    expect(screen.getByTestId('contract-stamp').textContent).toBe('pre-contract');
+    expect(screen.getByText(/interim-real-only/i)).toBeInTheDocument();
   });
 });

@@ -1,0 +1,59 @@
+{
+  "analysis_id": "fixture-3class-stamped",
+  "status": "complete",
+  "classification": {
+    "label": "healthy",
+    "confidence": 0.58,
+    "probabilities": {
+      "healthy": 0.58,
+      "degraded": 0.27,
+      "restored_early": 0.15
+    },
+    "model_version": "interim-real-only",
+    "region": {
+      "detected": "UNKNOWN",
+      "name": "Unknown",
+      "scope": null,
+      "coordinates_provided": false,
+      "in_training_region": false,
+      "training_sites_in_region": 0,
+      "training_countries": [
+        "Indonesia",
+        "Kenya"
+      ],
+      "in_training_distribution": false,
+      "confidence_adjusted": false
+    }
+  },
+  "similar_sites": [
+    {
+      "site_id": "ind_H4",
+      "country": "Indonesia",
+      "status": "healthy",
+      "similarity": 0.91,
+      "label_source": "marrs",
+      "label_original": "healthy"
+    },
+    {
+      "site_id": "ken_H1",
+      "country": "Kenya",
+      "status": "healthy",
+      "similarity": 0.85,
+      "label_source": "marrs",
+      "label_original": "healthy"
+    },
+    {
+      "site_id": "borabora_tourist",
+      "country": "French Polynesia",
+      "status": "unknown",
+      "similarity": 0.62,
+      "label_source": "coralsoundexplorer",
+      "label_original": "tourist"
+    }
+  ],
+  "caveats": "No coordinates were provided with this recording. Classification is based on acoustic similarity to reference sites, but the classifier itself was trained only on 5 real sites in Indonesia, Kenya. Probabilities shown are the model's raw, unmodified output -- they have not been adjusted for location, and this recording's actual location relative to the training sites is unknown.",
+  "contract_version": 1,
+  "dataset_version": "reefradar-reference-2026.10.0",
+  "model_version": "interim-real-only",
+  "preprocessing_spec_version": "preproc-2026.10.0-as-deployed"
+}

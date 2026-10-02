@@ -1,7 +1,7 @@
 import { test, expect, type Route } from '@playwright/test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { mockApi, expectNoUnhandledApiCalls } from './support/mock-api';
+import { mockApi, mockContract, expectNoUnhandledApiCalls } from './support/mock-api';
 
 test.afterEach(({ page }) => {
   expectNoUnhandledApiCalls(page);
@@ -71,6 +71,9 @@ test.describe('/dashboard/analyze -- real /status stages (D-15)', () => {
     await expect(page.getByRole('button', { name: /analyze another file/i })).toBeVisible({ timeout: 20000 });
 
     await expect(page.getByText(/%\s*complete/i)).toHaveCount(0);
+
+    // CONTRACT-04: a result produced before stamping is labelled, never given a version.
+    await expect(page.getByTestId('contract-stamp')).toHaveText('pre-contract');
 
     // D-13 (UI half): the meaningless "Acoustic Embedding Space" scatter
     // (EmbeddingChart.tsx, deleted in 01-16 task 3) must not be present --
@@ -146,6 +149,7 @@ test.describe('/experience -- shared API client, real stages (D-15)', () => {
     await expect(page.getByText(/new analysis/i)).toBeVisible({ timeout: 20000 });
 
     await expect(page.getByText(/%\s*complete/i)).toHaveCount(0);
+    await expect(page.getByTestId('contract-stamp')).toHaveText('pre-contract');
     expect(seenApiPaths.some((p) => p.includes('/upload'))).toBe(true);
     expect(seenApiPaths.some((p) => p.includes('/analyze'))).toBe(true);
     expect(seenApiPaths.some((p) => p.includes('/status/'))).toBe(true);
@@ -185,5 +189,51 @@ test.describe('/experience -- shared API client, real stages (D-15)', () => {
     await expect(page.getByText('Something Went Wrong')).toBeVisible({ timeout: 20000 });
     await expect(page.getByText('Model inference failed')).toBeVisible();
     await expect(page.getByText('Please retry the analysis')).toBeVisible();
+  });
+});
+
+test.describe('contract stamp on results (CONTRACT-04)', () => {
+  test('/dashboard/analyze shows the exact stamped contract version while a newer one is latest', async ({ page }) => {
+    await mockApi(page, {
+      'POST /upload': { upload_id: 'up-s1', filename: 'aus_D1_20230208_120000.wav', size: 1000, status: 'uploaded' },
+      'POST /analyze': { analysis_id: 'fixture-stamped', upload_id: 'up-s1', status: 'processing' },
+      'GET /status/*': sequencedStatusHandler(),
+      'GET /visualize/*': 'visualize-3class-stamped.json',
+    });
+    // mockApi installs its own contract route; the later route (this one) wins.
+    const contract = await mockContract(page, { latest: 2 });
+
+    await page.goto('/dashboard/analyze');
+    await page.setInputFiles('input[type="file"]', AUDIO_FIXTURE);
+    await page.getByRole('button', { name: /analyze audio/i }).click();
+
+    const line = page.getByTestId('contract-stamp');
+    await expect(line).toContainText('Contract v1', { timeout: 20000 });
+    await expect(line).toContainText('reefradar-reference-2026.10.0');
+    await expect(line).toContainText('interim-real-only');
+    await expect(line).toContainText('preproc-2026.10.0-as-deployed');
+    await expect(line).not.toContainText(/differs|not found|pre-contract/);
+    expect(contract.requests).toContain('contract/v1.json');
+    // The rest of the page follows latest (v2); the result line still resolved exactly v1.
+    expect(contract.requests).toContain('contract/v2.json');
+  });
+
+  test('/experience shows the same stamped contract version', async ({ page }) => {
+    await mockApi(page, {
+      'POST /upload': { upload_id: 'up-s2', filename: 'ind_D1.wav', size: 1000, status: 'uploaded' },
+      'POST /analyze': { analysis_id: 'fixture-stamped-exp', upload_id: 'up-s2', status: 'processing' },
+      'GET /status/*': sequencedStatusHandler(),
+      'GET /visualize/*': 'visualize-3class-stamped.json',
+    });
+    await mockContract(page, { latest: 2 });
+
+    await page.goto('/experience');
+    await page.setInputFiles('input[type="file"]', AUDIO_FIXTURE);
+    await page.getByRole('button', { name: /^skip$/i }).click();
+
+    const line = page.getByTestId('contract-stamp');
+    await expect(line).toContainText('Contract v1', { timeout: 20000 });
+    await expect(line).toContainText('interim-real-only');
+    await expect(line).not.toContainText(/differs|not found|pre-contract/);
   });
 });

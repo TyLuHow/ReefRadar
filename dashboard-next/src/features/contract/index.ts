@@ -6,6 +6,9 @@
 export { useContract, useCoverage, useModelVersion, useReferenceSites } from './hooks';
 export type { ContractQueryResult } from './hooks';
 export { ContractVersionSync } from './ContractVersionSync';
+export { ContractStampLine } from './ContractStampLine';
+export { formatContractStamp, PRE_CONTRACT_LABEL } from './stamp';
+export type { ContractStamp } from './stamp';
 export { parseContractVersionParam, useContractVersionStore } from './version';
 export type { ContractPin } from './version';
 export { useLegacySitesResponse, useSiteIndex, toLegacySitesResponse } from './legacy';
