@@ -37,6 +37,7 @@ jobs:
           cache-dependency-path: dashboard-next/package-lock.json
       - run: npm ci
       - run: npm run lint
+      - run: node ../scripts/check-contract-fence.mjs
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
