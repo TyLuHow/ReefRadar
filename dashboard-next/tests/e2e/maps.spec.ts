@@ -32,7 +32,9 @@ const STUB_STYLE = {
   ],
 };
 
+/** Set MAPS_REAL_STYLE=1 to run against the real CARTO style (needs network; not used in CI). */
 async function stubMapStyle(page: Page) {
+  if (process.env.MAPS_REAL_STYLE === '1') return;
   await page.route(/dark-matter-gl-style\/style\.json/, (route) =>
     route.fulfill({
       status: 200,

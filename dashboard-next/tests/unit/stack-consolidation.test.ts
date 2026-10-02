@@ -20,7 +20,7 @@ const SRC_ROOT = path.join(DASHBOARD_NEXT_ROOT, 'src');
 const LEGACY_DIR = 'dash' + 'board';
 
 /** npm package names removed by the stack consolidation. Append only. */
-export const REMOVED_PACKAGES: string[] = [];
+export const REMOVED_PACKAGES: string[] = ['@deck.gl/core', '@deck.gl/layers', '@deck.gl/react'];
 
 /** Config files that must not point into the deleted directory. */
 const CONFIG_FILES = ['pytest.ini', '.github/workflows/ci.yml', 'scripts/check-citations.mjs'];
@@ -120,5 +120,14 @@ describe('stack consolidation: removed packages (PLAT-02)', () => {
     expect(lock.packages ?? {}, `${pkg} in package-lock.json`).not.toHaveProperty([`node_modules/${pkg}`]);
     const importers = sourceFiles.filter((f) => importsPackage(fs.readFileSync(f, 'utf8'), pkg));
     expect(importers.map((f) => path.relative(DASHBOARD_NEXT_ROOT, f))).toEqual([]);
+  });
+});
+
+describe('stack consolidation: next.config.js (PLAT-02)', () => {
+  it('has no transpilePackages key once deck.gl is gone (03-08)', () => {
+    const text = fs.readFileSync(path.join(DASHBOARD_NEXT_ROOT, 'next.config.js'), 'utf8');
+    // Strip line comments so the explanation of the removal cannot trip the check.
+    const code = text.replace(/^\s*\/\/.*$/gm, '');
+    expect(code).not.toMatch(/transpilePackages/);
   });
 });
