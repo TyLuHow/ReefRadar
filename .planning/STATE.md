@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 3
 current_phase_name: Platform Upgrade & Stack Consolidation
 status: executing
-stopped_at: Completed 03-11-PLAN.md
-last_updated: "2026-10-02T21:22:28.763Z"
+stopped_at: Completed 03-12-PLAN.md
+last_updated: "2026-10-02T21:43:37.991Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 3 execution started
-state_head: 24c5bbbe0e6d7591b89383be8c46a60cb745b4fe
+state_head: 5986643b3de612002a2c911f3f3970f8f686717a
 progress:
   total_phases: 17
   completed_phases: 2
   total_plans: 48
-  completed_plans: 44
+  completed_plans: 45
   percent: 12
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-02)
 ## Current Position
 
 Phase: 3 (Platform Upgrade & Stack Consolidation) — EXECUTING
-Plan: 12 of 15
+Plan: 13 of 15
 Status: Ready to execute
 Last activity: 2026-10-02 — Phase 3 execution started
 
@@ -105,6 +105,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 03 P09 | 55min | 2 tasks | 11 files |
 | Phase 03 P10 | 45 min | 2 tasks | 16 files |
 | Phase 03 P11 | 35min | 2 tasks | 8 files |
+| Phase 03 P12 | 40min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -181,6 +182,7 @@ Recent decisions affecting current work:
 - [Phase 3]: 03-09: Attribution control margin forced to 0 so the WorldMap legend never covers OSM attribution (e2e hit-test); site markers are native buttons with Escape/close focus return
 - [Phase 03]: MiniMap reuses the 03-09 SiteMarker; MapShell gains compactFallback for small maps (icon plus single line); fitBounds runs in an effect after onLoad
 - [Phase 3]: [Phase 03] 03-11: Observable Plot 0.6.17 plus individual d3 modules is the only chart stack; PlotFigure (features/charts) is accessible with a [0,1] zero-based probability axis and labels only from toIntegerPercentages; recharts/wavesurfer.js removed; used-dependency and single-engine gate added
+- [Phase 3]: [Phase 3] 03-12: client error reporter posts scrubbed reports to /api/client-error/ (trailing slash); handler checks Origin 403, type 415, 4 KB streamed cap 413, strict schema 400, per-instance token bucket 429, scrubs again and logs one 'client-error ' line; PLAT-09 stays open until 03-13
 
 ### Pending Todos
 
@@ -204,6 +206,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-02T21:22:28.349Z
-Stopped at: Completed 03-11-PLAN.md
+Last session: 2026-10-02T21:43:37.630Z
+Stopped at: Completed 03-12-PLAN.md
 Resume file: None
