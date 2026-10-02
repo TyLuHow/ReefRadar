@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 2
+open_count: 3
 waived_count: 0
 fixed_count: 0
-total_count: 2
-last_updated: 2026-10-01T17:14:45.839Z
+total_count: 3
+last_updated: 2026-10-02T21:59:10.910Z
 ---
 
 # Broken Windows Ledger
@@ -17,6 +17,7 @@ last_updated: 2026-10-01T17:14:45.839Z
 |----|-------|------|------|------|-------------|--------|--------|-------------|-------------|
 | 1 | 01 | deviation | scripts/check_audio_real.py |  | Recalibrated spectral thresholds (AND-combined, 0.025/0.85) deviate from plan's literal OR-combined 0.1/0.5 spec to avoid false-flagging real fish-chorus tonality; calibrated against only this plan's 9-excerpt sample | open |  | 2026-10-01T06:35:43.797Z |  |
 | 2 | 01 | unrun-verify | dashboard-next/tests/e2e/preview-truth-live.spec.ts |  | preview-truth-live.spec.ts not run against the protected Vercel preview (needs owner PW_VERCEL_BYPASS_SECRET); passed against a local production build and verified via vercel curl | open |  | 2026-10-01T17:14:45.839Z |  |
+| 3 | 3 | unrun-verify | docs/MONITORING.md |  | 03-13: preview proof not run; vercel deploy was denied. Probe POST /api/client-error/ and Speed Insights script on a Vercel preview unconfirmed | open |  | 2026-10-02T21:59:10.910Z |  |
 
 ````json
 [
@@ -42,6 +43,18 @@ last_updated: 2026-10-01T17:14:45.839Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-10-01T17:14:45.839Z",
+    "resolved_at": null
+  },
+  {
+    "id": 3,
+    "kind": "unrun-verify",
+    "phase": "3",
+    "file": "docs/MONITORING.md",
+    "line": null,
+    "description": "03-13: preview proof not run; vercel deploy was denied. Probe POST /api/client-error/ and Speed Insights script on a Vercel preview unconfirmed",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-02T21:59:10.910Z",
     "resolved_at": null
   }
 ]

@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 3
 current_phase_name: Platform Upgrade & Stack Consolidation
 status: executing
-stopped_at: Completed 03-12-PLAN.md
-last_updated: "2026-10-02T21:43:37.991Z"
+stopped_at: "Completed 03-13-PLAN.md (preview proof pending: vercel deploy denied)"
+last_updated: "2026-10-02T21:59:35.222Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 3 execution started
-state_head: 5986643b3de612002a2c911f3f3970f8f686717a
+state_head: 129ddba27be6c5f76dc2fc400f2870fdc083dc84
 progress:
   total_phases: 17
   completed_phases: 2
   total_plans: 48
-  completed_plans: 45
+  completed_plans: 46
   percent: 12
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-02)
 ## Current Position
 
 Phase: 3 (Platform Upgrade & Stack Consolidation) — EXECUTING
-Plan: 13 of 15
+Plan: 14 of 15
 Status: Ready to execute
 Last activity: 2026-10-02 — Phase 3 execution started
 
@@ -106,6 +106,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 03 P10 | 45 min | 2 tasks | 16 files |
 | Phase 03 P11 | 35min | 2 tasks | 8 files |
 | Phase 03 P12 | 40min | 3 tasks | 13 files |
+| Phase 03 P13 | 35min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -183,6 +184,7 @@ Recent decisions affecting current work:
 - [Phase 03]: MiniMap reuses the 03-09 SiteMarker; MapShell gains compactFallback for small maps (icon plus single line); fitBounds runs in an effect after onLoad
 - [Phase 3]: [Phase 03] 03-11: Observable Plot 0.6.17 plus individual d3 modules is the only chart stack; PlotFigure (features/charts) is accessible with a [0,1] zero-based probability axis and labels only from toIntegerPercentages; recharts/wavesurfer.js removed; used-dependency and single-engine gate added
 - [Phase 3]: [Phase 3] 03-12: client error reporter posts scrubbed reports to /api/client-error/ (trailing slash); handler checks Origin 403, type 415, 4 KB streamed cap 413, strict schema 400, per-instance token bucket 429, scrubs again and logs one 'client-error ' line; PLAT-09 stays open until 03-13
+- [Phase 3]: 03-13: Try again uses Next 16.3 retry(); PLAT-09 left open until a Vercel preview proof exists (vercel deploy denied by permission system)
 
 ### Pending Todos
 
@@ -206,6 +208,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-02T21:43:37.630Z
-Stopped at: Completed 03-12-PLAN.md
+Last session: 2026-10-02T21:59:34.855Z
+Stopped at: Completed 03-13-PLAN.md (preview proof pending: vercel deploy denied)
 Resume file: None
