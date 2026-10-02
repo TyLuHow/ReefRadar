@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { PlotFigure } from '@/features/charts/PlotFigure';
-import { probabilityBars } from '@/features/charts/encodings';
+import { probabilityBars, seriesLine } from '@/features/charts/encodings';
 
 const SAMPLE = { degraded: 0.62, healthy: 0.25, restored_early: 0.13 };
 
@@ -96,5 +96,121 @@ describe('PlotFigure: probability bars (PLAT-02)', () => {
     expect(host.querySelector('svg')).not.toBeNull();
     unmount();
     expect(document.querySelector('svg')).toBeNull();
+  });
+});
+
+describe('PlotFigure: empty, one and many (PLAT-02)', () => {
+  it('renders the caption and "No data to plot." with no svg for empty probabilities', () => {
+    const { container } = renderBars({});
+    expect(screen.getByText('No data to plot.')).toBeInTheDocument();
+    expect(container.querySelector('figcaption')).toHaveTextContent('Class probabilities for this recording');
+    expect(container.querySelector('svg')).toBeNull();
+    expect(container.querySelector('table')).toBeNull();
+  });
+
+  it('treats null probabilities as empty', () => {
+    const { container } = renderBars(null);
+    expect(screen.getByText('No data to plot.')).toBeInTheDocument();
+    expect(container.querySelector('svg')).toBeNull();
+  });
+
+  it('renders exactly one bar for one category', () => {
+    const { container } = renderBars({ healthy: 0.9 });
+    const bars = container.querySelectorAll('rect[aria-label]');
+    expect(bars).toHaveLength(1);
+    expect(bars[0]!.getAttribute('aria-label')).toBe('Healthy: 100%');
+  });
+
+  it('truncates many categories to the cutoff and says so in the caption', () => {
+    const many: Record<string, number> = {};
+    for (let i = 0; i < 30; i++) many[`site_${String(i).padStart(2, '0')}`] = (30 - i) / 465;
+    const { container } = renderBars(many, { cutoff: 10 });
+    expect(container.querySelectorAll('rect[aria-label]')).toHaveLength(10);
+    expect(container.querySelector('figcaption')).toHaveTextContent('Showing the top 10 of 30');
+    const table = screen.getByRole('table', { hidden: true });
+    expect(within(table).getAllByRole('row', { hidden: true })).toHaveLength(11);
+  });
+
+  it('keeps the caption unchanged when nothing is truncated', () => {
+    const { container } = renderBars(SAMPLE, { cutoff: 10 });
+    expect(container.querySelector('figcaption')!.textContent).toBe('Class probabilities for this recording');
+  });
+});
+
+describe('PlotFigure: series line (PLAT-02)', () => {
+  const POINTS = [
+    { x: 1000, y: 12 },
+    { x: 2000, y: 62 },
+    { x: 3000, y: 30 },
+  ];
+  const renderSeries = (points: { x: number; y: number }[], options = {}) => {
+    const spec = seriesLine(points, {
+      caption: 'Calls per hour',
+      xLabel: 'Hour',
+      yLabel: 'Calls',
+      xFormat: ',.0f',
+      ...options,
+    });
+    const utils = render(<PlotFigure {...spec} />);
+    return { spec, ...utils };
+  };
+
+  it('starts the y domain at zero and uses a nice upper bound (no truncated axis)', () => {
+    const { spec } = renderSeries(POINTS);
+    expect(spec.build(600).y?.domain).toEqual([0, 65]);
+  });
+
+  it('keeps zero as the baseline even when every value is far from zero', () => {
+    const { spec } = renderSeries([
+      { x: 1, y: 940 },
+      { x: 2, y: 960 },
+    ]);
+    expect((spec.build(600).y?.domain as number[])[0]).toBe(0);
+  });
+
+  it('draws the line with a d3-shape curve factory (curved path commands)', () => {
+    const { container } = renderSeries(POINTS);
+    const path = container.querySelector('g[aria-label="line"] path')!;
+    expect(path.getAttribute('d')).toMatch(/C/);
+  });
+
+  it('formats x ticks with d3-format', () => {
+    const { container } = renderSeries(POINTS);
+    const ticks = Array.from(container.querySelectorAll('svg text')).map((t) => t.textContent);
+    expect(ticks).toContain('2,000');
+  });
+
+  it('gives every point an accessible label and hides decorative rules', () => {
+    const { container } = renderSeries(POINTS);
+    const labels = Array.from(container.querySelectorAll('circle[aria-label]')).map((c) => c.getAttribute('aria-label'));
+    expect(labels).toEqual(['Hour 1,000: 12', 'Hour 2,000: 62', 'Hour 3,000: 30']);
+    expect(container.querySelector('svg [aria-hidden="true"]')).not.toBeNull();
+    const svg = container.querySelector('svg')!;
+    expect(svg.getAttribute('aria-label')).toMatch(/calls/i);
+    expect(svg.getAttribute('aria-description')).toMatch(/3 points/);
+  });
+
+  it('lists the plotted values in the hidden table', () => {
+    renderSeries(POINTS);
+    const table = screen.getByRole('table', { hidden: true });
+    const rows = within(table).getAllByRole('row', { hidden: true }).slice(1);
+    const cells = rows.map((row) => within(row).getAllByRole('cell', { hidden: true }).map((c) => c.textContent));
+    expect(cells).toEqual([
+      ['1,000', '12'],
+      ['2,000', '62'],
+      ['3,000', '30'],
+    ]);
+  });
+
+  it('renders one dot and no line for a single point', () => {
+    const { container } = renderSeries([{ x: 5, y: 40 }]);
+    expect(container.querySelectorAll('circle[aria-label]')).toHaveLength(1);
+    expect(container.querySelector('g[aria-label="line"]')).toBeNull();
+  });
+
+  it('renders the empty state for no points', () => {
+    const { container } = renderSeries([]);
+    expect(screen.getByText('No data to plot.')).toBeInTheDocument();
+    expect(container.querySelector('svg')).toBeNull();
   });
 });

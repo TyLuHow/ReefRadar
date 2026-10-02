@@ -27,6 +27,8 @@ export const REMOVED_PACKAGES: string[] = [
   'leaflet',
   'react-leaflet',
   '@types/leaflet',
+  'recharts',
+  'wavesurfer.js',
 ];
 
 /** Config files that must not point into the deleted directory. */
@@ -162,5 +164,71 @@ describe('stack consolidation: Leaflet removal (PLAT-02, 03-10)', () => {
     const spec = fs.readFileSync(path.join(DASHBOARD_NEXT_ROOT, 'tests', 'e2e', 'visual.spec.ts'), 'utf8');
     expect(spec).toContain("'canvas, .maplibregl-map { visibility: hidden !important; }'");
     expect(spec.toLowerCase()).not.toContain('leaflet');
+  });
+});
+
+describe('stack consolidation: one chart engine and used dependencies (PLAT-02, 03-11)', () => {
+  const pkgJson = JSON.parse(fs.readFileSync(path.join(DASHBOARD_NEXT_ROOT, 'package.json'), 'utf8')) as {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  };
+  const dependencies = pkgJson.dependencies ?? {};
+  const declared = { ...dependencies, ...(pkgJson.devDependencies ?? {}) };
+  const sourceFiles: string[] = [];
+  walk(SRC_ROOT, sourceFiles);
+  const sourceTexts = sourceFiles.map((f) => fs.readFileSync(f, 'utf8'));
+
+  /** Runtime packages used by the framework itself rather than imported by name from src. */
+  const FRAMEWORK_PROVIDED = new Set(['next', 'react', 'react-dom']);
+  /** Competing chart libraries: none may be declared. */
+  const OTHER_CHART_LIBRARIES = [
+    /^recharts$/,
+    /^chart\.js$/,
+    /^react-chartjs-2$/,
+    /^victory(-.*)?$/,
+    /^@nivo\//,
+    /^@visx\//,
+    /^highcharts(-.*)?$/,
+    /^apexcharts$/,
+  ];
+
+  it('every runtime dependency (other than next, react, react-dom) is imported by a file under src', () => {
+    const unused = Object.keys(dependencies)
+      .filter((name) => !FRAMEWORK_PROVIDED.has(name))
+      .filter((name) => !sourceTexts.some((text) => importsPackage(text, name)));
+    expect(unused, `declared but never imported under src: ${unused.join(', ')}`).toEqual([]);
+  });
+
+  it('the used-dependency matcher sees static, dynamic, side-effect and subpath imports', () => {
+    expect(importsPackage(`import 'maplibre-gl/dist/maplibre-gl.css'`, 'maplibre-gl')).toBe(true);
+    expect(importsPackage(`import { Map } from 'react-map-gl/maplibre'`, 'react-map-gl')).toBe(true);
+    expect(importsPackage(`const m = await import("@observablehq/plot")`, '@observablehq/plot')).toBe(true);
+    expect(importsPackage(`import { format } from 'd3-format'`, 'd3-format')).toBe(true);
+    expect(importsPackage(`import x from 'd3-format-extra'`, 'd3-format')).toBe(false);
+  });
+
+  it('declares no other chart library', () => {
+    const found = Object.keys(declared).filter((name) => OTHER_CHART_LIBRARIES.some((re) => re.test(name)));
+    expect(found).toEqual([]);
+  });
+
+  it('declares no bare d3 bundle, only the individual d3 modules', () => {
+    expect(declared).not.toHaveProperty(['d3']);
+  });
+
+  it('Observable Plot and the four d3 modules are pinned exactly', () => {
+    expect(dependencies['@observablehq/plot']).toBe('0.6.17');
+    expect(dependencies['d3-scale']).toBe('4.0.2');
+    expect(dependencies['d3-array']).toBe('3.2.4');
+    expect(dependencies['d3-shape']).toBe('3.2.0');
+    expect(dependencies['d3-format']).toBe('3.1.2');
+  });
+
+  it('only the charts feature module imports Observable Plot', () => {
+    const importers = sourceFiles
+      .filter((f) => importsPackage(fs.readFileSync(f, 'utf8'), '@observablehq/plot'))
+      .map((f) => path.relative(SRC_ROOT, f).split(path.sep).join('/'));
+    expect(importers.length).toBeGreaterThan(0);
+    for (const file of importers) expect(file.startsWith('features/charts/'), file).toBe(true);
   });
 });

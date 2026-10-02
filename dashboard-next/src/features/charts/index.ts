@@ -11,5 +11,5 @@
  */
 export { PlotFigure } from './PlotFigure';
 export type { PlotFigureProps, PlotTable } from './PlotFigure';
-export { probabilityBars, PLOT_STYLE } from './encodings';
-export type { FigureSpec, ProbabilityBarsOptions } from './encodings';
+export { probabilityBars, seriesLine, PLOT_STYLE } from './encodings';
+export type { FigureSpec, ProbabilityBarsOptions, SeriesLineOptions, SeriesPoint } from './encodings';
