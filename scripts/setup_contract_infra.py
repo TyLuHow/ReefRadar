@@ -3,13 +3,26 @@
 Create the AWS side of the data contract (plan 02-02, CONTRACT-01):
 
   storage  private bucket reefradar-2477-contract served only through CloudFront (origin
-           access control, HTTPS, managed CachingOptimized + SimpleCORS policies, 10 s
-           error caching) with a bucket policy that grants s3:GetObject to that one
-           distribution and nothing else (no listing).
+           access control, HTTPS, managed CachingOptimized policy, the custom CORS
+           response headers policy below, 10 s error caching) with a bucket policy that
+           grants s3:GetObject to that one distribution and nothing else (no listing).
   budget   the owner's 25 USD/month cost budget with email alerts (80% and 100%
            of actual spend, 100% of forecast spend). It replaces the alert-less
            reefradar-2477-budget (50 USD), which is deleted only after the new
            budget and all three notifications read back correctly.
+  cors     (plan 02-13) the custom response headers policy reefradar-2477-contract-cors
+           (origins *, headers *, methods GET/HEAD/OPTIONS, credentials false, max age
+           600 s, origin override) attached to the distribution's default cache behaviour,
+           which then allows GET/HEAD/OPTIONS and caches only GET/HEAD. The AWS managed
+           Managed-SimpleCORS policy it replaces answers only simple CORS requests, so every
+           real browser read (which carries Priority or Cache-Control headers) was blocked.
+           The step finds or creates the policy, then updates the distribution with IfMatch on
+           the ETag it just read, changing only ResponseHeadersPolicyId and AllowedMethods, waits
+           for Deployed and reads back. It never requests an invalidation: CloudFront applies
+           response headers policies to the responses it serves from the cache too, so cached
+           objects need no purge. It makes no S3 or origin access control write.
+  cors-rollback  restores Managed-SimpleCORS and GET/HEAD in one update (reachable only by
+           name, never part of `all`, dry-run or --confirm only); the custom policy is kept.
 
 Everything is idempotent: existing resources are found by name and only what is
 missing is created.
@@ -21,7 +34,8 @@ missing is created.
   --verify            read-only report; exit 1 on any deviation from the desired state
   --record-resources  rewrite the matching sections of infrastructure/resources.json
                       from read-only describe calls (no AWS write, no --confirm)
-  --step              budget | storage | all (default all; budget always runs first)
+  --step              budget | storage | cors | cors-rollback | all (default all =
+                      budget, storage, cors in that order; cors-rollback only by name)
   --notify-email      owner alert address (falls back to env REEFRADAR_ALERT_EMAIL).
                       Pass it on the command line only; it is never written to a file
                       and is printed only in redacted form.
@@ -36,6 +50,10 @@ Usage:
     py -3.12 scripts/setup_contract_infra.py --step budget --record-resources
     py -3.12 scripts/setup_contract_infra.py --step storage --dry-run
     py -3.12 scripts/setup_contract_infra.py --step storage --confirm
+    py -3.12 scripts/setup_contract_infra.py --step cors --dry-run
+    py -3.12 scripts/setup_contract_infra.py --step cors --confirm
+    py -3.12 scripts/setup_contract_infra.py --step cors-rollback --dry-run
+    py -3.12 scripts/setup_contract_infra.py --step cors-rollback --confirm
     py -3.12 scripts/setup_contract_infra.py --step all --verify
     py -3.12 scripts/setup_contract_infra.py --step all --record-resources
 
@@ -47,6 +65,7 @@ neither the CloudFront root nor latest.json may ever be a bucket listing.
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import os
 import pathlib
@@ -80,13 +99,20 @@ PROJECT_TAG = "reefradar-2477"
 PAB_FLAGS = ("BlockPublicAcls", "IgnorePublicAcls", "BlockPublicPolicy", "RestrictPublicBuckets")
 # AWS managed policies (identical in every account)
 CACHE_POLICY_ID = "658327ea-f89d-4fab-a63d-7e88639e58f6"  # Managed-CachingOptimized
-RESPONSE_HEADERS_POLICY_ID = "60669652-455b-4ae9-85a4-c4c02393f86c"  # Managed-SimpleCORS
+# Managed-SimpleCORS: kept only to recognise the policy plan 02-13 replaced and to roll back to it
+MANAGED_SIMPLE_CORS_ID = "60669652-455b-4ae9-85a4-c4c02393f86c"
+CORS_POLICY_NAME = "reefradar-2477-contract-cors"
+CORS_POLICY_COMMENT = "reefradar-2477 contract: wildcard CORS for public credential-free reads (plan 02-13)"
+CORS_ALLOWED_METHODS = ["GET", "HEAD", "OPTIONS"]
+CACHED_METHODS = ["GET", "HEAD"]
+CORS_MAX_AGE_SEC = 600
+DRY_RUN_POLICY_ID = f"<id-of-{CORS_POLICY_NAME}-after-create>"
 ERROR_CACHING_MIN_TTL = 10
 WAITER_CONFIG = {"Delay": 30, "MaxAttempts": 60}
 LATEST_KEY = "contract/latest.json"
 MISSING_PROBE_KEY = "contract/probe-missing-key.json"
 
-STEPS = ("budget", "storage", "all")
+STEPS = ("budget", "storage", "cors", "cors-rollback", "all")
 
 
 class SetupError(RuntimeError):
@@ -507,7 +533,7 @@ def policy_problems(policy: dict | None, distribution_id: str) -> list[str]:
     return problems
 
 
-def desired_distribution_config(oac_id: str) -> dict:
+def desired_distribution_config(oac_id: str, cors_policy_id: str) -> dict:
     return {
         "CallerReference": CALLER_REFERENCE,
         "Comment": DISTRIBUTION_COMMENT,
@@ -528,10 +554,10 @@ def desired_distribution_config(oac_id: str) -> dict:
         "DefaultCacheBehavior": {
             "TargetOriginId": ORIGIN_ID,
             "ViewerProtocolPolicy": "redirect-to-https",
-            "AllowedMethods": {"Quantity": 2, "Items": ["GET", "HEAD"], "CachedMethods": {"Quantity": 2, "Items": ["GET", "HEAD"]}},
+            "AllowedMethods": _allowed_methods(CORS_ALLOWED_METHODS),
             "Compress": True,
             "CachePolicyId": CACHE_POLICY_ID,
-            "ResponseHeadersPolicyId": RESPONSE_HEADERS_POLICY_ID,
+            "ResponseHeadersPolicyId": cors_policy_id,
         },
         "CustomErrorResponses": {
             "Quantity": 2,
@@ -544,8 +570,17 @@ def desired_distribution_config(oac_id: str) -> dict:
     }
 
 
+def _allowed_methods(allowed: list[str]) -> dict:
+    """CloudFront's AllowedMethods shape: the allowed methods, caching only GET and HEAD."""
+    return {
+        "Quantity": len(allowed),
+        "Items": list(allowed),
+        "CachedMethods": {"Quantity": len(CACHED_METHODS), "Items": list(CACHED_METHODS)},
+    }
+
+
 def distribution_problems(config: dict, oac_id: str | None) -> list[str]:
-    """Compare the settings that matter for security, caching and CORS."""
+    """Compare the settings that matter for security and caching (CORS is checked by cors_problems)."""
     problems = []
     behavior = config.get("DefaultCacheBehavior", {})
     origins = (config.get("Origins") or {}).get("Items") or []
@@ -556,10 +591,8 @@ def distribution_problems(config: dict, oac_id: str | None) -> list[str]:
         ("origin access control", bool(origins) and bool(oac_id) and origins[0].get("OriginAccessControlId") == oac_id),
         ("S3 origin without legacy identity", bool(origins) and (origins[0].get("S3OriginConfig") or {}).get("OriginAccessIdentity") == ""),
         ("viewer protocol redirect-to-https", behavior.get("ViewerProtocolPolicy") == "redirect-to-https"),
-        ("allowed methods GET/HEAD", sorted((behavior.get("AllowedMethods") or {}).get("Items") or []) == ["GET", "HEAD"]),
         ("compress", behavior.get("Compress") is True),
         ("cache policy Managed-CachingOptimized", behavior.get("CachePolicyId") == CACHE_POLICY_ID),
-        ("response headers policy Managed-SimpleCORS", behavior.get("ResponseHeadersPolicyId") == RESPONSE_HEADERS_POLICY_ID),
         ("http2and3", config.get("HttpVersion") == "http2and3"),
         ("IPv6", config.get("IsIPV6Enabled") is True),
         ("price class all", config.get("PriceClass") == "PriceClass_All"),
@@ -573,6 +606,20 @@ def distribution_problems(config: dict, oac_id: str | None) -> list[str]:
         e = errors.get(code)
         if not e or e.get("ErrorCachingMinTTL") != ERROR_CACHING_MIN_TTL or e.get("ResponsePagePath"):
             problems.append(f"{code} error caching {ERROR_CACHING_MIN_TTL}s without a custom page")
+    return problems
+
+
+def cors_problems(config: dict, cors_policy_id: str | None) -> list[str]:
+    """The CORS-related settings of the default cache behaviour that differ from the desired state."""
+    behavior = config.get("DefaultCacheBehavior", {})
+    methods = behavior.get("AllowedMethods") or {}
+    problems = []
+    if not cors_policy_id or behavior.get("ResponseHeadersPolicyId") != cors_policy_id:
+        problems.append(f"response headers policy {CORS_POLICY_NAME}")
+    if sorted(methods.get("Items") or []) != sorted(CORS_ALLOWED_METHODS) or sorted(
+        (methods.get("CachedMethods") or {}).get("Items") or []
+    ) != sorted(CACHED_METHODS):
+        problems.append("allowed methods GET/HEAD/OPTIONS, cached GET/HEAD")
     return problems
 
 
@@ -743,19 +790,21 @@ def storage_step(aws, write: bool) -> None:
             raise SetupError("distribution exists with unexpected settings (" + "; ".join(problems) + "); not altering it")
         present("distribution", DISTRIBUTION_COMMENT)
     else:
+        cors_policy_id = ensure_cors_policy(cloudfront, write, "storage")
         made = {}
 
         def make_distribution():
             resp = cloudfront.create_distribution_with_tags(
                 DistributionConfigWithTags={
-                    "DistributionConfig": desired_distribution_config(oac["Id"]),
+                    "DistributionConfig": desired_distribution_config(oac["Id"], cors_policy_id),
                     "Tags": {"Items": [{"Key": "Project", "Value": PROJECT_TAG}]},
                 }
             )
             made.update(resp["Distribution"])
 
         act("create_distribution", DISTRIBUTION_COMMENT, make_distribution,
-            origin=BUCKET_DOMAIN, cache_policy="Managed-CachingOptimized", response_headers_policy="Managed-SimpleCORS")
+            origin=BUCKET_DOMAIN, cache_policy="Managed-CachingOptimized", response_headers_policy=CORS_POLICY_NAME,
+            allowed_methods=CORS_ALLOWED_METHODS, cached_methods=CACHED_METHODS)
         dist = {"Id": made.get("Id"), "DomainName": made.get("DomainName"), "Status": made.get("Status")}
 
     if write and (st["distribution"] is None or dist.get("Status") != "Deployed"):
@@ -826,21 +875,302 @@ def storage_record(aws, resources: dict) -> dict:
         "region": REGION,
         "folders": ["contract/", "v1/"],
     }
-    resources.pop("cloudfront", None)
-    resources["cloudfront"] = {
-        "distributions": {
-            "contract": {
-                "id": dist["Id"],
-                "arn": f"arn:aws:cloudfront::{ACCOUNT_ID}:distribution/{dist['Id']}",
-                "domain_name": dist["DomainName"],
-                "comment": DISTRIBUTION_COMMENT,
-                "origin_access_control_id": st["oac"]["Id"],
-                "cache_policy": "Managed-CachingOptimized",
-                "response_headers_policy": "Managed-SimpleCORS",
-                "error_caching_min_ttl": ERROR_CACHING_MIN_TTL,
-            }
+    # Update only the keys this step owns; the CORS keys belong to cors_record.
+    contract = resources.setdefault("cloudfront", {}).setdefault("distributions", {}).setdefault("contract", {})
+    contract.update(
+        {
+            "id": dist["Id"],
+            "arn": f"arn:aws:cloudfront::{ACCOUNT_ID}:distribution/{dist['Id']}",
+            "domain_name": dist["DomainName"],
+            "comment": DISTRIBUTION_COMMENT,
+            "origin_access_control_id": st["oac"]["Id"],
+            "cache_policy": "Managed-CachingOptimized",
+            "error_caching_min_ttl": ERROR_CACHING_MIN_TTL,
         }
+    )
+    return resources
+
+
+# ---------------------------------------------------------------------- cors
+# Plan 02-13: the custom response headers policy that replaces Managed-SimpleCORS.
+
+
+def desired_cors_policy_config() -> dict:
+    """ResponseHeadersPolicyConfig in CloudFront's Quantity/Items shape, with no other sections."""
+
+    def items(values):
+        return {"Quantity": len(values), "Items": list(values)}
+
+    return {
+        "Name": CORS_POLICY_NAME,
+        "Comment": CORS_POLICY_COMMENT,
+        "CorsConfig": {
+            "AccessControlAllowOrigins": items(["*"]),
+            "AccessControlAllowHeaders": items(["*"]),
+            "AccessControlAllowMethods": items(CORS_ALLOWED_METHODS),
+            "AccessControlAllowCredentials": False,
+            "AccessControlMaxAgeSec": CORS_MAX_AGE_SEC,
+            "OriginOverride": True,
+        },
     }
+
+
+def _policy_config_of(cloudfront, item: dict) -> dict:
+    """The full config of a listed policy (the list normally carries it; fall back to a get)."""
+    policy = item.get("ResponseHeadersPolicy") or {}
+    config = policy.get("ResponseHeadersPolicyConfig")
+    if config is None and policy.get("Id"):
+        got = cloudfront.get_response_headers_policy(Id=policy["Id"])
+        config = got["ResponseHeadersPolicy"]["ResponseHeadersPolicyConfig"]
+    return config or {}
+
+
+def _find_cors_policy(cloudfront):
+    """(id, config) of the custom policy named CORS_POLICY_NAME, or None.
+
+    ResponseHeadersPolicyList has no IsTruncated field, so the pages are followed by NextMarker."""
+    marker = None
+    while True:
+        kwargs = {"Type": "custom"}
+        if marker:
+            kwargs["Marker"] = marker
+        listing = cloudfront.list_response_headers_policies(**kwargs).get("ResponseHeadersPolicyList") or {}
+        for item in listing.get("Items") or []:
+            config = _policy_config_of(cloudfront, item)
+            if config.get("Name") == CORS_POLICY_NAME:
+                return item["ResponseHeadersPolicy"]["Id"], config
+        marker = listing.get("NextMarker")
+        if not marker:
+            return None
+
+
+def _items(section) -> list:
+    return sorted((section or {}).get("Items") or [])
+
+
+def _cors_policy_problems(config: dict) -> list[str]:
+    """Differences between a policy's config and the desired one (Items order and Quantity ignored)."""
+    want = desired_cors_policy_config()["CorsConfig"]
+    got = config.get("CorsConfig") or {}
+    problems = []
+    for key in ("AccessControlAllowOrigins", "AccessControlAllowHeaders", "AccessControlAllowMethods"):
+        if _items(got.get(key)) != sorted(want[key]["Items"]):
+            problems.append(f"{key} is {_items(got.get(key))}, expected {sorted(want[key]['Items'])}")
+    for key in ("AccessControlAllowCredentials", "AccessControlMaxAgeSec", "OriginOverride"):
+        if got.get(key) != want[key]:
+            problems.append(f"{key} is {got.get(key)!r}, expected {want[key]!r}")
+    if _items(got.get("AccessControlExposeHeaders")):
+        problems.append("AccessControlExposeHeaders is not empty")
+    for section in ("SecurityHeadersConfig", "CustomHeadersConfig", "RemoveHeadersConfig", "ServerTimingHeadersConfig"):
+        if config.get(section) not in (None, {}, {"Quantity": 0}, {"Enabled": False}):
+            problems.append(f"unexpected {section}")
+    return problems
+
+
+def ensure_cors_policy(cloudfront, write: bool, step: str = "cors") -> str:
+    """Find the custom CORS policy, create it when missing, refuse one that differs. Returns its id
+    (a placeholder in a dry run when it does not exist yet)."""
+    found = _find_cors_policy(cloudfront)
+    if found is not None:
+        policy_id, config = found
+        problems = _cors_policy_problems(config)
+        if problems:
+            raise SetupError(
+                f"response headers policy {CORS_POLICY_NAME} exists with unexpected settings "
+                f"({'; '.join(problems)}); not altering it"
+            )
+        emit(step, "response_headers_policy", CORS_POLICY_NAME, "ok", id=policy_id)
+        return policy_id
+    desired = desired_cors_policy_config()
+    cors = desired["CorsConfig"]
+    summary = {
+        "allow_origins": cors["AccessControlAllowOrigins"]["Items"],
+        "allow_headers": cors["AccessControlAllowHeaders"]["Items"],
+        "allow_methods": cors["AccessControlAllowMethods"]["Items"],
+        "allow_credentials": False,
+        "max_age_sec": CORS_MAX_AGE_SEC,
+        "origin_override": True,
+    }
+    if not write:
+        emit(step, "create_response_headers_policy", CORS_POLICY_NAME, "planned", **summary)
+        return DRY_RUN_POLICY_ID
+    created = cloudfront.create_response_headers_policy(ResponseHeadersPolicyConfig=desired)
+    policy_id = created["ResponseHeadersPolicy"]["Id"]
+    emit(step, "create_response_headers_policy", CORS_POLICY_NAME, "done", id=policy_id, **summary)
+    return policy_id
+
+
+def _methods_of(config: dict) -> list[str]:
+    return _items((config.get("DefaultCacheBehavior") or {}).get("AllowedMethods"))
+
+
+def _cors_distribution(aws):
+    """(listed distribution, its config, ETag) or raise when the distribution is absent or deviates."""
+    cloudfront = aws.get("cloudfront")
+    dist = _find_distribution(cloudfront)
+    if dist is None:
+        raise SetupError(f"distribution {DISTRIBUTION_COMMENT} does not exist; run --step storage first")
+    got = cloudfront.get_distribution_config(Id=dist["Id"])
+    config, etag = got["DistributionConfig"], got["ETag"]
+    oac = _find_oac(cloudfront)
+    problems = distribution_problems(config, (oac or {}).get("Id"))
+    if problems:
+        raise SetupError("distribution exists with unexpected settings (" + "; ".join(problems) + "); not altering it")
+    return dist, config, etag
+
+
+def _apply_cors_fields(cloudfront, dist: dict, config: dict, etag: str, policy_id: str, allowed: list[str], step: str, write: bool):
+    """update_distribution with IfMatch, changing only ResponseHeadersPolicyId and AllowedMethods."""
+    from botocore.exceptions import ClientError
+
+    behavior = config["DefaultCacheBehavior"]
+    changes = {
+        "ResponseHeadersPolicyId": {"old": behavior.get("ResponseHeadersPolicyId"), "new": policy_id},
+        "AllowedMethods": {"old": _methods_of(config), "new": sorted(allowed)},
+    }
+    if write:
+        updated = copy.deepcopy(config)
+        target = updated["DefaultCacheBehavior"]
+        target["ResponseHeadersPolicyId"] = policy_id
+        methods = target.setdefault("AllowedMethods", {})
+        methods["Items"] = list(allowed)
+        methods["Quantity"] = len(allowed)
+        if sorted((methods.get("CachedMethods") or {}).get("Items") or []) != sorted(CACHED_METHODS):
+            methods["CachedMethods"] = {"Quantity": len(CACHED_METHODS), "Items": list(CACHED_METHODS)}
+        try:
+            cloudfront.update_distribution(Id=dist["Id"], IfMatch=etag, DistributionConfig=updated)
+        except ClientError as exc:
+            if _code(exc) == "PreconditionFailed":
+                raise SetupError("the distribution changed concurrently (stale ETag); nothing was updated, re-run the step")
+            raise
+    emit(step, "update_distribution", DISTRIBUTION_COMMENT, "done" if write else "planned", id=dist["Id"], changes=changes)
+
+
+def _wait_and_read_back(aws, dist: dict, step: str, expect_policy_id: str, allowed: list[str]) -> None:
+    cloudfront = aws.get("cloudfront")
+    emit(step, "wait_distribution_deployed", DISTRIBUTION_COMMENT, "waiting")
+    cloudfront.get_waiter("distribution_deployed").wait(Id=dist["Id"], WaiterConfig=WAITER_CONFIG)
+    emit(step, "wait_distribution_deployed", DISTRIBUTION_COMMENT, "ok", domain_name=dist.get("DomainName"))
+    config = cloudfront.get_distribution_config(Id=dist["Id"])["DistributionConfig"]
+    behavior = config["DefaultCacheBehavior"]
+    problems = []
+    if behavior.get("ResponseHeadersPolicyId") != expect_policy_id:
+        problems.append("response headers policy not attached as expected")
+    if _methods_of(config) != sorted(allowed):
+        problems.append(f"allowed methods are {_methods_of(config)}, expected {sorted(allowed)}")
+    if problems:
+        raise SetupError("read-back of the distribution failed: " + "; ".join(problems))
+    emit(step, "readback", DISTRIBUTION_COMMENT, "ok", response_headers_policy_id=expect_policy_id, allowed_methods=sorted(allowed))
+
+
+def cors_step(aws, write: bool, storage_planned: bool = False) -> None:
+    cloudfront = aws.get("cloudfront")
+    if storage_planned and _find_distribution(cloudfront) is None:
+        emit("cors", "distribution", DISTRIBUTION_COMMENT, "info", detail="not created yet; the storage step plans it with the custom policy")
+        return
+    dist, config, etag = _cors_distribution(aws)
+    policy_id = ensure_cors_policy(cloudfront, write)
+    problems = cors_problems(config, policy_id)
+    updated = False
+    if problems:
+        _apply_cors_fields(cloudfront, dist, config, etag, policy_id, CORS_ALLOWED_METHODS, "cors", write)
+        updated = True
+    else:
+        emit("cors", "distribution_cors", DISTRIBUTION_COMMENT, "ok")
+    if write and (updated or dist.get("Status") != "Deployed"):
+        _wait_and_read_back(aws, dist, "cors", policy_id, CORS_ALLOWED_METHODS)
+
+
+def cors_rollback_step(aws, write: bool) -> None:
+    """Re-attach Managed-SimpleCORS and GET/HEAD. The custom policy is left in place."""
+    cloudfront = aws.get("cloudfront")
+    dist, config, etag = _cors_distribution(aws)
+    behavior = config["DefaultCacheBehavior"]
+    rolled_back = behavior.get("ResponseHeadersPolicyId") == MANAGED_SIMPLE_CORS_ID and _methods_of(config) == sorted(CACHED_METHODS)
+    updated = False
+    if not rolled_back:
+        _apply_cors_fields(cloudfront, dist, config, etag, MANAGED_SIMPLE_CORS_ID, CACHED_METHODS, "cors-rollback", write)
+        updated = True
+    else:
+        emit("cors-rollback", "distribution_cors", DISTRIBUTION_COMMENT, "ok", detail="already on Managed-SimpleCORS with GET/HEAD")
+    if write and (updated or dist.get("Status") != "Deployed"):
+        _wait_and_read_back(aws, dist, "cors-rollback", MANAGED_SIMPLE_CORS_ID, CACHED_METHODS)
+
+
+def _cors_state(aws) -> dict:
+    """Read-only snapshot for verify and record-resources."""
+    cloudfront = aws.get("cloudfront")
+    state = {"policy_id": None, "policy_problems": [], "distribution": None, "cors_problems": [], "deployed": False}
+    found = _find_cors_policy(cloudfront)
+    if found is not None:
+        state["policy_id"] = found[0]
+        state["policy_problems"] = _cors_policy_problems(found[1])
+    dist = _find_distribution(cloudfront)
+    state["distribution"] = dist
+    if dist is not None:
+        config = cloudfront.get_distribution_config(Id=dist["Id"])["DistributionConfig"]
+        state["deployed"] = dist.get("Status") == "Deployed"
+        state["cors_problems"] = cors_problems(config, state["policy_id"])
+    return state
+
+
+def cors_verify(aws) -> bool:
+    ok = True
+    state = _cors_state(aws)
+
+    def report(action, good, detail=None):
+        nonlocal ok
+        ok = ok and good
+        emit("cors", action, CORS_POLICY_NAME, "ok" if good else "deviation", **({"detail": detail} if detail else {}))
+
+    report("policy_exists", state["policy_id"] is not None, None if state["policy_id"] else f"custom policy {CORS_POLICY_NAME} not found")
+    report("policy_config_matches", state["policy_id"] is not None and not state["policy_problems"], "; ".join(state["policy_problems"]) or None)
+    if state["distribution"] is None:
+        report("distribution_deployed", False, "distribution missing")
+        report("attachment_and_methods", False, "distribution missing")
+        return False
+    report("distribution_deployed", state["deployed"], None if state["deployed"] else f"status {state['distribution'].get('Status')}")
+    report("attachment_and_methods", not state["cors_problems"], "; ".join(state["cors_problems"]) or None)
+    return ok
+
+
+def cors_record(aws, resources: dict) -> dict:
+    state = _cors_state(aws)
+    if (
+        state["policy_id"] is None
+        or state["policy_problems"]
+        or state["distribution"] is None
+        or state["cors_problems"]
+        or not state["deployed"]
+    ):
+        raise SetupError("the CORS policy and its attachment do not match the desired state; refusing to record it (run --step cors --verify)")
+    cors = desired_cors_policy_config()["CorsConfig"]
+    cloudfront = resources.setdefault("cloudfront", {})
+    cloudfront.setdefault("response_headers_policies", {})["contract_cors"] = {
+        "id": state["policy_id"],
+        "name": CORS_POLICY_NAME,
+        "allow_origins": cors["AccessControlAllowOrigins"]["Items"],
+        "allow_headers": cors["AccessControlAllowHeaders"]["Items"],
+        "allow_methods": cors["AccessControlAllowMethods"]["Items"],
+        "allow_credentials": False,
+        "max_age_sec": CORS_MAX_AGE_SEC,
+        "origin_override": True,
+        "expose_headers": [],
+        "replaced": {
+            "name": "Managed-SimpleCORS",
+            "id": MANAGED_SIMPLE_CORS_ID,
+            "reason": "adds Access-Control-Allow-Origin only to simple CORS requests; browsers add non-safelisted headers such as Priority",
+        },
+    }
+    contract = cloudfront.setdefault("distributions", {}).setdefault("contract", {})
+    contract.update(
+        {
+            "response_headers_policy": CORS_POLICY_NAME,
+            "response_headers_policy_id": state["policy_id"],
+            "allowed_methods": list(CORS_ALLOWED_METHODS),
+            "cached_methods": list(CACHED_METHODS),
+        }
+    )
     return resources
 
 
@@ -864,11 +1194,20 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _selected(step: str) -> list[str]:
-    return {"budget": ["budget"], "storage": ["storage"], "all": ["budget", "storage"]}[step]
+    return {
+        "budget": ["budget"],
+        "storage": ["storage"],
+        "cors": ["cors"],
+        "cors-rollback": ["cors-rollback"],
+        "all": ["budget", "storage", "cors"],
+    }[step]
 
 
 def main(argv=None, clients=None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.step == "cors-rollback" and (args.verify or args.record_resources):
+        parser.error("--step cors-rollback is a change: use it with --dry-run or --confirm, not --verify or --record-resources")
     email = args.notify_email or os.environ.get(EMAIL_ENV) or None
     steps = _selected(args.step)
     write = args.confirm and not args.dry_run and not args.verify and not args.record_resources
@@ -888,6 +1227,8 @@ def main(argv=None, clients=None) -> int:
                 ok = budget_verify(aws.get("budgets"), email) and ok
             if "storage" in steps:
                 ok = storage_verify(aws) and ok
+            if "cors" in steps:
+                ok = cors_verify(aws) and ok
             return 0 if ok else 1
 
         if args.record_resources:
@@ -896,6 +1237,8 @@ def main(argv=None, clients=None) -> int:
                 resources = budget_record(aws.get("budgets"), resources)
             if "storage" in steps:
                 resources = storage_record(aws, resources)
+            if "cors" in steps:
+                resources = cors_record(aws, resources)
             if "budgets" in resources:  # keep the budgets section last
                 resources["budgets"] = resources.pop("budgets")
             args.resources_file.write_bytes(render_json(resources).encode("utf-8"))
@@ -906,6 +1249,10 @@ def main(argv=None, clients=None) -> int:
             budget_step(aws.get("budgets"), email, write)
         if "storage" in steps:
             storage_step(aws, write)
+        if "cors" in steps:
+            cors_step(aws, write, storage_planned=("storage" in steps and not write))
+        if "cors-rollback" in steps:
+            cors_rollback_step(aws, write)
         if not write:
             print("[dry-run] no AWS write made" if args.dry_run else "[no --confirm] no AWS write made")
         return 0
