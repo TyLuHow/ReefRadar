@@ -3,8 +3,8 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { installContractFetch, resetContractStore, setContractPin, type ContractFetchHandle } from './support/contract-fetch';
 
-// The Leaflet map is irrelevant here (and not SSR/jsdom friendly).
-vi.mock('@/components/maps', () => ({
+// The MapLibre map is irrelevant here (and not SSR/jsdom friendly).
+vi.mock('@/features/map', () => ({
   WorldMap: () => <div data-testid="world-map" />,
 }));
 

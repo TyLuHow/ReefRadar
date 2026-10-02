@@ -10,9 +10,9 @@ import { formatStatus } from '@/lib/utils';
 import { deriveSiteStats, formatList } from '@/lib/site-stats';
 import { Map, AlertCircle, Globe, Activity, Layers } from 'lucide-react';
 
-// Dynamic import for map to avoid SSR issues with Leaflet
+// Dynamic import for the MapLibre map: it needs the browser (WebGL2), so no SSR
 const WorldMap = dynamic(
-  () => import('@/components/maps').then((m) => m.WorldMap),
+  () => import('@/features/map').then((m) => m.WorldMap),
   {
     ssr: false,
     loading: () => (

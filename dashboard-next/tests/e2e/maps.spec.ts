@@ -218,3 +218,95 @@ test.describe('monitoring map (MapLibre)', () => {
       .toMatchObject({ lat: expect.closeTo(-3, 0), lng: expect.closeTo(40, 0) });
   });
 });
+
+/**
+ * /sites world map on MapLibre with an OpenStreetMap raster base (03-09, PLAT-02).
+ * Tile requests are fulfilled locally with a transparent PNG: CI never reaches
+ * tile.openstreetmap.org (OSM tile usage policy).
+ */
+
+const SITES_PATH = '/sites/';
+
+const TRANSPARENT_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+  'base64',
+);
+
+async function stubOsmTiles(page: Page) {
+  await page.route(/tile\.openstreetmap\.org/, (route) =>
+    route.fulfill({ status: 200, contentType: 'image/png', body: TRANSPARENT_PNG }),
+  );
+}
+
+const MARKER_LABEL = /^[A-Za-z0-9_.-]+, [^,]+, (Healthy|Degraded|Restored Early|Restored Mid|Unknown)$/;
+
+test.describe('sites world map (MapLibre, OSM raster)', () => {
+  test('renders the OSM map with visible attribution, zoom buttons and keyboard-operable markers', async ({ page }) => {
+    const pageErrors: string[] = [];
+    page.on('pageerror', (err) => pageErrors.push(err.message));
+    await mockApi(page);
+    await stubOsmTiles(page);
+    await page.goto(SITES_PATH, { waitUntil: 'load' });
+    test.skip(!(await recordWebGL2(page)), 'No WebGL2 in this browser: the real-render branch cannot run here.');
+
+    await expect(page.getByRole('region', { name: 'Map of reef recording sites' })).toBeVisible();
+    await expect(page.locator('.maplibregl-canvas')).toBeVisible();
+
+    const attribution = page.locator('.maplibregl-ctrl-attrib');
+    await expect(attribution).toBeVisible();
+    await expect(attribution).toContainText('OpenStreetMap contributors');
+    await expect(attribution.getByRole('link', { name: 'OpenStreetMap' })).toHaveAttribute(
+      'href',
+      'https://www.openstreetmap.org/copyright',
+    );
+
+    // The legend must not cover the attribution text (OSM licence).
+    const link = attribution.getByRole('link', { name: 'OpenStreetMap' });
+    await link.scrollIntoViewIfNeeded();
+    const hitTag = await link.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return hit === el || el.contains(hit) ? 'link' : (hit ? `${hit.tagName}.${hit.className}` : 'nothing (off screen)');
+    });
+    expect(hitTag, 'the element on top of the attribution link').toBe('link');
+
+    await expect(page.getByRole('button', { name: 'Zoom in' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Zoom out' })).toBeVisible();
+
+    const marker = page.getByRole('button', { name: MARKER_LABEL }).first();
+    await expect(marker).toBeAttached();
+    const label = (await marker.getAttribute('aria-label')) as string;
+    const siteId = label.split(',')[0];
+
+    await marker.focus();
+    await page.keyboard.press('Enter');
+    const close = page.getByRole('button', { name: 'Close popup' });
+    await expect(close).toBeVisible();
+    await expect(close).toBeFocused();
+    await expect(
+      page.getByRole('region', { name: 'Map of reef recording sites' }).getByRole('heading', { level: 3, name: siteId }),
+    ).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('button', { name: 'Close popup' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: label, exact: true })).toBeFocused();
+    expect(pageErrors).toEqual([]);
+  });
+
+  test('without WebGL the fallback renders and the site list still renders', async ({ page }) => {
+    await page.addInitScript(() => {
+      const original = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, type: string, ...rest: unknown[]) {
+        if (/webgl/i.test(type)) return null;
+        return (original as (...a: unknown[]) => unknown).call(this, type, ...rest);
+      } as typeof HTMLCanvasElement.prototype.getContext;
+    });
+    await mockApi(page);
+    await stubOsmTiles(page);
+    await page.goto(SITES_PATH, { waitUntil: 'load' });
+
+    await expect(page.getByText('WebGL is required for the interactive map')).toBeVisible();
+    await expect(page.locator('.maplibregl-canvas')).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'All Sites' })).toBeVisible();
+  });
+});

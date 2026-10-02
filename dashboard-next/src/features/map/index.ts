@@ -1,6 +1,9 @@
 export { ReefMap } from './ReefMap';
 export { MapShell, MapErrorBoundary, prefersReducedMotion, detectWebGL2Support } from './MapShell';
 export { SitePopup } from './SitePopup';
+export { WorldMap, MapLegend } from './WorldMap';
+export { SiteMarker, siteMarkerLabel } from './SiteMarker';
+export { WORLD_MAP_STYLE, MINI_MAP_STYLE, WORLD_MAP_ATTRIBUTION, MINI_MAP_ATTRIBUTION, OSM_TILE_URL } from './style';
 export {
   SITES_SOURCE_ID,
   SITE_LAYER_IDS,
