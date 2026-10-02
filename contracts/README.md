@@ -67,6 +67,12 @@ py -3.12 scripts/build_contract.py --version 1 --check
 # Verify every bundle, fixture, pointer, the corpus, the immutability guard and additivity
 py -3.12 scripts/check_contract.py --check --additive
 
+# Prove no published version was rewritten or dropped, even together with its own
+# PUBLISHED.json entry (compares with every committed revision of PUBLISHED.json;
+# needs full git history, CI checks out with fetch-depth 0). Or compare with one ref:
+py -3.12 scripts/check_contract.py --published-history
+py -3.12 scripts/check_contract.py --published-base-ref origin/main
+
 # Regenerate the schema parity corpus after a schema or instance change
 py -3.12 scripts/check_contract.py --write-corpus
 

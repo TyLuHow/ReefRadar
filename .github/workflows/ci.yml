@@ -72,6 +72,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history: the published-version guard below compares against every
+          # earlier revision of contracts/PUBLISHED.json (WR-03).
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -79,6 +83,10 @@ jobs:
       - run: pytest
       - run: python scripts/build_contract.py --version 1 --check
       - run: python scripts/check_contract.py --check --additive
+      # A commit cannot rewrite or drop a published version together with its own
+      # PUBLISHED.json entry: every revision of PUBLISHED.json ever committed must
+      # still match the current manifests and artifacts.
+      - run: python scripts/check_contract.py --published-history
       - run: python scripts/build_audio_consumers.py --check
       - run: python scripts/build_api_fixtures.py --check
       - run: python scripts/validate_audio_manifest.py

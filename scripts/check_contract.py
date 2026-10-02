@@ -34,6 +34,19 @@ Phase 2 (CONTRACT-01): integrity and schema check of every committed contract bu
   - when contracts/PUBLISHED.json lists a version, that version's manifest bytes still hash
     to the recorded manifest_sha256 ("published version N modified" otherwise).
 
+`--published-base-ref REF` and `--published-history` close the same-commit loophole in that
+guard (a commit that edits a published bundle AND its PUBLISHED.json entry together passes the
+check above). They compare against PUBLISHED.json as it was committed earlier:
+
+  - `--published-base-ref REF` reads contracts/PUBLISHED.json at git ref REF (CI passes the
+    pull-request base, or the push's previous commit) and fails when any version recorded
+    there is missing now or records a different manifest_sha256;
+  - `--published-history` does the same against EVERY committed revision of PUBLISHED.json
+    (needs full history: fetch-depth 0), so a version can never be rewritten or dropped
+    whichever commit is the merge base.
+  Both also require the current manifest bytes and artifact files of those versions to still
+  hash to what was recorded, and fail closed when the ref is unknown or the clone is shallow.
+
 `--additive` guards schema evolution:
 
   - behavioural: every manifest in contracts/bucket and contracts/fixtures, and every
@@ -50,6 +63,8 @@ Exit 0 when everything passes; exit 1 with one line per failure otherwise.
 Usage:
     py -3.12 scripts/check_contract.py --check
     py -3.12 scripts/check_contract.py --check --additive
+    py -3.12 scripts/check_contract.py --published-history
+    py -3.12 scripts/check_contract.py --published-base-ref origin/main
     py -3.12 scripts/check_contract.py --write-corpus
     py -3.12 scripts/check_contract.py --check --contracts-dir <copy of contracts/>
 """
@@ -61,6 +76,7 @@ import copy
 import json
 import pathlib
 import re
+import subprocess
 import sys
 
 import numpy as np
@@ -445,6 +461,144 @@ def published_problems(contracts_dir: pathlib.Path) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# Published-version immutability against earlier commits (WR-03)
+# ---------------------------------------------------------------------------
+
+def _git(contracts_dir: pathlib.Path, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", "-C", str(contracts_dir), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
+    )
+
+
+def _published_records(published) -> dict[str, str]:
+    """version -> manifest sha256 from a parsed PUBLISHED.json (either record form)."""
+    out: dict[str, str] = {}
+    if isinstance(published, dict):
+        for version, record in published.items():
+            sha = record.get("manifest_sha256") if isinstance(record, dict) else record
+            out[str(version)] = sha
+    return out
+
+
+def published_base_problems(
+    contracts_dir: pathlib.Path, base_records: dict[str, str], label: str
+) -> list[str]:
+    """Versions recorded in an earlier PUBLISHED.json must be unchanged now.
+
+    `base_records` maps version -> manifest sha256 as recorded at `label` (a ref or
+    commit). A version missing now, or recorded with another hash, was rewritten; and the
+    manifest bytes plus every artifact file of a base version must still hash to what the
+    base recorded, so editing bucket/vN/** together with PUBLISHED.json cannot pass.
+    """
+    problems: list[str] = []
+    try:
+        current = _published_records(_read_json(contracts_dir / "PUBLISHED.json"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        current = {}
+    bucket = contracts_dir / "bucket"
+    for version, recorded in sorted(base_records.items()):
+        if version not in current:
+            problems.append(f"published version {version} dropped: recorded in PUBLISHED.json at {label} but missing now")
+            continue
+        if current[version] != recorded:
+            problems.append(
+                f"published version {version} rewritten: PUBLISHED.json at {label} recorded manifest sha256 "
+                f"{recorded}, now {current[version]}"
+            )
+            continue
+        manifest_path = bucket / "contract" / f"v{version}.json"
+        if not manifest_path.is_file():
+            problems.append(f"published version {version} modified: {manifest_path.name} is missing from the bundle")
+            continue
+        raw = manifest_path.read_bytes()
+        if contract_lib.sha256_hex(raw) != recorded:
+            problems.append(
+                f"published version {version} modified: manifest bytes differ from the sha256 recorded at {label}"
+            )
+            continue
+        try:
+            manifest = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            continue
+        artifacts = manifest.get("artifacts") if isinstance(manifest, dict) else None
+        for _label, entry in _iter_artifacts(artifacts if isinstance(artifacts, dict) else {}):
+            if not isinstance(entry, dict) or entry.get("present") is False:
+                continue
+            uri = entry.get("uri")
+            if not isinstance(uri, str) or not SAFE_URI.match(uri) or ".." in uri:
+                continue
+            file = bucket / uri
+            if not file.is_file() or contract_lib.sha256_hex(file.read_bytes()) != entry.get("sha256"):
+                problems.append(
+                    f"published version {version} modified: {uri} no longer matches the manifest recorded at {label}"
+                )
+    return problems
+
+
+def _published_path_in_repo(contracts_dir: pathlib.Path) -> tuple[str | None, str | None]:
+    """(path of PUBLISHED.json relative to the git toplevel, error)."""
+    result = _git(contracts_dir, "rev-parse", "--show-prefix")
+    if result.returncode != 0:
+        return None, "not inside a git work tree, so published versions cannot be compared with earlier commits"
+    return f"{result.stdout.strip()}PUBLISHED.json", None
+
+
+def _published_at_ref(contracts_dir: pathlib.Path, rel: str, ref: str) -> tuple[dict[str, str] | None, str | None]:
+    """(records at ref, error). An absent file at a valid ref is an empty record set."""
+    if _git(contracts_dir, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}").returncode != 0:
+        return None, f"cannot resolve git ref {ref!r}; fetch it (fetch-depth 0) so published versions can be compared"
+    if _git(contracts_dir, "cat-file", "-e", f"{ref}:{rel}").returncode != 0:
+        return {}, None
+    shown = _git(contracts_dir, "show", f"{ref}:{rel}")
+    if shown.returncode != 0:
+        return None, f"cannot read {rel} at {ref}"
+    try:
+        return _published_records(json.loads(shown.stdout)), None
+    except json.JSONDecodeError:
+        return None, f"{rel} at {ref} is not valid JSON"
+
+
+def published_base_ref_problems(contracts_dir: pathlib.Path, ref: str) -> list[str]:
+    """Compare against PUBLISHED.json at one git ref (e.g. the merge base)."""
+    rel, error = _published_path_in_repo(contracts_dir)
+    if error:
+        return [error]
+    records, error = _published_at_ref(contracts_dir, rel, ref)
+    if error:
+        return [error]
+    return published_base_problems(contracts_dir, records or {}, ref)
+
+
+def published_history_problems(contracts_dir: pathlib.Path) -> list[str]:
+    """Compare against every committed revision of PUBLISHED.json (full history required)."""
+    rel, error = _published_path_in_repo(contracts_dir)
+    if error:
+        return [error]
+    if _git(contracts_dir, "rev-parse", "--is-shallow-repository").stdout.strip() == "true":
+        return ["shallow clone: published versions cannot be compared with history (checkout with fetch-depth 0)"]
+    # git runs inside contracts_dir, so the pathspec is relative to it (unlike ref:path above).
+    log = _git(contracts_dir, "log", "--format=%H", "--", "PUBLISHED.json")
+    if log.returncode != 0:
+        return [f"git log failed for {rel}"]
+    problems: list[str] = []
+    seen: set[str] = set()
+    for commit in log.stdout.split():
+        records, error = _published_at_ref(contracts_dir, rel, commit)
+        if error:
+            problems.append(error)
+            continue
+        for line in published_base_problems(contracts_dir, records or {}, commit[:12]):
+            if line not in seen:
+                seen.add(line)
+                problems.append(line)
+    return problems
+
+
+# ---------------------------------------------------------------------------
 # Additive-only schema evolution
 # ---------------------------------------------------------------------------
 
@@ -689,10 +843,24 @@ def main(argv=None) -> int:
     parser.add_argument("--check", action="store_true", help="verify every committed bundle, fixture and the corpus")
     parser.add_argument("--additive", action="store_true", help="verify the schemas only ever grew")
     parser.add_argument("--write-corpus", action="store_true", help="regenerate contracts/fixtures/parity-corpus.json")
+    parser.add_argument(
+        "--published-base-ref",
+        metavar="REF",
+        help="fail when a version recorded in PUBLISHED.json at git REF is missing or changed now",
+    )
+    parser.add_argument(
+        "--published-history",
+        action="store_true",
+        help="fail when any version ever recorded in PUBLISHED.json (full git history) is missing or changed now",
+    )
     parser.add_argument("--contracts-dir", help="contracts directory to check (default: the repository's)")
     args = parser.parse_args(argv)
-    if not (args.check or args.additive or args.write_corpus):
-        parser.error("one of --check, --additive or --write-corpus is required")
+    if not (
+        args.check or args.additive or args.write_corpus or args.published_base_ref or args.published_history
+    ):
+        parser.error(
+            "one of --check, --additive, --write-corpus, --published-base-ref or --published-history is required"
+        )
 
     contracts_dir = pathlib.Path(args.contracts_dir or contract_lib.CONTRACTS_DIR)
     try:
@@ -705,13 +873,26 @@ def main(argv=None) -> int:
             problems += check(contracts_dir)
         if args.additive:
             problems += additive_problems(contracts_dir)
+        if args.published_base_ref:
+            problems += published_base_ref_problems(contracts_dir, args.published_base_ref)
+        if args.published_history:
+            problems += published_history_problems(contracts_dir)
     except contract_lib.ContractError as exc:
         problems = [str(exc)]
     for line in problems:
         print(f"FAIL {line}")
     if problems:
         return 1
-    modes = " and ".join(name for name, on in (("--check", args.check), ("--additive", args.additive)) if on)
+    modes = " and ".join(
+        name
+        for name, on in (
+            ("--check", args.check),
+            ("--additive", args.additive),
+            ("--published-base-ref", bool(args.published_base_ref)),
+            ("--published-history", args.published_history),
+        )
+        if on
+    )
     print(f"OK: contract {modes} passed (bundles, fixtures, schemas and parity corpus are consistent)")
     return 0
 

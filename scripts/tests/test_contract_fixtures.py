@@ -396,3 +396,114 @@ def test_an_unpublished_version_still_requires_schema_copies_to_match(contracts_
     _edit_json(contracts_copy / "schema" / "site.schema.json", mutate)
     assert _run(contracts_copy, "--check") == 1
     assert "schema copy differs" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# WR-03: published versions are immutable against earlier commits, not only the same commit
+# ---------------------------------------------------------------------------
+
+def _git(repo, *args):
+    import subprocess
+
+    result = subprocess.run(
+        ["git", "-c", "user.name=test", "-c", "user.email=test@example.invalid", "-c", "core.autocrlf=false", *args],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    return result.stdout.strip()
+
+
+@pytest.fixture
+def published_repo(tmp_path):
+    """A git repo whose first commit carries the real contracts tree with v1 published."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    shutil.copytree(CONTRACTS, repo / "contracts")
+    _git(repo, "init", "-q")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", "publish v1")
+    return repo
+
+
+def _rewrite_v1_in_one_commit(repo):
+    """Edit the published manifest AND its PUBLISHED.json entry together (the WR-03 loophole)."""
+    contracts = repo / "contracts"
+    manifest_path = contracts / "bucket" / "contract" / "v1.json"
+    manifest = _load(manifest_path)
+    manifest["created_at"] = "2099-01-01T00:00:00Z"
+    manifest_path.write_bytes(contract_lib.canonical_json_bytes(manifest))
+    published = _load(contracts / "PUBLISHED.json")
+    published["1"]["manifest_sha256"] = contract_lib.sha256_hex(manifest_path.read_bytes())
+    (contracts / "PUBLISHED.json").write_bytes(contract_lib.canonical_json_bytes(published))
+
+
+def test_same_commit_rewrite_passes_the_in_tree_check_but_fails_against_the_base(published_repo, capsys):
+    contracts = published_repo / "contracts"
+    _rewrite_v1_in_one_commit(published_repo)
+    # The pre-existing guard only compares the manifest with the PUBLISHED.json beside it.
+    assert not check_contract.published_problems(contracts)
+    assert _run(contracts, "--published-base-ref", "HEAD") == 1
+    out = capsys.readouterr().out
+    assert "published version 1 rewritten" in out
+
+
+def test_dropping_a_published_version_fails_against_the_base(published_repo, capsys):
+    contracts = published_repo / "contracts"
+    (contracts / "PUBLISHED.json").write_bytes(contract_lib.canonical_json_bytes({}))
+    assert _run(contracts, "--published-base-ref", "HEAD") == 1
+    assert "published version 1 dropped" in capsys.readouterr().out
+
+
+def test_artifact_edit_with_a_matching_manifest_fails_against_the_base(published_repo, capsys):
+    contracts = published_repo / "contracts"
+    sites = contracts / "bucket" / "v1" / "sites.json"
+    sites.write_bytes(sites.read_bytes().replace(b"Indonesia", b"Indonesiq", 1))
+    assert _run(contracts, "--published-base-ref", "HEAD") == 1
+    assert "no longer matches the manifest recorded" in capsys.readouterr().out
+
+
+def test_unchanged_published_versions_pass_against_the_base_and_the_history(published_repo, capsys):
+    contracts = published_repo / "contracts"
+    assert _run(contracts, "--published-base-ref", "HEAD") == 0
+    assert _run(contracts, "--published-history") == 0
+    assert "OK" in capsys.readouterr().out
+
+
+def test_history_catches_a_rewrite_that_is_already_committed(published_repo, capsys):
+    contracts = published_repo / "contracts"
+    _rewrite_v1_in_one_commit(published_repo)
+    _git(published_repo, "add", "-A")
+    _git(published_repo, "commit", "-q", "-m", "rewrite v1 together with its PUBLISHED entry")
+    # Against the new HEAD the tree is self-consistent...
+    assert _run(contracts, "--published-base-ref", "HEAD") == 0
+    # ...but the full history still remembers what v1 was.
+    assert _run(contracts, "--published-history") == 1
+    assert "published version 1 rewritten" in capsys.readouterr().out
+
+
+def test_a_new_published_version_is_allowed(published_repo):
+    contracts = published_repo / "contracts"
+    published = _load(contracts / "PUBLISHED.json")
+    published["2"] = {"manifest_sha256": "1" * 64}
+    (contracts / "PUBLISHED.json").write_bytes(contract_lib.canonical_json_bytes(published))
+    assert _run(contracts, "--published-base-ref", "HEAD") == 0
+
+
+def test_a_base_without_published_json_imposes_nothing(published_repo):
+    contracts = published_repo / "contracts"
+    _git(published_repo, "rm", "-q", "contracts/PUBLISHED.json")
+    _git(published_repo, "commit", "-q", "-m", "no published record yet")
+    assert _run(contracts, "--published-base-ref", "HEAD") == 0
+
+
+def test_an_unknown_ref_fails_closed(published_repo, capsys):
+    assert _run(published_repo / "contracts", "--published-base-ref", "origin/does-not-exist") == 1
+    assert "cannot resolve git ref" in capsys.readouterr().out
+
+
+def test_outside_a_git_work_tree_it_fails_closed(contracts_copy, capsys):
+    assert _run(contracts_copy, "--published-history") == 1
+    assert "not inside a git work tree" in capsys.readouterr().out
