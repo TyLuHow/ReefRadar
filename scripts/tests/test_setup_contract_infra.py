@@ -457,11 +457,86 @@ class Recorder:
 
 class CloudFrontRecorder(Recorder):
     """moto 5.2.3 drops OriginAccessControlId and S3OriginConfig from get_distribution_config
-    (real CloudFront returns them), so read-backs overlay the origins that were sent at create."""
+    (real CloudFront returns them), so read-backs overlay the origins that were sent at create.
+
+    moto 5.2.3 also has no response headers policies, so list/create/get_response_headers_policy are
+    kept in memory with the real API shapes; every create request is validated against the real
+    input shape of the botocore service model. moto does keep ResponseHeadersPolicyId and
+    AllowedMethods through update_distribution, so no overlay is needed for those two fields.
+
+    Test hooks: policy_page_size (paging), force_status (what list_distributions reports) and
+    update_error (a ClientError raised by update_distribution)."""
 
     def __init__(self, inner):
         super().__init__(inner)
         self._created_origins = {}
+        self.policies = {}
+        self.policy_page_size = 100
+        self.force_status = None
+        self.update_error = None
+
+    # ---- response headers policies (in memory)
+    def _validate(self, operation, params):
+        from botocore.validate import validate_parameters
+
+        shape = self._inner.meta.service_model.operation_model(operation).input_shape
+        validate_parameters(params, shape)
+
+    def list_response_headers_policies(self, **kwargs):
+        self.calls.append(("list_response_headers_policies", kwargs))
+        self._validate("ListResponseHeadersPolicies", kwargs)
+        items = [{"Type": "custom", "ResponseHeadersPolicy": p["ResponseHeadersPolicy"]} for p in self.policies.values()]
+        start = int(kwargs.get("Marker") or 0)
+        page = items[start : start + self.policy_page_size]
+        listing = {"MaxItems": 100, "Quantity": len(page)}
+        if page:
+            listing["Items"] = page
+        if start + self.policy_page_size < len(items):
+            listing["NextMarker"] = str(start + self.policy_page_size)
+        return {"ResponseHeadersPolicyList": listing}
+
+    def create_response_headers_policy(self, **kwargs):
+        import datetime
+        import uuid
+
+        self.calls.append(("create_response_headers_policy", kwargs))
+        self._validate("CreateResponseHeadersPolicy", kwargs)
+        config = json.loads(json.dumps(kwargs["ResponseHeadersPolicyConfig"]))
+        for existing in self.policies.values():
+            if existing["ResponseHeadersPolicy"]["ResponseHeadersPolicyConfig"]["Name"] == config["Name"]:
+                raise ClientError(
+                    {"Error": {"Code": "ResponseHeadersPolicyAlreadyExists", "Message": "exists"}},
+                    "CreateResponseHeadersPolicy",
+                )
+        policy_id = str(uuid.uuid4())
+        policy = {
+            "Id": policy_id,
+            "LastModifiedTime": datetime.datetime(2026, 10, 1, tzinfo=datetime.timezone.utc),
+            "ResponseHeadersPolicyConfig": config,
+        }
+        self.policies[policy_id] = {"ResponseHeadersPolicy": policy, "ETag": "ETAG" + policy_id[:8]}
+        return {"ResponseHeadersPolicy": policy, "ETag": self.policies[policy_id]["ETag"], "Location": "https://example.test/" + policy_id}
+
+    def get_response_headers_policy(self, **kwargs):
+        self.calls.append(("get_response_headers_policy", kwargs))
+        self._validate("GetResponseHeadersPolicy", kwargs)
+        entry = self.policies[kwargs["Id"]]
+        return {"ResponseHeadersPolicy": entry["ResponseHeadersPolicy"], "ETag": entry["ETag"]}
+
+    # ---- distributions
+    def list_distributions(self, **kwargs):
+        self.calls.append(("list_distributions", kwargs))
+        resp = self._inner.list_distributions(**kwargs)
+        if self.force_status:
+            for item in resp["DistributionList"].get("Items", []):
+                item["Status"] = self.force_status
+        return resp
+
+    def update_distribution(self, **kwargs):
+        self.calls.append(("update_distribution", kwargs))
+        if self.update_error is not None:
+            raise self.update_error
+        return self._inner.update_distribution(**kwargs)
 
     def create_distribution_with_tags(self, **kwargs):
         self.calls.append(("create_distribution_with_tags", kwargs))
@@ -530,6 +605,12 @@ def only_distribution(world):
     return items[0]
 
 
+def custom_policy_id(world):
+    items = world["cloudfront"].list_response_headers_policies(Type="custom")["ResponseHeadersPolicyList"]["Items"]
+    assert len(items) == 1
+    return items[0]["ResponseHeadersPolicy"]["Id"]
+
+
 def test_storage_dry_run_lists_every_action_and_makes_no_mutating_call(world, capsys):
     arm_budget(world, capsys)
     for key in ("s3", "cloudfront"):
@@ -544,6 +625,7 @@ def test_storage_dry_run_lists_every_action_and_makes_no_mutating_call(world, ca
         "put_bucket_ownership_controls",
         "put_bucket_tagging",
         "create_origin_access_control",
+        "create_response_headers_policy",
         "create_distribution",
         "put_bucket_policy",
     ):
@@ -602,10 +684,12 @@ def test_storage_confirm_creates_oac_and_exact_distribution_config(world, capsys
     assert origin["S3OriginConfig"]["OriginAccessIdentity"] == ""
     behavior = cfg["DefaultCacheBehavior"]
     assert behavior["ViewerProtocolPolicy"] == "redirect-to-https"
-    assert sorted(behavior["AllowedMethods"]["Items"]) == ["GET", "HEAD"]
+    assert sorted(behavior["AllowedMethods"]["Items"]) == ["GET", "HEAD", "OPTIONS"]
+    assert sorted(behavior["AllowedMethods"]["CachedMethods"]["Items"]) == ["GET", "HEAD"]
     assert behavior["Compress"] is True
     assert behavior["CachePolicyId"] == "658327ea-f89d-4fab-a63d-7e88639e58f6"
-    assert behavior["ResponseHeadersPolicyId"] == "60669652-455b-4ae9-85a4-c4c02393f86c"
+    assert behavior["ResponseHeadersPolicyId"] == custom_policy_id(world)
+    assert behavior["ResponseHeadersPolicyId"] != "60669652-455b-4ae9-85a4-c4c02393f86c"
     assert cfg["HttpVersion"] == "http2and3"
     assert cfg["IsIPV6Enabled"] is True
     assert cfg["PriceClass"] == "PriceClass_All"
@@ -794,7 +878,10 @@ def test_record_resources_after_storage_adds_bucket_and_distribution_and_keeps_t
     assert contract["comment"] == "reefradar-2477-contract"
     assert contract["origin_access_control_id"]
     assert contract["cache_policy"] == "Managed-CachingOptimized"
-    assert contract["response_headers_policy"] == "Managed-SimpleCORS"
+    assert contract["response_headers_policy"] == "reefradar-2477-contract-cors"
+    assert contract["response_headers_policy_id"] == custom_policy_id(world)
+    assert contract["allowed_methods"] == ["GET", "HEAD", "OPTIONS"]
+    assert contract["cached_methods"] == ["GET", "HEAD"]
     assert contract["error_caching_min_ttl"] == 10
     assert after["s3"]["buckets"]["contract"] == {
         "name": BUCKET,
@@ -822,3 +909,495 @@ def test_record_resources_refuses_when_storage_is_missing(world, capsys, tmp_pat
     code, _, _ = run_with(["--step", "storage", "--record-resources", "--resources-file", str(target)], world, capsys)
     assert code == 1
     assert target.read_text(encoding="utf-8") == original
+
+
+# ============================================================ cors (plan 02-13)
+
+MANAGED_SIMPLE_CORS = "60669652-455b-4ae9-85a4-c4c02393f86c"
+POLICY_NAME = "reefradar-2477-contract-cors"
+EXPECTED_POLICY_CORS = {
+    "AccessControlAllowOrigins": {"Quantity": 1, "Items": ["*"]},
+    "AccessControlAllowHeaders": {"Quantity": 1, "Items": ["*"]},
+    "AccessControlAllowMethods": {"Quantity": 3, "Items": ["GET", "HEAD", "OPTIONS"]},
+    "AccessControlAllowCredentials": False,
+    "AccessControlMaxAgeSec": 600,
+    "OriginOverride": True,
+}
+WRITE_PREFIXES = ("create_", "update_", "delete_", "put_", "associate_", "tag_", "untag_")
+
+
+def diff_paths(a, b, path=""):
+    """Paths at which two JSON-like values differ (lists compared whole)."""
+    if isinstance(a, dict) and isinstance(b, dict):
+        out = []
+        for key in sorted(set(a) | set(b)):
+            here = f"{path}.{key}" if path else key
+            out += diff_paths(a[key], b[key], here) if key in a and key in b else [here]
+        return out
+    return [] if a == b else [path]
+
+
+def production_shape(world, capsys):
+    """Today's production distribution: Managed-SimpleCORS, GET/HEAD only, no custom policy."""
+    storage_confirm(world, capsys)
+    cf = world["cloudfront"]
+    dist = only_distribution(world)
+    got = cf.get_distribution_config(Id=dist["Id"])
+    cfg = got["DistributionConfig"]
+    cfg["DefaultCacheBehavior"]["ResponseHeadersPolicyId"] = MANAGED_SIMPLE_CORS
+    cfg["DefaultCacheBehavior"]["AllowedMethods"] = {
+        "Quantity": 2,
+        "Items": ["GET", "HEAD"],
+        "CachedMethods": {"Quantity": 2, "Items": ["GET", "HEAD"]},
+    }
+    cf.update_distribution(Id=dist["Id"], IfMatch=got["ETag"], DistributionConfig=cfg)
+    cf.policies.clear()
+    for key in ("s3", "cloudfront"):
+        world[key].calls.clear()
+    return dist
+
+
+def behavior_of(world, dist):
+    return world["cloudfront"].get_distribution_config(Id=dist["Id"])["DistributionConfig"]["DefaultCacheBehavior"]
+
+
+def lines_of(out, step):
+    return [j for j in json_lines(out) if j["step"] == step]
+
+
+def no_write_to_s3_oac_or_invalidations(world):
+    assert world["s3"].mutating() == []
+    names = world["cloudfront"].names()
+    assert not [n for n in names if "invalidation" in n]
+    assert not [n for n in names if "origin_access_control" in n and n.startswith(WRITE_PREFIXES)]
+
+
+def test_cors_dry_run_plans_the_policy_and_the_distribution_update_without_writing(world, capsys):
+    dist = production_shape(world, capsys)
+    code, out, _ = run_with(["--step", "cors", "--dry-run"], world, capsys)
+
+    assert code == 0
+    assert world["s3"].mutating() == [] and world["cloudfront"].mutating() == []
+    planned = [j for j in lines_of(out, "cors") if j["status"] == "planned"]
+    assert [j["action"] for j in planned] == ["create_response_headers_policy", "update_distribution"]
+    changes = planned[1]["changes"]
+    assert changes["ResponseHeadersPolicyId"]["old"] == MANAGED_SIMPLE_CORS
+    assert changes["AllowedMethods"] == {"old": ["GET", "HEAD"], "new": ["GET", "HEAD", "OPTIONS"]}
+    assert "[dry-run] no AWS write made" in out
+    assert world["cloudfront"].kwargs_of("list_response_headers_policies")[0]["Type"] == "custom"
+    assert behavior_of(world, dist)["ResponseHeadersPolicyId"] == MANAGED_SIMPLE_CORS
+
+
+def test_cors_confirm_creates_the_policy_then_updates_only_the_two_fields_with_ifmatch(world, capsys):
+    dist = production_shape(world, capsys)
+    cf = world["cloudfront"]
+    before = cf.get_distribution_config(Id=dist["Id"])
+    cf.calls.clear()
+
+    code, out, err = run_with(["--step", "cors", "--confirm"], world, capsys)
+
+    assert code == 0, err
+    creates = cf.kwargs_of("create_response_headers_policy")
+    assert len(creates) == 1
+    config = creates[0]["ResponseHeadersPolicyConfig"]
+    assert config["Name"] == POLICY_NAME
+    assert 0 < len(config["Comment"]) < 128
+    expected = {k: sorted(v["Items"]) if isinstance(v, dict) else v for k, v in EXPECTED_POLICY_CORS.items()}
+    got = {k: sorted(v["Items"]) if isinstance(v, dict) else v for k, v in config["CorsConfig"].items()}
+    assert got == expected
+    assert {k: v["Quantity"] for k, v in config["CorsConfig"].items() if isinstance(v, dict)} == {
+        "AccessControlAllowOrigins": 1,
+        "AccessControlAllowHeaders": 1,
+        "AccessControlAllowMethods": 3,
+    }
+    assert set(config) == {"Name", "Comment", "CorsConfig"}  # no security/custom/remove/server-timing sections
+
+    updates = cf.kwargs_of("update_distribution")
+    assert len(updates) == 1
+    assert updates[0]["Id"] == dist["Id"]
+    assert updates[0]["IfMatch"] == before["ETag"]
+    assert diff_paths(before["DistributionConfig"], updates[0]["DistributionConfig"]) == [
+        "DefaultCacheBehavior.AllowedMethods.Items",
+        "DefaultCacheBehavior.AllowedMethods.Quantity",
+        "DefaultCacheBehavior.ResponseHeadersPolicyId",
+    ]
+    sent = updates[0]["DistributionConfig"]["DefaultCacheBehavior"]
+    assert sorted(sent["AllowedMethods"]["Items"]) == ["GET", "HEAD", "OPTIONS"]
+    assert sent["AllowedMethods"]["Quantity"] == 3
+    assert sorted(sent["AllowedMethods"]["CachedMethods"]["Items"]) == ["GET", "HEAD"]
+    assert sent["ResponseHeadersPolicyId"] == custom_policy_id(world)
+
+    names = cf.names()
+    assert cf.mutating() == ["create_response_headers_policy", "update_distribution"]
+    assert names.index("create_response_headers_policy") < names.index("update_distribution")
+    assert max(i for i, n in enumerate(names) if n == "get_waiter") > names.index("update_distribution")
+    assert any(j["action"] == "readback" and j["status"] == "ok" for j in lines_of(out, "cors"))
+    no_write_to_s3_oac_or_invalidations(world)
+    live = behavior_of(world, dist)
+    assert live["ResponseHeadersPolicyId"] == custom_policy_id(world)
+    assert sorted(live["AllowedMethods"]["Items"]) == ["GET", "HEAD", "OPTIONS"]
+
+
+def test_a_second_cors_confirm_makes_no_mutating_call(world, capsys):
+    production_shape(world, capsys)
+    assert run_with(["--step", "cors", "--confirm"], world, capsys)[0] == 0
+    for key in ("s3", "cloudfront"):
+        world[key].calls.clear()
+
+    code, out, _ = run_with(["--step", "cors", "--confirm"], world, capsys)
+
+    assert code == 0
+    assert world["s3"].mutating() == [] and world["cloudfront"].mutating() == []
+    assert not [j for j in json_lines(out) if j["status"] in ("done", "planned", "waiting")]
+
+
+def test_cors_waits_without_updating_again_while_the_distribution_is_not_deployed(world, capsys):
+    production_shape(world, capsys)
+    assert run_with(["--step", "cors", "--confirm"], world, capsys)[0] == 0
+    cf = world["cloudfront"]
+    cf.calls.clear()
+    cf.force_status = "InProgress"
+
+    code, out, _ = run_with(["--step", "cors", "--confirm"], world, capsys)
+
+    assert code == 0
+    assert cf.mutating() == []
+    assert "get_waiter" in cf.names()
+    assert any(j["action"] == "wait_distribution_deployed" and j["status"] == "waiting" for j in lines_of(out, "cors"))
+
+
+def test_cors_refuses_an_existing_policy_with_the_same_name_but_another_config(world, capsys):
+    production_shape(world, capsys)
+    cf = world["cloudfront"]
+    other = {
+        "Name": POLICY_NAME,
+        "CorsConfig": {
+            "AccessControlAllowOrigins": {"Quantity": 1, "Items": ["https://example.org"]},
+            "AccessControlAllowHeaders": {"Quantity": 1, "Items": ["*"]},
+            "AccessControlAllowMethods": {"Quantity": 1, "Items": ["GET"]},
+            "AccessControlAllowCredentials": False,
+            "OriginOverride": True,
+        },
+    }
+    cf.create_response_headers_policy(ResponseHeadersPolicyConfig=other)
+    cf.calls.clear()
+
+    code, _, err = run_with(["--step", "cors", "--confirm"], world, capsys)
+
+    assert code == 1
+    assert "unexpected settings" in err and POLICY_NAME in err
+    assert cf.mutating() == []
+
+
+def test_cors_refuses_a_distribution_with_any_non_cors_deviation(world, capsys):
+    dist = production_shape(world, capsys)
+    cf = world["cloudfront"]
+    got = cf.get_distribution_config(Id=dist["Id"])
+    cfg = got["DistributionConfig"]
+    cfg["DefaultCacheBehavior"]["ViewerProtocolPolicy"] = "allow-all"
+    cf.update_distribution(Id=dist["Id"], IfMatch=got["ETag"], DistributionConfig=cfg)
+    cf.calls.clear()
+
+    code, _, err = run_with(["--step", "cors", "--confirm"], world, capsys)
+
+    assert code == 1
+    assert "viewer protocol" in err
+    assert cf.mutating() == []
+    assert cf.policies == {}
+
+
+def test_cors_refuses_a_missing_distribution_and_names_the_storage_step(world, capsys):
+    arm_budget(world, capsys)
+    code, _, err = run_with(["--step", "cors", "--confirm"], world, capsys)
+
+    assert code == 1
+    assert "--step storage" in err
+    assert world["cloudfront"].mutating() == [] and world["s3"].mutating() == []
+
+
+def test_a_stale_etag_exits_1_and_asks_for_a_rerun(world, capsys):
+    dist = production_shape(world, capsys)
+    cf = world["cloudfront"]
+    cf.update_error = ClientError(
+        {"Error": {"Code": "PreconditionFailed", "Message": "The If-Match version is missing or not valid"}},
+        "UpdateDistribution",
+    )
+
+    code, out, err = run_with(["--step", "cors", "--confirm"], world, capsys)
+
+    assert code == 1
+    assert "changed concurrently" in err and "re-run" in err
+    assert world["s3"].mutating() == []
+    assert "get_waiter" not in cf.names()
+    assert not [j for j in lines_of(out, "cors") if j["action"] == "readback"]
+    assert behavior_of(world, dist)["ResponseHeadersPolicyId"] == MANAGED_SIMPLE_CORS
+
+
+def test_the_policy_finder_follows_next_marker_across_pages(world, capsys):
+    production_shape(world, capsys)
+    cf = world["cloudfront"]
+    cf.policy_page_size = 1
+    for index in range(3):
+        cf.create_response_headers_policy(
+            ResponseHeadersPolicyConfig={
+                "Name": f"unrelated-{index}",
+                "CorsConfig": {
+                    "AccessControlAllowOrigins": {"Quantity": 1, "Items": ["*"]},
+                    "AccessControlAllowHeaders": {"Quantity": 1, "Items": ["*"]},
+                    "AccessControlAllowMethods": {"Quantity": 1, "Items": ["GET"]},
+                    "AccessControlAllowCredentials": False,
+                    "OriginOverride": True,
+                },
+            }
+        )
+    assert run_with(["--step", "cors", "--confirm"], world, capsys)[0] == 0
+    cf.calls.clear()
+
+    # the policy now sits on the last page; a second run must find it, not create a duplicate
+    code, _, err = run_with(["--step", "cors", "--confirm"], world, capsys)
+
+    assert code == 0, err
+    assert cf.mutating() == []
+    assert len(cf.kwargs_of("list_response_headers_policies")) >= 4
+    assert any("Marker" in k for k in cf.kwargs_of("list_response_headers_policies"))
+    assert sum(1 for p in cf.policies.values() if p["ResponseHeadersPolicy"]["ResponseHeadersPolicyConfig"]["Name"] == POLICY_NAME) == 1
+
+
+def test_storage_creates_the_custom_policy_before_the_distribution_and_attaches_it(world, capsys):
+    storage_confirm(world, capsys)
+    cf = world["cloudfront"]
+    names = cf.names()
+
+    assert names.index("create_response_headers_policy") < names.index("create_distribution_with_tags")
+    sent = cf.kwargs_of("create_distribution_with_tags")[0]["DistributionConfigWithTags"]["DistributionConfig"]
+    behavior = sent["DefaultCacheBehavior"]
+    assert behavior["ResponseHeadersPolicyId"] == custom_policy_id(world)
+    assert behavior["AllowedMethods"]["Quantity"] == 3
+    assert sorted(behavior["AllowedMethods"]["Items"]) == ["GET", "HEAD", "OPTIONS"]
+    assert sorted(behavior["AllowedMethods"]["CachedMethods"]["Items"]) == ["GET", "HEAD"]
+    assert world["cloudfront"].mutating().count("create_response_headers_policy") == 1
+
+
+def test_the_storage_step_leaves_cors_fields_to_the_cors_step(world, capsys):
+    dist = production_shape(world, capsys)
+    code, _, err = run_with(["--step", "storage", "--confirm"], world, capsys)
+
+    assert code == 0, err
+    assert world["cloudfront"].mutating() == [] and world["s3"].mutating() == []
+    assert behavior_of(world, dist)["ResponseHeadersPolicyId"] == MANAGED_SIMPLE_CORS
+
+
+def test_all_runs_budget_then_storage_then_cors(world, capsys):
+    code, out, err = run_with(["--step", "all", "--confirm", "--notify-email", EMAIL], world, capsys)
+
+    assert code == 0, err
+    order = []
+    for j in json_lines(out):
+        if j["step"] in ("budget", "storage", "cors") and j["step"] not in order:
+            order.append(j["step"])
+    assert order == ["budget", "storage", "cors"]
+    assert sci._selected("all") == ["budget", "storage", "cors"]
+    assert sci._selected("cors-rollback") == ["cors-rollback"]
+
+
+def test_all_dry_run_on_an_empty_account_plans_the_storage_and_does_not_fail_in_the_cors_step(world, capsys):
+    code, out, err = run_with(["--step", "all", "--dry-run", "--notify-email", EMAIL], world, capsys)
+
+    assert code == 0, err
+    assert world["cloudfront"].mutating() == [] and world["s3"].mutating() == []
+    assert "create_distribution" in [j["action"] for j in lines_of(out, "storage") if j["status"] == "planned"]
+    assert not [j for j in lines_of(out, "cors") if j["status"] == "planned"]
+
+
+def test_a_second_all_dry_run_plans_nothing_after_all_confirm(world, capsys):
+    assert run_with(["--step", "all", "--confirm", "--notify-email", EMAIL], world, capsys)[0] == 0
+    for key in ("s3", "cloudfront"):
+        world[key].calls.clear()
+
+    code, out, _ = run_with(["--step", "all", "--dry-run", "--notify-email", EMAIL], world, capsys)
+
+    assert code == 0
+    assert not [j for j in json_lines(out) if j["status"] == "planned"]
+    assert world["cloudfront"].mutating() == [] and world["s3"].mutating() == []
+
+
+# ---------------------------------------------------------------- cors verify
+
+
+def test_cors_verify_fails_before_the_change_and_passes_after(world, capsys):
+    production_shape(world, capsys)
+
+    code, out, _ = run_with(["--step", "cors", "--verify"], world, capsys)
+    assert code == 1
+    detail = " ".join(str(j.get("detail", "")) for j in lines_of(out, "cors") if j["status"] == "deviation")
+    assert POLICY_NAME in detail and "GET/HEAD/OPTIONS" in detail
+
+    assert run_with(["--step", "cors", "--confirm"], world, capsys)[0] == 0
+    code, out, _ = run_with(["--step", "cors", "--verify"], world, capsys)
+    assert code == 0
+    lines = lines_of(out, "cors")
+    assert lines and all(j["status"] == "ok" for j in lines)
+    assert {j["action"] for j in lines} >= {"policy_exists", "policy_config_matches", "distribution_deployed", "attachment_and_methods"}
+
+
+def test_cors_verify_flags_a_policy_config_that_drifted(world, capsys):
+    production_shape(world, capsys)
+    assert run_with(["--step", "cors", "--confirm"], world, capsys)[0] == 0
+    for entry in world["cloudfront"].policies.values():
+        entry["ResponseHeadersPolicy"]["ResponseHeadersPolicyConfig"]["CorsConfig"]["AccessControlMaxAgeSec"] = 3600
+
+    assert run_with(["--step", "cors", "--verify"], world, capsys)[0] == 1
+
+
+def test_all_verify_includes_the_cors_checks(world, capsys):
+    production_shape(world, capsys)
+    assert run_with(["--step", "all", "--verify"], world, capsys)[0] == 1
+    assert run_with(["--step", "cors", "--confirm"], world, capsys)[0] == 0
+
+    code, out, err = run_with(["--step", "all", "--verify"], world, capsys)
+
+    assert code == 0, err
+    assert {j["step"] for j in json_lines(out)} >= {"budget", "storage", "cors"}
+
+
+# ------------------------------------------------------------ cors-rollback
+
+
+def test_cors_rollback_dry_run_plans_one_update_back_to_simple_cors(world, capsys):
+    production_shape(world, capsys)
+    assert run_with(["--step", "cors", "--confirm"], world, capsys)[0] == 0
+    for key in ("s3", "cloudfront"):
+        world[key].calls.clear()
+
+    code, out, _ = run_with(["--step", "cors-rollback", "--dry-run"], world, capsys)
+
+    assert code == 0
+    assert world["cloudfront"].mutating() == [] and world["s3"].mutating() == []
+    planned = [j for j in lines_of(out, "cors-rollback") if j["status"] == "planned"]
+    assert [j["action"] for j in planned] == ["update_distribution"]
+    assert planned[0]["changes"]["ResponseHeadersPolicyId"]["new"] == MANAGED_SIMPLE_CORS
+    assert planned[0]["changes"]["AllowedMethods"]["new"] == ["GET", "HEAD"]
+
+
+def test_cors_rollback_confirm_restores_simple_cors_and_keeps_the_custom_policy(world, capsys):
+    dist = production_shape(world, capsys)
+    assert run_with(["--step", "cors", "--confirm"], world, capsys)[0] == 0
+    cf = world["cloudfront"]
+    before = cf.get_distribution_config(Id=dist["Id"])
+    cf.calls.clear()
+
+    code, out, err = run_with(["--step", "cors-rollback", "--confirm"], world, capsys)
+
+    assert code == 0, err
+    assert cf.mutating() == ["update_distribution"]
+    update = cf.kwargs_of("update_distribution")[0]
+    assert update["IfMatch"] == before["ETag"]
+    assert diff_paths(before["DistributionConfig"], update["DistributionConfig"]) == [
+        "DefaultCacheBehavior.AllowedMethods.Items",
+        "DefaultCacheBehavior.AllowedMethods.Quantity",
+        "DefaultCacheBehavior.ResponseHeadersPolicyId",
+    ]
+    assert "get_waiter" in cf.names()
+    assert any(j["action"] == "readback" and j["status"] == "ok" for j in lines_of(out, "cors-rollback"))
+    live = behavior_of(world, dist)
+    assert live["ResponseHeadersPolicyId"] == MANAGED_SIMPLE_CORS
+    assert sorted(live["AllowedMethods"]["Items"]) == ["GET", "HEAD"]
+    assert not [n for n in cf.names() if n.startswith("delete_")]
+    assert len(cf.policies) == 1  # the custom policy stays
+    no_write_to_s3_oac_or_invalidations(world)
+
+
+def test_cors_rollback_is_a_no_op_when_already_rolled_back(world, capsys):
+    production_shape(world, capsys)
+
+    code, _, err = run_with(["--step", "cors-rollback", "--confirm"], world, capsys)
+
+    assert code == 0, err
+    assert world["cloudfront"].mutating() == []
+
+
+def test_all_never_runs_the_rollback(world, capsys):
+    production_shape(world, capsys)
+    assert run_with(["--step", "cors", "--confirm"], world, capsys)[0] == 0
+    world["cloudfront"].calls.clear()
+
+    code, out, _ = run_with(["--step", "all", "--confirm", "--notify-email", EMAIL], world, capsys)
+
+    assert code == 0
+    assert world["cloudfront"].mutating() == []
+    assert not lines_of(out, "cors-rollback")
+
+
+@pytest.mark.parametrize("flag", ["--verify", "--record-resources"])
+def test_cors_rollback_rejects_verify_and_record_resources(world, capsys, flag):
+    with pytest.raises(SystemExit) as stop:
+        run_with(["--step", "cors-rollback", flag], world, capsys)
+
+    assert stop.value.code == 2
+    assert "cors-rollback" in capsys.readouterr().err
+
+
+def test_help_lists_the_cors_steps(capsys):
+    with pytest.raises(SystemExit) as stop:
+        sci.main(["--help"])
+    assert stop.value.code == 0
+    out = capsys.readouterr().out
+    assert "cors" in out and "cors-rollback" in out
+
+
+# ---------------------------------------------------------- cors record-resources
+
+
+def test_record_resources_records_the_policy_and_the_distribution_attachment(world, capsys, tmp_path):
+    production_shape(world, capsys)
+    assert run_with(["--step", "cors", "--confirm"], world, capsys)[0] == 0
+    source = pristine_resources_text()
+    target = tmp_path / "resources.json"
+    target.write_text(source, encoding="utf-8")
+    before = json.loads(source)
+
+    code, _, err = run_with(["--step", "all", "--record-resources", "--resources-file", str(target)], world, capsys)
+
+    assert code == 0, err
+    after = json.loads(target.read_text(encoding="utf-8"))
+    policy_id = custom_policy_id(world)
+    policy = after["cloudfront"]["response_headers_policies"]["contract_cors"]
+    assert policy["id"] == policy_id
+    assert policy["name"] == POLICY_NAME
+    assert policy["allow_origins"] == ["*"] and policy["allow_headers"] == ["*"]
+    assert policy["allow_methods"] == ["GET", "HEAD", "OPTIONS"]
+    assert policy["allow_credentials"] is False and policy["max_age_sec"] == 600 and policy["origin_override"] is True
+    assert policy["expose_headers"] == []
+    assert policy["replaced"]["name"] == "Managed-SimpleCORS" and policy["replaced"]["id"] == MANAGED_SIMPLE_CORS
+    contract = after["cloudfront"]["distributions"]["contract"]
+    assert contract["response_headers_policy"] == POLICY_NAME
+    assert contract["response_headers_policy_id"] == policy_id
+    assert contract["allowed_methods"] == ["GET", "HEAD", "OPTIONS"]
+    assert contract["cached_methods"] == ["GET", "HEAD"]
+    for key in before:
+        if key not in ("s3", "budgets", "cloudfront"):
+            assert after[key] == before[key]
+    first = target.read_bytes()
+    run_with(["--step", "all", "--record-resources", "--resources-file", str(target)], world, capsys)
+    assert target.read_bytes() == first
+
+    # recording the storage section alone no longer drops the CORS keys
+    run_with(["--step", "storage", "--record-resources", "--resources-file", str(target)], world, capsys)
+    assert target.read_bytes() == first
+
+
+def test_record_resources_refuses_before_the_cors_change(world, capsys, tmp_path):
+    production_shape(world, capsys)
+    target = tmp_path / "resources.json"
+    original = pristine_resources_text()
+    target.write_text(original, encoding="utf-8")
+
+    code, _, _ = run_with(["--step", "cors", "--record-resources", "--resources-file", str(target)], world, capsys)
+
+    assert code == 1
+    assert target.read_text(encoding="utf-8") == original
+
+
+def test_the_script_never_requests_an_invalidation():
+    src = pathlib.Path(sci.__file__).read_text(encoding="utf-8")
+    assert "create_invalidation" not in src
