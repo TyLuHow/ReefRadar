@@ -344,7 +344,7 @@ test.describe('analysis result mini map (MapLibre)', () => {
     const results = page.getByRole('region', { name: 'Map of similar reference sites' });
     await expect(results).toBeVisible();
     await expect(results.locator('.maplibregl-canvas')).toBeVisible();
-    // Rank badge for the top site (unchanged from the Leaflet version).
+    // Rank badge for the top site.
     await expect(results.getByText('ind_H4', { exact: true })).toBeVisible();
     await expect(results.getByText('91%', { exact: true })).toBeVisible();
 

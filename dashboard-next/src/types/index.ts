@@ -215,7 +215,7 @@ export const STATUS_COLORS: Record<ReefStatus, string> = {
   unknown: '#a8a29e',
 };
 
-// Status marker colors for map (hex colors for Leaflet)
+// Status marker colors for map (hex colors)
 export const STATUS_MARKER_COLORS: Record<ReefStatus, string> = {
   healthy: '#cd853f',
   degraded: '#6b6560',

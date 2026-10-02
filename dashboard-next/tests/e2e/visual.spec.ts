@@ -76,7 +76,7 @@ for (const state of STATES) {
       // over the whole element, and the fixed full-viewport background canvas would
       // then hide the page content above it. visibility:hidden keeps layout intact.
       await page.addStyleTag({
-        content: 'canvas, .maplibregl-map, .leaflet-container { visibility: hidden !important; }',
+        content: 'canvas, .maplibregl-map { visibility: hidden !important; }',
       });
 
       await expect(page).toHaveScreenshot(`${state.name}-${w.label}.png`, {

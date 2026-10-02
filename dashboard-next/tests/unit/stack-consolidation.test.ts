@@ -20,7 +20,14 @@ const SRC_ROOT = path.join(DASHBOARD_NEXT_ROOT, 'src');
 const LEGACY_DIR = 'dash' + 'board';
 
 /** npm package names removed by the stack consolidation. Append only. */
-export const REMOVED_PACKAGES: string[] = ['@deck.gl/core', '@deck.gl/layers', '@deck.gl/react'];
+export const REMOVED_PACKAGES: string[] = [
+  '@deck.gl/core',
+  '@deck.gl/layers',
+  '@deck.gl/react',
+  'leaflet',
+  'react-leaflet',
+  '@types/leaflet',
+];
 
 /** Config files that must not point into the deleted directory. */
 const CONFIG_FILES = ['pytest.ini', '.github/workflows/ci.yml', 'scripts/check-citations.mjs'];
@@ -129,5 +136,31 @@ describe('stack consolidation: next.config.js (PLAT-02)', () => {
     // Strip line comments so the explanation of the removal cannot trip the check.
     const code = text.replace(/^\s*\/\/.*$/gm, '');
     expect(code).not.toMatch(/transpilePackages/);
+  });
+});
+
+describe('stack consolidation: Leaflet removal (PLAT-02, 03-10)', () => {
+  const pkgJson = JSON.parse(fs.readFileSync(path.join(DASHBOARD_NEXT_ROOT, 'package.json'), 'utf8')) as {
+    overrides?: Record<string, unknown>;
+  };
+
+  it('package.json has no overrides entry for react-leaflet', () => {
+    expect(pkgJson.overrides ?? {}).not.toHaveProperty(['react-leaflet']);
+  });
+
+  it('the legacy src/components/maps directory does not exist', () => {
+    expect(fs.existsSync(path.join(SRC_ROOT, 'components', 'maps'))).toBe(false);
+  });
+
+  it('globals.css has no Leaflet import or rule and no .custom-marker rule', () => {
+    const css = fs.readFileSync(path.join(SRC_ROOT, 'app', 'globals.css'), 'utf8');
+    expect(css.toLowerCase()).not.toContain('leaflet');
+    expect(css).not.toContain('.custom-marker');
+  });
+
+  it('the visual suite hides canvases and MapLibre maps only', () => {
+    const spec = fs.readFileSync(path.join(DASHBOARD_NEXT_ROOT, 'tests', 'e2e', 'visual.spec.ts'), 'utf8');
+    expect(spec).toContain("'canvas, .maplibregl-map { visibility: hidden !important; }'");
+    expect(spec.toLowerCase()).not.toContain('leaflet');
   });
 });
