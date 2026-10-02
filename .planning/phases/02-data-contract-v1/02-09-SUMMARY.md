@@ -15,8 +15,8 @@ affects: [02-10, Phase 17 retirement of the backend /sites route]
 
 actuals:
   tokens: 14000
-  tasks: 2
-  commits: 3
+  tasks: 3
+  commits: 4
 
 key-files:
   created:
@@ -36,43 +36,44 @@ key-files:
     - dashboard-next/src/lib/api.ts
     - dashboard-next/tests/unit/sites-page.test.tsx
     - dashboard-next/tests/e2e/support/mock-api.ts
+    - dashboard-next/tests/e2e/visual.spec.ts-snapshots/sites-390-visual-linux.png
 
 requirements-completed: []
 
-status: partial
+status: complete
 completed: 2026-10-02
 ---
 
-# Phase 2 Plan 09: Legacy Pages on the Contract Summary (PARTIAL: Task 3 blocked)
+# Phase 2 Plan 09: Legacy Pages on the Contract Summary
 
-**Every legacy consumer of site reference data now reads the contract module and the hard-coded coordinate table and client /sites method are gone (Tasks 1 and 2 done and green locally); Task 3 (push, CI, regenerate the three sites baselines) did not run because the permission system denied `git push`.**
+**Every legacy consumer of site reference data (sites page, cards, world map, markers, landing, about, dashboard map, analysis mini map) now reads the contract module; the hard-coded coordinate table and the client /sites method are deleted; only the sites-390 visual baseline changed, by exactly one location row for irma_eastern_sambo, and CI is green on the pushed head.**
 
-## Status
+## Commits
 
-- Task 1 (tracer) and Task 2: complete, committed locally, verified locally.
-- Task 3: NOT done. The first `git push origin redesign/v2-discovery` was denied by the auto-mode classifier ("Blind Apply"); a following local status/lint call was also denied ("Git Destructive"). No workaround was attempted. Nothing has been pushed, no workflow was dispatched, no baseline was changed.
-
-## Commits (local, unpushed)
-
-1. `6a54a97` test(02-09): sites page driven through the contract fetch harness (RED; failed 6 of 6 before the page was repointed)
-2. `68c8c11` feat(02-09): sites page, cards and world map read only contract data (tracer; `playwright test --project=e2e routes` 11 passed before expanding)
-3. `db674ef` feat(02-09): repoint landing, about, map and mini map; delete the hard-coded site table and the client getSites
+1. `6a54a97` test(02-09): sites page driven through the contract fetch harness (RED, 6 of 6 failed before repointing)
+2. `68c8c11` feat(02-09): sites page, SiteCard, WorldMap and SiteMarker read only contract data (tracer; `playwright test --project=e2e routes` 11 passed before expanding)
+3. `db674ef` feat(02-09): landing, about, dashboard map and MiniMap repointed; `SITE_COORDINATES`, `SiteCoordinates` and the client `getSites` deleted; GET /sites removed from the e2e mock
+4. `af0c528` test(02-09): regenerated sites-390 baseline
 
 ## Local verification
 
 - `npm test`: 17 files, 200 tests passed (sites-page rewritten with 5 contract-driven cases plus the filter test; new site-index test with 3 cases)
-- `npm run typecheck`: clean. `npm run lint`: only the pre-existing `LocationCompare.tsx` exhaustive-deps warning (the final lint re-run after the last comment-only edit was denied; typecheck was re-run clean after it)
+- `npm run typecheck`: clean. `npm run lint`: only the pre-existing `LocationCompare.tsx` exhaustive-deps warning
 - `npx playwright test --project=e2e` (includes `next build`): 49 passed, zero unhandled API calls with GET /sites removed from the mock
 - `grep -rn SITE_COORDINATES dashboard-next/src` prints 0 lines; `grep -rn getSites dashboard-next/src` prints 0 lines
 
-## What Task 3 still needs (for the owner or a re-run with push permission)
+## Task 3: visual baselines through CI
 
-1. `git push origin redesign/v2-discovery` (never main); wait for the push CI (`gh run watch <id> --exit-status`). Expected: the visual job fails only on sites-1440, sites-1024 and/or sites-390 (irma_eastern_sambo gains its location row).
-2. Confirm in the playwright-report that only those three states fail and the diff is only that card (plus layout shift below it at narrow widths).
-3. `gh workflow run CI --ref redesign/v2-discovery -f update_snapshots=true`; wait for it to finish before any push; `gh run download <id> -n visual-snapshots -D <scratch>`; verify the other 30 PNGs are sha256-identical to the committed ones; view the three new PNGs; copy only sites-1440/1024/390; commit; push; wait for a fully green CI run.
+- Push CI `36951486816` (https://github.com/TyLuHow/ReefRadar/actions/runs/36951486816): every job green except visual, which failed on exactly one state, `sites @ 390` (32 passed). `sites @ 1440` and `sites @ 1024` stayed within tolerance.
+- Dispatch run `36951802796` (https://github.com/TyLuHow/ReefRadar/actions/runs/36951802796, `update_snapshots=true`, nothing pushed meanwhile): all jobs success; artifact `visual-snapshots` downloaded to the session scratchpad.
+- sha256 comparison of all 33 regenerated PNGs against the committed ones: 32 identical (including sites-1440 and sites-1024, which regenerate byte-identical); only `sites-390-visual-linux.png` differs.
+- Inspected change: the new sites-390 image is 390x14558 versus 390x14502 before, 56 px taller, which is one location row; the card list is otherwise the same. Cause: irma_eastern_sambo was missing from the old hard-coded table, so its card had no location; it now shows "Florida Keys, USA" and its coordinates. At 1440 and 1024 that card sits in a grid row whose height is set by siblings that already had a location row, so those images do not change.
+- Only sites-390 was copied and committed (`af0c528`); only one of the three listed baselines needed regenerating.
+- Push CI on the head `af0c528` (run `36952216966`, https://github.com/TyLuHow/ReefRadar/actions/runs/36952216966): success; web, python, citations, e2e and visual (all 33 states compared) green.
 
 ## Deviations from Plan
 
+- **Push permission.** The first push was denied by the permission system; the owner then added allow rules and Task 3 resumed unchanged.
 - **[Process] Task 2 tests were not written RED-first.** `site-index.test.tsx` was added after the implementation in the same commit and passes; the RED/GREEN split exists only for Task 1. The behaviours are covered either way (54-entry index, marker location, loading panel versus the empty state).
 - **Map page error state unchanged.** `/dashboard/map` has no retry control (its message says to refresh), so `refetch` is not destructured there; markup untouched.
 - **Country guess dropped.** The map page's `country || (id starts with ken ? Kenya : Indonesia)` fallback was removed with the coordinate enrichment (contract country is always set; guessing from the id would be a truth violation).
@@ -84,10 +85,10 @@ None.
 
 ## Threat Flags
 
-None. T-02-09-01 mitigated (React text only; the Google Maps href is built from numbers; a unit test asserts it). T-02-09-02 to -04 are Task 3 mitigations and are untouched because Task 3 did not run.
+None. T-02-09-01 mitigated (React text only; the Google Maps href is built from numbers; a unit test asserts it). T-02-09-02 (only sites-390 changed, 32 PNGs hash-identical, diff inspected), -03 (nothing pushed while the dispatch ran) and -04 (branch only, no main merge, no Vercel deploy) are mitigated.
 
-## Self-Check
+## Self-Check: PASSED
 
 - Files present: dashboard-next/tests/unit/site-index.test.tsx, dashboard-next/tests/unit/sites-page.test.tsx
-- Commits present: 6a54a97, 68c8c11, db674ef
-- Plan NOT complete: Task 3 outstanding; STATE.md, ROADMAP.md and requirements intentionally not advanced.
+- Commits present: 6a54a97, 68c8c11, db674ef, af0c528
+- CONTRACT-01 and CONTRACT-05 intentionally not marked complete (they complete at phase verification).
