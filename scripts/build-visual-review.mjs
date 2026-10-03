@@ -21,7 +21,7 @@
 // Usage:
 //   node scripts/build-visual-review.mjs [options]
 //     --before-ref SHA      read the before baselines with git show at SHA
-//                           (default 1c74f866ca1a31eb8fe1dd7c6ac6ba6882154fa1)
+//                           (default b780b15c8d32da2f9e2d2a0047ebdd04904b5e61)
 //     --before-dir DIR      read the before baselines from DIR instead of git
 //     --after-dir DIR       after baselines (default the committed snapshot directory)
 //     --causes FILE         JSON object: state name (or "state-width") -> one-line cause
@@ -49,7 +49,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 
-const DEFAULT_BEFORE_REF = '1c74f866ca1a31eb8fe1dd7c6ac6ba6882154fa1';
+const DEFAULT_BEFORE_REF = 'b780b15c8d32da2f9e2d2a0047ebdd04904b5e61';
 const SNAPSHOT_REL = 'dashboard-next/tests/e2e/visual.spec.ts-snapshots';
 const MD_NAME = 'PHASE-3-VISUAL-REVIEW.md';
 const PAGE_DIR_NAME = 'phase-3-visual-review';

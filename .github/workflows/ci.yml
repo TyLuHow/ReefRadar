@@ -16,7 +16,7 @@ on:
       before_ref:
         description: "Ref whose tree is captured as the review 'before'"
         type: string
-        default: "1c74f866ca1a31eb8fe1dd7c6ac6ba6882154fa1"
+        default: "b780b15c8d32da2f9e2d2a0047ebdd04904b5e61"
 
 permissions:
   contents: read
