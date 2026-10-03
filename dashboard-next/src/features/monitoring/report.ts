@@ -32,11 +32,16 @@ function isNoise(report: ClientErrorReport): boolean {
   return message.startsWith('ResizeObserver loop') || message === 'Script error.' || message === 'Script error';
 }
 
-/** Name plus first stack frame; with no frame (a string rejection) the message stands in for it. */
+/**
+ * Name plus first stack frame. A frame only identifies a place when it carries a `line:col`
+ * location; a bare minified function name (`at e`) does not, and neither does a missing
+ * frame (a string rejection), so the scrubbed message is added to the key in those cases.
+ * Otherwise two unrelated errors would share a key and the second would be suppressed.
+ */
 function fingerprint(report: ClientErrorReport): string {
-  const frame =
-    report.stack.split('\n').find((line, index) => index > 0 && /^\s*at\s|@/.test(line)) ?? report.message;
-  return `${report.name}|${frame.trim()}`;
+  const frame = report.stack.split('\n').find((line, index) => index > 0 && /^\s*at\s|@/.test(line))?.trim();
+  if (frame !== undefined && /\d+:\d+/.test(frame)) return `${report.name}|${frame}`;
+  return `${report.name}|${frame ?? ''}|${report.message}`;
 }
 
 function logFailureOnce(): void {

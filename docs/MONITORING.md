@@ -57,17 +57,21 @@ laptop.
 The browser scrubs each report before sending it, and the server scrubs it again before logging, so a forged
 request cannot put these in your logs.
 
-- Web addresses (with their query strings and fragments), email addresses, runs of 24 or more letters, digits,
-  `-` or `_` (likely tokens or ids), and `X-Amz-` signing parameters are replaced with `[url]`, `[email]` or
-  `[token]`, or removed.
+- Web addresses (with their query strings and fragments), email addresses, IP addresses, runs of 24 or more
+  letters, digits, `-` or `_` (likely tokens or ids), and `X-Amz-` signing parameters are replaced with `[url]`,
+  `[email]`, `[ip]` or `[token]`, or removed. The one exception is a same-site build asset
+  (`https://host/_next/...`): its path and `:line:col` are kept (origin, query and fragment are dropped) so a
+  minified stack frame still points at a file.
+- Query strings and fragments are removed from any path-like token in one linear pass, so scrubbing hostile input
+  takes bounded, short time.
 - Messages are cut to 300 characters; stacks to 8 lines of 200 characters.
 - The route is the path only. No query string, no user agent, no IP address, no cookies, no stored values, no audio
   file names are sent.
 
 ### Limits on reporting
 
-- A page load sends at most 5 reports, and the same error (same name and first stack frame) is sent at most once
-  per 60 seconds. Known browser noise (`ResizeObserver loop` warnings and the bare cross-origin `Script error.`)
+- A page load sends at most 5 reports, and the same error (same name and first stack frame; the message is part of the key when the frame has no
+  `line:col`) is sent at most once per 60 seconds. Known browser noise (`ResizeObserver loop` warnings and the bare cross-origin `Script error.`)
   is ignored.
 - The route accepts only same-site JSON posts up to 4 KB and rejects anything with extra fields.
 - The route also limits itself to 30 reports per minute. **That limit is per server instance and best effort.**

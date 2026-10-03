@@ -85,6 +85,18 @@ describe('reportClientError', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('keeps unrelated errors apart when their first frame is only a minified name with no location', () => {
+    const bare = (message: string) => {
+      const error = new TypeError(message);
+      error.stack = `TypeError: ${message}\n    at e ([url]\n    at t ([url]`;
+      return error;
+    };
+    reportClientError(bare("Cannot read properties of undefined (reading 'x')"), { source: 'window-error', route: '/' });
+    reportClientError(bare("Cannot read properties of null (reading 'y')"), { source: 'window-error', route: '/' });
+    reportClientError(bare("Cannot read properties of undefined (reading 'x')"), { source: 'window-error', route: '/' });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('keeps string rejections with different text apart', () => {
     reportClientError('first reason', { source: 'unhandledrejection', route: '/' });
     reportClientError('second reason', { source: 'unhandledrejection', route: '/' });

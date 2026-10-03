@@ -110,7 +110,35 @@ describe('scrubMessage, scrubStack and scrubRoute', () => {
   it('scrubs inside stack lines', () => {
     const out = scrubStack('Error: boom\n    at f (https://example.com/_next/static/a.js?v=1:1:2)');
     expect(out).not.toContain('example.com');
+    expect(out).not.toContain('?v=1');
+    // WR-01: the build-asset path and the line:col stay, so a minified frame still locates the failure.
+    expect(out).toContain('at f (/_next/static/a.js:1:2)');
+  });
+
+  it('keeps the asset path and line:col of a same-site frame, drops origin, query and fragment', () => {
+    const out = scrubStack(
+      'TypeError: x\n    at e (https://site.example.com/_next/static/chunks/app/page-1a2b.js:1:23456)\n    at t (https://site.example.com/_next/static/chunks/main.js?dpl=abc#h:7:8)',
+    );
+    expect(out).toContain('at e (/_next/static/chunks/app/page-1a2b.js:1:23456)');
+    expect(out).toContain('at t (/_next/static/chunks/main.js:7:8)');
+    expect(out).not.toContain('site.example.com');
+    expect(out).not.toContain('dpl=');
+  });
+
+  it('still replaces a non-asset URL, even in a stack frame, with [url]', () => {
+    const out = scrubStack('Error: x\n    at f (https://reef-bucket.s3.amazonaws.com/uploads/a.wav?X-Amz-Signature=abc123:1:2)');
     expect(out).toContain('[url]');
+    expect(out).not.toContain('amazonaws');
+    expect(out).not.toContain('a.wav');
+  });
+
+  it('replaces IPv4 and IPv6 addresses in a message with [ip]', () => {
+    expect(scrubText('connect to 192.168.1.20 failed')).toBe('connect to [ip] failed');
+    expect(scrubText('peer 2001:db8:85a3:0:0:8a2e:370:7334 gone')).toBe('peer [ip] gone');
+    expect(scrubText('peer fe80::1 gone')).toBe('peer [ip] gone');
+    // line:col pairs and version-like text are not addresses
+    expect(scrubText('at e (/_next/static/a.js:12:34)')).toBe('at e (/_next/static/a.js:12:34)');
+    expect(scrubText('React 19.2 on port 3000')).toBe('React 19.2 on port 3000');
   });
 
   it('keeps a pathname only', () => {

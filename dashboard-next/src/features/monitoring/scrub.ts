@@ -37,6 +37,12 @@ export interface ReportContext {
   digest?: string | null;
 }
 
+// A same-site build asset (`https://host/_next/...`) is public. Keep its path (the only thing that locates a
+// minified frame) and drop the origin, query and fragment; a trailing `:line:col` is outside the match and stays.
+const NEXT_ASSET_URL_PATTERN = /\bhttps?:\/\/[^\s/?#()]+(\/_next\/[^\s?#:()]*)(?:[?#][^\s:()]*)?/gi;
+// IP addresses written into a message: dotted IPv4, and IPv6 in full or `::` compressed form.
+const IPV4_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
+const IPV6_PATTERN = /\b(?:[A-Fa-f0-9]{1,4}:){3,7}[A-Fa-f0-9]{1,4}\b|\b(?:[A-Fa-f0-9]{1,4}:){1,7}:(?:[A-Fa-f0-9]{1,4}\b)?/g;
 // Absolute URLs of any scheme that can carry a credential or a file name.
 const URL_PATTERN = /\b(?:https?|wss?|ftp|file|blob|data):\S+/gi;
 // X-Amz-*=value pairs that survive outside a URL, with the separator that introduced them.
@@ -77,9 +83,12 @@ export function scrubText(input: string): string {
   return stripPathQueries(
     input
       .slice(0, MAX_SCRUB_INPUT)
+      .replace(NEXT_ASSET_URL_PATTERN, '$1')
       .replace(URL_PATTERN, '[url]')
       .replace(AMZ_PATTERN, '')
-      .replace(EMAIL_PATTERN, '[email]'),
+      .replace(EMAIL_PATTERN, '[email]')
+      .replace(IPV4_PATTERN, '[ip]')
+      .replace(IPV6_PATTERN, '[ip]'),
   ).replace(TOKEN_PATTERN, '[token]');
 }
 
