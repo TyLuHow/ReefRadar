@@ -55,14 +55,14 @@
 
 - [x] **PLAT-01**: Dashboard runs on Next.js 16 / React 19 with legacy routes still functional during migration
 - [x] **PLAT-02**: Duplicate stacks are removed: one map engine (MapLibre), one chart approach (Observable Plot + d3), no unused dependencies (wavesurfer, deck.gl, Leaflet, recharts, Streamlit dashboard) [CAP-86]
-- [ ] **PLAT-03**: New code lives in feature modules with a lint fence preventing imports from legacy components
+- [x] **PLAT-03**: New code lives in feature modules with a lint fence preventing imports from legacy components
 - [x] **PLAT-04**: Unit, component, end-to-end, accessibility (axe) and screenshot visual-regression tests run in CI on every push
 - [ ] **PLAT-05**: Uploads go directly to S3 via presigned URL with server-enforced size and duration caps (60 s at 96 kHz succeeds)
 - [ ] **PLAT-06**: The public API enforces rate limits on upload and analyze, and upload filenames are sanitized
 - [ ] **PLAT-07**: Analysis progress is driven by real pipeline stages from `/status`, with backoff and cancel [CAP-35, CAP-36]
 - [ ] **PLAT-08**: Route performance budgets are enforced: instrument LCP < 2.0 s on mid-tier mobile, select/hover/scrub interaction < 100 ms, no animation loops running while idle
-- [ ] **PLAT-09**: Error monitoring and web-vitals reporting are in place for production
-- [ ] **PLAT-10**: A single API client honours the configured API base URL across all flows [CAP-09]; React Query caching preserved [CAP-08]; security headers preserved [CAP-10]
+- [x] **PLAT-09**: Error monitoring and web-vitals reporting are in place for production
+- [x] **PLAT-10**: A single API client honours the configured API base URL across all flows [CAP-09]; React Query caching preserved [CAP-08]; security headers preserved [CAP-10]
 
 ### Design System (DS)
 
@@ -72,7 +72,7 @@
 - [ ] **DS-04**: Accessible primitives (React Aria Components) cover dialog, sheet, listbox, table, range/dual-range slider, toggle group, tooltip, command palette
 - [ ] **DS-05**: Instrument components exist as reusable primitives: Transport, Spectrogram, WindowStrip, BandToggle, CompareRow, ProvenanceChip/Why panel, StripPlot, ProbabilityBar (with abstain), DataTable, Legend (data-driven, with counts), Empty/Error/Loading states
 - [ ] **DS-06**: Motion is limited to continuity (selection, layout morph, playhead, view transitions) and fully respects reduced-motion [CAP-81]
-- [ ] **DS-07**: The bioluminescent vitality system (vitality store, colour engine, background canvas, caustics/particles, decorative spectrogram, dev vitality panel) is removed [CAP-25, CAP-47, CAP-76–80, CAP-83, CAP-84 retired by Q7]
+- [x] **DS-07**: The bioluminescent vitality system (vitality store, colour engine, background canvas, caustics/particles, decorative spectrogram, dev vitality panel) is removed [CAP-25, CAP-47, CAP-76–80, CAP-83, CAP-84 retired by Q7]
 - [ ] **DS-08**: A dev-only fixtures route renders every primitive in every state for visual review
 
 ### Listen & Compare (LISTEN)
@@ -247,21 +247,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ML-08 | Phase 5 | Pending |
 | PLAT-01 | Phase 3 | Complete |
 | PLAT-02 | Phase 3 | Complete |
-| PLAT-03 | Phase 3 | Pending |
+| PLAT-03 | Phase 3 | Complete |
 | PLAT-04 | Phase 1 | Complete |
 | PLAT-05 | Phase 10 | Pending |
 | PLAT-06 | Phase 10 | Pending |
 | PLAT-07 | Phase 10 | Pending |
 | PLAT-08 | Phase 16 | Pending |
-| PLAT-09 | Phase 3 | Pending |
-| PLAT-10 | Phase 3 | Pending |
+| PLAT-09 | Phase 3 | Complete |
+| PLAT-10 | Phase 3 | Complete |
 | DS-01 | Phase 4 | Pending |
 | DS-02 | Phase 4 | Pending |
 | DS-03 | Phase 4 | Pending |
 | DS-04 | Phase 4 | Pending |
 | DS-05 | Phase 4 | Pending |
 | DS-06 | Phase 4 | Pending |
-| DS-07 | Phase 3 | Pending |
+| DS-07 | Phase 3 | Complete |
 | DS-08 | Phase 4 | Pending |
 | LISTEN-01 | Phase 7 | Pending |
 | LISTEN-02 | Phase 7 | Pending |

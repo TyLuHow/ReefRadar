@@ -4,17 +4,17 @@ milestone: v2
 milestone_name: Reef Soundscape Research Instrument
 current_phase: 3
 current_phase_name: Platform Upgrade & Stack Consolidation
-status: executing
-stopped_at: Completed 03-14-PLAN.md
-last_updated: "2026-10-03T18:09:09.362Z"
+status: verifying
+stopped_at: Completed 03-15-PLAN.md (Phase 3 exit; ready for verification)
+last_updated: "2026-10-03T22:54:57.205Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 3 execution started
-state_head: 65ad87f1bfd64715c0911f93d1aa71e6441a9427
+state_head: e13459dc4e4a499b4f11ab02bbba6a15a540dea2
 progress:
   total_phases: 17
   completed_phases: 2
   total_plans: 48
-  completed_plans: 47
+  completed_plans: 48
   percent: 12
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-02)
 
 Phase: 3 (Platform Upgrade & Stack Consolidation) — EXECUTING
 Plan: 15 of 15
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-02 — Phase 3 execution started
 
 Progress: [████████████████████] 20/20 plans ([█░░░░░░░░░] 12%)
@@ -108,6 +108,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 03 P12 | 40min | 3 tasks | 13 files |
 | Phase 03 P13 | 35min | 2 tasks | 9 files |
 | Phase 03 P14 | 45min | 2 tasks | 7 files |
+| Phase 03 P15 | long (3 dispatches, owner review) | 3 tasks | 30 files |
 
 ## Accumulated Context
 
@@ -186,6 +187,8 @@ Recent decisions affecting current work:
 - [Phase 3]: [Phase 03] 03-11: Observable Plot 0.6.17 plus individual d3 modules is the only chart stack; PlotFigure (features/charts) is accessible with a [0,1] zero-based probability axis and labels only from toIntegerPercentages; recharts/wavesurfer.js removed; used-dependency and single-engine gate added
 - [Phase 3]: [Phase 3] 03-12: client error reporter posts scrubbed reports to /api/client-error/ (trailing slash); handler checks Origin 403, type 415, 4 KB streamed cap 413, strict schema 400, per-instance token bucket 429, scrubs again and logs one 'client-error ' line; PLAT-09 stays open until 03-13
 - [Phase 3]: 03-13: Try again uses Next 16.3 retry(); PLAT-09 left open until a Vercel preview proof exists (vercel deploy denied by permission system)
+- [Phase 3]: 03-15: Tailwind content globs must include src/features (map legends were unstyled); guarded by tests/unit/tailwind-content.test.ts
+- [Phase 3]: 03-15: Phase 3 visual change accepted by owner 2026-10-03 (1 baseline, 6 captures); before_ref now b780b15 after the history rewrite
 
 ### Pending Todos
 
@@ -209,6 +212,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-03T18:09:08.958Z
-Stopped at: Completed 03-14-PLAN.md
+Last session: 2026-10-03T22:54:56.908Z
+Stopped at: Completed 03-15-PLAN.md (Phase 3 exit; ready for verification)
 Resume file: None
