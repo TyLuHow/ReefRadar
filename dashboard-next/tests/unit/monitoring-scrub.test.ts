@@ -52,12 +52,18 @@ describe('scrubText', () => {
 describe('scrubText work on hostile input (CR-01)', () => {
   // Timing on shared CI hardware is noisy, so there is no tight wall-clock assertion. Two checks instead:
   //  1. a generous absolute ceiling for one 4 KB call (the old cubic regex took minutes), and
-  //  2. near-linear scaling: cost per character at 4000 characters against 250 characters. Linear work
-  //     gives a ratio near 1, quadratic about 10 to 16, cubic far more; the limit of 4 leaves wide headroom.
+  //  2. near-linear scaling: cost per character at 4000 characters against 500 characters. Linear work
+  //     gives a ratio near 1 (measured up to about 2.8 on a noisy run, from JIT and cache effects),
+  //     quadratic about 6 to 8 and cubic far more, so the limit of 4 separates them with headroom.
+  // Both sizes sit above every bounded quantifier in the patterns (the largest is the 256-character email
+  // local part; the long-local-part shape below keeps its local part over 256 at 500 characters): below a
+  // bound, cost per character is still rising even for linear code, which made an earlier 250-character
+  // baseline report 4.3 on a linear shape. The upper size is the input cap (MAX_SCRUB_INPUT, 4000); a
+  // larger input is cut to it and would measure nothing.
   // Each timing is the best of several rounds, which discards GC and scheduler spikes.
   const CEILING_MS = 500;
   const MAX_PER_CHAR_RATIO = 4;
-  const SMALL = 250;
+  const SMALL = 500;
   const LARGE = 4_000;
   const rep = (unit: string, n: number) => unit.repeat(Math.max(1, Math.floor(n / unit.length)));
 
@@ -69,7 +75,7 @@ describe('scrubText work on hostile input (CR-01)', () => {
     ['many query markers in one slash token', (n) => rep('/?', n)],
     ['a long run of email-safe characters with no @', (n) => rep('a.b-c', n)],
     ['an @ followed by a long dotted domain', (n) => `a@${rep('a.', n)}`],
-    ['a long local part before a dotted domain', (n) => `${rep('a', n / 2)}@${rep('b.', n / 2)}`],
+    ['a long local part before a dotted domain', (n) => `${rep('a', n * 0.75)}@${rep('b.', n * 0.25)}`],
     ['repeated @ signs', (n) => rep('a@', n)],
     ['a long token that ends in a fragment', (n) => `${rep('/x', n)}#end`],
     ['repeated X-Amz- keys', (n) => rep('X-Amz-', n)],

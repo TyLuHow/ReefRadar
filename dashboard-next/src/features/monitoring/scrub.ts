@@ -73,6 +73,7 @@ const AMZ_PATTERN = /[?&]?X-Amz-[A-Za-z0-9-]+=[^&\s]*/gi;
 // run), and nested unbounded labels backtrack. Bounded, each start position costs O(1).
 const EMAIL_PATTERN = /[A-Za-z0-9._%+-]{1,256}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){0,8}\.[A-Za-z]{2,63}/g;
 const WHITESPACE_RUN_PATTERN = /\S+/g;
+const QUERY_MARK_PATTERN = /[?#]/g;
 const FILE_EXTENSION_TAIL_PATTERN = /\S[.][A-Za-z0-9]{1,5}$/;
 const TOKEN_PATTERN = /[A-Za-z0-9_-]{24,}/g;
 
@@ -92,11 +93,14 @@ function endsWithFileExtension(token: string, queryAt: number): boolean {
 function stripPathQueries(text: string): string {
   return text.replace(WHITESPACE_RUN_PATTERN, (token) => {
     const hasSlash = token.includes('/');
-    for (let i = 0; i < token.length; i += 1) {
-      const ch = token[i];
-      if ((ch === '?' || ch === '#') && (hasSlash || endsWithFileExtension(token, i))) {
-        return token.slice(0, i);
-      }
+    // Visit only the `?` and `#` characters through the regex engine. An explicit per-character
+    // loop here measured super-linear on long tokens in V8 (cost per character grew with length);
+    // this form is flat.
+    QUERY_MARK_PATTERN.lastIndex = 0;
+    let mark = QUERY_MARK_PATTERN.exec(token);
+    while (mark !== null) {
+      if (hasSlash || endsWithFileExtension(token, mark.index)) return token.slice(0, mark.index);
+      mark = QUERY_MARK_PATTERN.exec(token);
     }
     return token;
   });
