@@ -90,8 +90,8 @@ coverage:
     requirement: PLAT-09
     verification:
       - kind: other
-        ref: "NOT RUN: `vercel deploy --yes` from dashboard-next was denied by the permission system (Security Weaken); no existing Git-integration preview matches this commit (the only preview is about 1 day old). Recorded as end-of-phase human-check; see Checkpoint below"
-        status: fail
+        ref: "Initially NOT RUN (denied by the permission system); run by the orchestrator on 2026-10-03 after owner approval: preview Ready, POST /api/client-error/ 204, speed-insights script 200, probe log line seen, malformed probe 400. See Checkpoint (resolved)"
+        status: pass
     human_judgment: true
   - id: C7
     description: "No regression: full unit, typecheck, lint, build, full e2e, CI"
@@ -151,7 +151,11 @@ Package-legitimacy evidence (T-03-13-SC): owner standing approval (.planning/res
 
 **Total deviations:** 1 auto-fixed (test bug), 3 interpretation notes, 1 blocked step. **Impact:** PLAT-09 not marked complete.
 
-## Checkpoint: owner decision needed for the preview proof
+## Checkpoint: owner decision needed for the preview proof (RESOLVED 2026-10-03)
+
+**Resolved:** the orchestrator ran the owner-approved `vercel deploy --yes` from `dashboard-next` on 2026-10-03 (preview, no `--prod`). Build state Ready on Next.js 16.3.8 (A2 confirmed). `GET /_vercel/speed-insights/script.js` returned 200; `POST /api/client-error/` with the MONITORING.md probe returned 204; `vercel logs` showed the `client-error` line with the probe message and the build id; a malformed probe (`stack: null`) returned 400 and logged nothing (A6 confirmed). The result is recorded in docs/MONITORING.md "Status of this check" and PHASE-3-EXIT.md, and PLAT-09 is marked complete in 03-15. Whether Speed Insights counts protected-preview traffic (A3) was not checked. The original text of the checkpoint follows.
+
+### Original checkpoint text
 
 Needed command: `vercel deploy --yes` run from `dashboard-next` (a preview deployment of this branch, no `--prod`, no promote). Denied by the permission system, so it was not run. Options: the owner allows that one command and the proof is run (build state Ready, `POST /api/client-error/` answers 204, `/_vercel/speed-insights/script.js` status, `vercel logs` for the probe line), or the owner runs it themselves, or the steps in docs/MONITORING.md "How to test" become the phase's end-of-phase human-check. After a deployment exists, add three lines to docs/MONITORING.md under "Status of this check" (state, 204, script status) and mark PLAT-09 complete.
 
@@ -161,7 +165,7 @@ None.
 
 ## Open assumptions carried forward
 
-- **A2 (Next 16 builds on Vercel's Node), A3 (Speed Insights counts protected-preview traffic), A6 (`vercel logs` shows the probe line):** all unresolved because no deployment could be created. docs/MONITORING.md says so.
+- **A2 (Next 16 builds on Vercel's Node) and A6 (`vercel logs` shows the probe line):** resolved 2026-10-03 by the preview proof. **A3 (Speed Insights counts protected-preview traffic):** still unchecked; docs/MONITORING.md says so.
 - **UI-SPEC E6 (reporter and Speed Insights change no visual baseline):** CI visual job on this head differs from the declared failure by nothing (experience-compare @ 390 only); 03-15 still does the manual baseline review.
 - **Human-check (plan Task 3, end-of-phase):** within one hour of a probe POST, open the Vercel dashboard Logs tab (Request Path `/api/client-error/`, level Error) and confirm the `client-error` line; confirm the Speed Insights tab exists. Requires the owner's Vercel login.
 
@@ -171,7 +175,7 @@ None beyond the plan's threat model.
 
 ## Requirement status
 
-PLAT-09 is not marked complete: code, error pages, Speed Insights and the owner guide are in place, but the preview proof the plan requires (and its human-check) is outstanding.
+PLAT-09 was left unchecked here while the preview proof was outstanding; the proof ran on 2026-10-03 and PLAT-09 is marked complete in 03-15. The owner's Logs-tab human-check remains an end-of-phase item.
 
 ## Self-Check: PASSED
 

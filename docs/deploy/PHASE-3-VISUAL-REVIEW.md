@@ -27,7 +27,7 @@ Decision values: pending, accepted, rejected (identical rows need none).
 | experience | 390 | identical | - | n/a |
 | experience-compare | 1440 | identical | - | n/a |
 | experience-compare | 1024 | identical | - | n/a |
-| experience-compare | 390 | changed | The crossfader is now a static ochre thumb on a plain grey track instead of a glowing green thumb on a gradient track, and the sentence 'The moving background is decorative, not a spectrogram or a visualisation of these bands.' is gone from the help text because the moving background was removed (page is 60 px shorter). | pending |
+| experience-compare | 390 | changed | The crossfader is now a static ochre thumb on a plain grey track instead of a glowing green thumb on a gradient track, and the sentence 'The moving background is decorative, not a spectrogram or a visualisation of these bands.' is gone from the help text because the moving background was removed (page is 60 px shorter). | accepted |
 | experience-demo | 1440 | identical | - | n/a |
 | experience-demo | 1024 | identical | - | n/a |
 | experience-demo | 390 | identical | - | n/a |
@@ -50,13 +50,13 @@ Review-only captures at 1440 px with canvases and maps visible (tiles mocked wit
 
 | Capture | Before | After | Owner decision |
 |---|---|---|---|
-| analyze | leaflet, WebGL2 | maplibre, WebGL2 | pending |
-| experience | no map, WebGL2 | no map, WebGL2 | pending |
-| experience-compare | no map, WebGL2 | no map, WebGL2 | pending |
-| landing | no map, WebGL2 | no map, WebGL2 | pending |
-| map | maplibre, WebGL2 | maplibre, WebGL2 | pending |
-| sites | leaflet, WebGL2 | maplibre, WebGL2 | pending |
+| analyze | leaflet, WebGL2 | maplibre, WebGL2 | accepted |
+| experience | no map, WebGL2 | no map, WebGL2 | accepted |
+| experience-compare | no map, WebGL2 | no map, WebGL2 | accepted |
+| landing | no map, WebGL2 | no map, WebGL2 | accepted |
+| map | maplibre, WebGL2 | maplibre, WebGL2 | accepted |
+| sites | leaflet, WebGL2 | maplibre, WebGL2 | accepted |
 
 ## Owner sign-off
 
-Pending: no owner decision recorded yet.
+Accepted by the owner on 2026-10-03: "accepted" for every item. That covers the 1 changed baseline (experience-compare at 390) and all 6 unhidden before/after captures (analyze, experience, experience-compare, landing, map, sites). The review page was published to the owner for this decision. The owner was told in the review notes that the legend has no Unknown row, that the legend partly covers one marker and sits just above the attribution pill on /sites, that the dark map keeps its CARTO style, and that dense markers are not clustered; these are carried to later phases in PHASE-3-EXIT.md.

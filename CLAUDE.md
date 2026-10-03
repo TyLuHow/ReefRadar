@@ -6,7 +6,7 @@ This file helps AI assistants understand and navigate the ReefRadar codebase.
 
 ReefRadar is a serverless API for analyzing coral reef health from underwater audio recordings. It uses a trained MLP classifier on SurfPerch embeddings to classify reef health status, with geographic region detection for out-of-distribution warnings.
 
-**Tech Stack:** AWS Lambda (including container-based), API Gateway, S3, DynamoDB, Python 3.11, Next.js 14, TensorFlow, perch-hoplite
+**Tech Stack:** AWS Lambda (including container-based), API Gateway, S3, DynamoDB, Python 3.11, Next.js 16 (React 19), MapLibre, TensorFlow, perch-hoplite
 
 **Live API:** `https://rgoe4pqatf.execute-api.us-east-1.amazonaws.com/prod`
 
@@ -23,9 +23,10 @@ ReefRadar/
 │       ├── handler.py          # Trained MLP classifier, embedding generation
 │       └── region_detection.py # Region naming + distance to real training sites (never adjusts probabilities)
 │
-├── dashboard-next/             # Next.js 14 web UI (primary)
+├── dashboard-next/             # Next.js 16 web UI (primary)
 │   ├── src/app/                # App Router pages (/, /sites, /about)
 │   ├── src/components/         # 20+ React components
+│   ├── src/features/           # New code: contract, map (MapLibre), charts (Observable Plot + d3), monitoring; may not import src/components
 │   ├── src/lib/api.ts          # Typed API client
 │   └── src/types/index.ts      # TypeScript types
 │

@@ -38,25 +38,23 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 - AWS Lambda managed runtime `python3.11` for `router`, `preprocessor`, `classifier` (per `infrastructure/resources.json`)
 - AWS Lambda container image runtime (Python 3.12 base, `public.ecr.aws/lambda/python:3.12`) for the `inference` function — see `infrastructure/lambda_container/Dockerfile`
 - `lambdas/preprocessor/Dockerfile` separately builds on `public.ecr.aws/lambda/python:3.11` (ffmpeg-free + libsndfile) — appears to be an alternate/legacy containerized build path for preprocessor vs. the zip-deployed `handler.py` used in production per `resources.json`
-- Node.js (version unpinned; no `.nvmrc` found) for `dashboard-next/` — Next.js 14.2.5 requires Node ^18.17 or ^20
+- Node.js `>=20.9.0` (`engines` in `dashboard-next/package.json`) for `dashboard-next/` — required by Next.js 16
 - npm for `dashboard-next/` — `dashboard-next/package-lock.json` is committed (reproducible installs via `npm ci`)
 - pip for all Python components — no lockfiles (`requirements.txt` only, version floors via `>=`)
 
 ## Frameworks
 
-- Next.js 14.2.5 (App Router) - `dashboard-next/src/app/` — dashboard frontend
-- React 18.3.1 / React DOM 18.3.1
+- Next.js 16.3.8 (App Router) - `dashboard-next/src/app/` — dashboard frontend
+- React 19.3.0 / React DOM 19.3.0
 - TensorFlow-cpu >=2.18.0 - ML inference runtime inside the `inference` Lambda container (`infrastructure/lambda_container/requirements.txt`)
-- `maplibre-gl` ^4.0 + `react-map-gl` ^7.1 (`/maplibre` subpath) - primary map renderer, `dashboard-next/src/components/map/ReefMap.tsx`
-- `@deck.gl/core`, `@deck.gl/layers`, `@deck.gl/react` ^9.0 - deck.gl overlay layers (transpiled via `next.config.js` `transpilePackages`)
-- `leaflet` ^1.9.4 + `react-leaflet` ^4.2.1 - used elsewhere in dashboard (e.g. mini maps)
-- `recharts` ^2.12.7 - charts
-- `wavesurfer.js` ^7.8 - audio waveform rendering
+- `maplibre-gl` 6.11.2 + `react-map-gl` 8.1.3 (`/maplibre` subpath) - the only map renderer: `dashboard-next/src/features/map/` (`ReefMap`, `WorldMap`, `MiniMap`)
+- `@observablehq/plot` 0.6.17 + `d3-array`, `d3-format`, `d3-scale`, `d3-shape` - the only chart libraries: `dashboard-next/src/features/charts/` (no Recharts, no wavesurfer.js, no deck.gl, no Leaflet; a CI test fails if they return)
 - `framer-motion` ^11.0 - animation
 - `zustand` ^4.5 - client state
-- `@tanstack/react-query` ^5.51.21 - data fetching/caching
-- No test framework/config detected in `dashboard-next/` (no jest/vitest config) or in Python components (no pytest config found); `scripts/test-all.sh`, `scripts/test_inference_lambda.py`, `scripts/test_region_detection.py` appear to be ad hoc manual test scripts, not a formal suite.
-- TypeScript 5.5.4, ESLint 8.57.0 (`eslint-config-next` 14.2.5), Tailwind CSS 3.4.7, PostCSS 8.4.40, Autoprefixer 10.4.19 (all dev deps in `dashboard-next/package.json`)
+- `@tanstack/react-query` ^5.51.21 - data fetching/caching (contract client)
+- `@vercel/speed-insights` 2.0.0 (web vitals) and `POST /api/client-error/` (client errors to Vercel runtime logs) - see `docs/MONITORING.md`
+- Tests: Vitest 5 + Testing Library (`dashboard-next/tests/unit`), Playwright 1.63 with axe (`tests/e2e`, fixture-mocked, plus Docker-pinned visual baselines), pytest for Python; all run in `.github/workflows/ci.yml`. `scripts/test-all.sh`, `scripts/test_inference_lambda.py`, `scripts/test_region_detection.py` remain ad hoc manual scripts.
+- TypeScript 5.5.4, ESLint 9.39.5 (flat config `eslint.config.mjs`, `eslint-config-next` 16.3.8), Tailwind CSS 3.4.7, PostCSS 8.4.40, Autoprefixer 10.4.19 (all dev deps in `dashboard-next/package.json`)
 - Docker (via CodeBuild and local `scripts/deploy_inference_lambda.sh`) for building Lambda container images
 
 ## Key Dependencies
@@ -72,7 +70,7 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 - `dashboard-next/.env.example` exists (contents not read — treat as template; do not assume values). Confirmed used var: `NEXT_PUBLIC_API_URL` (`dashboard-next/src/lib/api.ts:13`), falling back to the live API Gateway URL if unset.
 - Lambda environment variables are defined per-function in `infrastructure/resources.json` (bucket names, table name, downstream function names) rather than via a `.env` file — see INTEGRATIONS.md.
 - No `.env` (non-example) files found in the repo.
-- `dashboard-next/next.config.js` - `trailingSlash: true`, `images.unoptimized: true`, transpiles deck.gl ESM packages
+- `dashboard-next/next.config.js` - `trailingSlash: true`, `images.unoptimized: true`, `agentRules: false`; `tailwind.config.js` `content` must list every source directory that sets a className (including `src/features`, guarded by `tests/unit/tailwind-content.test.ts`)
 - `dashboard-next/vercel.json` - sets `framework: nextjs`, explicit build/install commands, and security headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy)
 - `infrastructure/lambda_container/buildspec.yml` - AWS CodeBuild spec: logs into ECR, builds/pushes the `inference` container (`--platform linux/amd64 --provenance=false`), then calls `aws lambda update-function-code`
 - `scripts/deploy_inference_lambda.sh` - local equivalent of the CodeBuild flow for the inference container
@@ -98,24 +96,24 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 
 - Python (lambdas, scripts): `snake_case.py` — `handler.py`, `region_detection.py`, `test_inference_lambda.py`
 - TypeScript/React components: `PascalCase.tsx` — `AnalysisResults.tsx`, `ProbabilityBars.tsx`, `CoordinateModal.tsx`
-- TypeScript utility/lib modules: `camelCase.ts` or short lowercase — `utils.ts`, `color-engine.ts` (kebab-case used for multi-word lib files)
+- TypeScript utility/lib modules: `camelCase.ts` or short lowercase — `utils.ts`, `api.ts` (kebab-case used for multi-word lib files, e.g. `site-stats.ts`)
 - Next.js App Router special files: lowercase Next.js convention — `page.tsx`, `layout.tsx`, `route.ts`
-- Components grouped by domain in subdirectories: `src/components/{about,audio,charts,dashboard,experience,maps}/`
+- Legacy components grouped by domain in `src/components/{about,audio,charts,dashboard,experience,map,sites,ui}/`; new code goes in `src/features/{contract,map,charts,monitoring}/` and may not import `@/components` (ESLint block plus `scripts/check-feature-fence.mjs` in CI)
 - Python: `snake_case` — `convert_floats()`, `detect_region()`, `adjust_classification()`
 - TypeScript: `camelCase` — `formatStatus()`, `getStatusBgColor()`, `validateWavFile()`
 - React components exported as named `PascalCase` functions: `export function AnalysisResults({ result }: AnalysisResultsProps)`
 - Python: `snake_case`, module-level constants `UPPER_SNAKE_CASE` — `AUDIO_BUCKET`, `MAX_RETRIES`, `RETRY_DELAYS`, `BATCH_SIZE`
 - Python module-level caches prefixed with underscore for warm-Lambda state: `_model_weights`, `_model_config`, `_reference_embeddings`
-- TypeScript: `camelCase` for locals, `UPPER_SNAKE_CASE` for module constants (`color-engine.ts`: `DEG_PRIMARY`, `THRESHOLD_ACCENT`, `GLOW_ALPHA_DEGRADED`)
-- TypeScript interfaces: `PascalCase`, often suffixed `Props` for component props — `AnalysisResultsProps`, `ReefColors`
+- TypeScript: `camelCase` for locals, `UPPER_SNAKE_CASE` for module constants (`MAP_STYLE`, `DEFAULT_VIEW_STATE`)
+- TypeScript interfaces: `PascalCase`, often suffixed `Props` for component props — `AnalysisResultsProps`, `MapShellProps`
 - Shared domain types centralized in `dashboard-next/src/types` (e.g. `AnalysisResult`, `ReefStatus`, `STATUS_COLORS`)
 - Python: no dataclasses/TypedDicts observed in lambdas; dict-based payloads validated ad hoc via `event.get(...)` / `event[...]`
 
 ## Code Style
 
-- No `.prettierrc`, `.eslintrc`, `eslint.config.*`, or `biome.json` found in `dashboard-next/` — linting relies solely on `eslint-config-next` default (`next lint` script in `package.json`), no custom rule overrides present
+- No `.prettierrc` or `biome.json` in `dashboard-next/`; linting is `eslint.config.mjs` (`eslint-config-next` plus the contract-fence and feature-fence blocks); there is no formatter
 - No Python formatter/linter config (`.flake8`, `pyproject.toml` with `[tool.black]`, `ruff.toml`) found in `lambdas/` or `scripts/` — Python style is informal/consistent-by-convention rather than enforced by tooling
-- `dashboard-next/package.json` → `"lint": "next lint"` is the only configured check; run manually, not wired into a pre-commit hook or CI config found in the repo
+- `npm run lint` (`eslint .`), `typecheck`, `test` (Vitest) and the two fence scripts run in the CI `web` job; Playwright e2e, visual, python and citation checks have their own jobs
 
 ## Import Organization
 
@@ -132,25 +130,20 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 - `context.aws_request_id` captured and threaded through errors for traceability (`request_id = context.aws_request_id if context else str(uuid.uuid4())`)
 - Validation-first pattern returning typed result objects rather than throwing, for user-facing checks: `validateWavFile(file: File): { valid: boolean; error?: string }` in `src/lib/utils.ts`
 - Defensive rendering: components check for missing/null data and render a fallback message rather than crashing (`AnalysisResults.tsx`: `if (!classification) { return <div className="glass-panel p-6">...No classification results available...</div> }`)
-- No global error boundary or `app/error.tsx` confirmed present — check `dashboard-next/src/app/` for `error.tsx` before assuming resilience at the route level
+- Error boundaries: `src/app/error.tsx` (route level) and `src/app/global-error.tsx` (root layout) show only the digest, never `error.message` or the stack, and report once through `src/features/monitoring` (`/api/client-error/` to Vercel runtime logs)
 
 ## Styling System
 
 - Hardcoded brand palette tokens: `abyss`, `depths`, `bg-surface`, `bone`, `ochre`, `dusty-rose`, `pale-gold`, `muted-tan`, `warm-gray`, `warm-amber`
-- CSS-variable-backed dynamic tokens (resolved at runtime, not compile time): `glass-bg`, `glass-hover`, `glass-active`, `glass-border`, `status-healthy`, `status-degraded`, `status-restoring-early`, `status-restoring-mid`, `reef-primary`, `reef-accent`, `reef-secondary`, `reef-highlight`, `reef-bg`, `reef-surface`, `reef-glow`, `reef-text`
+- CSS-variable-backed tokens (resolved at runtime): `glass-bg`, `glass-hover`, `glass-active`, `glass-border`, `status-healthy`, `status-degraded`, `status-restoring-early`, `status-restoring-mid`. The dark palette is static CSS tokens until Phase 4; the reef-vitality theming engine and its `--reef-*` tokens were removed in Phase 3
 - Custom font families mapped to CSS vars from `next/font`: `--font-inter`, `--font-jetbrains-mono`
 - `backdropBlur.glass: '16px'` and custom keyframe `wave` for reef-themed motion
-- When adding new themeable colors, prefer a CSS custom property in `globals.css` plus a matching Tailwind color token (pattern used throughout) rather than a hardcoded hex in `tailwind.config.js`, so values can be dynamically updated (see vitality engine below)
-- `:root` defines layered token groups: Backgrounds (`--bg-abyss`, `--bg-depths`, `--bg-surface`), Glassmorphism (`--glass-bg`, `--glass-bg-hover`, `--glass-bg-active`, `--glass-border`, `--glass-border-bright`), Text (`--text-primary`, `--text-secondary`, `--text-muted`, `--text-dim`), Frequency Bands (`--freq-low/mid/high`), Health Status (`--status-healthy`, `--status-degraded`, `--status-restoring-early`, `--status-restoring-mid`), Accents (`--accent-glow`, `--accent-warning`, `--accent-info`), and the Reef Vitality system (`--reef-primary`, `--reef-accent`, `--reef-secondary`, `--reef-highlight`, `--reef-bg`, `--reef-surface`, `--reef-glow`, `--reef-text`)
+- When adding new themeable colors, prefer a CSS custom property in `globals.css` plus a matching Tailwind color token (pattern used throughout) rather than a hardcoded hex in `tailwind.config.js`
+- `:root` defines layered token groups: Backgrounds (`--bg-abyss`, `--bg-depths`, `--bg-surface`), Glassmorphism (`--glass-bg`, `--glass-bg-hover`, `--glass-bg-active`, `--glass-border`, `--glass-border-bright`), Text (`--text-primary`, `--text-secondary`, `--text-muted`, `--text-dim`), Frequency Bands (`--freq-low/mid/high`), Health Status (`--status-healthy`, `--status-degraded`, `--status-restoring-early`, `--status-restoring-mid`) and Accents (`--accent-glow`, `--accent-warning`, `--accent-info`)
 - Global transition rule applies to common properties on every element (`*` selector): `transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform; transition-duration: 150ms;` — animations (`.animate-spin`, `.animate-pulse`) are explicitly excluded (`transition: none`) to avoid conflicting with keyframe animation
 - `:focus-visible { outline: 2px solid #cd853f; outline-offset: 2px; }` is the one global accessibility affordance defined at the CSS level
 - Component-level utility classes defined once in `globals.css` and reused via `className`: `.glass-panel` (16px blur, `--glass-bg`/`--glass-border`, 16px radius), `.glass-button` (12px blur, pill radius, hover state swaps to `--glass-bg-hover`/`--glass-border-bright`), `.heading` (weight 300, tight tracking), `.hero-text` (clamp-based responsive display type)
-- Pure, side-effect-free module: takes a single `vitality` score (0.0 degraded → 1.0 healthy) and computes 8 HSL/HSLA color strings (`ReefColors` interface: `primary, accent, secondary, highlight, bg, surface, glow, text`) which callers then assign onto the `--reef-*` CSS custom properties
-- Degraded/healthy endpoint colors are defined as `[H, S, L]` tuples (`DEG_PRIMARY`, `HLT_PRIMARY`, etc.) — do not hardcode new hues inline; add a new endpoint tuple pair plus a threshold constant following this pattern
-- Per-token stagger thresholds (`THRESHOLD_PRIMARY = 0.2`, `THRESHOLD_GLOW = 0.2`, `THRESHOLD_TEXT = 0.3`, `THRESHOLD_ACCENT = 0.4`, `THRESHOLD_HIGHLIGHT = 0.7`, `THRESHOLD_SECONDARY = 0.7`, `THRESHOLD_BG = 0.0`, `THRESHOLD_SURFACE = 0.0`) control when each token starts transitioning as vitality rises, via `effectiveVitality(raw, threshold)` — this staggering is intentional design (see `computeSecondary()` comment: avoids "ugly green/purple mid-states" by snapping hue and delaying saturation ramp)
-- `lerpHSL(fromH, fromS, fromL, toH, toS, toL, t, hueDirection)` is the core interpolation primitive with a `'cw' | 'ccw' | 'shortest'` hue-direction parameter for correct circular hue interpolation; `lerpHSLA` is the alpha-channel variant used for glow effects (`GLOW_ALPHA_DEGRADED = 0.2`, `GLOW_ALPHA_HEALTHY = 0.5`)
-- When extending the vitality system (new token, new status state), follow the existing pattern: define degraded/healthy `[H,S,L]` endpoint tuples, assign a stagger threshold, and route through `lerpHSL`/`lerpHSLA` rather than computing colors ad hoc in components
-- `className="glass-panel ..."` combined with inline `style={{ color: 'var(--text-muted)' }}` is the dominant pattern for applying CSS-variable-driven colors that Tailwind's static JIT compiler can't class-ify dynamically (seen throughout `AnalysisResults.tsx`) — prefer this mixed `className` (layout/spacing via Tailwind utilities) + `style` (CSS-variable color values) approach for any component that must react to the vitality engine or theme tokens
+- `className="glass-panel ..."` combined with inline `style={{ color: 'var(--text-muted)' }}` is the dominant pattern for applying CSS-variable colors that Tailwind's static compiler cannot class-ify (seen throughout `AnalysisResults.tsx`) — prefer this mixed `className` (layout/spacing) + `style` (CSS-variable color values) approach
 - 13 component files reference `glass` styling across `about/`, `audio/`, `dashboard/`, `experience/` subdirectories — glass-panel/glass-button are the two reusable primitives; no dedicated `<GlassPanel>` React wrapper component was found, so glass styling is applied directly via class name rather than componentized
 
 ## Component Patterns
@@ -170,8 +163,8 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 - Global `:focus-visible` outline defined in `globals.css` ensures keyboard-focus visibility app-wide
 - Only 13 files across the whole `dashboard-next/src/components` tree contain any `aria-*` attribute — accessibility coverage is targeted at audio controls and a couple of banners, not comprehensive
 - No semantic landmark usage (`<nav>`, `<main>`, skip links) confirmed during this scan — verify in `src/app/layout.tsx` before assuming
-- No `alt` text audit performed; maps, charts (deck.gl, recharts, leaflet) are visually dense and have no evidence of a text-equivalent/data-table fallback
-- No automated accessibility testing (axe, Lighthouse CI) configured — see TESTING.md
+- No `alt` text audit performed; the MapLibre maps and Observable Plot charts are visually dense and have no text-equivalent/data-table fallback yet (axe regression tests in `tests/e2e/a11y.spec.ts` guard against new serious or critical violations)
+- Automated accessibility testing: `@axe-core/playwright` in `tests/e2e/a11y.spec.ts` (no Lighthouse CI)
 
 <!-- GSD:conventions-end -->
 
@@ -196,9 +189,8 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 | Inference container | SurfPerch embedding extraction | `infrastructure/lambda_container/inference.py` |
 | Next.js dashboard | Upload/analyze UX, site explorer, immersive experience | `dashboard-next/src/app/` |
 | Zustand analysis-store | Client state machine for upload→analyze→poll→results | `dashboard-next/src/stores/analysis-store.ts` |
-| Zustand vitality-store | Reef "health glow" animation target + band energy | `dashboard-next/src/stores/vitality-store.ts` |
 | API client | Typed fetch wrapper + polling loop | `dashboard-next/src/lib/api.ts` |
-| Color engine | Vitality value → HSL theme colors | `dashboard-next/src/lib/color-engine.ts` |
+| Feature modules | New code behind a legacy-import fence: contract client, MapLibre maps, Observable Plot charts, client-error reporting | `dashboard-next/src/features/` |
 
 ## Pattern Overview
 
@@ -218,9 +210,9 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 - Location: `lambdas/*/handler.py`, `infrastructure/lambda_container/inference.py`
 - Depends on: S3, DynamoDB, each other (one-directional chain)
 - Used by: API Gateway (router only); internal chain invokes the rest
-- Purpose: upload UI, polling UX, data visualization, immersive audio-reactive experience, reference site explorer
+- Purpose: upload UI, polling UX, data visualization, immersive audio experience, reference site explorer
 - Location: `dashboard-next/src/app/`
-- Depends on: `lib/api.ts` (HTTP), zustand stores, hooks, components
+- Depends on: `lib/api.ts` (one API client honouring `NEXT_PUBLIC_API_URL`), `features/contract` (the versioned data contract), zustand store, hooks, components
 - Used by: end users
 
 ## Data Flow
@@ -231,8 +223,8 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 
 ### Immersive Audio Experience (`/experience`)
 
-- Zustand (`create()`, no middleware) for both cross-cutting stores; components read via the hook for reactive subscriptions or `getState()`/`setState()` directly inside rAF loops to avoid re-render thrashing.
-- `@tanstack/react-query` (`QueryClient`) is initialized in `app/providers.tsx` but `lib/api.ts`'s polling loop itself does not use react-query — polling is a hand-rolled `while` loop with `setTimeout`.
+- Zustand (`create()`, no middleware) for the analysis store; components read it via the hook for reactive subscriptions or `getState()`/`setState()` where re-render thrashing matters.
+- `@tanstack/react-query` (`QueryClient`, defaults asserted by a unit test) is initialized in `app/providers.tsx` and used by the contract client; `lib/api.ts`'s polling loop itself does not use react-query — polling is a hand-rolled `while` loop with `setTimeout`.
 - No server-side session/auth state; all state is client-local per browser tab.
 
 ## Key Abstractions
@@ -242,24 +234,22 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 - Pattern: class with private `request<T>()` wrapper, exported as a module-level singleton `api`
 - Purpose: JSON-serialize DynamoDB `Decimal` values returned from `get_item`/`query`
 - Pattern: custom `json.JSONEncoder` subclass passed as `cls=` to every `json.dumps`
-- Purpose: minimal global state without context providers; `analysis-store` for the upload/poll lifecycle, `vitality-store` for animation target + band energy
-- Pattern: plain `create<T>((set) => ({...}))`, actions co-located with state, consumed via `getState()` in perf-sensitive rAF loops and via the hook elsewhere
-- Purpose: domain-specific decomposition of the audio spectrum into biologically meaningful bands
-- Examples: defined independently in `dashboard-next/src/hooks/useAudioVisualBridge.ts` (`REEF_BANDS` const) and `dashboard-next/src/components/spectrogram/FrequencyBands.ts` — **not shared**, see STRUCTURE.md duplication note
+- Purpose: minimal global state without context providers; `analysis-store` for the upload/poll lifecycle
+- Pattern: plain `create<T>((set) => ({...}))`, actions co-located with state
 
 ## Entry Points
 
 - Location: `dashboard-next/src/app/layout.tsx`
-- Triggers: every route; wraps in `Providers` (react-query + vitality loop + BackgroundCanvas) and `ConditionalShell` (nav/footer, hidden on `/experience/*`)
+- Triggers: every route; wraps in `Providers` (react-query, contract version sync, client-error reporter), `ConditionalShell` (nav/footer, hidden on `/experience/*`) and Vercel Speed Insights
 - Responsibilities: global CSS import, font setup, shell composition
-- `/` — `dashboard-next/src/app/page.tsx` — landing + `SampleGallery` (import unresolved, see note below)
+- `/` — `dashboard-next/src/app/page.tsx` — landing + `SampleGallery` (`components/gallery`)
 - `/about` — `dashboard-next/src/app/about/page.tsx`
-- `/sites` — `dashboard-next/src/app/sites/page.tsx` — Leaflet `WorldMap`
+- `/sites` — `dashboard-next/src/app/sites/page.tsx` — MapLibre `WorldMap` (`features/map`)
 - `/dashboard` — `dashboard-next/src/app/dashboard/page.tsx`
 - `/dashboard/analyze` — `dashboard-next/src/app/dashboard/analyze/page.tsx` — upload/classify flow, uses legacy `components/audio/SpectrogramCanvas`
 - `/dashboard/compare` — `dashboard-next/src/app/dashboard/compare/page.tsx`
-- `/dashboard/map` — `dashboard-next/src/app/dashboard/map/page.tsx` — deck.gl `ReefMap`
-- `/experience` — `dashboard-next/src/app/experience/page.tsx` (own `layout.tsx`, immersive/no-chrome) — heaviest page, 600+ lines, hosts the audio-reactive pipeline
+- `/dashboard/map` — `dashboard-next/src/app/dashboard/map/page.tsx` — MapLibre `ReefMap` (`features/map`, circle layers on a GeoJSON source)
+- `/experience` — `dashboard-next/src/app/experience/page.tsx` (own `layout.tsx`, immersive/no-chrome) — demo, compare and sample states; audio playback and the upload flow
 - `lambdas/router/handler.py::handler(event, context)` — API Gateway proxy entry
 - `lambdas/preprocessor/handler.py::handler` — invoked async by router
 - `lambdas/classifier/handler.py::handler` — invoked async by preprocessor
@@ -267,17 +257,15 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 
 ## Architectural Constraints
 
-- **Threading:** Browser-side, all real-time work (band energy, vitality lerp, spectrogram) runs on `requestAnimationFrame` on the main thread — no Web Workers or `AudioWorklet`; heavy per-frame math is kept intentionally cheap (RMS over small typed-array slices).
-- **Global state:** Module-level zustand stores (`analysis-store.ts`, `vitality-store.ts`) are effectively app-wide singletons; `lib/api.ts` exports a singleton `ApiClient` instance (`api`).
+- **Threading:** Browser-side audio analysis (the analyser-driven spectrogram on `/dashboard/analyze` and compare) runs on `requestAnimationFrame` on the main thread — no Web Workers or `AudioWorklet`; the decorative ambient layer (background canvas, caustics, particles, vitality store, colour engine) was removed in Phase 3.
+- **Global state:** the module-level zustand `analysis-store.ts` is an app-wide singleton; `lib/api.ts` exports a singleton `ApiClient` instance (`api`).
 - **Async fire-and-forget chain:** Router→Preprocessor→Classifier uses `InvocationType='Event'` with no dead-letter queue visible in the explored code — a crash mid-chain surfaces only as a stuck `stage` in DynamoDB until a client times out polling (60 × 2s = 120s in `ApiClient.pollAnalysis`).
 - **Region detection is descriptive only:** `lambdas/classifier/region_detection.py` names the biogeographic region from static bounding boxes and reports distance to the nearest real training site (`in_training_region` within 50 km); it never scales probabilities or confidence (D-12); no runtime learning.
-- **Missing committed files:** `@/components/gallery/SampleGallery` (imported in `dashboard-next/src/app/page.tsx:5`) and `@/lib/samples` (imported in `dashboard-next/src/app/experience/page.tsx`) are referenced but do not exist in the working tree or git history — the app will fail to build/run until these are added. See STRUCTURE.md.
+- **Feature fence:** nothing under `dashboard-next/src/features` may import `@/components` (ESLint `no-restricted-imports` plus `scripts/check-feature-fence.mjs`), and only `features/contract` may reach the contract CDN (`scripts/check-contract-fence.mjs`).
 
 ## Anti-Patterns
 
-### Duplicated frequency-band constants
-
-### Two parallel SpectrogramCanvas implementations
+- None recorded since the Phase 3 cleanup (the duplicated band constants and the second SpectrogramCanvas went with the ambient layer).
 
 ## Error Handling
 

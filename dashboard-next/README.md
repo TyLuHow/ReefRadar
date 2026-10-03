@@ -14,11 +14,12 @@ A modern React/Next.js web dashboard for the ReefRadar coral reef acoustic healt
 
 ## Tech Stack
 
-- **Framework**: Next.js 14+ with App Router
+- **Framework**: Next.js 16 (React 19) with App Router
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS
 - **Data Fetching**: TanStack Query (React Query)
-- **Charts**: Recharts
+- **Charts**: Observable Plot and d3 modules (`src/features/charts`)
+- **Maps**: MapLibre (`maplibre-gl` with `react-map-gl/maplibre`, `src/features/map`)
 - **Icons**: Lucide React
 - **Notifications**: Sonner
 
@@ -26,7 +27,7 @@ A modern React/Next.js web dashboard for the ReefRadar coral reef acoustic healt
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20.9+
 - npm or yarn
 
 ### Installation

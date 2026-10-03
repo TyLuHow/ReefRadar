@@ -380,5 +380,5 @@ Canonical citations: [docs/CITATIONS.md](./docs/CITATIONS.md)
 
 - **SurfPerch Model:** SurfPerch (Williams et al. 2024, arXiv:2404.16436), pre-trained on reef, bird and general audio — Google Research
 - **Reference Data:** Williams & Jones 2025, *Coral Reef Soundscapes from a Global Restoration Programme*, [DOI: 10.5522/04/29958062](https://doi.org/10.5522/04/29958062), CC BY 4.0 — University College London (UCL)
-- **Built with:** AWS Lambda, Next.js 14, TensorFlow, perch-hoplite
+- **Built with:** AWS Lambda, Next.js 16 (React 19), MapLibre, TensorFlow, perch-hoplite
 - **Dashboard Hosting:** [Vercel](https://vercel.com)

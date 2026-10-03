@@ -228,7 +228,7 @@ Trained on real SurfPerch embeddings from 7 MARRS sites (ind_H4, ind_H5, ind_N1,
 
 #### Next.js Dashboard (Primary)
 **Location:** `dashboard-next/`
-**Stack:** Next.js 14 (App Router), TypeScript, Tailwind CSS, Leaflet maps
+**Stack:** Next.js 16 (App Router, React 19), TypeScript, Tailwind CSS, MapLibre maps (maplibre-gl with react-map-gl), Observable Plot and d3 modules for charts
 
 **Pages:**
 - `/` - Upload and analyze audio with optional coordinates
@@ -239,7 +239,7 @@ Trained on real SurfPerch embeddings from 7 MARRS sites (ind_H4, ind_H5, ind_N1,
 - Drag-and-drop file upload
 - Optional lat/lon input for region detection
 - Animated probability distribution bars
-- Interactive Leaflet map of similar sites
+- Interactive MapLibre map of similar sites
 - Region detection warnings for out-of-distribution
 
 ## Security Considerations

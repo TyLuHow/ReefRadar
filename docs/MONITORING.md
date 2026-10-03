@@ -114,10 +114,21 @@ curl -i -X POST "https://<your-deployment-host>/api/client-error/" \
 
 ### Status of this check
 
-As of this page's date, the route and the error pages are tested locally (unit and browser tests), and the build
-lists `/api/client-error` as a dynamic route. The probe above has **not yet been run against a Vercel deployment of
-this branch** (the tooling used to write this page was not permitted to create a preview deployment). Until you or
-the next session runs it, treat "the log line shows up on Vercel" as unconfirmed.
+Checked on 2026-10-03 against a preview deployment of this branch (built from commit `4a2721a`, previously
+`5bfe91d` before the 2026-10-03 history rewrite; Next.js 16.3.8 on Vercel). The preview has Deployment Protection on,
+so the requests were sent with `vercel curl`.
+
+| Check | Result |
+|---|---|
+| Build state | Ready |
+| `GET /_vercel/speed-insights/script.js` | 200 |
+| `POST /api/client-error/` with the probe payload above | 204 |
+| `vercel logs` | the line `client-error {"evt":"client-error","v":1,"source":"window-error","name":"Error","message":"phase-3 monitoring probe",...}` was seen |
+| Malformed probe (`stack: null`) | 400, and nothing was logged |
+
+The remaining human check is the one only you can do with your Vercel login: within one hour of a probe, open the Logs
+tab with the filters above and confirm the line there, and confirm the Speed Insights tab exists. Whether Speed
+Insights counts visits to a protected preview was not checked.
 
 ## Deferred
 
