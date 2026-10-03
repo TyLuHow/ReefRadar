@@ -204,7 +204,11 @@ export interface SeriesLineOptions {
  * the line uses a d3-shape curve factory and every point is a labelled dot.
  */
 export function seriesLine(points: SeriesPoint[] | null | undefined, options: SeriesLineOptions): FigureSpec {
-  const data = (points ?? []).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+  // Sorted by x (on a copy): Plot.line draws in input order and curveMonotoneX assumes ascending x,
+  // so unsorted input would self-overlap and the hidden table would list rows in arbitrary order.
+  const data = (points ?? [])
+    .filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y))
+    .sort((a, b) => a.x - b.x);
   const formatX = format(options.xFormat ?? ',');
   const formatY = format(options.yFormat ?? ',~g');
 

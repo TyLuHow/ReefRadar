@@ -174,6 +174,14 @@ describe('PlotFigure: series line (PLAT-02)', () => {
     expect(path.getAttribute('d')).toMatch(/C/);
   });
 
+  it('sorts an unsorted series by x for the line, the dots and the hidden table, without mutating the input (WR-04)', () => {
+    const unsorted = [POINTS[2]!, POINTS[0]!, POINTS[1]!];
+    const copy = unsorted.map((p) => ({ ...p }));
+    const { spec } = renderSeries(unsorted);
+    expect(spec.table.rows.map((r) => r[0])).toEqual(['1,000', '2,000', '3,000']);
+    expect(unsorted).toEqual(copy);
+  });
+
   it('formats x ticks with d3-format', () => {
     const { container } = renderSeries(POINTS);
     const ticks = Array.from(container.querySelectorAll('svg text')).map((t) => t.textContent);
