@@ -69,8 +69,19 @@ async function blockMapTiles(page: Page): Promise<void> {
       contentType: 'application/json',
       body: JSON.stringify({
         version: 8,
-        sources: {},
-        layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#0d0d0d' } }],
+        // An empty source that carries the real style's attribution text, so the capture shows it.
+        sources: {
+          stub: {
+            type: 'geojson',
+            data: { type: 'FeatureCollection', features: [] },
+            attribution:
+              '&copy; <a href="https://carto.com/attributions">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          },
+        },
+        layers: [
+          { id: 'background', type: 'background', paint: { 'background-color': '#0d0d0d' } },
+          { id: 'stub-fill', type: 'fill', source: 'stub', paint: { 'fill-color': '#000000' } },
+        ],
       }),
     })
   );
