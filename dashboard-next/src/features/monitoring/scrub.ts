@@ -17,7 +17,7 @@ export const MAX_STACK_LINE = 200;
 export const MAX_ROUTE = 200;
 export const MAX_DIGEST = 100;
 /** Input is cut to this before any regular expression runs, bounding the work on hostile input. */
-const MAX_SCRUB_INPUT = 10_000;
+const MAX_SCRUB_INPUT = 4_000;
 
 export interface ClientErrorReport {
   v: 1;
@@ -42,21 +42,45 @@ const URL_PATTERN = /\b(?:https?|wss?|ftp|file|blob|data):\S+/gi;
 // X-Amz-*=value pairs that survive outside a URL, with the separator that introduced them.
 const AMZ_PATTERN = /[?&]?X-Amz-[A-Za-z0-9-]+=[^&\s]*/gi;
 const EMAIL_PATTERN = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
-// Path-like tokens (containing a slash, or ending in a file extension) lose ?query and #fragment.
-const SLASH_QUERY_PATTERN = /(\S*\/\S*?)[?#]\S*/g;
-const FILE_QUERY_PATTERN = /(\S+\.[A-Za-z0-9]{1,5})[?#]\S*/g;
+const WHITESPACE_RUN_PATTERN = /\S+/g;
+const FILE_EXTENSION_TAIL_PATTERN = /\S[.][A-Za-z0-9]{1,5}$/;
 const TOKEN_PATTERN = /[A-Za-z0-9_-]{24,}/g;
+
+/** True when the characters just before `queryAt` look like `name.ext` (bounded look-behind, O(1)). */
+function endsWithFileExtension(token: string, queryAt: number): boolean {
+  return FILE_EXTENSION_TAIL_PATTERN.test(token.slice(Math.max(0, queryAt - 7), queryAt));
+}
+
+/**
+ * Path-like tokens (containing a slash, or ending in a file extension) lose ?query and #fragment.
+ *
+ * One linear pass over whitespace-separated tokens, each scanned left to right once. This
+ * replaces two backtracking regular expressions that were cubic and quadratic on a long
+ * run of slashes or dots (CR-01). The cut is at the first `?` or `#` that qualifies, so a
+ * second query later in the same token cannot survive either.
+ */
+function stripPathQueries(text: string): string {
+  return text.replace(WHITESPACE_RUN_PATTERN, (token) => {
+    const hasSlash = token.includes('/');
+    for (let i = 0; i < token.length; i += 1) {
+      const ch = token[i];
+      if ((ch === '?' || ch === '#') && (hasSlash || endsWithFileExtension(token, i))) {
+        return token.slice(0, i);
+      }
+    }
+    return token;
+  });
+}
 
 /** Replace anything that could identify a visitor, a file or a credential. Not truncated. */
 export function scrubText(input: string): string {
-  return input
-    .slice(0, MAX_SCRUB_INPUT)
-    .replace(URL_PATTERN, '[url]')
-    .replace(AMZ_PATTERN, '')
-    .replace(EMAIL_PATTERN, '[email]')
-    .replace(SLASH_QUERY_PATTERN, '$1')
-    .replace(FILE_QUERY_PATTERN, '$1')
-    .replace(TOKEN_PATTERN, '[token]');
+  return stripPathQueries(
+    input
+      .slice(0, MAX_SCRUB_INPUT)
+      .replace(URL_PATTERN, '[url]')
+      .replace(AMZ_PATTERN, '')
+      .replace(EMAIL_PATTERN, '[email]'),
+  ).replace(TOKEN_PATTERN, '[token]');
 }
 
 function cut(text: string, max: number): string {

@@ -49,6 +49,44 @@ describe('scrubText', () => {
   });
 });
 
+describe('scrubText work on hostile input (CR-01)', () => {
+  // Generous ceiling: the linear pass takes a few ms; the old cubic regex took ~350 ms on 1600 slashes
+  // and minutes on 10 000, so any super-linear regression blows far past this.
+  const BUDGET_MS = 50;
+  const adversarial: Array<[string, string]> = [
+    ['a 4 KB run of slashes', '/'.repeat(4_096)],
+    ['a 10 KB run of slashes (cut to the input cap)', '/'.repeat(10_000)],
+    ['alternating a/ segments with no query', 'a/'.repeat(5_000)],
+    ['a long run of dots', '.'.repeat(4_096)],
+    ['a dotted token with no query', 'a.'.repeat(2_048)],
+    ['many query markers in one slash token', '/?'.repeat(2_048)],
+    ['a long run of email-safe characters with no @', 'a.b-c'.repeat(800)],
+    ['an @ followed by a long dotted domain', `a@${'a.'.repeat(2_000)}`],
+    ['a long token that ends in a fragment', `${'/x'.repeat(2_000)}#end`],
+  ];
+
+  it.each(adversarial)('scrubs %s in well under 50 ms', (_label, input) => {
+    const started = performance.now();
+    scrubText(input);
+    scrubStack(input);
+    scrubMessage(input);
+    expect(performance.now() - started).toBeLessThan(BUDGET_MS);
+  });
+
+  it('still removes every query and fragment from a path token, including a second one', () => {
+    expect(scrubText('GET /a?b=1/c?d=2 x')).toBe('GET /a x');
+    expect(scrubText('see reef.wav?x=1#y ok')).toBe('see reef.wav ok');
+    expect(scrubText('a.wav?x=b.png?y=2')).toBe('a.wav');
+    expect(scrubText('/a/b/c#frag')).toBe('/a/b/c');
+  });
+
+  it('leaves ordinary punctuation and extension-less words alone', () => {
+    expect(scrubText('did it work? yes')).toBe('did it work? yes');
+    expect(scrubText('Error: x#1 failed')).toBe('Error: x#1 failed');
+    expect(scrubText('v1.2 shipped')).toBe('v1.2 shipped');
+  });
+});
+
 describe('scrubMessage, scrubStack and scrubRoute', () => {
   it('cuts a 1000 character message to 300', () => {
     const out = scrubMessage('a b '.repeat(250));
