@@ -62,6 +62,23 @@ async function recordWebGL2(page: Page): Promise<boolean> {
   return available;
 }
 
+/**
+ * The real-render tests need WebGL2. Locally a machine without it skips them; in CI (GitHub
+ * Actions sets CI) a missing WebGL2 is a failure, so the attribution, popup, fly-to and
+ * keyboard checks (the OSM and CARTO licence checks) can never vanish silently (WR-06).
+ */
+async function requireWebGL2(page: Page, reason: string) {
+  const available = await recordWebGL2(page);
+  if (process.env.CI) {
+    expect(
+      available,
+      'CI image must provide WebGL2 (software GL); the real-render map tests may not be skipped in CI',
+    ).toBe(true);
+  } else {
+    test.skip(!available, reason);
+  }
+}
+
 async function waitForMap(page: Page) {
   await page.waitForFunction(
     () => {
@@ -81,10 +98,7 @@ test.describe('monitoring map (MapLibre)', () => {
     await stubMapStyle(page);
     await page.goto(MAP_PATH, { waitUntil: 'load' });
 
-    const webgl2 = await recordWebGL2(page);
-    if (!webgl2) {
-      test.skip(true, 'No WebGL2 in this browser: the real-render branch cannot run here.');
-    }
+    await requireWebGL2(page, 'No WebGL2 in this browser: the real-render branch cannot run here.');
 
     await expect(page.getByRole('region', { name: 'Monitoring network map' })).toBeVisible();
     await expect(page.locator('.maplibregl-canvas')).toBeVisible();
@@ -125,7 +139,7 @@ test.describe('monitoring map (MapLibre)', () => {
     await mockApi(page);
     await stubMapStyle(page);
     await page.goto(MAP_PATH, { waitUntil: 'load' });
-    test.skip(!(await recordWebGL2(page)), 'No WebGL2 in this browser.');
+    await requireWebGL2(page, 'No WebGL2 in this browser.');
     await waitForMap(page);
 
     // Pick the most geographically isolated full-data site, zoom onto it, then click the
@@ -179,7 +193,7 @@ test.describe('monitoring map (MapLibre)', () => {
     await mockApi(page);
     await stubMapStyle(page);
     await page.goto(MAP_PATH, { waitUntil: 'load' });
-    test.skip(!(await recordWebGL2(page)), 'No WebGL2 in this browser.');
+    await requireWebGL2(page, 'No WebGL2 in this browser.');
     await waitForMap(page);
 
     await page.getByRole('combobox').selectOption('kenya');
@@ -202,7 +216,7 @@ test.describe('monitoring map (MapLibre)', () => {
     await mockApi(page);
     await stubMapStyle(page);
     await page.goto(MAP_PATH, { waitUntil: 'load' });
-    test.skip(!(await recordWebGL2(page)), 'No WebGL2 in this browser.');
+    await requireWebGL2(page, 'No WebGL2 in this browser.');
     await waitForMap(page);
 
     await page.getByRole('combobox').selectOption('kenya');
@@ -248,7 +262,7 @@ test.describe('sites world map (MapLibre, OSM raster)', () => {
     await mockApi(page);
     await stubOsmTiles(page);
     await page.goto(SITES_PATH, { waitUntil: 'load' });
-    test.skip(!(await recordWebGL2(page)), 'No WebGL2 in this browser: the real-render branch cannot run here.');
+    await requireWebGL2(page, 'No WebGL2 in this browser: the real-render branch cannot run here.');
 
     await expect(page.getByRole('region', { name: 'Map of reef recording sites' })).toBeVisible();
     await expect(page.locator('.maplibregl-canvas')).toBeVisible();
@@ -339,7 +353,7 @@ test.describe('analysis result mini map (MapLibre)', () => {
     const pageErrors: string[] = [];
     page.on('pageerror', (err) => pageErrors.push(err.message));
     await runMockedAnalysis(page);
-    test.skip(!(await recordWebGL2(page)), 'No WebGL2 in this browser: the real-render branch cannot run here.');
+    await requireWebGL2(page, 'No WebGL2 in this browser: the real-render branch cannot run here.');
 
     const results = page.getByRole('region', { name: 'Map of similar reference sites' });
     await expect(results).toBeVisible();

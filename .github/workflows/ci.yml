@@ -56,6 +56,10 @@ jobs:
     defaults:
       run:
         working-directory: dashboard-next
+    env:
+      # Explicit (GitHub also sets it): tests/e2e/maps.spec.ts fails, rather than skips, when
+      # this image has no WebGL2, so the real-render map checks cannot silently vanish (WR-06).
+      CI: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
