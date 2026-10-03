@@ -13,6 +13,10 @@ on:
         description: "Run live-API smoke tests (never on a normal push)"
         type: boolean
         default: false
+      before_ref:
+        description: "Ref whose tree is captured as the review 'before'"
+        type: string
+        default: "1c74f866ca1a31eb8fe1dd7c6ac6ba6882154fa1"
 
 permissions:
   contents: read
@@ -142,6 +146,70 @@ jobs:
           name: playwright-report-visual
           path: dashboard-next/playwright-report
           retention-days: 7
+
+  # Review-only unhidden captures for the owner's before/after page (03-14). Runs only
+  # in the snapshot dispatch, next to the visual job's regeneration; never on push.
+  # before_ref is consumed only by actions/checkout's `ref:` below. No shell step
+  # interpolates an input (T-03-14-01).
+  review:
+    name: review captures (snapshot dispatch only)
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.update_snapshots }}
+    needs: web
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+    defaults:
+      run:
+        working-directory: dashboard-next
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.before_ref }}
+          path: before
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            dashboard-next/package-lock.json
+            before/dashboard-next/package-lock.json
+      - name: Install head dependencies
+        run: npm ci
+      - name: Capture head tree (unhidden canvases and maps)
+        env:
+          REVIEW_OUT: review-captures
+        run: npx playwright test -c playwright.review.config.ts
+      - name: Copy the review spec and config into the before tree
+        if: ${{ !cancelled() }}
+        working-directory: .
+        run: |
+          cp dashboard-next/tests/e2e/review.spec.ts before/dashboard-next/tests/e2e/review.spec.ts
+          cp dashboard-next/playwright.review.config.ts before/dashboard-next/playwright.review.config.ts
+      - name: Install before-tree dependencies
+        if: ${{ !cancelled() }}
+        working-directory: before/dashboard-next
+        run: npm ci
+      - name: Capture before tree (unhidden canvases and maps)
+        if: ${{ !cancelled() }}
+        working-directory: before/dashboard-next
+        env:
+          REVIEW_OUT: review-captures
+        run: npx playwright test -c playwright.review.config.ts
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-captures-after
+          path: dashboard-next/review-captures
+          retention-days: 14
+          if-no-files-found: warn
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: review-captures-before
+          path: before/dashboard-next/review-captures
+          retention-days: 14
+          if-no-files-found: warn
 
   live-smoke:
     name: live-smoke (manual dispatch only)

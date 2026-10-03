@@ -41,7 +41,9 @@ export default defineConfig({
       // gallery-parity spec must be re-excluded here explicitly, or they
       // silently join this fixture-mocked project and hit the live API in
       // CI (01-08, D-22: e2e tests must never hit the live API).
-      testIgnore: /visual\.spec\.ts|-live\.spec\.ts|gallery-parity\.spec\.ts/,
+      // review.spec.ts (03-14) is the unhidden before/after capture run by
+      // playwright.review.config.ts only; it asserts nothing and must never gate.
+      testIgnore: /visual\.spec\.ts|-live\.spec\.ts|gallery-parity\.spec\.ts|review\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
     },
     {
