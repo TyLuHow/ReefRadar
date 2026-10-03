@@ -60,6 +60,20 @@ async function blockMapTiles(page: Page): Promise<void> {
   await page.route(/cartocdn\.com/, (route) =>
     route.fulfill({ status: 200, contentType: 'image/png', body: TRANSPARENT_PNG })
   );
+  // The dark basemap is a style document, not a tile: answering it with a PNG makes the style
+  // invalid, so the map never loads and draws no markers or attribution (seen in the first
+  // 03-15 dispatch). Registered last so it wins over the generic route above.
+  await page.route(/cartocdn\.com.*style\.json/, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        version: 8,
+        sources: {},
+        layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#0d0d0d' } }],
+      }),
+    })
+  );
 }
 
 async function reachCompletedAnalysis(page: Page): Promise<void> {
