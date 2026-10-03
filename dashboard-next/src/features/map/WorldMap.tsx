@@ -130,7 +130,10 @@ export function WorldMap({
 
   return (
     <MapShell height={height} className={`relative ${className}`} ariaLabel="Map of reef recording sites">
+      {(onMapError) => (
+      <>
       <Map
+        onError={onMapError}
         ref={mapRef}
         mapLib={mapLib}
         mapStyle={WORLD_MAP_STYLE}
@@ -156,6 +159,8 @@ export function WorldMap({
       </Map>
 
       {showLegend && Object.keys(statusCounts).length > 0 && <MapLegend statusCounts={statusCounts} />}
+      </>
+      )}
     </MapShell>
   );
 }

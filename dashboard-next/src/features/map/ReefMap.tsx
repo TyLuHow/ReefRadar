@@ -154,8 +154,11 @@ export function ReefMap({
   }, []);
 
   return (
-    <MapShell className={className} height={height} ariaLabel="Monitoring network map">
+    <MapShell className={className} height={height} ariaLabel="Monitoring network map" styleUrl={MAP_STYLE}>
+      {(onMapError) => (
+      <>
       <Map
+        onError={onMapError}
         ref={mapRef}
         mapLib={mapLib}
         mapStyle={MAP_STYLE}
@@ -245,6 +248,8 @@ export function ReefMap({
             </span>
           </div>
         </div>
+      )}
+      </>
       )}
     </MapShell>
   );

@@ -110,7 +110,10 @@ export function MiniMap({ similarSites, highlightCount = 3, className = '' }: Mi
       ariaLabel="Map of similar reference sites"
       compactFallback
     >
+      {(onMapError) => (
+      <>
       <Map
+        onError={onMapError}
         ref={mapRef}
         mapLib={mapLib}
         mapStyle={MINI_MAP_STYLE}
@@ -160,6 +163,8 @@ export function MiniMap({ similarSites, highlightCount = 3, className = '' }: Mi
           </div>
         ))}
       </div>
+      </>
+      )}
     </MapShell>
   );
 }

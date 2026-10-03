@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import type { Site } from '@/types';
 
 // jsdom has no WebGL: react-map-gl/maplibre and the setup module (which imports the real
@@ -25,9 +25,11 @@ vi.mock('react-map-gl/maplibre', () => ({
   AttributionControl: () => <div data-testid="attribution" />,
 }));
 vi.mock('maplibre-gl/dist/maplibre-gl.css', () => ({}));
+const reportClientError = vi.fn();
+vi.mock('@/features/monitoring', () => ({ reportClientError: (...args: unknown[]) => reportClientError(...args) }));
 vi.mock('@/features/map/setup', () => ({ mapLib: Promise.resolve({}) }));
 
-import { MapShell, MapErrorBoundary } from '@/features/map/MapShell';
+import { MapShell, MapErrorBoundary, isFatalMapError, type MapErrorHandler } from '@/features/map/MapShell';
 import { ReefMap } from '@/features/map/ReefMap';
 
 type GetContext = typeof HTMLCanvasElement.prototype.getContext;
@@ -38,6 +40,7 @@ function stubGetContext(impl: (type: string) => unknown) {
 }
 
 beforeEach(() => {
+  reportClientError.mockClear();
   sourceProps.length = 0;
   layerIds.length = 0;
 });
@@ -97,6 +100,58 @@ describe('MapShell', () => {
   });
 });
 
+describe('MapShell map error events (WR-02)', () => {
+  beforeEach(() => {
+    stubGetContext((type) => (type === 'webgl2' ? {} : null));
+  });
+
+  function renderWithHandler(styleUrl?: string) {
+    let handler: MapErrorHandler | undefined;
+    render(
+      <MapShell height="600px" ariaLabel="Monitoring network map" styleUrl={styleUrl}>
+        {(onMapError) => {
+          handler = onMapError;
+          return <div>child</div>;
+        }}
+      </MapShell>,
+    );
+    return () => handler as MapErrorHandler;
+  }
+
+  it('hands the error handler to a function child', () => {
+    const get = renderWithHandler();
+    expect(typeof get()).toBe('function');
+    expect(screen.getByText('child')).toBeInTheDocument();
+  });
+
+  it('swaps in the failure panel and reports when the map fails to initialise (no map instance)', () => {
+    const get = renderWithHandler();
+    const error = new Error('Invalid mapLib');
+    act(() => get()({ error, target: null }));
+    expect(screen.getByText('Map failed to initialize')).toBeInTheDocument();
+    expect(screen.queryByText('child')).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Monitoring network map' })).toBeInTheDocument();
+    expect(reportClientError).toHaveBeenCalledWith(error, { source: 'error-boundary' });
+  });
+
+  it('treats a failed style document as fatal but a tile error as non-fatal (reported, map stays)', () => {
+    const styleUrl = 'https://basemaps.example.test/style.json';
+    const get = renderWithHandler(styleUrl);
+    act(() => get()({ error: Object.assign(new Error('Not Found'), { url: 'https://tiles.example.test/1/2/3.png' }), target: {} }));
+    expect(screen.getByText('child')).toBeInTheDocument();
+    expect(reportClientError).toHaveBeenCalledTimes(1);
+    act(() => get()({ error: Object.assign(new Error('Not Found'), { url: styleUrl }), target: {} }));
+    expect(screen.getByText('Map failed to initialize')).toBeInTheDocument();
+  });
+
+  it('isFatalMapError: only init failures and the style url', () => {
+    expect(isFatalMapError({ target: null })).toBe(true);
+    expect(isFatalMapError({ target: {}, error: new Error('x') })).toBe(false);
+    expect(isFatalMapError({ target: {}, error: { url: 's' } }, 's')).toBe(true);
+    expect(isFatalMapError({ target: {}, error: { url: 's' } })).toBe(false);
+  });
+});
+
 describe('MapErrorBoundary', () => {
   it('renders "Map failed to initialize" when a child throws', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -109,7 +164,9 @@ describe('MapErrorBoundary', () => {
       </MapErrorBoundary>,
     );
     expect(screen.getByText('Map failed to initialize')).toBeInTheDocument();
-    expect(screen.getByText(/WebGL context could not be created/)).toBeInTheDocument();
+    expect(screen.getByText(/map could not be displayed/)).toBeInTheDocument();
+    // WR-02: a boundary-caught error reaches the monitoring reporter.
+    expect(reportClientError).toHaveBeenCalledWith(expect.any(Error), { source: 'error-boundary' });
     const icon = document.querySelector('svg');
     expect(icon?.getAttribute('stroke')).toBe('#c08081');
   });
