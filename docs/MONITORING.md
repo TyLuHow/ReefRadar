@@ -60,8 +60,11 @@ request cannot put these in your logs.
 - Web addresses (with their query strings and fragments), email addresses, IP addresses, runs of 24 or more
   letters, digits, `-` or `_` (likely tokens or ids), and `X-Amz-` signing parameters are replaced with `[url]`,
   `[email]`, `[ip]` or `[token]`, or removed. The one exception is a same-site build asset
-  (`https://host/_next/...`): its path and `:line:col` are kept (origin, query and fragment are dropped) so a
-  minified stack frame still points at a file.
+  (`https://host/_next/...`): only its path up to the first `?`, `#` or `:`, plus a trailing `:line` or
+  `:line:col`, are kept, so a minified stack frame still points at a file. The origin, the whole query and
+  fragment (including anything in them that looks like a URL, a file name or contains a colon), and anything
+  else after the path are dropped. A digits-only tail such as `?v=1:23` can survive as `:23` because it is
+  indistinguishable from a line number.
 - Query strings and fragments are removed from any path-like token in one linear pass, so scrubbing hostile input
   takes bounded, short time.
 - Messages are cut to 300 characters; stacks to 8 lines of 200 characters.

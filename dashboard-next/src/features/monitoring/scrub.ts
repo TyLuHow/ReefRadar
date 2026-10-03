@@ -37,9 +37,30 @@ export interface ReportContext {
   digest?: string | null;
 }
 
-// A same-site build asset (`https://host/_next/...`) is public. Keep its path (the only thing that locates a
-// minified frame) and drop the origin, query and fragment; a trailing `:line:col` is outside the match and stays.
-const NEXT_ASSET_URL_PATTERN = /\bhttps?:\/\/[^\s/?#()]+(\/_next\/[^\s?#:()]*)(?:[?#][^\s:()]*)?/gi;
+// A same-site build asset (`https://host/_next/...`) is public. The whole token is consumed (to the next
+// whitespace) and rebuilt by keepAssetLocation, so nothing after the path can survive.
+const NEXT_ASSET_URL_PATTERN = /\bhttps?:\/\/[^\s/?#()]+(\/_next\/\S*)/gi;
+// A trailing `:line` or `:line:col`.
+const LOCATION_TAIL_PATTERN = /(?::\d+){1,2}$/;
+
+/**
+ * Keep the asset path and a trailing `:line:col`; drop the origin, query, fragment and anything else.
+ * The path stops at its first `?`, `#` or `:`, so a query or fragment that itself contains a colon, a URL
+ * or a file name (`?url=https://bucket.example/me.wav`, `#frag:secret/foo.wav`) is dropped whole. Trailing
+ * closing parentheses (a Chrome frame) are kept. Linear: one pass over a token that is consumed once.
+ */
+function keepAssetLocation(_match: string, pathAndRest: string): string {
+  let end = pathAndRest.length;
+  while (end > 0 && pathAndRest[end - 1] === ')') end -= 1;
+  const closing = pathAndRest.slice(end);
+  const body = pathAndRest.slice(0, end);
+  const location = LOCATION_TAIL_PATTERN.exec(body)?.[0] ?? '';
+  const beforeLocation = location ? body.slice(0, body.length - location.length) : body;
+  const stop = beforeLocation.search(/[?#:]/);
+  const path = stop === -1 ? beforeLocation : beforeLocation.slice(0, stop);
+  return path + location + closing;
+}
+
 // IP addresses written into a message: dotted IPv4, and IPv6 in full or `::` compressed form.
 const IPV4_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
 const IPV6_PATTERN = /\b(?:[A-Fa-f0-9]{1,4}:){3,7}[A-Fa-f0-9]{1,4}\b|\b(?:[A-Fa-f0-9]{1,4}:){1,7}:(?:[A-Fa-f0-9]{1,4}\b)?/g;
@@ -86,7 +107,7 @@ export function scrubText(input: string): string {
   return stripPathQueries(
     input
       .slice(0, MAX_SCRUB_INPUT)
-      .replace(NEXT_ASSET_URL_PATTERN, '$1')
+      .replace(NEXT_ASSET_URL_PATTERN, keepAssetLocation)
       .replace(URL_PATTERN, '[url]')
       .replace(AMZ_PATTERN, '')
       .replace(EMAIL_PATTERN, '[email]')

@@ -76,6 +76,10 @@ describe('scrubText work on hostile input (CR-01)', () => {
     ['dotted numbers', (n) => rep('1.', n)],
     ['colon-separated hex', (n) => rep('a:', n)],
     ['a long token-character run', (n) => rep('a', n)],
+    ['one build-asset URL with a long colon-and-digit tail', (n) => `https://h/_next/a?${rep(':1', n)}`],
+    ['one build-asset URL followed by a long run of closing parentheses', (n) => `https://h/_next/a:1:2${rep(')', n)}`],
+    ['repeated build-asset URL starts', (n) => rep('https://h/_next/a?b:1 ', n)],
+    ['repeated build-asset URL starts with no whitespace', (n) => rep('https://h/_next/', n)],
   ];
 
   function scrubAll(input: string): void {
@@ -164,6 +168,31 @@ describe('scrubMessage, scrubStack and scrubRoute', () => {
     expect(out).toContain('at t (/_next/static/chunks/main.js:7:8)');
     expect(out).not.toContain('site.example.com');
     expect(out).not.toContain('dpl=');
+  });
+
+  it('drops a query or fragment that contains a colon, a URL or a file name, keeping only path and line:col', () => {
+    const cases: Array<[string, string]> = [
+      [
+        'at e (https://x.com/_next/image?url=https://bkt.s3.amazonaws.com/uploads/me.wav?X-Amz-Signature=abc&w=64:1:2)',
+        'at e (/_next/image:1:2)',
+      ],
+      ['at e (https://x.com/_next/static/a.js?v=tok:SECRETSECRET:1:2)', 'at e (/_next/static/a.js:1:2)'],
+      ['at e (https://x.com/_next/static/a.js#frag:secret/foo.wav:1:2)', 'at e (/_next/static/a.js:1:2)'],
+      // no query: a colon inside the path still cannot smuggle a second URL through
+      // (the kept "https:1:2" then reads as a scheme, so the later URL pass turns it into [url])
+      ['at e (https://x.com/_next/https://evil.example/me.wav:1:2)', 'at e (/_next/[url]'],
+    ];
+    for (const [input, expected] of cases) {
+      const out = scrubStack(input);
+      expect(out).toBe(expected);
+      for (const leaked of ['bkt', 'amazonaws', 'me.wav', 'SECRET', 'secret/foo', 'X-Amz', 'evil']) {
+        expect(out).not.toContain(leaked);
+      }
+    }
+    expect(scrubText('https://h/_next/static/chunks/a.js:1:23456')).toBe('/_next/static/chunks/a.js:1:23456');
+    // Safari/Firefox frame shape (no parentheses) and an asset with no location
+    expect(scrubText('e@https://h/_next/static/a.js:7:8')).toBe('e@/_next/static/a.js:7:8');
+    expect(scrubText('load https://h/_next/static/a.js?v=1 failed')).toBe('load /_next/static/a.js failed');
   });
 
   it('still replaces a non-asset URL, even in a stack frame, with [url]', () => {
