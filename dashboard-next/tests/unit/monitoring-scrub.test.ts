@@ -50,27 +50,68 @@ describe('scrubText', () => {
 });
 
 describe('scrubText work on hostile input (CR-01)', () => {
-  // Generous ceiling: the linear pass takes a few ms; the old cubic regex took ~350 ms on 1600 slashes
-  // and minutes on 10 000, so any super-linear regression blows far past this.
-  const BUDGET_MS = 50;
-  const adversarial: Array<[string, string]> = [
-    ['a 4 KB run of slashes', '/'.repeat(4_096)],
-    ['a 10 KB run of slashes (cut to the input cap)', '/'.repeat(10_000)],
-    ['alternating a/ segments with no query', 'a/'.repeat(5_000)],
-    ['a long run of dots', '.'.repeat(4_096)],
-    ['a dotted token with no query', 'a.'.repeat(2_048)],
-    ['many query markers in one slash token', '/?'.repeat(2_048)],
-    ['a long run of email-safe characters with no @', 'a.b-c'.repeat(800)],
-    ['an @ followed by a long dotted domain', `a@${'a.'.repeat(2_000)}`],
-    ['a long token that ends in a fragment', `${'/x'.repeat(2_000)}#end`],
+  // Timing on shared CI hardware is noisy, so there is no tight wall-clock assertion. Two checks instead:
+  //  1. a generous absolute ceiling for one 4 KB call (the old cubic regex took minutes), and
+  //  2. near-linear scaling: cost per character at 4000 characters against 250 characters. Linear work
+  //     gives a ratio near 1, quadratic about 10 to 16, cubic far more; the limit of 4 leaves wide headroom.
+  // Each timing is the best of several rounds, which discards GC and scheduler spikes.
+  const CEILING_MS = 500;
+  const MAX_PER_CHAR_RATIO = 4;
+  const SMALL = 250;
+  const LARGE = 4_000;
+  const rep = (unit: string, n: number) => unit.repeat(Math.max(1, Math.floor(n / unit.length)));
+
+  const adversarial: Array<[string, (n: number) => string]> = [
+    ['a run of slashes', (n) => rep('/', n)],
+    ['alternating a/ segments with no query', (n) => rep('a/', n)],
+    ['a long run of dots', (n) => rep('.', n)],
+    ['a dotted token with no query', (n) => rep('a.', n)],
+    ['many query markers in one slash token', (n) => rep('/?', n)],
+    ['a long run of email-safe characters with no @', (n) => rep('a.b-c', n)],
+    ['an @ followed by a long dotted domain', (n) => `a@${rep('a.', n)}`],
+    ['a long local part before a dotted domain', (n) => `${rep('a', n / 2)}@${rep('b.', n / 2)}`],
+    ['repeated @ signs', (n) => rep('a@', n)],
+    ['a long token that ends in a fragment', (n) => `${rep('/x', n)}#end`],
+    ['repeated X-Amz- keys', (n) => rep('X-Amz-', n)],
+    ['dotted numbers', (n) => rep('1.', n)],
+    ['colon-separated hex', (n) => rep('a:', n)],
+    ['a long token-character run', (n) => rep('a', n)],
   ];
 
-  it.each(adversarial)('scrubs %s in well under 50 ms', (_label, input) => {
-    const started = performance.now();
+  function scrubAll(input: string): void {
     scrubText(input);
     scrubStack(input);
     scrubMessage(input);
-    expect(performance.now() - started).toBeLessThan(BUDGET_MS);
+  }
+
+  /** Best-of-5 seconds per character, with the work per round held near 40 000 characters. */
+  function perChar(input: string): number {
+    const reps = Math.max(1, Math.ceil(40_000 / input.length));
+    scrubAll(input); // warm up
+    let best = Infinity;
+    for (let round = 0; round < 5; round += 1) {
+      const started = performance.now();
+      for (let i = 0; i < reps; i += 1) scrubAll(input);
+      best = Math.min(best, (performance.now() - started) / (reps * input.length));
+    }
+    return best;
+  }
+
+  it.each(adversarial)('scrubs %s within the ceiling and scales linearly', (_label, make) => {
+    const large = make(LARGE);
+    const started = performance.now();
+    scrubAll(large);
+    expect(performance.now() - started).toBeLessThan(CEILING_MS);
+
+    const ratio = perChar(large) / perChar(make(SMALL));
+    expect(ratio).toBeLessThan(MAX_PER_CHAR_RATIO);
+  });
+
+  it('cuts a 10 KB hostile input to the cap before any pattern runs', () => {
+    const started = performance.now();
+    scrubAll('/'.repeat(10_000));
+    scrubAll('.'.repeat(10_000));
+    expect(performance.now() - started).toBeLessThan(CEILING_MS);
   });
 
   it('still removes every query and fragment from a path token, including a second one', () => {

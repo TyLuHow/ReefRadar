@@ -47,7 +47,10 @@ const IPV6_PATTERN = /\b(?:[A-Fa-f0-9]{1,4}:){3,7}[A-Fa-f0-9]{1,4}\b|\b(?:[A-Fa-
 const URL_PATTERN = /\b(?:https?|wss?|ftp|file|blob|data):\S+/gi;
 // X-Amz-*=value pairs that survive outside a URL, with the separator that introduced them.
 const AMZ_PATTERN = /[?&]?X-Amz-[A-Za-z0-9-]+=[^&\s]*/gi;
-const EMAIL_PATTERN = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
+// Every quantifier is bounded (local part 256, label 63, at most 9 labels): an unbounded `+` in front of
+// the `@` made a long run of local-part characters with no `@` quadratic (every start rescanned the
+// run), and nested unbounded labels backtrack. Bounded, each start position costs O(1).
+const EMAIL_PATTERN = /[A-Za-z0-9._%+-]{1,256}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){0,8}\.[A-Za-z]{2,63}/g;
 const WHITESPACE_RUN_PATTERN = /\S+/g;
 const FILE_EXTENSION_TAIL_PATTERN = /\S[.][A-Za-z0-9]{1,5}$/;
 const TOKEN_PATTERN = /[A-Za-z0-9_-]{24,}/g;
