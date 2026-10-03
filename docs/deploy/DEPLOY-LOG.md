@@ -644,3 +644,7 @@ Manual CLI equivalent: `aws cloudfront get-distribution-config --id E1SD3UZ4FZ1G
 (`Items` GET and HEAD, `Quantity` 2), then `aws cloudfront update-distribution --id E1SD3UZ4FZ1GWL --if-match <ETag>
 --distribution-config file://<edited config>`. Once the policy is unattached it can optionally be removed with
 `aws cloudfront delete-response-headers-policy --id 837522dc-5a65-4b60-9c61-40d7e84e9741 --if-match <its ETag>`.
+
+## Note: commit hashes before 2026-10-03
+
+On 2026-10-03 branch `redesign/v2-discovery` was rewritten to correct the commit author email; file contents are unchanged. Every commit hash written in this log before that date (including `--ref` rollback refs such as `c721554`, `6aca641`, `26b3e61`) is a pre-rewrite hash. Map it to the current hash with `docs/history/2026-10-03-commit-hash-map.txt` before running a rollback, e.g. `c721554` -> `4cec650`, `6aca641` -> `9c60ba1`.
