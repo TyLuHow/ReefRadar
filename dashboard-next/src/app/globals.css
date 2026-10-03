@@ -138,6 +138,7 @@ input[type="file"]:disabled {
 /* Always-visible attribution text, flush to the corner */
 .maplibregl-map .maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib {
   background: rgba(255, 255, 255, 0.8);
+  color: #374151; /* the page text colour is light; "contributors" was unreadable on the white pill */
   margin: 0;
   padding: 2px 6px;
   border-radius: 4px;
