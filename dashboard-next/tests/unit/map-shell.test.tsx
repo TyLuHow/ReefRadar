@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { Site } from '@/types';
 
 // jsdom has no WebGL: react-map-gl/maplibre and the setup module (which imports the real
@@ -222,6 +222,38 @@ describe('ReefMap (mocked engine)', () => {
     expect(screen.queryByText(/Full data/)).not.toBeInTheDocument();
     expect(screen.queryByText(/No sites/i)).not.toBeInTheDocument();
     expect(layerIds).toHaveLength(4);
+  });
+
+  it('lists every site as a keyboard-operable button and selects through it (WR-03)', () => {
+    const onSiteSelect = vi.fn();
+    render(<ReefMap sites={[FULL, LOCATION_ONLY]} onSiteSelect={onSiteSelect} />);
+    const group = screen.getByRole('group', { name: 'Monitoring sites' });
+    expect(group).toBeInTheDocument();
+    const buttons = screen.getAllByRole('button', { name: /^(idn_1|fk_1), / });
+    expect(buttons).toHaveLength(2);
+    expect(buttons[0]).toHaveAttribute('type', 'button');
+    fireEvent.click(screen.getByRole('button', { name: 'idn_1, Indonesia, Healthy' }));
+    expect(onSiteSelect).toHaveBeenCalledWith(FULL);
+  });
+
+  it('the popup is a labelled dialog that takes focus, closes on Escape and returns focus to the list button', () => {
+    function Harness() {
+      const [selected, setSelected] = React.useState<Site | null>(null);
+      return <ReefMap sites={[FULL]} selectedSite={selected} onSiteSelect={setSelected} />;
+    }
+    render(<Harness />);
+    const opener = screen.getByRole('button', { name: 'idn_1, Indonesia, Healthy' });
+    opener.focus();
+    fireEvent.click(opener);
+    const dialog = screen.getByRole('dialog', { name: 'Site details: idn_1' });
+    expect(dialog).toBeInTheDocument();
+    const close = screen.getByRole('button', { name: 'Close popup' });
+    expect(close).toHaveAttribute('type', 'button');
+    expect(close).toHaveFocus();
+
+    fireEvent.keyDown(close, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'idn_1, Indonesia, Healthy' })).toHaveFocus();
   });
 
   it('shows the SitePopup for the selected site and wires the close button', () => {

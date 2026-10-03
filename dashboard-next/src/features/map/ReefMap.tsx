@@ -16,6 +16,7 @@ import type { RegionBounds } from '@/lib/regions';
 import { mapLib } from './setup';
 import { MapShell, prefersReducedMotion } from './MapShell';
 import { SitePopup } from './SitePopup';
+import { SiteList } from './SiteList';
 import {
   SITES_SOURCE_ID,
   INTERACTIVE_LAYER_IDS,
@@ -102,6 +103,32 @@ export function ReefMap({
     [onSiteSelect],
   );
 
+  // The list button that opened the popup, so closing it returns focus there (WR-03).
+  const openerRef = useRef<HTMLElement | null>(null);
+
+  const handleListSelect = useCallback(
+    (site: Site, opener: HTMLElement) => {
+      openerRef.current = opener;
+      handleSelect(site);
+      if (site.latitude !== undefined && site.longitude !== undefined) {
+        const map = mapRef.current;
+        map?.easeTo({
+          center: [site.longitude, site.latitude],
+          zoom: Math.max(map.getZoom(), 5),
+          duration: prefersReducedMotion() ? 0 : 800,
+        });
+      }
+    },
+    [handleSelect],
+  );
+
+  const handleClosePopup = useCallback(() => {
+    handleSelect(null);
+    const opener = openerRef.current;
+    openerRef.current = null;
+    if (opener?.isConnected) opener.focus({ preventScroll: true });
+  }, [handleSelect]);
+
   const geojson = useMemo(() => buildSitesGeoJson(sites), [sites]);
   const { fullData, locationOnly } = useMemo(() => countSites(sites), [sites]);
 
@@ -140,7 +167,10 @@ export function ReefMap({
       const id = e.features?.[0]?.properties?.site_id;
       if (typeof id !== 'string') return;
       const site = sites.find((s) => s.site_id === id);
-      if (site) handleSelect(site);
+      if (site) {
+        openerRef.current = null;
+        handleSelect(site);
+      }
     },
     [sites, handleSelect],
   );
@@ -194,10 +224,18 @@ export function ReefMap({
         >
           <SitePopup
             site={selectedSite}
-            onClose={() => handleSelect(null)}
+            onClose={handleClosePopup}
           />
         </div>
       )}
+
+      {/* Keyboard and screen-reader path to every site (visually hidden until focused) */}
+      <SiteList
+        sites={sites}
+        selectedSiteId={selectedSite?.site_id ?? null}
+        onSelect={handleListSelect}
+      />
+
 
       {/* Legend for embedding vs location-only sites */}
       {locationOnly > 0 && (

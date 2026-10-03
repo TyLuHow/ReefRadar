@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { Site, ReefStatus } from '@/types';
 import { formatStatus } from '@/lib/utils';
@@ -29,8 +30,23 @@ export function SitePopup({ site, onClose }: SitePopupProps) {
         ? 'Kenya'
         : site.country || 'Unknown';
 
+  // Dialog semantics (WR-03): focus moves to the close button when the popup opens, and Escape
+  // closes it. The opener (list button) gets focus back from the owner in onClose.
+  const closeRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    closeRef.current?.focus({ preventScroll: true });
+  }, [site.site_id]);
+
   return (
     <div
+      role="dialog"
+      aria-label={`Site details: ${site.site_id}`}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.stopPropagation();
+          onClose();
+        }
+      }}
       className="rounded-xl shadow-2xl overflow-hidden pointer-events-auto"
       style={{
         background: 'rgba(26, 23, 20, 0.95)',
@@ -49,6 +65,8 @@ export function SitePopup({ site, onClose }: SitePopupProps) {
           <span style={{ color: 'var(--text-muted)' }}>/ {site.site_id}</span>
         </h3>
         <button
+          ref={closeRef}
+          type="button"
           onClick={onClose}
           className="p-1 rounded-md hover:bg-white/10 transition-colors"
           aria-label="Close popup"

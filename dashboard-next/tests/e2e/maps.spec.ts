@@ -189,6 +189,30 @@ test.describe('monitoring map (MapLibre)', () => {
     await expect(page.getByRole('button', { name: 'Close popup' })).toHaveCount(0);
   });
 
+  test('keyboard: the site list opens the popup dialog, Escape closes it and focus returns (WR-03)', async ({ page }) => {
+    await mockApi(page);
+    await stubMapStyle(page);
+    await page.goto(MAP_PATH, { waitUntil: 'load' });
+    await requireWebGL2(page, 'No WebGL2 in this browser.');
+    await waitForMap(page);
+
+    const list = page.getByRole('group', { name: 'Monitoring sites' });
+    const first = list.getByRole('button').first();
+    await expect(first).toBeAttached();
+    await first.focus();
+    // While keyboard focus is inside it, the list becomes a visible panel.
+    await expect.poll(async () => (await list.boundingBox())?.width ?? 0).toBeGreaterThan(100);
+
+    await page.keyboard.press('Enter');
+    const dialog = page.getByRole('dialog', { name: /^Site details: / });
+    await expect(dialog).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Close popup' })).toBeFocused();
+
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(first).toBeFocused();
+  });
+
   test('choosing a region flies the map there', async ({ page }) => {
     await mockApi(page);
     await stubMapStyle(page);
