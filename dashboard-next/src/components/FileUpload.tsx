@@ -172,7 +172,7 @@ export function FileUpload({
 
       {error && (
         <div className="mt-3 flex items-center space-x-2 text-sm" style={{ color: '#c08081' }}>
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}

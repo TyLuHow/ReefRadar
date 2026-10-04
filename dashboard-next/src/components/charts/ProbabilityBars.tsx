@@ -155,7 +155,7 @@ export function ProbabilityBars({
                 style={{ zIndex: 1 }}
                 title={`${formatStatus(status)}: ${percentage}%`}
               >
-                <span className="text-xs font-medium text-white drop-shadow-sm">
+                <span className="text-xs font-medium text-white drop-shadow-xs">
                   {formatStatus(status)}
                 </span>
               </div>

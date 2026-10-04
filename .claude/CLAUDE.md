@@ -54,7 +54,7 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 - `@tanstack/react-query` ^5.51.21 - data fetching/caching (contract client)
 - `@vercel/speed-insights` 2.0.0 (web vitals) and `POST /api/client-error/` (client errors to Vercel runtime logs) - see `docs/MONITORING.md`
 - Tests: Vitest 5 + Testing Library (`dashboard-next/tests/unit`), Playwright 1.63 with axe (`tests/e2e`, fixture-mocked, plus Docker-pinned visual baselines), pytest for Python; all run in `.github/workflows/ci.yml`. `scripts/test-all.sh`, `scripts/test_inference_lambda.py`, `scripts/test_region_detection.py` remain ad hoc manual scripts.
-- TypeScript 5.5.4, ESLint 9.39.5 (flat config `eslint.config.mjs`, `eslint-config-next` 16.3.8), Tailwind CSS 3.4.7, PostCSS 8.4.40, Autoprefixer 10.4.19 (all dev deps in `dashboard-next/package.json`)
+- TypeScript 5.5.4, ESLint 9.39.5 (flat config `eslint.config.mjs`, `eslint-config-next` 16.3.8), Tailwind CSS 4.3.3 with `@tailwindcss/postcss` 4.3.3, PostCSS 8.4.40 (no Autoprefixer; all dev deps in `dashboard-next/package.json`)
 - Docker (via CodeBuild and local `scripts/deploy_inference_lambda.sh`) for building Lambda container images
 
 ## Key Dependencies
@@ -70,7 +70,7 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 - `dashboard-next/.env.example` exists (contents not read — treat as template; do not assume values). Confirmed used var: `NEXT_PUBLIC_API_URL` (`dashboard-next/src/lib/api.ts:13`), falling back to the live API Gateway URL if unset.
 - Lambda environment variables are defined per-function in `infrastructure/resources.json` (bucket names, table name, downstream function names) rather than via a `.env` file — see INTEGRATIONS.md.
 - No `.env` (non-example) files found in the repo.
-- `dashboard-next/next.config.js` - `trailingSlash: true`, `images.unoptimized: true`, `agentRules: false`; `tailwind.config.js` `content` must list every source directory that sets a className (including `src/features`, guarded by `tests/unit/tailwind-content.test.ts`)
+- `dashboard-next/next.config.js` - `trailingSlash: true`, `images.unoptimized: true`, `agentRules: false`; Tailwind 4 reads its tokens from CSS (`@theme` in `src/app/globals.css`; there is no `tailwind.config.js`), and the scanned directories are set by the `@source` lines in that file (`src/pages`, `src/components`, `src/app`, `src/features`), guarded by `tests/unit/tailwind-v4-sources.test.ts`
 - `dashboard-next/vercel.json` - sets `framework: nextjs`, explicit build/install commands, and security headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy)
 - `infrastructure/lambda_container/buildspec.yml` - AWS CodeBuild spec: logs into ECR, builds/pushes the `inference` container (`--platform linux/amd64 --provenance=false`), then calls `aws lambda update-function-code`
 - `scripts/deploy_inference_lambda.sh` - local equivalent of the CodeBuild flow for the inference container
@@ -138,7 +138,7 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 - CSS-variable-backed tokens (resolved at runtime): `glass-bg`, `glass-hover`, `glass-active`, `glass-border`, `status-healthy`, `status-degraded`, `status-restoring-early`, `status-restoring-mid`. The dark palette is static CSS tokens until Phase 4; the reef-vitality theming engine and its `--reef-*` tokens were removed in Phase 3
 - Custom font families mapped to CSS vars from `next/font`: `--font-inter`, `--font-jetbrains-mono`
 - `backdropBlur.glass: '16px'` and custom keyframe `wave` for reef-themed motion
-- When adding new themeable colors, prefer a CSS custom property in `globals.css` plus a matching Tailwind color token (pattern used throughout) rather than a hardcoded hex in `tailwind.config.js`
+- When adding new themeable colors, prefer a CSS custom property in `globals.css` plus a matching Tailwind color token (pattern used throughout) rather than a hardcoded hex in a component; tokens live in CSS (`@theme` / `:root` in `globals.css`)
 - `:root` defines layered token groups: Backgrounds (`--bg-abyss`, `--bg-depths`, `--bg-surface`), Glassmorphism (`--glass-bg`, `--glass-bg-hover`, `--glass-bg-active`, `--glass-border`, `--glass-border-bright`), Text (`--text-primary`, `--text-secondary`, `--text-muted`, `--text-dim`), Frequency Bands (`--freq-low/mid/high`), Health Status (`--status-healthy`, `--status-degraded`, `--status-restoring-early`, `--status-restoring-mid`) and Accents (`--accent-glow`, `--accent-warning`, `--accent-info`)
 - Global transition rule applies to common properties on every element (`*` selector): `transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform; transition-duration: 150ms;` — animations (`.animate-spin`, `.animate-pulse`) are explicitly excluded (`transition: none`) to avoid conflicting with keyframe animation
 - `:focus-visible { outline: 2px solid #cd853f; outline-offset: 2px; }` is the one global accessibility affordance defined at the CSS level

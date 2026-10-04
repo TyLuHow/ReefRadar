@@ -57,7 +57,7 @@ export function SiteCard({ site, expanded: initialExpanded = false }: SiteCardPr
         {hasLocation && (
           <div className="text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
             <div className="flex items-start">
-              <MapPin className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" style={{ color: 'var(--text-dim)' }} />
+              <MapPin className="w-4 h-4 mr-2 mt-0.5 shrink-0" style={{ color: 'var(--text-dim)' }} />
               <div>
                 <p>{site.location}</p>
                 <p className="text-xs mt-1 font-mono" style={{ color: 'var(--text-dim)' }}>
@@ -161,13 +161,13 @@ export function SiteCardSkeleton() {
       <div className="p-5">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <div className="h-6 rounded w-24 mb-2" style={{ background: 'var(--glass-bg-hover)' }} />
-            <div className="h-4 rounded w-32" style={{ background: 'var(--glass-bg-hover)' }} />
+            <div className="h-6 rounded-sm w-24 mb-2" style={{ background: 'var(--glass-bg-hover)' }} />
+            <div className="h-4 rounded-sm w-32" style={{ background: 'var(--glass-bg-hover)' }} />
           </div>
           <div className="h-6 rounded-full w-20" style={{ background: 'var(--glass-bg-hover)' }} />
         </div>
-        <div className="h-4 rounded w-48 mb-2" style={{ background: 'var(--glass-bg-hover)' }} />
-        <div className="h-3 rounded w-36" style={{ background: 'var(--glass-bg-hover)' }} />
+        <div className="h-4 rounded-sm w-48 mb-2" style={{ background: 'var(--glass-bg-hover)' }} />
+        <div className="h-3 rounded-sm w-36" style={{ background: 'var(--glass-bg-hover)' }} />
       </div>
     </div>
   );

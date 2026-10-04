@@ -349,7 +349,7 @@ function ResultsState({
 
       <div className="relative z-10 flex-1 flex flex-col lg:flex-row gap-4 sm:gap-6 px-4 sm:px-6 pb-6 overflow-auto">
         <motion.div
-          className="lg:w-80 flex-shrink-0"
+          className="lg:w-80 shrink-0"
           initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8, ease: 'easeOut', delay: 0 }}

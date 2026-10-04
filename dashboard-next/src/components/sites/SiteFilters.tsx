@@ -124,7 +124,7 @@ export function SiteFilters({ sites, onFilteredSitesChange, className = '' }: Si
                 placeholder="Search sites..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-ochre"
+                className="w-full pl-9 pr-4 py-2 text-sm rounded-lg focus:outline-hidden focus:ring-2 focus:ring-ochre"
                 style={{
                   background: 'var(--bg-depths)',
                   border: '1px solid var(--glass-border)',
@@ -159,7 +159,7 @@ export function SiteFilters({ sites, onFilteredSitesChange, className = '' }: Si
                     className={cn(
                       'px-3 py-1.5 rounded-full text-sm font-medium transition-all',
                       isSelected
-                        ? 'text-white shadow-sm'
+                        ? 'text-white shadow-xs'
                         : 'hover:bg-white/10'
                     )}
                     style={
@@ -191,7 +191,7 @@ export function SiteFilters({ sites, onFilteredSitesChange, className = '' }: Si
                     className={cn(
                       'px-3 py-1.5 rounded-full text-sm font-medium transition-all flex items-center space-x-1',
                       isSelected
-                        ? 'bg-ochre text-white shadow-sm'
+                        ? 'bg-ochre text-white shadow-xs'
                         : 'hover:bg-white/10'
                     )}
                     style={

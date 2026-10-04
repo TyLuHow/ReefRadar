@@ -42,7 +42,7 @@ export function CaveatsBanner({
         aria-expanded={isExpanded}
       >
         <div className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-amber-400 flex-shrink-0" />
+          <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0" />
           <span className="font-semibold text-amber-200">
             Scientific Caveats
           </span>

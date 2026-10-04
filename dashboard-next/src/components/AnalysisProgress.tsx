@@ -43,7 +43,7 @@ export function AnalysisProgress({ step, stageLabel, error, suggestion, requestI
               {/* Icon */}
               <div
                 className={cn(
-                  'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors',
+                  'w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors',
                   isComplete && 'bg-status-healthy text-white',
                   isActive && !isComplete && !isError && 'bg-ochre text-white',
                   isError && 'bg-status-degraded text-white',

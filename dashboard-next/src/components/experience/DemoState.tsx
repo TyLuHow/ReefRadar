@@ -48,7 +48,7 @@ export function DemoState({ onGoLanding, onGoCompare }: DemoStateProps) {
 
       <div className="relative z-10 flex-1 flex flex-col lg:flex-row gap-6 px-6 pb-6 overflow-auto">
         {/* Left panel: playback controls */}
-        <GlassPanel className="lg:w-80 flex-shrink-0 p-6 space-y-5">
+        <GlassPanel className="lg:w-80 shrink-0 p-6 space-y-5">
           <p className="mono">Demo Playback</p>
 
           <div className="flex items-center gap-3">
@@ -142,7 +142,7 @@ export function DemoState({ onGoLanding, onGoCompare }: DemoStateProps) {
             </p>
             <div className="space-y-2">
               <div className="flex items-start gap-2">
-                <span className="w-2 h-2 mt-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#cd853f' }} />
+                <span className="w-2 h-2 mt-1.5 rounded-full shrink-0" style={{ backgroundColor: '#cd853f' }} />
                 <p>
                   <span className="text-bone font-medium">{pair.a.site_id}</span> -- recorded{' '}
                   {healthyDate} {healthyTime} (recorder clock, timezone unverified). Label
@@ -150,7 +150,7 @@ export function DemoState({ onGoLanding, onGoCompare }: DemoStateProps) {
                 </p>
               </div>
               <div className="flex items-start gap-2">
-                <span className="w-2 h-2 mt-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: '#c08081' }} />
+                <span className="w-2 h-2 mt-1.5 rounded-full shrink-0" style={{ backgroundColor: '#c08081' }} />
                 <p>
                   <span className="text-bone font-medium">{pair.b.site_id}</span> -- recorded{' '}
                   {degradedDate} {degradedTime} (recorder clock, timezone unverified). Label

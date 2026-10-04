@@ -234,7 +234,7 @@ export default function SitesPage() {
                 style={{ background: 'rgba(192, 128, 129, 0.1)', border: '1px solid rgba(192, 128, 129, 0.3)' }}
               >
                 <div className="flex items-start space-x-3">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#c08081' }} />
+                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" style={{ color: '#c08081' }} />
                   <div>
                     <p className="font-medium" style={{ color: '#c08081' }}>Failed to load sites</p>
                     <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>

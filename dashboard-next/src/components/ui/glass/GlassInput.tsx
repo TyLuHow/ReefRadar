@@ -32,12 +32,12 @@ export function GlassInput({
         id={inputId}
         className={cn(
           'w-full px-4 py-2.5 rounded-lg text-sm',
-          'bg-[var(--glass-bg)] text-bone placeholder:text-[var(--text-dim)]',
+          'bg-(--glass-bg) text-bone placeholder:text-(--text-dim)',
           'border transition-all duration-200',
-          'focus:outline-none focus:ring-2 focus:ring-ochre/50 focus:border-ochre',
+          'focus:outline-hidden focus:ring-2 focus:ring-ochre/50 focus:border-ochre',
           error
             ? 'border-warm-amber'
-            : 'border-[var(--glass-border)] hover:border-[var(--glass-border-bright)]',
+            : 'border-(--glass-border) hover:border-(--glass-border-bright)',
           className
         )}
         {...props}

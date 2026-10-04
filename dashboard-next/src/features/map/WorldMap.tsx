@@ -66,7 +66,7 @@ export function MapLegend({ statusCounts }: { statusCounts: Record<string, numbe
           return (
             <div key={status} className="flex items-center space-x-2">
               <div
-                className="w-3 h-3 rounded-full shadow-sm"
+                className="w-3 h-3 rounded-full shadow-xs"
                 data-testid={`legend-dot-${status}`}
                 style={{ backgroundColor: STATUS_COLORS[status] }}
               />

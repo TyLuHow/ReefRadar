@@ -38,7 +38,7 @@ export function RegionWarning({ region, className }: RegionWarningProps) {
         role="note"
       >
         <div className="flex items-start gap-3">
-          <Info className="h-5 w-5 text-sky-300 flex-shrink-0 mt-0.5" aria-hidden="true" />
+          <Info className="h-5 w-5 text-sky-300 shrink-0 mt-0.5" aria-hidden="true" />
           <div className="space-y-1">
             <p className="font-semibold text-sky-200">Near the Classifier{"'"}s Training Sites</p>
             <p className="text-sm text-sky-100/80 leading-relaxed">
@@ -64,7 +64,7 @@ export function RegionWarning({ region, className }: RegionWarningProps) {
       )}
     >
       <div className="flex items-start gap-3">
-        <AlertTriangle className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5" />
+        <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
         <div className="space-y-1">
           {!coordinatesProvided ? (
             <>

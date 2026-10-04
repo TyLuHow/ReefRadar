@@ -87,7 +87,7 @@ export default function DashboardHomePage() {
           <Link key={card.href} href={card.href} className="block">
             <GlowCard glowColor={card.glow} className="h-full flex items-start gap-4 hover:scale-[1.01] transition-transform duration-200">
               <div
-                className="flex-shrink-0 w-12 h-12 rounded-lg flex items-center justify-center"
+                className="shrink-0 w-12 h-12 rounded-lg flex items-center justify-center"
                 style={{
                   background: `${card.glow}18`,
                   color: card.glow,

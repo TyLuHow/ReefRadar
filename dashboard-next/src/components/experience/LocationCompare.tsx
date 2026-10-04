@@ -73,7 +73,7 @@ export function LocationCompare({ onGoLanding, onGoDemo }: LocationCompareProps)
       {/* Main content */}
       <div className="relative z-10 flex-1 flex flex-col lg:flex-row gap-6 px-6 pb-6 overflow-auto">
         {/* Left panel: controls */}
-        <GlassPanel className="lg:w-96 flex-shrink-0 p-6 space-y-5">
+        <GlassPanel className="lg:w-96 shrink-0 p-6 space-y-5">
           <p className="mono">Compare Locations</p>
 
           {/* Location selector pills */}
@@ -246,7 +246,7 @@ export function LocationCompare({ onGoLanding, onGoDemo }: LocationCompareProps)
             <div className="space-y-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
               {/* Location info */}
               <div className="flex items-start gap-2">
-                <MapPin className="w-4 h-4 mt-0.5 text-ochre flex-shrink-0" />
+                <MapPin className="w-4 h-4 mt-0.5 text-ochre shrink-0" />
                 <div>
                   <span className="text-bone font-medium">{audio.selectedLocation.name}</span>
                   <span className="mx-1 text-bone/30">&middot;</span>
@@ -261,7 +261,7 @@ export function LocationCompare({ onGoLanding, onGoDemo }: LocationCompareProps)
               <div className="space-y-3">
                 <div className="flex items-start gap-2">
                   <span
-                    className="w-2 h-2 mt-1.5 rounded-full flex-shrink-0"
+                    className="w-2 h-2 mt-1.5 rounded-full shrink-0"
                     style={{ backgroundColor: STATUS_COLORS[audio.leftTrack] }}
                   />
                   <p>
@@ -274,7 +274,7 @@ export function LocationCompare({ onGoLanding, onGoDemo }: LocationCompareProps)
                 </div>
                 <div className="flex items-start gap-2">
                   <span
-                    className="w-2 h-2 mt-1.5 rounded-full flex-shrink-0"
+                    className="w-2 h-2 mt-1.5 rounded-full shrink-0"
                     style={{ backgroundColor: STATUS_COLORS[audio.rightTrack] }}
                   />
                   <p>

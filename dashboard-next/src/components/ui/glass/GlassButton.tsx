@@ -13,7 +13,7 @@ interface GlassButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantStyles = {
   primary: 'glass-button text-bone',
-  ghost: 'bg-transparent text-bone border border-transparent hover:bg-[var(--glass-bg)] rounded-full transition-all duration-200',
+  ghost: 'bg-transparent text-bone border border-transparent hover:bg-(--glass-bg) rounded-full transition-all duration-200',
   danger: 'glass-button text-warm-amber border-warm-amber/30 hover:border-warm-amber/50',
 };
 

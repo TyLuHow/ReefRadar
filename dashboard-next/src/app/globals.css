@@ -1,7 +1,80 @@
+@import 'tailwindcss' source(none);
+@source "../pages";
+@source "../components";
+@source "../app";
+@source "../features";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@theme {
+  --color-abyss: #1a1714;
+  --color-depths: #0f0d0b;
+  --color-bg-surface: #252220;
+  --color-bone: #e5e1db;
+  --color-ochre: #cd853f;
+  --color-dusty-rose: #c08081;
+  --color-pale-gold: #e9dcc9;
+  --color-muted-tan: #8b7355;
+  --color-warm-gray: #a8a29e;
+  --color-warm-amber: #b8860b;
+  --color-glass-bg: var(--glass-bg);
+  --color-glass-hover: var(--glass-bg-hover);
+  --color-glass-active: var(--glass-bg-active);
+  --color-glass-border: var(--glass-border);
+  --color-status-healthy: var(--status-healthy);
+  --color-status-degraded: var(--status-degraded);
+  --color-status-restoring-early: var(--status-restoring-early);
+  --color-status-restoring-mid: var(--status-restoring-mid);
+
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), 'Fira Code', monospace;
+
+  --backdrop-blur-glass: 16px;
+
+  /* Fixed rem line-heights, exactly what Tailwind 3 used (v4 defaults are unitless ratios). */
+  --text-xs--line-height: 1rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+
+  --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-wave: wave 2s ease-in-out infinite;
+
+  @keyframes wave {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: #e5e7eb;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
 
 :root {
   /* Backgrounds */
@@ -39,49 +112,54 @@
   --accent-info: #a8a29e;
 }
 
-body {
-  color: var(--text-primary);
-  background: var(--bg-abyss);
-  min-height: 100vh;
-}
+/* Legacy globals live in @layer base so Tailwind 4 utilities keep beating them, as they did under
+   Tailwind 3 where these rules came first at equal or lower specificity (04-01). The component-like
+   classes further down (.glass-panel, .glass-button, .heading, .hero-text, .mono) stay unlayered. */
+@layer base {
+  body {
+    color: var(--text-primary);
+    background: var(--bg-abyss);
+    min-height: 100vh;
+  }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
 
-::-webkit-scrollbar-track {
-  background: var(--bg-depths);
-  border-radius: 4px;
-}
+  ::-webkit-scrollbar-track {
+    background: var(--bg-depths);
+    border-radius: 4px;
+  }
 
-::-webkit-scrollbar-thumb {
-  background: var(--text-dim);
-  border-radius: 4px;
-}
+  ::-webkit-scrollbar-thumb {
+    background: var(--text-dim);
+    border-radius: 4px;
+  }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
-}
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+  }
 
-/* Smooth transitions */
-* {
-  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
-  transition-duration: 150ms;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
+  /* Smooth transitions */
+  * {
+    transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
 
-/* Remove transition from animations */
-.animate-spin,
-.animate-pulse {
-  transition: none;
-}
+  /* Remove transition from animations */
+  .animate-spin,
+  .animate-pulse {
+    transition: none;
+  }
 
-/* Focus styles */
-:focus-visible {
-  outline: 2px solid #cd853f;
-  outline-offset: 2px;
+  /* Focus styles */
+  :focus-visible {
+    outline: 2px solid #cd853f;
+    outline-offset: 2px;
+  }
 }
 
 /* File input styling */

@@ -61,7 +61,7 @@ export function CoordinateModal({ file, onSubmit, onCancel }: CoordinateModalPro
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-abyss/80 backdrop-blur-sm px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-abyss/80 backdrop-blur-xs px-4">
       <GlassPanel className="p-8 max-w-md w-full space-y-6">
         <div>
           <h2 className="text-lg font-light text-bone">

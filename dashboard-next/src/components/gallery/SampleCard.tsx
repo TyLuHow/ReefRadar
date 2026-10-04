@@ -99,7 +99,7 @@ export function SampleCard({ sample, playingId, onPlay, onPause }: SampleCardPro
 
   return (
     <GlassPanel
-      className="p-5 flex flex-col gap-3 w-72 flex-shrink-0 hover:border-[var(--glass-border-bright)]"
+      className="p-5 flex flex-col gap-3 w-72 shrink-0 hover:border-(--glass-border-bright)!"
     >
       {/* Header: reference label badge + country */}
       <div className="flex items-center justify-between gap-2">

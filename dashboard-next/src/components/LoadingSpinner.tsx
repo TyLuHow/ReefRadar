@@ -42,11 +42,11 @@ export function LoadingState({ message = 'Loading...' }: LoadingStateProps) {
 export function SkeletonCard() {
   return (
     <div className="glass-panel p-6 animate-pulse">
-      <div className="h-4 rounded w-1/3 mb-4" style={{ background: 'var(--glass-bg-hover)' }} />
+      <div className="h-4 rounded-sm w-1/3 mb-4" style={{ background: 'var(--glass-bg-hover)' }} />
       <div className="space-y-3">
-        <div className="h-3 rounded w-full" style={{ background: 'var(--glass-bg-hover)' }} />
-        <div className="h-3 rounded w-5/6" style={{ background: 'var(--glass-bg-hover)' }} />
-        <div className="h-3 rounded w-4/6" style={{ background: 'var(--glass-bg-hover)' }} />
+        <div className="h-3 rounded-sm w-full" style={{ background: 'var(--glass-bg-hover)' }} />
+        <div className="h-3 rounded-sm w-5/6" style={{ background: 'var(--glass-bg-hover)' }} />
+        <div className="h-3 rounded-sm w-4/6" style={{ background: 'var(--glass-bg-hover)' }} />
       </div>
     </div>
   );

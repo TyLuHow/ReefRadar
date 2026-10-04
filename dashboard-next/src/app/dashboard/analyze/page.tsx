@@ -450,7 +450,7 @@ export default function EnhancedAnalyzePage() {
             </h2>
             <div className="space-y-4">
               <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 text-ochre rounded-full flex items-center justify-center flex-shrink-0 font-semibold" style={{ background: 'rgba(205, 133, 63, 0.15)' }}>
+                <div className="w-8 h-8 text-ochre rounded-full flex items-center justify-center shrink-0 font-semibold" style={{ background: 'rgba(205, 133, 63, 0.15)' }}>
                   1
                 </div>
                 <div>
@@ -462,7 +462,7 @@ export default function EnhancedAnalyzePage() {
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 text-ochre rounded-full flex items-center justify-center flex-shrink-0 font-semibold" style={{ background: 'rgba(205, 133, 63, 0.15)' }}>
+                <div className="w-8 h-8 text-ochre rounded-full flex items-center justify-center shrink-0 font-semibold" style={{ background: 'rgba(205, 133, 63, 0.15)' }}>
                   2
                 </div>
                 <div>
@@ -474,7 +474,7 @@ export default function EnhancedAnalyzePage() {
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 text-ochre rounded-full flex items-center justify-center flex-shrink-0 font-semibold" style={{ background: 'rgba(205, 133, 63, 0.15)' }}>
+                <div className="w-8 h-8 text-ochre rounded-full flex items-center justify-center shrink-0 font-semibold" style={{ background: 'rgba(205, 133, 63, 0.15)' }}>
                   3
                 </div>
                 <div>
@@ -486,7 +486,7 @@ export default function EnhancedAnalyzePage() {
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 text-ochre rounded-full flex items-center justify-center flex-shrink-0 font-semibold" style={{ background: 'rgba(205, 133, 63, 0.15)' }}>
+                <div className="w-8 h-8 text-ochre rounded-full flex items-center justify-center shrink-0 font-semibold" style={{ background: 'rgba(205, 133, 63, 0.15)' }}>
                   4
                 </div>
                 <div>
@@ -498,7 +498,7 @@ export default function EnhancedAnalyzePage() {
               </div>
 
               <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 text-ochre rounded-full flex items-center justify-center flex-shrink-0 font-semibold" style={{ background: 'rgba(205, 133, 63, 0.15)' }}>
+                <div className="w-8 h-8 text-ochre rounded-full flex items-center justify-center shrink-0 font-semibold" style={{ background: 'rgba(205, 133, 63, 0.15)' }}>
                   5
                 </div>
                 <div>
@@ -512,7 +512,7 @@ export default function EnhancedAnalyzePage() {
           </div>
 
           {/* Quick Stats */}
-          <div className="bg-gradient-to-br from-ochre to-dusty-rose rounded-xl p-6 text-white">
+          <div className="bg-linear-to-br/srgb from-ochre to-dusty-rose rounded-xl p-6 text-white">
             <h2 className="text-lg font-semibold mb-4">Quick Facts</h2>
             <div className="space-y-3">
               <div className="flex items-center space-x-3">

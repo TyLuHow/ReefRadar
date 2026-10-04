@@ -2,7 +2,7 @@
 /**
  * PLAT-01 platform pins gate (03-04): the dashboard runs on Next 16 / React 19 with
  * an ESLint 9 flat config. Fails on a silent downgrade, a codemod-picked ESLint 10,
- * TypeScript 7, a Tailwind v4 jump, or a lost next.config key.
+ * TypeScript 7, a Tailwind downgrade from v4, or a lost next.config key.
  *
  * Reads files relative to this test only; never touches the network.
  */
@@ -49,8 +49,9 @@ describe('platform pins (PLAT-01)', () => {
     expect(pkg.devDependencies['@testing-library/dom']).toBe('10.4.2');
   });
 
-  it('keeps Tailwind on v3 and TypeScript on 5.x', () => {
-    expect(majorOf(pkg.devDependencies.tailwindcss)).toBe(3);
+  it('keeps Tailwind on v4 and TypeScript on 5.x', () => {
+    expect(majorOf(pkg.devDependencies.tailwindcss)).toBe(4);
+    expect(pkg.devDependencies['@tailwindcss/postcss']).toBe('4.3.3');
     expect(majorOf(pkg.devDependencies.typescript)).toBe(5);
   });
 

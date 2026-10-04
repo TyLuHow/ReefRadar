@@ -80,7 +80,7 @@ export function SampleGallery() {
                 {story.subtitle}
               </p>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-4 -mx-2 px-2 snap-x snap-mandatory scrollbar-thin">
+            <div className="flex gap-4 overflow-x-auto pb-4 -mx-2 px-2 snap-x snap-mandatory">
               {storySamples.map((sample) => (
                 <div key={sample.id} className="snap-start">
                   <SampleCard

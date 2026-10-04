@@ -108,7 +108,7 @@ export function ComparisonPanel({ analysisData }: ComparisonPanelProps) {
             >
               <div className="flex items-center gap-2">
                 <span
-                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  className="w-2 h-2 rounded-full shrink-0"
                   style={{ backgroundColor: STATUS_COLORS[site.status] }}
                 />
                 <span style={{ color: 'var(--text-secondary)' }}>

@@ -291,7 +291,7 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
     <div className={cn('rounded-xl overflow-hidden', className)}>
       {/* Header banner */}
       <div className="flex items-center gap-2 px-4 py-2 text-xs" style={{ background: '#252220', color: '#a8a29e' }}>
-        <Info className="w-3.5 h-3.5 text-ochre flex-shrink-0" />
+        <Info className="w-3.5 h-3.5 text-ochre shrink-0" />
         <span>{attributionLine()}</span>
       </div>
 
@@ -302,7 +302,7 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
             onClick={handleToggle}
             disabled={loadState === 'loading'}
             className={cn(
-              'flex items-center justify-center w-12 h-12 rounded-full flex-shrink-0',
+              'flex items-center justify-center w-12 h-12 rounded-full shrink-0',
               'border-2 transition-all duration-200',
               isPlaying
                 ? 'border-ochre bg-ochre/20 text-ochre'
@@ -329,7 +329,7 @@ export function AudioCompare({ compact = false, className }: AudioCompareProps) 
             />
           </div>
 
-          <Volume2 className="w-4 h-4 text-ochre flex-shrink-0 opacity-60" />
+          <Volume2 className="w-4 h-4 text-ochre shrink-0 opacity-60" />
         </div>
 
         {/* Progress bar */}

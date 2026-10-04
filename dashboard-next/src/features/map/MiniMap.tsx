@@ -147,7 +147,7 @@ export function MiniMap({ similarSites, highlightCount = 3, className = '' }: Mi
         {sitesWithCoords.slice(0, highlightCount).map((site, rank) => (
           <div
             key={site.site_id}
-            className="flex items-center space-x-1.5 rounded px-2 py-1 text-xs shadow"
+            className="flex items-center space-x-1.5 rounded-sm px-2 py-1 text-xs shadow-sm"
             style={{ background: 'rgba(26, 23, 20, 0.9)', backdropFilter: 'blur(8px)' }}
           >
             <span

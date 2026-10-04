@@ -164,7 +164,7 @@ export function MapControls({
                   className="sr-only"
                 />
                 <span
-                  className="w-3.5 h-3.5 rounded border flex items-center justify-center text-xs transition-colors"
+                  className="w-3.5 h-3.5 rounded-sm border flex items-center justify-center text-xs transition-colors"
                   style={{
                     borderColor: checked
                       ? '#cd853f'
@@ -210,7 +210,7 @@ export function MapControls({
                   className="sr-only"
                 />
                 <span
-                  className="w-3.5 h-3.5 rounded border flex items-center justify-center text-xs transition-colors"
+                  className="w-3.5 h-3.5 rounded-sm border flex items-center justify-center text-xs transition-colors"
                   style={{
                     borderColor: checked ? s.color : 'rgba(255,255,255,0.2)',
                     backgroundColor: checked

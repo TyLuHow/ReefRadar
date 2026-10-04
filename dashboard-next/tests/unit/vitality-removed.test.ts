@@ -144,13 +144,9 @@ describe('DS-07 store, bridge, tokens and slider removed', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('no src file, globals.css or tailwind.config.js defines or uses a --reef-NAME token or reef-NAME colour', () => {
+  it('no src file or globals.css defines or uses a --reef-NAME token or reef-NAME colour', () => {
     const offenders: string[] = [];
-    const scanned = [
-      ...walk(SRC_ROOT),
-      path.join(SRC_ROOT, 'app/globals.css'),
-      path.join(DASHBOARD_NEXT_ROOT, 'tailwind.config.js'),
-    ];
+    const scanned = [...walk(SRC_ROOT), path.join(SRC_ROOT, 'app/globals.css')];
     for (const file of scanned) {
       if (REEF_TOKEN_RE.test(fs.readFileSync(file, 'utf8'))) {
         offenders.push(path.relative(DASHBOARD_NEXT_ROOT, file));
