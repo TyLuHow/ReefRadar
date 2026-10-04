@@ -197,13 +197,19 @@ test.describe('/dev/fixtures foundation sections (04-07)', () => {
   test('surface swatch labels are the live --dir-* values and follow the direction', async ({ page }) => {
     await openFixtures(page, '?direction=atlas');
     const label = page.locator('section#tokens [data-fixture-state="surfaces"] p', { hasText: /^#/ }).first();
-    const ground = () => page.locator(SURFACE).evaluate((el) => getComputedStyle(el).getPropertyValue('--dir-ground').trim());
-    await expect.poll(async () => ((await label.textContent()) ?? '').toLowerCase()).toBe((await ground()).toLowerCase());
+    const ground = () => page.locator(SURFACE).evaluate((el) => getComputedStyle(el).getPropertyValue('--dir-ground').trim().toLowerCase());
+    const shown = async () => ((await label.textContent()) ?? '').trim().toLowerCase();
+    // Read both values inside one poll and require a non-empty match: the surface may not have
+    // resolved --dir-ground yet, and a value captured once before polling could be "" forever.
+    const labelMatchesGround = async () => {
+      const [g, l] = [await ground(), await shown()];
+      return g !== '' && l === g;
+    };
+    await expect.poll(labelMatchesGround).toBe(true);
     const atlasGround = await ground();
 
     await page.getByRole('radiogroup', DIRECTION_GROUP).getByRole('radio', { name: 'Nocturne' }).click();
-    await expect.poll(ground).not.toBe(atlasGround);
-    await expect.poll(async () => ((await label.textContent()) ?? '').toLowerCase()).toBe((await ground()).toLowerCase());
+    await expect.poll(async () => (await ground()) !== atlasGround && (await labelMatchesGround())).toBe(true);
   });
 
   test('tokens section names the current direction and reads durations as 0ms under reduced motion', async ({ page }) => {
