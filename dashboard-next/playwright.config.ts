@@ -43,7 +43,8 @@ export default defineConfig({
       // CI (01-08, D-22: e2e tests must never hit the live API).
       // review.spec.ts (03-14) is the unhidden before/after capture run by
       // playwright.review.config.ts only; it asserts nothing and must never gate.
-      testIgnore: /visual\.spec\.ts|-live\.spec\.ts|gallery-parity\.spec\.ts|review\.spec\.ts/,
+      // The computed-style fingerprint spec (04-01) runs only under playwright.fingerprint.config.ts and needs FINGERPRINT_OUT.
+      testIgnore: /visual\.spec\.ts|-live\.spec\.ts|gallery-parity\.spec\.ts|review\.spec\.ts|style-fingerprint\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
     },
     {
