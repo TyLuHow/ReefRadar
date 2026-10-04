@@ -12,7 +12,7 @@ export default defineConfig({
   testDir: './tests/e2e',
   testMatch: /style-fingerprint\.spec\.ts/,
   workers: 1,
-  timeout: 90_000,
+  timeout: 150_000,
   webServer: {
     command: 'npm run build && npm run start -- -p 3110',
     url: 'http://localhost:3110',

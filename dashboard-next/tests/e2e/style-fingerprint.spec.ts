@@ -13,8 +13,9 @@ import * as path from 'node:path';
  * are normalised in the browser (canvas read-back) so a Tailwind 3 build and a Tailwind 4 build
  * compare on what is painted, not on how the colour is serialised. The dump format is read by
  * scripts/style-fingerprint-diff.mjs:
- *   { names: string[], strings: string[], elements: [{ path, box: [x,y,w,h], v: number[] }] }
- * where v[i] indexes `strings` for the value of names[i].
+ *   { names: string[], strings: string[], elements: [{ path, box: [x,y,w,h], v: number[], t: string }] }
+ * t is the element's own text (so a loading state versus loaded content cannot hide behind equal styles);
+ * v[i] indexes `strings` for the value of names[i].
  */
 
 const OUT = process.env.FINGERPRINT_OUT;
@@ -46,9 +47,29 @@ async function blockMapTiles(page: Page) {
 async function settle(page: Page) {
   await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
-  // Let JS-driven entrance animations finish, then freeze CSS animations/transitions at a fixed
+  // Let JS-driven entrance animations finish (the dashboard AnimatedCounter runs 1.5 s after the data loads), then freeze CSS animations/transitions at a fixed
   // point so the sampled values do not depend on timing (the cascade itself is untouched).
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(3500);
+  // Scroll through the page so IntersectionObserver-driven components (the dashboard counters) run, then back to the top.
+  await page.evaluate(async () => {
+    for (let y = 0; y < document.body.scrollHeight; y += 400) {
+      window.scrollTo({ top: y, behavior: 'instant' });
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  });
+  await page.waitForTimeout(2500);
+  // Wait until the visible text stops changing (counters, loading states), so both builds are sampled settled.
+  await page.evaluate(async () => {
+    let last = '';
+    let stableFor = 0;
+    for (let i = 0; i < 80 && stableFor < 8; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      const now = document.body.innerText;
+      stableFor = now === last ? stableFor + 1 : 0;
+      last = now;
+    }
+  });
   await page.evaluate(() => {
     for (const a of document.getAnimations()) {
       const end = a.effect?.getComputedTiming().endTime;
@@ -97,6 +118,12 @@ for (const state of STATES) {
     test(`fingerprint ${state.name} @ ${w.width}`, async ({ page }) => {
       await mockApi(page);
       await blockMapTiles(page);
+      // The legacy AnimatedCounter computes elapsed time from performance.now() and the rAF timestamp; when the first
+      // frame timestamp is older it shows -0 or -1 and the run becomes timing-dependent. Hand it performance.now().
+      await page.addInitScript(() => {
+        const raf = window.requestAnimationFrame.bind(window);
+        window.requestAnimationFrame = (cb) => raf(() => cb(performance.now()));
+      });
       await page.setViewportSize({ width: w.width, height: w.height });
       await page.goto(state.path, { waitUntil: 'load' });
       await settle(page);
@@ -131,7 +158,22 @@ for (const state of STATES) {
           if (names.length === 0) for (let i = 0; i < cs.length; i++) names.push(cs[i]);
           const r = el.getBoundingClientRect();
           const v = names.map((n) => intern(normalise(cs.getPropertyValue(n))));
-          elements.push({ path: pathOf(el), box: [round(r.x), round(r.y), round(r.width), round(r.height)], v });
+          const own = [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join(' ').replace(/\\d{1,2}:\\d{2}:\\d{2}\\s?[AP]M/g, '<clock>').slice(0, 80);
+          // The dashboard stat counters (AnimatedCounter, a span inside a .text-2xl div) restart on a target change and can be
+          // left at a random partial count (0, 1, -0, ...): a legacy timing race unrelated to styling. Record them neutral.
+          const counter = el.tagName === 'SPAN' && el.parentElement && el.parentElement.classList.contains('text-2xl') && /^-?\\d+$/.test(own);
+          elements.push({
+            path: pathOf(el),
+            box: counter ? [0, 0, 0, 0] : [round(r.x), round(r.y), round(r.width), round(r.height)],
+            v,
+            t: counter ? '<counter>' : own,
+          });
+        }
+        // ::placeholder is not reachable through the element's own computed style; Tailwind 3 and 4 differ there.
+        for (const el of document.body.querySelectorAll('input[placeholder], textarea[placeholder]')) {
+          const cs = getComputedStyle(el, '::placeholder');
+          const v = names.map((n) => intern(normalise(cs.getPropertyValue(n))));
+          elements.push({ path: pathOf(el) + '::placeholder', box: [0, 0, 0, 0], v });
         }
         return { names, strings, elements };
       })()`);
