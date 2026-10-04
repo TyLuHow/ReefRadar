@@ -111,8 +111,8 @@ html:has([data-surface='instrument'][data-direction='nocturne']),
   --dir-rule: #2b3240;
   --dir-rule-strong: #7a8492;
   --dir-rule-heavy: #2b3240;
-  --dir-accent: #a5b4fc;
-  --dir-focus: #a5b4fc;
+  --dir-accent: #96a9ff; /* was #a5b4fc; moved 3.6 CIEDE2000 so it stays >= 10 from hab-healthy under protanopia and deuteranopia (04-04) */
+  --dir-focus: #96a9ff;
   --dir-control: #eef0f5;
   --dir-on-control: #0b0d12;
   --dir-control-hover: #ffffff;
@@ -182,7 +182,7 @@ html:has([data-surface='instrument'][data-direction='poster']),
   --dir-rule: #bdbdbd;
   --dir-rule-strong: #6b6b6b;
   --dir-rule-heavy: #0a0a0a;
-  --dir-accent: #c2005f;
+  --dir-accent: #bd0047; /* was #c2005f; >= 10 from hab-healthy under deuteranopia (04-04) */
   --dir-focus: #0a0a0a;
   --dir-control: #0a0a0a;
   --dir-on-control: #ffffff;
