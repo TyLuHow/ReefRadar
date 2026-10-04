@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 4
 current_phase_name: Design System & Instrument Primitives
 status: executing
-stopped_at: Completed 04-09-PLAN.md
-last_updated: "2026-10-04T18:33:49.795Z"
+stopped_at: Completed 04-10-PLAN.md
+last_updated: "2026-10-04T19:41:10.291Z"
 last_activity: 2026-10-04
-last_activity_desc: 04-09 complete (Button, ToggleGroup, Tooltip, Empty/Error/Loading and Numerals/AccentBlock fixtures sections; swatch e2e race fixed)
-state_head: fe78f172097cc055cd8840720af5912bda9d61a2
+last_activity_desc: 04-10 complete (Dialog, AlertDialog, Sheet, Listbox and their fixtures sections; Sheet-based phone section list; overlay portal-target fix)
+state_head: c7b6c3886e95bed7ade2d2531e7b8c35efb884bc
 progress:
   total_phases: 17
   completed_phases: 3
   total_plans: 72
-  completed_plans: 57
+  completed_plans: 58
   percent: 18
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 04-09 complete (9 of 24; unit 954 passing, lint 0 errors, flag-less build green and fixtures excluded, full fixture-mocked e2e 98 passed and fixtures-route spec 135/135 at --repeat-each=5); CI on cb42a64 failed e2e on the swatch-label race, fixed in 04-09 (23a7167); CI green on 3f83dd1 (all jobs, visual 33/33); next 04-10
-Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, not complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup and Tooltip and their fixtures sections, not complete; DS-05 advanced by the state primitives, RLabel, Stat, AccentBlock, BandSection and their fixtures sections, not complete; DS-08 route, production exclusion, registry, chrome and seven sections in place, remaining sections arrive with each primitive plan; DS-06 reduced-motion hook and toggle in place, per-primitive checks pending)
-Last activity: 2026-10-04 — 04-09 five fixtures sections (button, toggle-group, tooltip, states, numerals) and the swatch-label e2e race fix complete
+Plan: 04-10 complete (10 of 24; unit 1019 passing, lint 0 errors, flag-less build green and fixtures excluded, full fixture-mocked e2e 119 passed, 04-10 e2e block 210/210 at --repeat-each=10); not yet pushed to CI; next 04-11
+Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, not complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup, Tooltip, Dialog, AlertDialog, Sheet and Listbox, not complete; DS-05 advanced by the state primitives, RLabel, Stat, AccentBlock, BandSection, not complete; DS-08 route, production exclusion, registry, chrome and ten sections in place, remaining sections arrive with each primitive plan; DS-06 reduced-motion hook and toggle in place, overlay transitions asserted zero under reduced motion)
+Last activity: 2026-10-04 — 04-10 Dialog, Sheet and Listbox with fixtures sections and the Sections sheet complete
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
@@ -119,6 +119,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 04 P07 | 20min | 3 tasks | 15 files |
 | Phase 04 P08 | 8min | 2 tasks | 12 files |
 | Phase 04 P09 | 55min | 2 tasks | 8 files |
+| Phase 04 P10 | 150min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -214,6 +215,8 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-07: fixtures sections read direction and reduced state from a chrome context (parts/FixtureSection.tsx); section files never touch data-direction; each section is a meta object plus a component registered in registry.tsx and slugs.ts — Keeps the semantic-token scanner's direction rule intact and gives later primitive plans one append point
 - [Phase 04]: 04-08: ErrorState reports a clipboard refusal in its polite live region instead of showing Copied; Stat shows a dash for a non-finite value; AccentBlock skips its per-screen check when no surface or integer --max-blocks exists
 - [Phase 04]: 04-09: no request-id error cell (no committed fixture holds a request id); ToggleGroup fixture cells are named 'Options, ...' so they never match the chrome's Direction radiogroup; the swatch-label e2e now polls label and --dir-ground together (CI race on cb42a64)
+- [Phase 04]: 04-10: overlays portal into the surface root, resolved when the overlay opens (SurfaceModalOverlay), because the prerendered fallback surface is discarded by the client and a first-render lookup mounted the dialog into a detached node in production builds only — Found by the production e2e; unit tests and next dev were green. Tokens, next/font variables and resets live on the surface subtree
+- [Phase 04]: 04-10: Listbox rows speak the status word as sr-only text and a disabled row gives its reason in text plus a hand-placed hover tooltip; the dialog long-content cell shows each site's own label definition rather than one definition repeated — RAC Tooltip needs a focusable trigger and a disabled option cannot take focus; repeating a definition under other site ids would misattribute a label
 
 ### Pending Todos
 
@@ -237,6 +240,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-04T18:33:48.784Z
-Stopped at: Completed 04-09-PLAN.md
+Last session: 2026-10-04T19:41:09.171Z
+Stopped at: Completed 04-10-PLAN.md
 Resume file: None
