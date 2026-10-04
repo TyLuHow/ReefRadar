@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 4
 current_phase_name: Design System & Instrument Primitives
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-10-04T06:48:12.365Z"
-last_activity: 2026-10-03
-last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: 3418880da8c01a4b54d96839309795acfe51a103
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-10-04T16:59:07.774Z"
+last_activity: 2026-10-04
+last_activity_desc: 04-02 complete (token source, legacy.css relocation, JS token bridge)
+state_head: e7f2bb4b1e895792022db8db8e15937ea6c770b1
 progress:
   total_phases: 17
   completed_phases: 3
   total_plans: 72
-  completed_plans: 49
+  completed_plans: 50
   percent: 18
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 04-01 complete (1 of 24); CI green on 2cdc8bb (visual 33/33 unchanged, e2e 71, unit 540, pytest 509); next 04-02
-Status: Executing Phase 4 (DS-01 stays pending until the token plans land)
-Last activity: 2026-10-04 — 04-01 CI gate passed; design canvas row 3 (Listen/Compare/Explore from real recordings) published
+Plan: 04-02 complete (2 of 24; unit 575 passing, build green); CI visual job on the 04-02 commits not yet run; next 04-03
+Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-06 groundwork only)
+Last activity: 2026-10-04 — 04-02 token source, legacy.css relocation and JS token bridge complete
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
@@ -111,6 +111,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 03 P14 | 45min | 2 tasks | 7 files |
 | Phase 03 P15 | long (3 dispatches, owner review) | 3 tasks | 30 files |
 | Phase 04 P01 | 90min | 3 tasks | 42 files |
+| Phase 04 P02 | 14min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -192,6 +193,9 @@ Recent decisions affecting current work:
 - [Phase 3]: 03-15: Tailwind content globs must include src/features (map legends were unstyled); guarded by tests/unit/tailwind-content.test.ts
 - [Phase 3]: 03-15: Phase 3 visual change accepted by owner 2026-10-03 (1 baseline, 6 captures); before_ref now b780b15 after the history rewrite
 - [Phase 4]: 04-01: stock amber/sky/gray palette pinned to Tailwind 3 hex values; SampleCard hover border made important; Tailwind 3 preflight defaults (option padding, input bg, placeholder) restored in @layer base
+- [Phase 04]: 04-02: direction gutter at 1280 px is stored per direction as --dir-gutter-wide and applied by one shared media rule, keeping the three direction key sets identical
+- [Phase 04]: 04-02: font variables use var(--font-x, generic) fallbacks so an undefined next/font variable cannot invalidate a declaration
+- [Phase 04]: 04-02: legacy CSS lives only in src/styles/legacy.css; guard tests that read globals.css now read legacy.css too
 
 ### Pending Todos
 
@@ -215,6 +219,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-04T06:48:11.825Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-10-04T16:59:07.221Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
