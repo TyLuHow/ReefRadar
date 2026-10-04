@@ -16,6 +16,11 @@ const MODEL_VERSION = (
     model_version: string;
   }
 ).model_version;
+const CONTRACT_SITES = (
+  JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', 'contracts', 'bucket', 'v1', 'sites.json'), 'utf8')) as {
+    sites: { country: string }[];
+  }
+).sites;
 const NEW_FONT_FAMILY = /newsreader|hanken|spline|archivo/i;
 
 test.beforeEach(async ({ page }) => {
@@ -236,6 +241,82 @@ test.describe('/dev/fixtures foundation sections (04-07)', () => {
     // Four vision rows, and a contrast cell for every status on every ground.
     await expect(palette.locator('[data-vision]')).toHaveCount(4);
     await expect(palette.locator('td[data-status][data-ground]')).toHaveCount(15);
+  });
+});
+
+test.describe('/dev/fixtures primitive sections (04-09)', () => {
+  test('the five sections are listed and their cells carry markers', async ({ page }) => {
+    await openFixtures(page);
+    for (const slug of ['button', 'toggle-group', 'tooltip', 'states', 'numerals']) {
+      await expect(page.locator(`section#${slug}`)).toHaveCount(1);
+      expect(await page.locator(`section#${slug} [data-fixture-state]`).count()).toBeGreaterThan(0);
+    }
+  });
+
+  test('forced hover, focus and pressed cells are labelled as forced', async ({ page }) => {
+    await openFixtures(page);
+    for (const slug of ['button', 'toggle-group']) {
+      for (const state of ['hover', 'focus', 'pressed']) {
+        const cell = page.locator(`section#${slug} [data-fixture-state="${state}"]`);
+        await expect(cell).toContainText(`${state.toUpperCase()} (forced)`);
+        await expect(cell).toContainText('State forced for review');
+      }
+    }
+  });
+
+  test('the numerals are computed from the contract sites', async ({ page }) => {
+    await openFixtures(page);
+    const stats = page.locator('section#numerals [data-fixture-state="stats"]');
+    const siteCount = CONTRACT_SITES.length;
+    const countryCount = new Set(CONTRACT_SITES.map((site) => site.country)).size;
+    await expect(stats.locator('p.flex').nth(0)).toContainText(String(siteCount));
+    await expect(stats.locator('p.flex').nth(0)).toContainText('reference sites');
+    await expect(stats.locator('p.flex').nth(1)).toContainText(String(countryCount));
+    await expect(stats.locator('p.flex').nth(1)).toContainText('countries');
+  });
+
+  test('the error cells show no request id and the long-wait cell says so', async ({ page }) => {
+    await openFixtures(page);
+    await expect(page.locator('section#states')).not.toContainText('Request id');
+    await expect(page.locator('section#states [data-fixture-state="loading-long-wait"]')).toContainText('This is taking longer than usual.');
+  });
+
+  for (const direction of ['atlas', 'nocturne', 'poster']) {
+    test(`one accent block per cell logs no error in ${direction}`, async ({ page }) => {
+      const errors: string[] = [];
+      page.on('console', (message) => {
+        if (message.type() === 'error' && message.text().includes('AccentBlock')) errors.push(message.text());
+      });
+      await openFixtures(page, `?direction=${direction}`);
+      await expect(page.locator('section#numerals [data-accent-block]')).toHaveCount(1);
+      expect(errors).toEqual([]);
+    });
+  }
+
+  test('the live tooltip opens on keyboard focus and closes on Escape', async ({ page }) => {
+    await openFixtures(page);
+    // The contract pin is filled by a client query, so once it reads the app has hydrated and the
+    // tooltip's focus handlers are attached.
+    await expect(page.getByTestId('contract-pin')).toHaveText(/^Contract v1/);
+    // The two forced cells already draw a static tooltip each; the live one adds a third.
+    await expect(page.getByRole('tooltip')).toHaveCount(2);
+    // React Aria opens a tooltip on focus only when the focus came from the keyboard, so reach the
+    // trigger with real Tab presses: focus the control before it, then Tab onto the trigger.
+    await page.getByRole('button', { name: 'Reduced motion' }).focus();
+    const trigger = page.getByTestId('tooltip-live-trigger');
+    for (let presses = 0; presses < 200 && !(await trigger.evaluate((el) => el === document.activeElement)); presses += 1) {
+      await page.keyboard.press('Tab');
+    }
+    await expect(trigger).toBeFocused();
+    // A tooltip closes when its page scrolls, and the first Tab onto a trigger that was off screen
+    // scrolls it into view right after the tooltip opened. Step off and back on, now that the page
+    // has settled, so the assertion is about the tooltip and not about that scroll.
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    await expect(trigger).toBeFocused();
+    await expect(page.getByRole('tooltip')).toHaveCount(3);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('tooltip')).toHaveCount(2);
   });
 });
 
