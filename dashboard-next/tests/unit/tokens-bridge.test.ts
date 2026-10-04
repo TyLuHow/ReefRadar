@@ -44,9 +44,17 @@ describe('readTokens', () => {
     expect((error as TokenError).message).toContain('hab-healthy');
   });
 
-  it('throws on a value that is not six-digit hex (oklch, rgb, short hex, 8-digit hex)', () => {
+  it('expands the three-digit hex the production CSS minifier writes (#fff, #333, #000) to six digits', () => {
     const root = document.createElement('div');
-    for (const bad of ['oklch(60% 0.2 30)', 'rgb(1, 2, 3)', '#fff', '#11223344']) {
+    const tokens = readTokens(root, styleStub(completeValues({ '--dir-ground': '#fff', '--dir-ink': ' #AbC ', '--dir-rule': '#000' })));
+    expect(tokens.ground).toBe('#ffffff');
+    expect(tokens.ink).toBe('#AAbbCC');
+    expect(tokens.rule).toBe('#000000');
+  });
+
+  it('throws on a value that is not a hex colour (oklch, rgb, four-digit hex, 8-digit hex)', () => {
+    const root = document.createElement('div');
+    for (const bad of ['oklch(60% 0.2 30)', 'rgb(1, 2, 3)', '#ffff', '#11223344']) {
       let error: unknown;
       try {
         readTokens(root, styleStub(completeValues({ '--dir-ink': bad })));

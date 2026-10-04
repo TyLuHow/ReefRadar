@@ -8,8 +8,11 @@ import { useEffect, useState, type RefObject } from 'react';
  * colour scales) read the resolved custom properties here. TypeScript never restates a value.
  *
  * getComputedStyle(el).getPropertyValue('--x') returns the authored text, so a token that JavaScript
- * reads must be a six-digit sRGB hex. readTokens throws a TokenError on anything else instead of
- * handing a string a parser will silently misread.
+ * reads must be a hex colour. readTokens returns it as a six-digit sRGB hex and throws a TokenError
+ * on anything else instead of handing a string a parser will silently misread. The production CSS
+ * minifier shortens `#ffffff` to `#fff` (and `#333333` to `#333`, `#000000` to `#000`) in custom
+ * properties, so a three-digit hex is expanded here: the authored source says six digits, the
+ * computed value in a built app may say three.
  */
 
 /** The tokens JavaScript consumers read, without the `--dir-` prefix. Each is a six-digit hex in tokens.css. */
@@ -44,6 +47,13 @@ export type Tokens = Record<TokenKey, string>;
 
 const SURFACE_SELECTOR = '[data-surface="instrument"]';
 const HEX6 = /^#[0-9a-fA-F]{6}$/;
+const HEX3 = /^#([0-9a-fA-F])([0-9a-fA-F])([0-9a-fA-F])$/;
+
+/** `#abc` to `#aabbcc`; anything else is returned unchanged. */
+function expandShortHex(value: string): string {
+  const short = HEX3.exec(value);
+  return short ? `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}` : value;
+}
 
 /** A JS-visible token is missing or is not a six-digit hex. */
 export class TokenError extends Error {
@@ -72,7 +82,7 @@ export function readTokens(root: Element, getStyle: StyleReader = (element) => g
   const style = getStyle(root);
   const tokens = {} as Tokens;
   for (const key of JS_TOKEN_KEYS) {
-    const value = style.getPropertyValue(`--dir-${key}`).trim();
+    const value = expandShortHex(style.getPropertyValue(`--dir-${key}`).trim());
     if (!HEX6.test(value)) throw new TokenError(key, value);
     tokens[key] = value;
   }
