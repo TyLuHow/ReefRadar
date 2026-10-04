@@ -164,7 +164,9 @@ describe('direction blocks', () => {
   it('the page gutter steps 16, 24, 32 and then takes the direction value from 1280', () => {
     const gutters = new Map<string, string>();
     root.walkAtRules('media', (media) => {
-      media.walkDecls('--gutter', (decl) => gutters.set(media.params, decl.value.trim()));
+      media.walkDecls('--gutter', (decl) => {
+        gutters.set(media.params, decl.value.trim());
+      });
     });
     expect(gutters.get('(min-width: 640px)')).toBe('24px');
     expect(gutters.get('(min-width: 1024px)')).toBe('32px');
@@ -293,7 +295,9 @@ describe('scoping', () => {
 
   it('declares the three state variants and the utilities the components rely on', () => {
     const variants = new Map<string, string>();
-    root.walkAtRules('custom-variant', (rule) => variants.set(rule.params.split(/\s+/, 1)[0], rule.params));
+    root.walkAtRules('custom-variant', (rule) => {
+      variants.set(rule.params.split(/\s+/, 1)[0], rule.params);
+    });
     expect(variants.get('hover-state')).toContain('data-hovered');
     expect(variants.get('hover-state')).toContain('data-force-hover');
     expect(variants.get('focus-state')).toContain('data-focus-visible');
@@ -302,7 +306,9 @@ describe('scoping', () => {
     expect(variants.get('pressed-state')).toContain('data-force-pressed');
 
     const utilities = new Set<string>();
-    root.walkAtRules('utility', (rule) => utilities.add(rule.params));
+    root.walkAtRules('utility', (rule) => {
+      utilities.add(rule.params);
+    });
     for (const name of [
       'type-display', 'type-eyebrow', 'focus-ring', 'focus-ring-inset', 'focus-ring-well', 'focus-ring-accent',
       'rule-top-heavy', 'tabular', 'hit-area',
