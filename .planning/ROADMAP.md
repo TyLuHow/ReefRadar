@@ -300,13 +300,13 @@ Plans:
   4. A dev-only fixtures route renders every instrument primitive (Transport, Spectrogram, WindowStrip, BandToggle, CompareRow, ProvenanceChip/Why panel, StripPlot, ProbabilityBar with abstain, DataTable, data-driven Legend with counts, Empty/Error/Loading) in every state from contract fixtures, under screenshot visual regression and visual review.
   5. Motion is limited to continuity (selection, layout morph, playhead, view transitions), and with reduced-motion enabled no primitive animates.
 
-**Plans**: 2/24 plans executed (23 waves, sequential execution; 04-01 lands alone and gates the rest on a green CI visual job)
+**Plans**: 3/24 plans executed (23 waves, sequential execution; 04-01 lands alone and gates the rest on a green CI visual job)
 
 Plans:
 
 - [x] 04-01-PLAN.md — Tailwind 3 to 4.3.3 migration, legacy-neutral (33 baselines unchanged, fingerprint proof)
 - [x] 04-02-PLAN.md — Token source (three directions, @theme inline), legacy.css relocation, JS token bridge
-- [ ] 04-03-PLAN.md — DSP core: WAV parser, STFT on the fixed -120 to -50 dB range, magma LUT, level helpers
+- [x] 04-03-PLAN.md — DSP core: WAV parser, STFT on the fixed -120 to -50 dB range, magma LUT, level helpers
 - [ ] 04-04-PLAN.md — Palette, contrast and semantic-token gates; status shapes and StatusMark
 - [ ] 04-05-PLAN.md — React Aria install; Button, ToggleGroup, Tooltip
 - [ ] 04-06-PLAN.md — /dev/fixtures route behind NEXT_PUBLIC_DEV_FIXTURES, scoped fonts, ConditionalShell carve-out, CI exclusion check
@@ -564,7 +564,7 @@ Numeric order (1 → 17) is a valid order. With parallelization, Data & ML phase
 | 1. Truth & Reproducibility | 20/20 | Complete    | 2026-10-01 |
 | 2. Data Contract v1 | 13/13 | Complete    | 2026-10-02 |
 | 3. Platform Upgrade & Stack Consolidation | 15/15 | Complete    | 2026-10-03 |
-| 4. Design System & Instrument Primitives | 2/24 | In Progress|  |
+| 4. Design System & Instrument Primitives | 3/24 | In Progress|  |
 | 5. Preprocessing Parity & Grouped Evaluation | 0/TBD | Not started | - |
 | 6. Instrument Shell & Atlas | 0/TBD | Not started | - |
 | 7. Listening Bench | 0/TBD | Not started | - |
