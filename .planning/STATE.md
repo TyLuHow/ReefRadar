@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 4
 current_phase_name: Design System & Instrument Primitives
 status: planning
-stopped_at: Phase 3 complete, ready to plan Phase 4
-last_updated: "2026-10-04T00:03:53.209Z"
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-10-04T06:48:12.365Z"
 last_activity: 2026-10-03
 last_activity_desc: Phase 3 complete, transitioned to Phase 4
-state_head: 99c25eed93fd678bd19eae6da6a4d241c545524c
+state_head: 3418880da8c01a4b54d96839309795acfe51a103
 progress:
   total_phases: 17
   completed_phases: 3
-  total_plans: 48
-  completed_plans: 48
+  total_plans: 72
+  completed_plans: 49
   percent: 18
 ---
 
@@ -30,11 +30,11 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-10-03 — Phase 3 complete, transitioned to Phase 4
+Plan: 04-01 complete locally (1 of 24); next 04-02 after the CI visual gate on 04-01 is green
+Status: Executing Phase 4 (04-01 awaiting CI visual job)
+Last activity: 2026-10-04 — 04-01 Tailwind 4 migration executed, fingerprint proof zero unexplained
 
-Progress: [████████████████████] 20/20 plans ([█░░░░░░░░░] 12%)
+Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
 ## Performance Metrics
 
@@ -110,6 +110,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 03 P13 | 35min | 2 tasks | 9 files |
 | Phase 03 P14 | 45min | 2 tasks | 7 files |
 | Phase 03 P15 | long (3 dispatches, owner review) | 3 tasks | 30 files |
+| Phase 04 P01 | 90min | 3 tasks | 42 files |
 
 ## Accumulated Context
 
@@ -190,6 +191,7 @@ Recent decisions affecting current work:
 - [Phase 3]: 03-13: Try again uses Next 16.3 retry(); PLAT-09 left open until a Vercel preview proof exists (vercel deploy denied by permission system)
 - [Phase 3]: 03-15: Tailwind content globs must include src/features (map legends were unstyled); guarded by tests/unit/tailwind-content.test.ts
 - [Phase 3]: 03-15: Phase 3 visual change accepted by owner 2026-10-03 (1 baseline, 6 captures); before_ref now b780b15 after the history rewrite
+- [Phase 4]: 04-01: stock amber/sky/gray palette pinned to Tailwind 3 hex values; SampleCard hover border made important; Tailwind 3 preflight defaults (option padding, input bg, placeholder) restored in @layer base
 
 ### Pending Todos
 
@@ -213,6 +215,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-04T00:04:17Z
-Stopped at: Phase 3 complete, ready to discuss/plan Phase 4
+Last session: 2026-10-04T06:48:11.825Z
+Stopped at: Completed 04-01-PLAN.md
 Resume file: None

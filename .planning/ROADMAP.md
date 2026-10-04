@@ -300,10 +300,11 @@ Plans:
   4. A dev-only fixtures route renders every instrument primitive (Transport, Spectrogram, WindowStrip, BandToggle, CompareRow, ProvenanceChip/Why panel, StripPlot, ProbabilityBar with abstain, DataTable, data-driven Legend with counts, Empty/Error/Loading) in every state from contract fixtures, under screenshot visual regression and visual review.
   5. Motion is limited to continuity (selection, layout morph, playhead, view transitions), and with reduced-motion enabled no primitive animates.
 
-**Plans**: 24 plans (23 waves, sequential execution; 04-01 lands alone and gates the rest on a green CI visual job)
+**Plans**: 1/24 plans executed (23 waves, sequential execution; 04-01 lands alone and gates the rest on a green CI visual job)
 
 Plans:
-- [ ] 04-01-PLAN.md — Tailwind 3 to 4.3.3 migration, legacy-neutral (33 baselines unchanged, fingerprint proof)
+
+- [x] 04-01-PLAN.md — Tailwind 3 to 4.3.3 migration, legacy-neutral (33 baselines unchanged, fingerprint proof)
 - [ ] 04-02-PLAN.md — Token source (three directions, @theme inline), legacy.css relocation, JS token bridge
 - [ ] 04-03-PLAN.md — DSP core: WAV parser, STFT on the fixed -120 to -50 dB range, magma LUT, level helpers
 - [ ] 04-04-PLAN.md — Palette, contrast and semantic-token gates; status shapes and StatusMark
@@ -327,6 +328,7 @@ Plans:
 - [ ] 04-22-PLAN.md — Browser gates: keyboard, axe in three directions, targets, reduced motion, legacy isolation, state manifest
 - [ ] 04-23-PLAN.md — fixtures-shots screenshot project, CI wiring, review page generator
 - [ ] 04-24-PLAN.md — Snapshot dispatch, fail-closed gate, owner review of Atlas plus two alternates
+
 **UI hint**: yes
 
 ### Phase 5: Preprocessing Parity & Grouped Evaluation
@@ -562,7 +564,7 @@ Numeric order (1 → 17) is a valid order. With parallelization, Data & ML phase
 | 1. Truth & Reproducibility | 20/20 | Complete    | 2026-10-01 |
 | 2. Data Contract v1 | 13/13 | Complete    | 2026-10-02 |
 | 3. Platform Upgrade & Stack Consolidation | 15/15 | Complete    | 2026-10-03 |
-| 4. Design System & Instrument Primitives | 0/TBD | Not started | - |
+| 4. Design System & Instrument Primitives | 1/24 | In Progress|  |
 | 5. Preprocessing Parity & Grouped Evaluation | 0/TBD | Not started | - |
 | 6. Instrument Shell & Atlas | 0/TBD | Not started | - |
 | 7. Listening Bench | 0/TBD | Not started | - |

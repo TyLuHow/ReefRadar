@@ -66,7 +66,7 @@
 
 ### Design System (DS)
 
-- [ ] **DS-01**: A single token source (Tailwind v4 CSS-first) defines the light scientific-editorial system — typography, spacing, surfaces, rules, radii, elevation, focus — consumed by UI, map style and chart scales [CAP-85]
+- [x] **DS-01**: A single token source (Tailwind v4 CSS-first) defines the light scientific-editorial system — typography, spacing, surfaces, rules, radii, elevation, focus — consumed by UI, map style and chart scales [CAP-85]
 - [ ] **DS-02**: One CVD-validated ordinal palette encodes degraded → restored_early → restored_mid → healthy, with a distinct neutral for unknown, never reused as UI accent, always paired with shape or text [CAP-56]
 - [ ] **DS-03**: Spectrograms and waveforms render in dark "wells" with a documented, perceptually uniform colour scale and dB colourbar
 - [ ] **DS-04**: Accessible primitives (React Aria Components) cover dialog, sheet, listbox, table, range/dual-range slider, toggle group, tooltip, command palette
@@ -255,7 +255,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PLAT-08 | Phase 16 | Pending |
 | PLAT-09 | Phase 3 | Complete |
 | PLAT-10 | Phase 3 | Complete |
-| DS-01 | Phase 4 | Pending |
+| DS-01 | Phase 4 | Complete |
 | DS-02 | Phase 4 | Pending |
 | DS-03 | Phase 4 | Pending |
 | DS-04 | Phase 4 | Pending |
