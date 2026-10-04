@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 4
 current_phase_name: Design System & Instrument Primitives
 status: executing
-stopped_at: Completed 04-06-PLAN.md
-last_updated: "2026-10-04T17:41:21.822Z"
+stopped_at: Completed 04-07-PLAN.md
+last_updated: "2026-10-04T18:01:41.541Z"
 last_activity: 2026-10-04
-last_activity_desc: 04-06 complete (/dev/fixtures route behind NEXT_PUBLIC_DEV_FIXTURES, scoped fonts, CI production-exclusion check)
-state_head: e23633397ec98e469c597dd6722dd4454d739d24
+last_activity_desc: 04-07 complete (fixtures section registry and pages, Direction switcher, Reduced motion toggle, useReducedMotion, Tokens and Status palette sections)
+state_head: 9361b5ab9b460caf1c99c4849d910b34217aaa3a
 progress:
   total_phases: 17
   completed_phases: 3
   total_plans: 72
-  completed_plans: 54
+  completed_plans: 55
   percent: 18
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 04-06 complete (6 of 24; unit 889 passing, build green, e2e 80 passing); CI green on 04-02 (a48ff40, visual 33/33); 04-03 to 04-06 CI pending; next 04-07
-Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, requirement not yet complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup and Tooltip, not complete; DS-08 route and production exclusion in place, sections arrive in 04-07; DS-06 groundwork only)
-Last activity: 2026-10-04 — 04-06 /dev/fixtures route, scoped fonts and production-exclusion check complete
+Plan: 04-07 complete (7 of 24; unit 907 passing, flag-less and flagged builds green, e2e 90 passing); CI green on 04-02 (a48ff40, visual 33/33); 04-03 to 04-07 CI pending; next 04-08
+Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place and the palette is reviewable live, requirement not yet complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup and Tooltip, not complete; DS-08 route, production exclusion, registry, chrome and two sections in place, remaining sections arrive with each primitive plan; DS-06 reduced-motion hook and toggle in place, per-primitive checks pending)
+Last activity: 2026-10-04 — 04-07 fixtures registry, chrome, motion hook, Tokens and Status palette sections complete
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
@@ -116,6 +116,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 04 P04 | 10min | 3 tasks | 11 files |
 | Phase 04 P05 | 17min | 3 tasks | 9 files |
 | Phase 04 P06 | 25min | 3 tasks | 15 files |
+| Phase 04 P07 | 20min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -207,6 +208,8 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-05: RAC does not forward aria-busy or aria-invalid, so Button and ToggleGroup set them on the node through a ref effect — filterDOMProps keeps only id, aria-label, aria-labelledby, aria-describedby, aria-details and data-*
 - [Phase 04]: 04-06: next.config.js always defines NEXT_PUBLIC_DEV_FIXTURES ('1' or '0') because Next substitutes a NEXT_PUBLIC_ variable only when defined; unset, the flag-gated dynamic import was not eliminated and fixture code shipped in a flag-less build — Found by grepping the build for the fixtures marker; CI script check-dev-fixtures-excluded.mjs now guards it
 - [Phase 04]: 04-06: FixturesApp Suspense fallback is the atlas-default surface so html:has(surface) matches in prerendered HTML (no dark body flash) — Legacy body bg-abyss would otherwise show until client hydration
+- [Phase 04]: 04-07: readTokens expands three-digit hex (#fff, #333, #000) because the production CSS minifier shortens custom-property hex; first built consumer of useTokens crashed with a TokenError — Found by the fixtures e2e against a production build; unit tests only saw raw CSS
+- [Phase 04]: 04-07: fixtures sections read direction and reduced state from a chrome context (parts/FixtureSection.tsx); section files never touch data-direction; each section is a meta object plus a component registered in registry.tsx and slugs.ts — Keeps the semantic-token scanner's direction rule intact and gives later primitive plans one append point
 
 ### Pending Todos
 
@@ -230,6 +233,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-04T17:41:21.288Z
-Stopped at: Completed 04-06-PLAN.md
+Last session: 2026-10-04T18:01:40.828Z
+Stopped at: Completed 04-07-PLAN.md
 Resume file: None
