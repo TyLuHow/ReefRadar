@@ -299,10 +299,15 @@ test.describe('/dev/fixtures primitive sections (04-09)', () => {
     // The contract pin is filled by a client query, so once it reads the app has hydrated and the
     // tooltip's focus handlers are attached.
     await expect(page.getByTestId('contract-pin')).toHaveText(/^Contract v1/);
-    // Static tooltips are drawn on the page already (the two forced Tooltip cells, and the Listbox
-    // disabled-item cell since 04-10); the live one adds exactly one more.
-    const staticTips = await page.getByRole('tooltip').count();
-    expect(staticTips).toBeGreaterThanOrEqual(2);
+    // Other tooltips share the page (the forced Tooltip cells, and the Listbox disabled-item cell,
+    // which opens on hover), so a page-wide count is not about this trigger. Park the pointer where
+    // the Tab sweep's scrolling cannot slide a hover target under it, and follow only the live
+    // overlay: React Aria positions it (data-placement), the static review surfaces are not.
+    await page.mouse.move(0, 0);
+    const liveTip = page
+      .locator('[role="tooltip"][data-placement]')
+      .filter({ hasText: 'Assigned by the dataset authors, not by the model.' });
+    await expect(liveTip).toHaveCount(0);
     // React Aria opens a tooltip on focus only when the focus came from the keyboard, so reach the
     // trigger with real Tab presses: focus the control before it, then Tab onto the trigger.
     await page.getByRole('button', { name: 'Reduced motion' }).focus();
@@ -317,9 +322,10 @@ test.describe('/dev/fixtures primitive sections (04-09)', () => {
     await page.keyboard.press('Shift+Tab');
     await page.keyboard.press('Tab');
     await expect(trigger).toBeFocused();
-    await expect(page.getByRole('tooltip')).toHaveCount(staticTips + 1);
+    await expect(liveTip).toHaveCount(1);
+    await expect(liveTip).toBeVisible();
     await page.keyboard.press('Escape');
-    await expect(page.getByRole('tooltip')).toHaveCount(staticTips);
+    await expect(liveTip).toHaveCount(0);
   });
 });
 
