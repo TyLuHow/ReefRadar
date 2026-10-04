@@ -21,6 +21,15 @@ export { Cell, Column, Row, Table, TableBody, TableHeader } from './Table';
 export type { CellProps, ColumnProps, RowProps, TableBodyProps, TableHeaderProps, TableProps } from './Table';
 export { RangeSlider, Slider } from './Slider';
 export type { RangeSliderProps, SliderForcedState, SliderProps, SliderState, SliderTone } from './Slider';
+export { CommandPalette, CommandPaletteSurface } from './CommandPalette';
+export type {
+  CommandPaletteGroup,
+  CommandPaletteItem,
+  CommandPaletteKind,
+  CommandPaletteProps,
+  CommandPaletteState,
+  CommandPaletteSurfaceProps,
+} from './CommandPalette';
 export { Tooltip, TooltipSurface } from './Tooltip';
 export type { TooltipProps } from './Tooltip';
 export { Skeleton } from './Skeleton';

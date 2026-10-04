@@ -80,6 +80,11 @@ export function getExcerpt(excerptId: string): AudioExcerpt {
   return excerpt;
 }
 
+/** Every committed excerpt, in manifest order (read-only view for fixtures and indexes). */
+export function allExcerpts(): readonly AudioExcerpt[] {
+  return manifest.excerpts;
+}
+
 export interface DemoPair {
   a: AudioExcerpt;
   b: AudioExcerpt;

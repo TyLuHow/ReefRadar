@@ -70,7 +70,7 @@ function Host({ onAction = () => undefined, onOpenChange, ...rest }: HostProps) 
 async function openPalette(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Open palette' }));
   const dialog = await screen.findByRole('dialog');
-  const input = await within(dialog).findByRole('combobox', { name: 'Search' });
+  const input = await within(dialog).findByRole('searchbox', { name: 'Search' });
   await waitFor(() => expect(document.activeElement).toBe(input));
   return { dialog, input };
 }
@@ -300,7 +300,7 @@ describe('CommandPaletteSurface', () => {
   it('draws the panel in place with no dialog role and a starting query', () => {
     render(<CommandPaletteSurface groups={GROUPS} defaultQuery="ind_h" />);
     expect(screen.queryByRole('dialog')).toBeNull();
-    const input = screen.getByRole('combobox', { name: 'Search' });
+    const input = screen.getByRole('searchbox', { name: 'Search' });
     expect(input).toHaveValue('ind_h');
     expect(screen.getAllByRole('option')).toHaveLength(3);
     expect(screen.getByRole('status')).toHaveTextContent('3 results');
