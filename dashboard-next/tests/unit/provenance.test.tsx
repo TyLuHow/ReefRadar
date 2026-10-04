@@ -41,7 +41,8 @@ const siteById = (id: string): ContractSite => {
 
 const IND_H1 = siteById('ind_H1');
 const NULL_DOI = SITES.find((site) => site.doi === null) as ContractSite;
-const UNKNOWN = SITES.find((site) => site.status === 'unknown') as ContractSite;
+/** The contract requires a site with no label definition to be unknown and to state why. */
+const UNKNOWN = SITES.find((site) => site.label_definition === null) as ContractSite;
 const LONGEST = SITES.reduce((best, site) => ((site.label_definition?.length ?? 0) > (best.label_definition?.length ?? 0) ? site : best), SITES[0]);
 
 const indData = whyPanelDataFromSite(IND_H1, { ...STAMP, recordedAt: RECORDED });
@@ -191,9 +192,9 @@ describe('ProvenanceChip: the Why panel', () => {
     const user = userEvent.setup();
     render(<Chip />);
     await user.click(chipButton(/Assigned by/));
-    const dialog = await screen.findByRole('dialog', { name: 'Where this label comes from' });
-    expect(chipButton(/Assigned by/)).toHaveAttribute('aria-expanded', 'true');
-    expect(dialog.className).toBeDefined();
+    await screen.findByRole('dialog', { name: 'Where this label comes from' });
+    // The page behind a modal popover is hidden from assistive technology, so the chip is looked up with hidden: true.
+    await waitFor(() => expect(screen.getByRole('button', { name: /Assigned by/, hidden: true })).toHaveAttribute('aria-expanded', 'true'));
   });
 
   it('titles each kind', async () => {

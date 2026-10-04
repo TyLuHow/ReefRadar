@@ -11,7 +11,7 @@ export { Button, LinkButton } from './Button';
 export type { ButtonProps, ButtonTone, ButtonVariant, LinkButtonProps } from './Button';
 export { ToggleButton, ToggleGroup, ToggleGroupItem } from './ToggleGroup';
 export type { ToggleButtonProps, ToggleGroupItemProps, ToggleGroupProps, ToggleTone } from './ToggleGroup';
-export { AlertDialog, Dialog, DialogSurface } from './Dialog';
+export { AlertDialog, Dialog, DialogSurface, overlayContainer } from './Dialog';
 export type { AlertDialogProps, DialogProps, DialogSurfaceProps, OverlayBodyState } from './Dialog';
 export { Listbox, ListboxItem, ListboxSection } from './Listbox';
 export type { ListboxItemProps, ListboxProps, ListboxSectionProps, ListboxState } from './Listbox';
