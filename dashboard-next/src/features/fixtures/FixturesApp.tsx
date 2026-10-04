@@ -14,6 +14,19 @@ import { parseFixtureQuery } from './query';
  *
  * Plan 04-07 adds the chrome, the section navigation and the sections inside this root.
  */
+const SURFACE_CLASS = 'min-h-screen bg-ground text-ink font-body';
+
+function Heading() {
+  return (
+    <main className="p-6">
+      <h1 className="font-numeral text-title">ReefRadar fixtures</h1>
+      <p className="text-small text-muted">
+        Dev-only review surface for the design system. Not linked from the product.
+      </p>
+    </main>
+  );
+}
+
 function FixturesSurface() {
   const searchParams = useSearchParams();
   const { direction, reduced, tokenOverrides } = parseFixtureQuery(searchParams);
@@ -39,21 +52,34 @@ function FixturesSurface() {
       data-direction={direction}
       data-reduced-motion={reduced ? 'true' : undefined}
       data-fixtures-marker={DEV_FIXTURES_MARKER}
-      className="min-h-screen bg-ground text-ink font-body"
+      className={SURFACE_CLASS}
     >
-      <main className="p-6">
-        <h1 className="font-numeral text-title">ReefRadar fixtures</h1>
-        <p className="text-small text-muted">
-          Dev-only review surface for the design system. Not linked from the product.
-        </p>
-      </main>
+      <Heading />
+    </div>
+  );
+}
+
+/**
+ * The Suspense fallback is the same surface with the atlas defaults, so the prerendered HTML
+ * already carries data-surface and the page paints the atlas ground from the first frame instead
+ * of flashing the legacy dark body colour until the query has been read on the client.
+ */
+function FixturesSurfaceFallback() {
+  return (
+    <div
+      data-surface="instrument"
+      data-direction="atlas"
+      data-fixtures-marker={DEV_FIXTURES_MARKER}
+      className={SURFACE_CLASS}
+    >
+      <Heading />
     </div>
   );
 }
 
 export function FixturesApp() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<FixturesSurfaceFallback />}>
       <FixturesSurface />
     </Suspense>
   );
