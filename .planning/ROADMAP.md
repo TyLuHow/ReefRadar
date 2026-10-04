@@ -300,7 +300,33 @@ Plans:
   4. A dev-only fixtures route renders every instrument primitive (Transport, Spectrogram, WindowStrip, BandToggle, CompareRow, ProvenanceChip/Why panel, StripPlot, ProbabilityBar with abstain, DataTable, data-driven Legend with counts, Empty/Error/Loading) in every state from contract fixtures, under screenshot visual regression and visual review.
   5. Motion is limited to continuity (selection, layout morph, playhead, view transitions), and with reduced-motion enabled no primitive animates.
 
-**Plans**: TBD
+**Plans**: 24 plans (23 waves, sequential execution; 04-01 lands alone and gates the rest on a green CI visual job)
+
+Plans:
+- [ ] 04-01-PLAN.md — Tailwind 3 to 4.3.3 migration, legacy-neutral (33 baselines unchanged, fingerprint proof)
+- [ ] 04-02-PLAN.md — Token source (three directions, @theme inline), legacy.css relocation, JS token bridge
+- [ ] 04-03-PLAN.md — DSP core: WAV parser, STFT on the fixed -120 to -50 dB range, magma LUT, level helpers
+- [ ] 04-04-PLAN.md — Palette, contrast and semantic-token gates; status shapes and StatusMark
+- [ ] 04-05-PLAN.md — React Aria install; Button, ToggleGroup, Tooltip
+- [ ] 04-06-PLAN.md — /dev/fixtures route behind NEXT_PUBLIC_DEV_FIXTURES, scoped fonts, ConditionalShell carve-out, CI exclusion check
+- [ ] 04-07-PLAN.md — Fixtures chrome, section registry and pages, direction switcher, reduced-motion toggle, Tokens and Status palette sections
+- [ ] 04-08-PLAN.md — Empty/Error/Loading, RLabel, Stat, AccentBlock, BandSection primitives
+- [ ] 04-09-PLAN.md — Fixtures sections for Button, ToggleGroup, Tooltip, states and numerals
+- [ ] 04-10-PLAN.md — Dialog, AlertDialog, Sheet, Listbox
+- [ ] 04-11-PLAN.md — Slider and RangeSlider, Table, DataTable
+- [ ] 04-12-PLAN.md — Command palette; ProvenanceChip and Why panel
+- [ ] 04-13-PLAN.md — Spectrogram well (four variants), ColourBar, Waveform
+- [ ] 04-14-PLAN.md — Audio engine and playhead clock
+- [ ] 04-15-PLAN.md — Transport, BandToggle, WindowStrip and their sections
+- [ ] 04-16-PLAN.md — CompareRow and CompareDeck (shared scale, playhead, crossfader), ClipCard
+- [ ] 04-17-PLAN.md — ProbabilityBar with abstain, Legend, StatusBand
+- [ ] 04-18-PLAN.md — Live ind_H1 analysis capture and the ProbabilityBar, Legend, StatusBand sections
+- [ ] 04-19-PLAN.md — StripPlot strip, paired and scatter variants; useProjection
+- [ ] 04-20-PLAN.md — Token wiring probe: one token drives UI, chart and map
+- [ ] 04-21-PLAN.md — Motion section and the Inspector, Listen, Compare, Explore compositions
+- [ ] 04-22-PLAN.md — Browser gates: keyboard, axe in three directions, targets, reduced motion, legacy isolation, state manifest
+- [ ] 04-23-PLAN.md — fixtures-shots screenshot project, CI wiring, review page generator
+- [ ] 04-24-PLAN.md — Snapshot dispatch, fail-closed gate, owner review of Atlas plus two alternates
 **UI hint**: yes
 
 ### Phase 5: Preprocessing Parity & Grouped Evaluation
