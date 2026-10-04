@@ -8,7 +8,7 @@
  * PageUp and PageDown need real layout (they move by the visible height), so they are covered by
  * the browser keyboard spec, not here.
  */
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Listbox, ListboxItem, ListboxSection } from '@/features/ui';
@@ -83,6 +83,12 @@ describe('Listbox: structure', () => {
     expect(count.className).toContain('tabular');
   });
 
+  it('speaks the status word in the row text so the mark is never the only carrier', () => {
+    render(<Sites />);
+    expect(within(option(/aus_D1/)).getByText(/Degraded/).className).toContain('sr-only');
+    expect(within(option(/aus_H1/)).getByText(/Healthy/).className).toContain('sr-only');
+  });
+
   it('rows are 44 px with a rule between them, token-only hover, inset focus and selected treatment', () => {
     render(<Sites />);
     const cls = option(/aus_H1/).className;
@@ -148,7 +154,13 @@ describe('Listbox: keyboard', () => {
     await user.tab();
     await user.keyboard('ken');
     expect(option(/ken_H1/)).toHaveFocus();
-    await user.keyboard('{Home}');
+  });
+
+  it('typeahead matches the whole typed prefix, not just the first letter', async () => {
+    const user = userEvent.setup();
+    render(<Sites />);
+    await user.tab();
+    await user.tab();
     await user.keyboard('ind_H');
     expect(option(/ind_H4/)).toHaveFocus();
   });
@@ -200,7 +212,9 @@ describe('Listbox: keyboard', () => {
     expect(off.querySelector('svg')).toBeNull();
     await user.tab();
     await user.tab();
-    await user.keyboard(' ');
+    // Tab lands on the selected option; step up to the unselected one and turn it on.
+    expect(option(/aus_H1/)).toHaveFocus();
+    await user.keyboard('{ArrowUp} ');
     expect((option(/aus_D1/).querySelector('[data-checkbox]') as HTMLElement).querySelector('svg')).not.toBeNull();
   });
 
@@ -241,6 +255,15 @@ describe('Listbox: disabled item', () => {
     await user.hover(row);
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Disabled for review');
     await user.unhover(row);
+    await waitFor(() => expect(screen.queryByRole('tooltip')).toBeNull());
+  });
+
+  it('Escape dismisses the tooltip', async () => {
+    const user = userEvent.setup();
+    render(<Sites disabled />);
+    await user.hover(option(/ind_D2/));
+    expect(await screen.findByRole('tooltip')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
     expect(screen.queryByRole('tooltip')).toBeNull();
   });
 

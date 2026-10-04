@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import type { FixtureGroup, FixtureSectionMeta } from './parts/FixtureSection';
 import { BUTTON_META, ButtonSection } from './sections/ButtonSection';
 import { DIALOG_META, DialogSection } from './sections/DialogSection';
+import { LISTBOX_META, ListboxSection } from './sections/ListboxSection';
 import { NUMERALS_META, NumeralsSection } from './sections/NumeralsSection';
 import { SHEET_META, SheetSection } from './sections/SheetSection';
 import { STATES_META, StatesSection } from './sections/StatesSection';
@@ -33,6 +34,7 @@ export const FIXTURE_SECTIONS: readonly FixtureSectionDef[] = [
   define(BUTTON_META, ButtonSection),
   define(DIALOG_META, DialogSection),
   define(SHEET_META, SheetSection),
+  define(LISTBOX_META, ListboxSection),
   define(TOGGLE_GROUP_META, ToggleGroupSection),
   define(TOOLTIP_META, TooltipSection),
   define(STATES_META, StatesSection),
