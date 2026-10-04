@@ -3,10 +3,10 @@
 import clsx from 'clsx';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useEffect, useRef, useSyncExternalStore } from 'react';
+import { Suspense, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { RouterProvider } from 'react-aria-components';
 import { useModelVersion } from '@/features/contract';
-import { ToggleButton, ToggleGroup, ToggleGroupItem } from '@/features/ui';
+import { Button, Sheet, ToggleButton, ToggleGroup, ToggleGroupItem } from '@/features/ui';
 import { DEV_FIXTURES_MARKER } from './marker';
 import { FixtureChromeProvider } from './parts/FixtureSection';
 import { DIRECTIONS, parseFixtureQuery, type Direction } from './query';
@@ -21,7 +21,8 @@ import { FIXTURE_SECTIONS } from './registry';
  *
  * The chrome (header, contract pin, Direction switcher, Reduced motion toggle, section list) writes
  * the same two query parameters back with router.replace, so a reload restores what the toolbar
- * shows. Plan 04-10 moves the section list below 1024 px into a Sheet.
+ * shows. At 1024 px and up the section list is a sticky left column; below 1024 px it opens from a
+ * "Sections" button in a bottom Sheet (the kit dogfoods itself).
  */
 const SURFACE_CLASS = 'min-h-screen bg-ground text-ink font-body';
 const INDEX_PATH = '/dev/fixtures/';
@@ -62,49 +63,78 @@ function Header() {
   );
 }
 
-function SectionNav({ section, query }: { section?: string; query: string }) {
+/** The section links. `onNavigate` lets the phone Sheet close itself when a link is pressed. */
+function SectionLinks({ section, query, onNavigate }: { section?: string; query: string; onNavigate?: () => void }) {
   const hash = useSyncExternalStore(subscribeToHash, readHash, () => '');
   const single = section !== undefined;
   const base = 'inline-flex min-h-11 items-center font-data text-small hover:underline underline-offset-4';
   const current = 'text-accent underline decoration-2';
 
   return (
+    <ul>
+      {single ? (
+        <li>
+          <Link href={`${INDEX_PATH}${query}`} prefetch={false} className={clsx(base, 'text-ink')} onClick={onNavigate}>
+            All sections
+          </Link>
+        </li>
+      ) : null}
+      {FIXTURE_SECTIONS.map(({ slug, title }) => {
+        const isCurrent = single ? slug === section : slug === hash;
+        const className = clsx(base, isCurrent ? current : 'text-ink');
+        return (
+          <li key={slug}>
+            {single ? (
+              <Link
+                href={`${INDEX_PATH}${slug}/${query}`}
+                prefetch={false}
+                className={className}
+                aria-current={isCurrent ? 'page' : undefined}
+                onClick={onNavigate}
+              >
+                {title}
+              </Link>
+            ) : (
+              <a href={`#${slug}`} className={className} aria-current={isCurrent ? 'location' : undefined} onClick={onNavigate}>
+                {title}
+              </a>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** At 1024 px and up: a sticky left column listing every section. */
+function SectionNav({ section, query }: { section?: string; query: string }) {
+  return (
     <nav
       aria-label="Fixture sections"
-      className="mb-8 lg:mb-0 lg:sticky lg:top-6 lg:w-[200px] lg:shrink-0 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto"
+      className="hidden lg:block lg:sticky lg:top-6 lg:w-[200px] lg:shrink-0 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto"
     >
-      <ul>
-        {single ? (
-          <li>
-            <Link href={`${INDEX_PATH}${query}`} prefetch={false} className={clsx(base, 'text-ink')}>
-              All sections
-            </Link>
-          </li>
-        ) : null}
-        {FIXTURE_SECTIONS.map(({ slug, title }) => {
-          const isCurrent = single ? slug === section : slug === hash;
-          const className = clsx(base, isCurrent ? current : 'text-ink');
-          return (
-            <li key={slug}>
-              {single ? (
-                <Link
-                  href={`${INDEX_PATH}${slug}/${query}`}
-                  prefetch={false}
-                  className={className}
-                  aria-current={isCurrent ? 'page' : undefined}
-                >
-                  {title}
-                </Link>
-              ) : (
-                <a href={`#${slug}`} className={className} aria-current={isCurrent ? 'location' : undefined}>
-                  {title}
-                </a>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      <SectionLinks section={section} query={query} />
     </nav>
+  );
+}
+
+/** Below 1024 px: a "Sections" button opens the same links in a bottom Sheet; a link press closes it. */
+function PhoneSectionNav({ section, query }: { section?: string; query: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-8 lg:hidden">
+      <Sheet
+        side="bottom"
+        title="Sections"
+        isOpen={open}
+        onOpenChange={setOpen}
+        trigger={<Button variant="secondary">Sections</Button>}
+      >
+        <nav aria-label="Fixture sections">
+          <SectionLinks section={section} query={query} onNavigate={() => setOpen(false)} />
+        </nav>
+      </Sheet>
+    </div>
   );
 }
 
@@ -193,6 +223,7 @@ function FixturesSurface({ section }: { section?: string }) {
             </ToggleButton>
           </div>
           <div className="px-(--gutter) pt-6 pb-24 lg:flex lg:items-start lg:gap-8">
+            <PhoneSectionNav section={section} query={query} />
             <SectionNav section={section} query={query} />
             <Sections section={section} />
           </div>

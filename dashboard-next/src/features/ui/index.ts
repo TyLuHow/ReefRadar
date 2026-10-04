@@ -13,6 +13,8 @@ export { ToggleButton, ToggleGroup, ToggleGroupItem } from './ToggleGroup';
 export type { ToggleButtonProps, ToggleGroupItemProps, ToggleGroupProps, ToggleTone } from './ToggleGroup';
 export { AlertDialog, Dialog, DialogSurface } from './Dialog';
 export type { AlertDialogProps, DialogProps, DialogSurfaceProps, OverlayBodyState } from './Dialog';
+export { Sheet, SheetSurface } from './Sheet';
+export type { SheetProps, SheetSide, SheetSurfaceProps } from './Sheet';
 export { Tooltip, TooltipSurface } from './Tooltip';
 export type { TooltipProps } from './Tooltip';
 export { Skeleton } from './Skeleton';
