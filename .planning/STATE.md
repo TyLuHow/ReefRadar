@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 4
 current_phase_name: Design System & Instrument Primitives
 status: executing
-stopped_at: Completed 04-08-PLAN.md
-last_updated: "2026-10-04T18:09:20.560Z"
+stopped_at: Completed 04-09-PLAN.md
+last_updated: "2026-10-04T18:33:49.795Z"
 last_activity: 2026-10-04
-last_activity_desc: 04-08 complete (Skeleton, EmptyState, ErrorState, LoadingState, RLabel, Stat, AccentBlock, BandSection, instrument barrel)
-state_head: 5833a54afa24b8995395f9c62d27acd030051430
+last_activity_desc: 04-09 complete (Button, ToggleGroup, Tooltip, Empty/Error/Loading and Numerals/AccentBlock fixtures sections; swatch e2e race fixed)
+state_head: fe78f172097cc055cd8840720af5912bda9d61a2
 progress:
   total_phases: 17
   completed_phases: 3
   total_plans: 72
-  completed_plans: 56
+  completed_plans: 57
   percent: 18
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 04-08 complete (8 of 24; unit 954 passing, flag-less build green and fixtures excluded; e2e not re-run, nothing it renders changed); CI green on 04-02 (a48ff40, visual 33/33); 04-03 to 04-08 CI pending; next 04-09
-Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place and the palette is reviewable live, requirement not yet complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup and Tooltip, not complete; DS-05 advanced by the state primitives (Skeleton, Empty, Error, Loading) and RLabel, Stat, AccentBlock, BandSection, not complete; DS-08 route, production exclusion, registry, chrome and two sections in place, remaining sections arrive with each primitive plan; DS-06 reduced-motion hook and toggle in place, per-primitive checks pending)
-Last activity: 2026-10-04 — 04-08 state primitives (Skeleton, EmptyState, ErrorState, LoadingState) and layout primitives (RLabel, Stat, AccentBlock, BandSection) complete
+Plan: 04-09 complete (9 of 24; unit 954 passing, lint 0 errors, flag-less build green and fixtures excluded, full fixture-mocked e2e 98 passed and fixtures-route spec 135/135 at --repeat-each=5); CI on cb42a64 failed e2e on the swatch-label race, fixed in 04-09 (23a7167); CI green on 04-02 (a48ff40, visual 33/33); 04-03 to 04-09 CI pending; next 04-10
+Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, not complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup and Tooltip and their fixtures sections, not complete; DS-05 advanced by the state primitives, RLabel, Stat, AccentBlock, BandSection and their fixtures sections, not complete; DS-08 route, production exclusion, registry, chrome and seven sections in place, remaining sections arrive with each primitive plan; DS-06 reduced-motion hook and toggle in place, per-primitive checks pending)
+Last activity: 2026-10-04 — 04-09 five fixtures sections (button, toggle-group, tooltip, states, numerals) and the swatch-label e2e race fix complete
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
@@ -118,6 +118,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 04 P06 | 25min | 3 tasks | 15 files |
 | Phase 04 P07 | 20min | 3 tasks | 15 files |
 | Phase 04 P08 | 8min | 2 tasks | 12 files |
+| Phase 04 P09 | 55min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -212,6 +213,7 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-07: readTokens expands three-digit hex (#fff, #333, #000) because the production CSS minifier shortens custom-property hex; first built consumer of useTokens crashed with a TokenError — Found by the fixtures e2e against a production build; unit tests only saw raw CSS
 - [Phase 04]: 04-07: fixtures sections read direction and reduced state from a chrome context (parts/FixtureSection.tsx); section files never touch data-direction; each section is a meta object plus a component registered in registry.tsx and slugs.ts — Keeps the semantic-token scanner's direction rule intact and gives later primitive plans one append point
 - [Phase 04]: 04-08: ErrorState reports a clipboard refusal in its polite live region instead of showing Copied; Stat shows a dash for a non-finite value; AccentBlock skips its per-screen check when no surface or integer --max-blocks exists
+- [Phase 04]: 04-09: no request-id error cell (no committed fixture holds a request id); ToggleGroup fixture cells are named 'Options, ...' so they never match the chrome's Direction radiogroup; the swatch-label e2e now polls label and --dir-ground together (CI race on cb42a64)
 
 ### Pending Todos
 
@@ -235,6 +237,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-04T18:09:19.588Z
-Stopped at: Completed 04-08-PLAN.md
+Last session: 2026-10-04T18:33:48.784Z
+Stopped at: Completed 04-09-PLAN.md
 Resume file: None
