@@ -37,12 +37,12 @@ export function ToggleGroupSection() {
   return (
     <FixtureSection {...TOGGLE_GROUP_META}>
       <StateCell primitive="toggle-group" state="default">
-        <ToggleGroup aria-label="Direction, default" selectionMode="single">
+        <ToggleGroup aria-label="Options, default" selectionMode="single">
           <Options />
         </ToggleGroup>
       </StateCell>
       <StateCell primitive="toggle-group" state="hover" forced note="Applied to the Nocturne segment.">
-        <ToggleGroup aria-label="Direction, hover" selectionMode="single">
+        <ToggleGroup aria-label="Options, hover" selectionMode="single">
           <ToggleGroupItem id="atlas">Atlas</ToggleGroupItem>
           <ToggleGroupItem id="nocturne" data-force-hover="">
             Nocturne
@@ -51,7 +51,7 @@ export function ToggleGroupSection() {
         </ToggleGroup>
       </StateCell>
       <StateCell primitive="toggle-group" state="focus" forced note="Applied to the Nocturne segment.">
-        <ToggleGroup aria-label="Direction, focus" selectionMode="single">
+        <ToggleGroup aria-label="Options, focus" selectionMode="single">
           <ToggleGroupItem id="atlas">Atlas</ToggleGroupItem>
           <ToggleGroupItem id="nocturne" data-force-focus="">
             Nocturne
@@ -60,7 +60,7 @@ export function ToggleGroupSection() {
         </ToggleGroup>
       </StateCell>
       <StateCell primitive="toggle-group" state="pressed" forced note="Applied to the Nocturne segment.">
-        <ToggleGroup aria-label="Direction, pressed" selectionMode="single">
+        <ToggleGroup aria-label="Options, pressed" selectionMode="single">
           <ToggleGroupItem id="atlas">Atlas</ToggleGroupItem>
           <ToggleGroupItem id="nocturne" data-force-pressed="">
             Nocturne
@@ -69,12 +69,12 @@ export function ToggleGroupSection() {
         </ToggleGroup>
       </StateCell>
       <StateCell primitive="toggle-group" state="selected">
-        <ToggleGroup aria-label="Direction, selected" selectionMode="single" defaultSelectedKeys={['nocturne']}>
+        <ToggleGroup aria-label="Options, selected" selectionMode="single" defaultSelectedKeys={['nocturne']}>
           <Options />
         </ToggleGroup>
       </StateCell>
       <StateCell primitive="toggle-group" state="disabled-segment" forced note="The Poster segment is disabled.">
-        <ToggleGroup aria-label="Direction, one segment disabled" selectionMode="single" defaultSelectedKeys={['atlas']}>
+        <ToggleGroup aria-label="Options, one segment disabled" selectionMode="single" defaultSelectedKeys={['atlas']}>
           <Options posterDisabled />
         </ToggleGroup>
       </StateCell>
@@ -92,13 +92,13 @@ export function ToggleGroupSection() {
         <p className="text-body text-muted">No options.</p>
       </StateCell>
       <StateCell primitive="toggle-group" state="error" forced note="Invalid is applied to a group with nothing selected.">
-        <ToggleGroup aria-label="Direction, invalid" selectionMode="multiple" isInvalid helperText="Choose at least one option.">
+        <ToggleGroup aria-label="Options, invalid" selectionMode="multiple" isInvalid helperText="Choose at least one option.">
           <Options />
         </ToggleGroup>
       </StateCell>
       <StateCell primitive="toggle-group" state="well-variant" note="Inside a well; the selected segment takes the well ink.">
         <div className="bg-well p-5">
-          <ToggleGroup aria-label="Direction, well" tone="well" selectionMode="single" defaultSelectedKeys={['atlas']}>
+          <ToggleGroup aria-label="Options, well" tone="well" selectionMode="single" defaultSelectedKeys={['atlas']}>
             <Options />
           </ToggleGroup>
         </div>
