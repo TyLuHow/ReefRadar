@@ -7,7 +7,7 @@
  * primitive plan appends its slug here and its entry to registry.tsx; tests/unit/fixtures-registry
  * keeps the two lists equal and in order.
  */
-export const FIXTURE_SLUGS: readonly string[] = ['tokens', 'status-palette', 'button', 'dialog', 'sheet', 'listbox', 'slider', 'toggle-group', 'tooltip', 'states', 'numerals'];
+export const FIXTURE_SLUGS: readonly string[] = ['tokens', 'status-palette', 'button', 'dialog', 'sheet', 'listbox', 'table', 'slider', 'toggle-group', 'tooltip', 'states', 'numerals'];
 
 /** True for a registered slug only; everything else, including inherited object keys, is false. */
 export function isFixtureSlug(slug: string): boolean {

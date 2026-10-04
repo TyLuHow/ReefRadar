@@ -8,6 +8,7 @@ import { SHEET_META, SheetSection } from './sections/SheetSection';
 import { SLIDER_META, SliderSection } from './sections/SliderSection';
 import { STATES_META, StatesSection } from './sections/StatesSection';
 import { STATUS_PALETTE_META, StatusPaletteSection } from './sections/StatusPaletteSection';
+import { TABLE_META, TableSection } from './sections/TableSection';
 import { TOGGLE_GROUP_META, ToggleGroupSection } from './sections/ToggleGroupSection';
 import { TOKENS_META, TokensSection } from './sections/TokensSection';
 import { TOOLTIP_META, TooltipSection } from './sections/TooltipSection';
@@ -36,6 +37,7 @@ export const FIXTURE_SECTIONS: readonly FixtureSectionDef[] = [
   define(DIALOG_META, DialogSection),
   define(SHEET_META, SheetSection),
   define(LISTBOX_META, ListboxSection),
+  define(TABLE_META, TableSection),
   define(SLIDER_META, SliderSection),
   define(TOGGLE_GROUP_META, ToggleGroupSection),
   define(TOOLTIP_META, TooltipSection),
