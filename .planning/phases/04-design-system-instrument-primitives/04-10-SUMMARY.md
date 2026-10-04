@@ -155,6 +155,8 @@ status: complete
 
 **Total deviations:** 3 auto-fixed (Rule 1), 6 judgement calls. **Impact:** none on scope beyond the added e2e block and the portal-target fix.
 
+**Post-push (orchestrator):** CI on 4c0a33c failed the unit job on `dialog.test.tsx` "a scrim press does nothing when isDismissable is false, and Escape still closes it": the same next-frame focus-restore race as the e2e alertdialog spec, unfixed in the unit test. Fixed in d2190cc (wait for focus back inside the dialog before Escape); 5/5 local repeats green, CI green on d2190cc (all jobs, visual 33/33).
+
 ## Verification run
 
 - Task acceptance: `npx vitest run` for dialog, sheet and listbox plus `semantic-tokens`, `fixtures-registry` and (Task 3) `copy-claims` all pass; `grep -c Sections src/features/fixtures/FixturesApp.tsx` is 7; the flagged build ran through Playwright's webServer (`NEXT_PUBLIC_DEV_FIXTURES=1 npm run build`) several times and exited 0.

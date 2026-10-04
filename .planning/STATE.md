@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 04-10 complete (10 of 24; unit 1019 passing, lint 0 errors, flag-less build green and fixtures excluded, full fixture-mocked e2e 119 passed, 04-10 e2e block 210/210 at --repeat-each=10); not yet pushed to CI; next 04-11
+Plan: 04-10 complete (10 of 24; unit 1019 passing, lint 0 errors, flag-less build green and fixtures excluded, full fixture-mocked e2e 119 passed, 04-10 e2e block 210/210 at --repeat-each=10); CI unit race fixed in d2190cc, CI green on d2190cc (all jobs, visual 33/33); next 04-11
 Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, not complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup, Tooltip, Dialog, AlertDialog, Sheet and Listbox, not complete; DS-05 advanced by the state primitives, RLabel, Stat, AccentBlock, BandSection, not complete; DS-08 route, production exclusion, registry, chrome and ten sections in place, remaining sections arrive with each primitive plan; DS-06 reduced-motion hook and toggle in place, overlay transitions asserted zero under reduced motion)
 Last activity: 2026-10-04 — 04-10 Dialog, Sheet and Listbox with fixtures sections and the Sections sheet complete
 
