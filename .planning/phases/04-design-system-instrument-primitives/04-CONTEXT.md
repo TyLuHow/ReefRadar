@@ -84,6 +84,22 @@ Out of this phase:
 - Fixtures use real contract data only (`contracts/bucket/v1/*`, `contracts/fixtures/*`). No invented sites, labels, counts or probabilities.
 - Legend counts are computed from the data shown, never hardcoded.
 
+### Decisions after research (2026-10-03)
+Where 04-UI-SPEC.md and 04-RESEARCH.md differ, these settle it:
+- **Status palette:** the UI-SPEC values are the contract (`#914615`, `#B47F24`, `#1D77AD`, `#124068`, `#85888D`, token names `hab-*`). The research's alternative set is the fallback only if the automated palette gate fails. Both are darker than the mockup; the owner has been told and reviews them on the fixtures route.
+- **Teal option 3 is dropped as a fallback.** As drawn it fails contrast and colour-vision separation.
+- **Fixtures gate:** build-time flag `NEXT_PUBLIC_DEV_FIXTURES=1` around a dynamic import (verified to keep fixture code out of production bundles). `notFound()` alone is not enough. Never set the flag in Vercel.
+- **Spectrogram level scale:** one fixed shared range for every well, -120 to -50 dB re full scale, labelled uncalibrated. No per-clip auto-scaling. This replaces the mockups' per-board relative scale.
+- **Renderer:** Canvas 2D from a precomputed image; the playhead is a DOM element. WebGL is deferred.
+- **Reduced motion and the playhead:** the playhead steps once per second and on seek or pause; no scroll mode; the time readout stays live.
+- **WindowStrip fixtures:** unclassified and measured-energy cells only. No "illustrative" model output; per-window output arrives in Phase 5.
+- **Accent:** stays out of data areas (it sits close to the healthy blue under colour-vision simulation).
+- **Fonts:** Newsreader italic with the optical-size axis (about 147 KB) is accepted on new surfaces only; legacy routes load none of the new fonts. Revisit at the performance pass.
+- **Tailwind v4 lands alone first** (plan 04-01) with the 33 Linux baselines passing unchanged and no snapshot dispatch. Nothing else lands until that is green in CI.
+- **React Aria Components:** covered by the owner's standing package approval, so no human checkpoint for the install. Use the newest release that passes the package-age check and supports React 19.3; if none does, pin 1.21.1 exactly and record the flag in the plan summary.
+- **Checkpoints that remain:** the fixtures snapshot dispatch (run by the orchestrator; do not push while it runs) and the owner's visual review of Atlas plus the two alternates at the end of the phase.
+- Execution is sequential on the main checkout (no worktrees).
+
 ### Claude's Discretion
 - Exact token names and scale steps, the type scale, how the legacy dark tokens are namespaced under v4, the spectrogram renderer (canvas vs WebGL), how fixtures are organised, the plan split, and test tooling changes Tailwind v4 needs.
 - Whether Newsreader / Hanken Grotesk / Spline Sans Mono are kept exactly or swapped for close equivalents if `next/font` loading, licensing or rendering quality argues for it. The serif-display + grotesk + mono structure is fixed.
