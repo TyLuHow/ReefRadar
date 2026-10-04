@@ -62,7 +62,7 @@ describe('status shapes', () => {
   it('draws each shape in the 16-unit box', () => {
     expect(STATUS_PATH.degraded).toBe('M1 2L15 2L8 15Z');
     expect(STATUS_PATH.restored_early).toBe('M8 1L15 8L8 15L1 8Z');
-    expect(STATUS_PATH.restored_mid).toBe('M2 2H14V14H2Z');
+    expect(STATUS_PATH.restored_mid).toBe('M2 2L14 2L14 14L2 14Z');
     expect(STATUS_PATH.healthy).toBe('M1 8A7 7 0 1 0 15 8A7 7 0 1 0 1 8Z');
     expect(STATUS_PATH.unknown).toBe('M2 8A6 6 0 1 0 14 8A6 6 0 1 0 2 8Z');
   });

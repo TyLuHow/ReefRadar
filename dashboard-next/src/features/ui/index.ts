@@ -6,3 +6,16 @@
  */
 export { JS_TOKEN_KEYS, TokenError, findSurfaceRoot, readTokens, useTokens } from './tokens';
 export type { TokenKey, Tokens } from './tokens';
+export { StatusMark } from './StatusMark';
+export type { StatusMarkProps } from './StatusMark';
+export {
+  HABITAT_STATUSES,
+  STATUS_BG_CLASS,
+  STATUS_FILL_CLASS,
+  STATUS_LABELS,
+  STATUS_PATH,
+  STATUS_SHAPE,
+  plotSymbol,
+  statusColorVar,
+} from './status-shapes';
+export type { HabitatStatus, PlotStatusSymbol, StatusShape, SymbolContext } from './status-shapes';
