@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 04-09 complete (9 of 24; unit 954 passing, lint 0 errors, flag-less build green and fixtures excluded, full fixture-mocked e2e 98 passed and fixtures-route spec 135/135 at --repeat-each=5); CI on cb42a64 failed e2e on the swatch-label race, fixed in 04-09 (23a7167); CI green on 04-02 (a48ff40, visual 33/33); 04-03 to 04-09 CI pending; next 04-10
+Plan: 04-09 complete (9 of 24; unit 954 passing, lint 0 errors, flag-less build green and fixtures excluded, full fixture-mocked e2e 98 passed and fixtures-route spec 135/135 at --repeat-each=5); CI on cb42a64 failed e2e on the swatch-label race, fixed in 04-09 (23a7167); CI green on 3f83dd1 (all jobs, visual 33/33); next 04-10
 Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, not complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup and Tooltip and their fixtures sections, not complete; DS-05 advanced by the state primitives, RLabel, Stat, AccentBlock, BandSection and their fixtures sections, not complete; DS-08 route, production exclusion, registry, chrome and seven sections in place, remaining sections arrive with each primitive plan; DS-06 reduced-motion hook and toggle in place, per-primitive checks pending)
 Last activity: 2026-10-04 — 04-09 five fixtures sections (button, toggle-group, tooltip, states, numerals) and the swatch-label e2e race fix complete
 
