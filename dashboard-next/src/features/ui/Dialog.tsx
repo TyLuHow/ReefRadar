@@ -2,8 +2,16 @@
 
 import clsx from 'clsx';
 import { X } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Dialog as RacDialog, DialogTrigger, Heading, Modal, ModalOverlay } from 'react-aria-components';
+import { useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  Dialog as RacDialog,
+  DialogTrigger,
+  Heading,
+  Modal,
+  ModalOverlay,
+  OverlayTriggerStateContext,
+  type ModalOverlayProps,
+} from 'react-aria-components';
 import { Button } from './Button';
 import { ErrorState } from './ErrorState';
 import { LoadingState } from './LoadingState';
@@ -49,6 +57,22 @@ export interface OverlayBodyStateProps {
 export function overlayContainer(): HTMLElement | undefined {
   if (typeof document === 'undefined') return undefined;
   return document.querySelector<HTMLElement>('[data-surface="instrument"]') ?? undefined;
+}
+
+/**
+ * A ModalOverlay that portals into the instrument surface. The surface root is looked up when the
+ * overlay opens, not when the trigger first renders: the prerendered page carries a fallback surface
+ * that the client replaces, so a lookup at first render can return a node that is about to be
+ * discarded (the overlay would then mount into a detached element and never appear).
+ */
+export function SurfaceModalOverlay(props: Omit<ModalOverlayProps, 'UNSTABLE_portalContainer'>) {
+  const open = useContext(OverlayTriggerStateContext)?.isOpen === true;
+  const [held, setHeld] = useState<HTMLElement | undefined>(undefined);
+  if (open && (held === undefined || !held.isConnected)) {
+    const next = overlayContainer();
+    if (next !== held) setHeld(next);
+  }
+  return <ModalOverlay {...props} UNSTABLE_portalContainer={held} />;
 }
 
 /** The Loading or Error state a Dialog or Sheet shows in place of its body. */
@@ -185,9 +209,8 @@ function DialogShell({
   return (
     <DialogTrigger isOpen={isOpen} defaultOpen={defaultOpen} onOpenChange={onOpenChange}>
       {trigger}
-      <ModalOverlay
+      <SurfaceModalOverlay
         isDismissable={isDismissable}
-        UNSTABLE_portalContainer={overlayContainer()}
         className={clsx(OVERLAY_SCRIM, 'flex items-center justify-center')}
       >
         <Modal
@@ -213,7 +236,7 @@ function DialogShell({
             )}
           </RacDialog>
         </Modal>
-      </ModalOverlay>
+      </SurfaceModalOverlay>
     </DialogTrigger>
   );
 }

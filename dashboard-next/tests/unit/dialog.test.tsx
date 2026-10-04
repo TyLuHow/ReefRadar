@@ -208,6 +208,44 @@ describe('Dialog: surface and states', () => {
   });
 });
 
+describe('Dialog: portal target', () => {
+  it('portals into the instrument surface root when there is one', async () => {
+    const user = userEvent.setup();
+    render(
+      <div data-surface="instrument" data-testid="surface">
+        <Basic />
+      </div>,
+    );
+    const dialog = await openBasic(user);
+    expect(screen.getByTestId('surface').contains(dialog)).toBe(true);
+  });
+
+  it('looks the surface up when it opens, not at first render (a replaced prerender fallback must not capture it)', async () => {
+    const user = userEvent.setup();
+    const stale = document.createElement('div');
+    stale.setAttribute('data-surface', 'instrument');
+    document.body.appendChild(stale);
+    render(<Basic />);
+    // The fallback surface is discarded and the real one mounts before the dialog is opened.
+    stale.remove();
+    const real = document.createElement('div');
+    real.setAttribute('data-surface', 'instrument');
+    document.body.appendChild(real);
+    const dialog = await openBasic(user);
+    expect(real.contains(dialog)).toBe(true);
+    expect(stale.isConnected).toBe(false);
+    real.remove();
+  });
+
+  it('portals to the document body when there is no surface', async () => {
+    const user = userEvent.setup();
+    render(<Basic />);
+    const dialog = await openBasic(user);
+    expect(document.body.contains(dialog)).toBe(true);
+    expect(dialog.closest('[data-surface]')).toBeNull();
+  });
+});
+
 describe('AlertDialog', () => {
   function Discard(props: { onConfirm?: () => void } = {}) {
     return (

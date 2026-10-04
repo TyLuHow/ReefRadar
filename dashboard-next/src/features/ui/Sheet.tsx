@@ -2,14 +2,14 @@
 
 import clsx from 'clsx';
 import type { ReactNode } from 'react';
-import { Dialog as RacDialog, DialogTrigger, Heading, Modal, ModalOverlay } from 'react-aria-components';
+import { Dialog as RacDialog, DialogTrigger, Heading, Modal } from 'react-aria-components';
 import {
   CloseButton,
   OVERLAY_SCRIM,
   OVERLAY_TITLE,
   OverlayBody,
   PanelLayout,
-  overlayContainer,
+  SurfaceModalOverlay,
   type OverlayBodyStateProps,
 } from './Dialog';
 
@@ -68,7 +68,7 @@ export function Sheet({ side, title, children, trigger, isOpen, defaultOpen, onO
   return (
     <DialogTrigger isOpen={isOpen} defaultOpen={defaultOpen} onOpenChange={onOpenChange}>
       {trigger}
-      <ModalOverlay isDismissable UNSTABLE_portalContainer={overlayContainer()} className={OVERLAY_SCRIM}>
+      <SurfaceModalOverlay isDismissable className={OVERLAY_SCRIM}>
         <Modal className={clsx(PANEL_BASE, SIDE[side].panel, PANEL_MOTION, SIDE[side].motion)}>
           <RacDialog className="flex min-h-0 flex-1 flex-col outline-none">
             {({ close }) => (
@@ -86,7 +86,7 @@ export function Sheet({ side, title, children, trigger, isOpen, defaultOpen, onO
             )}
           </RacDialog>
         </Modal>
-      </ModalOverlay>
+      </SurfaceModalOverlay>
     </DialogTrigger>
   );
 }
