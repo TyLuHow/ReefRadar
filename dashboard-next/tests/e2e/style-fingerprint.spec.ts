@@ -143,16 +143,19 @@ for (const state of STATES) {
         await card.scrollIntoViewIfNeeded();
         await card.hover();
         await page.waitForTimeout(600);
-        const color = await card.evaluate(
+        const probe = await card.evaluate(
           (el, src) => {
-            const run = new Function('el', `${src}; return normalise(getComputedStyle(el).borderTopColor);`);
-            return run(el) as string;
+            const run = new Function(
+              'el',
+              `${src}; const raw = getComputedStyle(el).borderTopColor; return { borderTopColor: normalise(raw), raw };`
+            );
+            return run(el) as { borderTopColor: string; raw: string };
           },
           NORMALISER_SOURCE
         );
         fs.writeFileSync(
           path.join(OUT, `sites-hover-${w.width}.json`),
-          JSON.stringify({ borderTopColor: color })
+          JSON.stringify(probe)
         );
       }
     });
