@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 4
 current_phase_name: Design System & Instrument Primitives
 status: executing
-stopped_at: Completed 04-07-PLAN.md
-last_updated: "2026-10-04T18:01:41.541Z"
+stopped_at: Completed 04-08-PLAN.md
+last_updated: "2026-10-04T18:09:20.560Z"
 last_activity: 2026-10-04
-last_activity_desc: 04-07 complete (fixtures section registry and pages, Direction switcher, Reduced motion toggle, useReducedMotion, Tokens and Status palette sections)
-state_head: 9361b5ab9b460caf1c99c4849d910b34217aaa3a
+last_activity_desc: 04-08 complete (Skeleton, EmptyState, ErrorState, LoadingState, RLabel, Stat, AccentBlock, BandSection, instrument barrel)
+state_head: 5833a54afa24b8995395f9c62d27acd030051430
 progress:
   total_phases: 17
   completed_phases: 3
   total_plans: 72
-  completed_plans: 55
+  completed_plans: 56
   percent: 18
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 04-07 complete (7 of 24; unit 907 passing, flag-less and flagged builds green, e2e 90 passing); CI green on 04-02 (a48ff40, visual 33/33); 04-03 to 04-07 CI pending; next 04-08
-Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place and the palette is reviewable live, requirement not yet complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup and Tooltip, not complete; DS-08 route, production exclusion, registry, chrome and two sections in place, remaining sections arrive with each primitive plan; DS-06 reduced-motion hook and toggle in place, per-primitive checks pending)
-Last activity: 2026-10-04 — 04-07 fixtures registry, chrome, motion hook, Tokens and Status palette sections complete
+Plan: 04-08 complete (8 of 24; unit 954 passing, flag-less build green and fixtures excluded; e2e not re-run, nothing it renders changed); CI green on 04-02 (a48ff40, visual 33/33); 04-03 to 04-08 CI pending; next 04-09
+Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place and the palette is reviewable live, requirement not yet complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup and Tooltip, not complete; DS-05 advanced by the state primitives (Skeleton, Empty, Error, Loading) and RLabel, Stat, AccentBlock, BandSection, not complete; DS-08 route, production exclusion, registry, chrome and two sections in place, remaining sections arrive with each primitive plan; DS-06 reduced-motion hook and toggle in place, per-primitive checks pending)
+Last activity: 2026-10-04 — 04-08 state primitives (Skeleton, EmptyState, ErrorState, LoadingState) and layout primitives (RLabel, Stat, AccentBlock, BandSection) complete
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
@@ -117,6 +117,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 04 P05 | 17min | 3 tasks | 9 files |
 | Phase 04 P06 | 25min | 3 tasks | 15 files |
 | Phase 04 P07 | 20min | 3 tasks | 15 files |
+| Phase 04 P08 | 8min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -210,6 +211,7 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-06: FixturesApp Suspense fallback is the atlas-default surface so html:has(surface) matches in prerendered HTML (no dark body flash) — Legacy body bg-abyss would otherwise show until client hydration
 - [Phase 04]: 04-07: readTokens expands three-digit hex (#fff, #333, #000) because the production CSS minifier shortens custom-property hex; first built consumer of useTokens crashed with a TokenError — Found by the fixtures e2e against a production build; unit tests only saw raw CSS
 - [Phase 04]: 04-07: fixtures sections read direction and reduced state from a chrome context (parts/FixtureSection.tsx); section files never touch data-direction; each section is a meta object plus a component registered in registry.tsx and slugs.ts — Keeps the semantic-token scanner's direction rule intact and gives later primitive plans one append point
+- [Phase 04]: 04-08: ErrorState reports a clipboard refusal in its polite live region instead of showing Copied; Stat shows a dash for a non-finite value; AccentBlock skips its per-screen check when no surface or integer --max-blocks exists
 
 ### Pending Todos
 
@@ -233,6 +235,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-04T18:01:40.828Z
-Stopped at: Completed 04-07-PLAN.md
+Last session: 2026-10-04T18:09:19.588Z
+Stopped at: Completed 04-08-PLAN.md
 Resume file: None
