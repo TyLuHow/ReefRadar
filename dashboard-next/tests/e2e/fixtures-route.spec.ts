@@ -299,8 +299,10 @@ test.describe('/dev/fixtures primitive sections (04-09)', () => {
     // The contract pin is filled by a client query, so once it reads the app has hydrated and the
     // tooltip's focus handlers are attached.
     await expect(page.getByTestId('contract-pin')).toHaveText(/^Contract v1/);
-    // The two forced cells already draw a static tooltip each; the live one adds a third.
-    await expect(page.getByRole('tooltip')).toHaveCount(2);
+    // Static tooltips are drawn on the page already (the two forced Tooltip cells, and the Listbox
+    // disabled-item cell since 04-10); the live one adds exactly one more.
+    const staticTips = await page.getByRole('tooltip').count();
+    expect(staticTips).toBeGreaterThanOrEqual(2);
     // React Aria opens a tooltip on focus only when the focus came from the keyboard, so reach the
     // trigger with real Tab presses: focus the control before it, then Tab onto the trigger.
     await page.getByRole('button', { name: 'Reduced motion' }).focus();
@@ -315,9 +317,9 @@ test.describe('/dev/fixtures primitive sections (04-09)', () => {
     await page.keyboard.press('Shift+Tab');
     await page.keyboard.press('Tab');
     await expect(trigger).toBeFocused();
-    await expect(page.getByRole('tooltip')).toHaveCount(3);
+    await expect(page.getByRole('tooltip')).toHaveCount(staticTips + 1);
     await page.keyboard.press('Escape');
-    await expect(page.getByRole('tooltip')).toHaveCount(2);
+    await expect(page.getByRole('tooltip')).toHaveCount(staticTips);
   });
 });
 
