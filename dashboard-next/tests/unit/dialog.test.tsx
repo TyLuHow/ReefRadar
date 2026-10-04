@@ -155,6 +155,9 @@ describe('Dialog: dismissal and the close button', () => {
     const dialog = await openBasic(user);
     await user.click(scrimOf(dialog));
     expect(screen.getByRole('dialog', { name: 'Reference label' })).toBeInTheDocument();
+    // The press blurs the dialog; React Aria puts focus back inside it on the next frame, and
+    // Escape is only heard once it has.
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
     await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
