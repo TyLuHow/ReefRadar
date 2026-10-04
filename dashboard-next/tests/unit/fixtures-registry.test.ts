@@ -58,6 +58,14 @@ describe('fixture slugs and registry', () => {
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);
   });
 
+  it('registers the two Foundation sections first, each with its own component', () => {
+    expect(FIXTURE_SECTIONS.slice(0, 2).map((section) => [section.slug, section.group])).toEqual([
+      ['tokens', 'Foundation'],
+      ['status-palette', 'Foundation'],
+    ]);
+    for (const section of FIXTURE_SECTIONS) expect(typeof section.Component).toBe('function');
+  });
+
   it('isFixtureSlug accepts registered slugs only', () => {
     for (const slug of FIXTURE_SLUGS) expect(isFixtureSlug(slug)).toBe(true);
     expect(isFixtureSlug('not-a-section')).toBe(false);

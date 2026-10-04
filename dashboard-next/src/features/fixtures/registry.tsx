@@ -1,5 +1,7 @@
 import type { ComponentType } from 'react';
-import type { FixtureGroup } from './parts/FixtureSection';
+import type { FixtureGroup, FixtureSectionMeta } from './parts/FixtureSection';
+import { STATUS_PALETTE_META, StatusPaletteSection } from './sections/StatusPaletteSection';
+import { TOKENS_META, TokensSection } from './sections/TokensSection';
 
 /**
  * The /dev/fixtures sections in UI-SPEC "Section order". Every primitive plan appends its section
@@ -14,4 +16,11 @@ export interface FixtureSectionDef {
   Component: ComponentType;
 }
 
-export const FIXTURE_SECTIONS: readonly FixtureSectionDef[] = [];
+function define({ slug, title, group, kind }: FixtureSectionMeta, Component: ComponentType): FixtureSectionDef {
+  return { slug, title, group, kind, Component };
+}
+
+export const FIXTURE_SECTIONS: readonly FixtureSectionDef[] = [
+  define(TOKENS_META, TokensSection),
+  define(STATUS_PALETTE_META, StatusPaletteSection),
+];
