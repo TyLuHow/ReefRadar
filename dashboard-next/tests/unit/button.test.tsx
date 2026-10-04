@@ -149,7 +149,7 @@ describe('Button: variants, tone and token classes', () => {
     render(<Button tone={tone}>Save</Button>);
     const button = screen.getByRole('button');
     expect(button).toHaveClass(focusClass);
-    expect(button.className).not.toMatch(/\bshadow|\bring-/);
+    expect(button.className).not.toMatch(/(^|\s)(?:[\w-]+:)*(?:shadow|ring)(?:-|\s|$)/);
   });
 
   it('uses logical properties only: no left, right, ml, mr, pl, pr', () => {

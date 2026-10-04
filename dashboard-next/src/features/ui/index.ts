@@ -6,6 +6,8 @@
  */
 export { JS_TOKEN_KEYS, TokenError, findSurfaceRoot, readTokens, useTokens } from './tokens';
 export type { TokenKey, Tokens } from './tokens';
+export { Button, LinkButton } from './Button';
+export type { ButtonProps, ButtonTone, ButtonVariant, LinkButtonProps } from './Button';
 export { StatusMark } from './StatusMark';
 export type { StatusMarkProps } from './StatusMark';
 export {
