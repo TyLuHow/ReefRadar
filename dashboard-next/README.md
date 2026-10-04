@@ -200,6 +200,21 @@ npm run lint
 - Image optimization disabled for static export
 - Target initial bundle < 500KB
 
+## Dev fixtures route
+
+`/dev/fixtures/` is a dev-only review surface that renders every design-system primitive in every state. It exists only in builds made with `NEXT_PUBLIC_DEV_FIXTURES=1`:
+
+```bash
+NEXT_PUBLIC_DEV_FIXTURES=1 npm run dev
+# then open http://localhost:3000/dev/fixtures/
+```
+
+- **Never set `NEXT_PUBLIC_DEV_FIXTURES` in Vercel.** The Playwright config sets it for the e2e and visual builds only.
+- `next.config.js` always defines the flag at build time (`'1'` or `'0'`). Next.js only substitutes a `NEXT_PUBLIC_` variable that is defined, so without that line the flag-gated dynamic import is not eliminated and the fixtures ship in production.
+- CI proves the production build excludes it: after the flag-less `npm run build`, `node ../scripts/check-dev-fixtures-excluded.mjs` fails if the fixtures marker string appears anywhere in `.next/static` or `.next/server`, or if `/dev/fixtures/` or `/dev/fixtures/tokens/` answer anything but HTTP 404.
+- URL parameters (closed allowlists): `?direction=atlas|nocturne|poster`, `?reduced=1`, and `?tok=--dir-<name>:%23RRGGBB` (hex values only, at most 8) to probe a token.
+- The route is `noindex` (page metadata and an `X-Robots-Tag` header for `/dev/*`) and is not linked from the product.
+
 ## Troubleshooting
 
 ### CORS Issues

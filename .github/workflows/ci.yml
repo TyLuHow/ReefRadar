@@ -49,6 +49,7 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - run: node ../scripts/check-dev-fixtures-excluded.mjs
 
   e2e:
     name: e2e (routes + axe, fixture-mocked)
