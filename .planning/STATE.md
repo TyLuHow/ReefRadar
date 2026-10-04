@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 04-03 complete (3 of 24; unit 631 passing, build green); CI visual job on the 04-02 and 04-03 commits not yet run; next 04-04
+Plan: 04-03 complete (3 of 24; unit 631 passing, build green); CI green on 04-02 (a48ff40, visual 33/33); 04-03 CI running; next 04-04
 Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-03 advanced by the DSP core, not complete; DS-06 groundwork only)
 Last activity: 2026-10-04 — 04-03 DSP core (WAV parser, fixed-range STFT, magma LUT, level helpers) complete
 
