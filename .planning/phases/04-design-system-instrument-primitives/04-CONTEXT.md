@@ -45,6 +45,21 @@ Out of this phase:
 - Spectrograms and waveforms sit in dark wells (`#0B0D12` in the mockup) using the magma scale, with a dB colourbar and labelled frequency axis. Document the scale and the dB range next to the component.
 - **Runner-up: Option 3 (single-hue teal ramp with viridis).** The owner rated it a close second. Use it as the fallback if Option 1 cannot be made to pass validation.
 
+### Expressive range (owner feedback, 2026-10-03)
+- The owner found the single inspector mockup too quiet to be the whole product ("quite boring"). Three further boards in direction C ("Listen: front door", "Compare: two reefs", "Explore: partial map", same canvas) answered that, and the owner accepted the approach. The system must be able to reach that register, not only the quiet inspector one.
+- The interest comes from real data shown large, not from decoration. No ambient or decorative layer returns.
+- Tokens and primitives must therefore support:
+  - A display type scale that runs up to about 128 px (fluid, `clamp`) in the italic serif, and very large serif numerals for counts.
+  - Spectrogram wells at hero scale: full-bleed, edge to edge, about 440 px tall, with a playhead, on a dark section that can also carry the headline and transport in light text.
+  - One solid accent-colour block surface (white text on the indigo accent) for a single call to action per screen.
+  - Large transport controls (play button up to about 96 px) as well as the compact size.
+  - CompareRow with two wells on one shared colour scale, a shared playhead and an A/B crossfader.
+  - A status proportion band (segments sized by count, with shape, count and label under each).
+  - A paired-mark (dumbbell) variant of StripPlot for two-recording comparisons.
+  - A scatter of sites using status shapes and colours with an ink outline on every mark, a selected-site ring in the accent, and labels set on the plot.
+- Motion carries much of the life: playhead sweep, spectrogram scroll during playback, and crossfade. These are continuity motion and stay within DS-06; all stop under reduced motion.
+- Every fixture for these stays real: shared-scale spectrograms, counts from the contract, and the projection's own caveat (the plane shows 33% of the variance; near does not mean similar).
+
 ### Components and scope (owner accepted all recommendations)
 - React Aria Components for every interactive primitive listed in DS-04.
 - Tailwind v3 → v4 CSS-first (`@theme` tokens in CSS). Legacy pages keep their dark look: the 33 existing Linux visual baselines must stay unchanged, so the new light tokens are scoped to new surfaces and the legacy dark tokens are carried over as-is.
