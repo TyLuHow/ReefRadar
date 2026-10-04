@@ -59,7 +59,7 @@ Decimal phases appear between their surrounding integers in numeric order. Numer
 
 - [x] **Phase 1: Truth & Reproducibility** - Real audio only, verified model, reproducible build from git, CI test harness and pre-redesign baselines (completed 2026-10-01)
 - [x] **Phase 2: Data Contract v1** - Versioned, immutable contract with full per-site provenance and coverage flags becomes the app's only reference-data source (completed 2026-10-02)
-- [ ] **Phase 3: Platform Upgrade & Stack Consolidation** - Next.js 16 / React 19, one map and chart stack, feature-module fence, monitoring, vitality layer retired
+- [x] **Phase 3: Platform Upgrade & Stack Consolidation** - Next.js 16 / React 19, one map and chart stack, feature-module fence, monitoring, vitality layer retired (completed 2026-10-03)
 - [ ] **Phase 4: Design System & Instrument Primitives** - Light scientific-editorial tokens, CVD-safe status palette, dark spectrogram wells, accessible primitives, fixtures route
 - [ ] **Phase 5: Preprocessing Parity & Grouped Evaluation** - [Data & ML] Shared `reef_audio` library, per-window live pipeline, all-site similarity, OOD, leave-one-site-out evaluation
 - [ ] **Phase 6: Instrument Shell & Atlas** - One workspace (Atlas, Inspector, Bench) with semantic-zoom map, sound-space layout, filters, site table and URL state
@@ -535,7 +535,7 @@ Numeric order (1 → 17) is a valid order. With parallelization, Data & ML phase
 |-------|----------------|--------|-----------|
 | 1. Truth & Reproducibility | 20/20 | Complete    | 2026-10-01 |
 | 2. Data Contract v1 | 13/13 | Complete    | 2026-10-02 |
-| 3. Platform Upgrade & Stack Consolidation | 15/15 | In Progress|  |
+| 3. Platform Upgrade & Stack Consolidation | 15/15 | Complete    | 2026-10-03 |
 | 4. Design System & Instrument Primitives | 0/TBD | Not started | - |
 | 5. Preprocessing Parity & Grouped Evaluation | 0/TBD | Not started | - |
 | 6. Instrument Shell & Atlas | 0/TBD | Not started | - |

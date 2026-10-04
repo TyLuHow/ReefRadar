@@ -25,6 +25,7 @@ ReefRadar is a listening instrument for coral-reef soundscapes in which every cl
 - ✓ Graceful fallbacks for missing WebGL / Web Audio; partial reduced-motion support — existing
 - ✓ Truth & reproducibility: clean-clone build; CI (unit, e2e, axe, Linux visual regression); all four Lambdas built from git with drift check MATCH; synthetic audio retired and 9 real MARRS excerpts served; interim real-only 3-class model live (restored_mid dropped until real data); raw probabilities; label provenance and canonical citations (TRUTH-01..10, PLAT-04) — Phase 1
 - ✓ Data contract v1: versioned, immutable contract (S3 + CloudFront, browser-readable CORS) with full per-site provenance (54 sites; 48 embedded with disclosed 2-D PCA, 33% variance), coverage flags, `?cv=` pinning, live latest pointer, sha256-verified Zod-parsed client as the app's only reference-data source, lint/CI fence, and contract version stamps on every new analysis result (CONTRACT-01..05) — Phase 2
+- ✓ Platform upgrade and stack consolidation: Next.js 16.3.8 / React 19.3 with every legacy route working; MapLibre is the only map engine and Observable Plot + d3 the only chart stack (wavesurfer, deck.gl, Leaflet, recharts and the Streamlit dashboard removed); bioluminescent vitality layer removed; feature modules behind a lint/CI fence; single API client; client error reporting and web vitals via Vercel (PLAT-01, PLAT-02, PLAT-03, PLAT-09, PLAT-10, DS-07) — Phase 3
 
 ### Active
 
@@ -80,12 +81,14 @@ See `.planning/REQUIREMENTS.md` for the full, ID'd list. Summary of the mileston
 | Evidence-first classifier role (Q4) | Upload as search; probabilities secondary with abstain | — Pending |
 | URL permalinks + local saves, no accounts (Q5) | Shareability without auth/privacy burden | — Pending |
 | Public uploads with guardrails (Q6) | Keep "my reef" use case; presigned upload, caps, rate limits, budget alarm | — Pending |
-| Retire vitality layer (Q7) | Label-driven decoration conflicts with Core Value | — Pending |
+| Retire vitality layer (Q7) | Label-driven decoration conflicts with Core Value | ✓ Removed (Phase 3) |
 | Light scientific-editorial visual system (Q8); spectrograms in dark wells | Publication-grade credibility; reading comfort; print/export | — Pending |
-| Stay on Next.js, incremental strangler in `dashboard-next/` | Small data, client-heavy instrument, Vercel already wired | — Pending |
+| Stay on Next.js, incremental strangler in `dashboard-next/` | Small data, client-heavy instrument, Vercel already wired | ✓ On Next 16 / React 19 (Phase 3) |
 | MapLibre only; Observable Plot + d3; React Aria Components; Tailwind v4 tokens; nuqs + zustand + TanStack Query | Single engine per concern; accessible primitives; URL state | — Pending |
 | Data & Model track runs parallel to UI tracks behind a versioned data contract | Large ingestion must not block UI progress | ✓ Contract v1 live (Phase 2) |
 | Hold production frontend merge until the overhaul is worth a visible launch (owner, 2026-10-01) | Phase 1 is honesty fixes on the legacy UI; launch the redesign when visibly new | — Pending |
+| Monitoring is Vercel-only on Hobby (1-hour error-log retention accepted; Sentry deferred) (owner, 2026-10-02) | No new vendor account; revisit if logs prove insufficient | — Pending |
+| Commits use TyLuHow <tylerlubyhoward@gmail.com>; branch history rewritten 2026-10-03 to remove the work address | Owner instruction; hash map in docs/history/ | ✓ Done |
 
 ## Evolution
 
@@ -105,4 +108,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-10-02 after Phase 2*
+*Last updated: 2026-10-04 after Phase 3*
