@@ -125,8 +125,11 @@ const REEF_TOKEN_NAMES = ['primary', 'accent', 'secondary', 'highlight', 'bg', '
 // 'reef-bg'). Anchored on the eight names so LoadingReef's reef-pulse is unaffected.
 const REEF_TOKEN_RE = new RegExp(`reef-(?:${REEF_TOKEN_NAMES.join('|')})(?![A-Za-z0-9_])`);
 
+// The legacy rules moved from app/globals.css into styles/legacy.css (04-02); read both.
 function readCss(): string {
-  return fs.readFileSync(path.join(SRC_ROOT, 'app/globals.css'), 'utf8');
+  return ['app/globals.css', 'styles/legacy.css']
+    .map((file) => fs.readFileSync(path.join(SRC_ROOT, file), 'utf8'))
+    .join('\n');
 }
 
 function crossfaderRules(css: string): string {
@@ -137,7 +140,7 @@ function crossfaderRules(css: string): string {
 describe('DS-07 store, bridge, tokens and slider removed', () => {
   it('no file under src mentions the removed ambient system by name', () => {
     const offenders: string[] = [];
-    const scanned = [...walk(SRC_ROOT), path.join(SRC_ROOT, 'app/globals.css')];
+    const scanned = [...walk(SRC_ROOT), path.join(SRC_ROOT, 'app/globals.css'), path.join(SRC_ROOT, 'styles/legacy.css')];
     for (const file of scanned) {
       if (/vitality/i.test(fs.readFileSync(file, 'utf8'))) offenders.push(path.relative(SRC_ROOT, file));
     }
@@ -146,7 +149,7 @@ describe('DS-07 store, bridge, tokens and slider removed', () => {
 
   it('no src file or globals.css defines or uses a --reef-NAME token or reef-NAME colour', () => {
     const offenders: string[] = [];
-    const scanned = [...walk(SRC_ROOT), path.join(SRC_ROOT, 'app/globals.css')];
+    const scanned = [...walk(SRC_ROOT), path.join(SRC_ROOT, 'app/globals.css'), path.join(SRC_ROOT, 'styles/legacy.css')];
     for (const file of scanned) {
       if (REEF_TOKEN_RE.test(fs.readFileSync(file, 'utf8'))) {
         offenders.push(path.relative(DASHBOARD_NEXT_ROOT, file));

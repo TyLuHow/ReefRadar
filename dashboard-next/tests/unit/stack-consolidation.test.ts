@@ -155,7 +155,10 @@ describe('stack consolidation: Leaflet removal (PLAT-02, 03-10)', () => {
   });
 
   it('globals.css has no Leaflet import or rule and no .custom-marker rule', () => {
-    const css = fs.readFileSync(path.join(SRC_ROOT, 'app', 'globals.css'), 'utf8');
+    // The legacy rules moved from app/globals.css into styles/legacy.css (04-02); read both.
+    const css = ['app/globals.css', 'styles/legacy.css']
+      .map((file) => fs.readFileSync(path.join(SRC_ROOT, file), 'utf8'))
+      .join('\n');
     expect(css.toLowerCase()).not.toContain('leaflet');
     expect(css).not.toContain('.custom-marker');
   });
