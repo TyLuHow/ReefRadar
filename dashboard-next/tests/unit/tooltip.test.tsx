@@ -9,6 +9,7 @@ import { Button, Tooltip, TooltipSurface } from '@/features/ui';
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe('Tooltip: keyboard', () => {
@@ -69,15 +70,40 @@ describe('Tooltip: keyboard', () => {
   });
 });
 
+/**
+ * React Aria keeps module-level "warmed up" state: after any tooltip has opened, the next one opens
+ * at once until a 500 ms cooldown that only starts when a tooltip closes. Open and close one, then
+ * let the cooldown run out in real time, so the delay under test starts cold whatever ran before.
+ */
+async function startCold() {
+  const user = userEvent.setup();
+  const { unmount } = render(
+    <Tooltip content="warm up">
+      <Button variant="icon" aria-label="Warm up" />
+    </Tooltip>,
+  );
+  await user.tab();
+  await user.keyboard('{Escape}');
+  unmount();
+  await new Promise((resolve) => setTimeout(resolve, 650));
+}
+
 describe('Tooltip: hover delay', () => {
   it('opens after the 300 ms default delay', async () => {
-    vi.useFakeTimers();
+    await startCold();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    // Testing Library detects fake timers through a `jest` global and then advances them while it
+    // drains the microtask queue; without it, its real-timer wait never fires under vitest.
+    vi.stubGlobal('jest', { advanceTimersByTime: (ms: number) => vi.advanceTimersByTime(ms) });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime.bind(vi) });
     render(
       <Tooltip content="Play from the start">
         <Button variant="icon" aria-label="Play" />
       </Tooltip>,
     );
+    // React Aria opens on hover only when the last interaction was the pointer. A real pointer has
+    // already moved over the page by the time it reaches the trigger; move it first here too.
+    await user.pointer({ target: document.body });
     await user.hover(screen.getByRole('button', { name: 'Play' }));
     expect(screen.queryByRole('tooltip')).toBeNull();
     await act(async () => {

@@ -10,6 +10,8 @@ export { Button, LinkButton } from './Button';
 export type { ButtonProps, ButtonTone, ButtonVariant, LinkButtonProps } from './Button';
 export { ToggleButton, ToggleGroup, ToggleGroupItem } from './ToggleGroup';
 export type { ToggleButtonProps, ToggleGroupItemProps, ToggleGroupProps, ToggleTone } from './ToggleGroup';
+export { Tooltip, TooltipSurface } from './Tooltip';
+export type { TooltipProps } from './Tooltip';
 export { StatusMark } from './StatusMark';
 export type { StatusMarkProps } from './StatusMark';
 export {
