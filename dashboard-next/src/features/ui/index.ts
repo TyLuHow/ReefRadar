@@ -6,6 +6,7 @@
  */
 export { JS_TOKEN_KEYS, TokenError, findSurfaceRoot, readTokens, useTokens } from './tokens';
 export type { TokenKey, Tokens } from './tokens';
+export { useReducedMotion } from './motion';
 export { Button, LinkButton } from './Button';
 export type { ButtonProps, ButtonTone, ButtonVariant, LinkButtonProps } from './Button';
 export { ToggleButton, ToggleGroup, ToggleGroupItem } from './ToggleGroup';
