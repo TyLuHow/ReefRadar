@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 4
 current_phase_name: Design System & Instrument Primitives
 status: executing
-stopped_at: Completed 04-04-PLAN.md
-last_updated: "2026-10-04T17:17:39.073Z"
+stopped_at: Completed 04-05-PLAN.md
+last_updated: "2026-10-04T17:30:06.210Z"
 last_activity: 2026-10-04
-last_activity_desc: 04-04 complete (palette, contrast and semantic-token gates; status shapes and StatusMark)
-state_head: 1fa7388fc76df76dbab3327e2676ce0068328b04
+last_activity_desc: 04-05 complete (React Aria Components 1.21.1; Button, LinkButton, ToggleGroup, ToggleButton, Tooltip)
+state_head: 4feec879f49b3f6c64e7e35f19c90a89185a8447
 progress:
   total_phases: 17
   completed_phases: 3
   total_plans: 72
-  completed_plans: 52
+  completed_plans: 53
   percent: 18
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 04-04 complete (4 of 24; unit 825 passing, build green); CI green on 04-02 (a48ff40, visual 33/33); 04-03 and 04-04 CI pending; next 04-05
-Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, requirement not yet complete; DS-03 advanced by the DSP core, not complete; DS-06 groundwork only)
-Last activity: 2026-10-04 — 04-04 palette, contrast and semantic-token gates, status shapes and StatusMark complete
+Plan: 04-05 complete (5 of 24; unit 878 passing, build green); CI green on 04-02 (a48ff40, visual 33/33); 04-03 to 04-05 CI pending; next 04-06
+Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, requirement not yet complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup and Tooltip, not complete; DS-06 groundwork only)
+Last activity: 2026-10-04 — 04-05 React Aria Components install, Button, ToggleGroup and Tooltip complete
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
@@ -114,6 +114,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 04 P02 | 14min | 3 tasks | 11 files |
 | Phase 04 P03 | 14min | 2 tasks | 14 files |
 | Phase 04 P04 | 10min | 3 tasks | 11 files |
+| Phase 04 P05 | 17min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -201,6 +202,8 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-03: spectrogram analysis is 1024-point periodic Hann, hop 256, one fixed -120 to -50 dB re full scale range for every clip (no auto-scaling); at most 0.96% of cells of any excerpt clamp to level 0 and 0.18% to 255 — Keeps cross-clip comparison honest; range measured on all nine real excerpts
 - [Phase 04]: 04-04: accent separation (>= 10 CIEDE2000 from every status tone in every CVD simulation) moved nocturne accent/focus #a5b4fc to #96a9ff and poster accent #c2005f to #bd0047; status palettes and thresholds unchanged — Only atlas had been computed in the UI-SPEC; the gate found nocturne and poster too close to hab-healthy
 - [Phase 04]: 04-04: mark boundary gate uses the ink outline on light directions and falls back to the fill where the outline equals the ground (nocturne); fill-on-hover is printed, not gated (restored_early and unknown measure 2.80 to 2.93 on light hover grounds) — Nocturne's outline is the ground colour by design and can never reach 3:1 on dark grounds
+- [Phase 04]: 04-05: react-aria-components pinned at 1.21.1 (legitimacy seam judges only the latest release, so the plan's fallback applies); Button, ToggleGroup and Tooltip join classes with clsx because tailwind-merge 2.x drops Tailwind 4 custom text utilities — Silent class loss (text-body, text-on-control) and no way to age-check an older RAC version
+- [Phase 04]: 04-05: RAC does not forward aria-busy or aria-invalid, so Button and ToggleGroup set them on the node through a ref effect — filterDOMProps keeps only id, aria-label, aria-labelledby, aria-describedby, aria-details and data-*
 
 ### Pending Todos
 
@@ -224,6 +227,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-04T17:17:38.548Z
-Stopped at: Completed 04-04-PLAN.md
+Last session: 2026-10-04T17:30:05.760Z
+Stopped at: Completed 04-05-PLAN.md
 Resume file: None
