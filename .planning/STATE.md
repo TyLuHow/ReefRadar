@@ -4,7 +4,7 @@ milestone: v2
 milestone_name: Reef Soundscape Research Instrument
 current_phase: 4
 current_phase_name: Design System & Instrument Primitives
-status: planning
+status: executing
 stopped_at: Completed 04-01-PLAN.md
 last_updated: "2026-10-04T06:48:12.365Z"
 last_activity: 2026-10-03
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 04-01 complete locally (1 of 24); next 04-02 after the CI visual gate on 04-01 is green
-Status: Executing Phase 4 (04-01 awaiting CI visual job)
-Last activity: 2026-10-04 — 04-01 Tailwind 4 migration executed, fingerprint proof zero unexplained
+Plan: 04-01 complete (1 of 24); CI green on 2cdc8bb (visual 33/33 unchanged, e2e 71, unit 540, pytest 509); next 04-02
+Status: Executing Phase 4 (DS-01 stays pending until the token plans land)
+Last activity: 2026-10-04 — 04-01 CI gate passed; design canvas row 3 (Listen/Compare/Explore from real recordings) published
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
