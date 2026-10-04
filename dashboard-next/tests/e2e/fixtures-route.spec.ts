@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { test, expect, type Page } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 import { mockApi, expectNoUnhandledApiCalls } from './support/mock-api';
 
 /**
@@ -18,7 +19,7 @@ const MODEL_VERSION = (
 ).model_version;
 const CONTRACT_SITES = (
   JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', 'contracts', 'bucket', 'v1', 'sites.json'), 'utf8')) as {
-    sites: { country: string }[];
+    sites: { country: string; site_id: string }[];
   }
 ).sites;
 const NEW_FONT_FAMILY = /newsreader|hanken|spline|archivo/i;
@@ -317,6 +318,202 @@ test.describe('/dev/fixtures primitive sections (04-09)', () => {
     await expect(page.getByRole('tooltip')).toHaveCount(3);
     await page.keyboard.press('Escape');
     await expect(page.getByRole('tooltip')).toHaveCount(2);
+  });
+});
+
+test.describe('/dev/fixtures overlays and listbox (04-10)', () => {
+  const DIRECTION_LIST = ['atlas', 'nocturne', 'poster'] as const;
+  const BAD_IMPACTS = new Set(['serious', 'critical']);
+
+  /** The chrome only exists once the client has rendered (the Suspense fallback has none), so a press is never lost to hydration. */
+  async function openReady(page: Page, query = '') {
+    await openFixtures(page, query);
+    await expect(page.getByRole('radiogroup', { name: 'Direction' })).toBeVisible();
+  }
+
+  test('the three sections are listed and their cells carry markers', async ({ page }) => {
+    await openReady(page);
+    for (const slug of ['dialog', 'sheet', 'listbox']) {
+      await expect(page.locator(`section#${slug}`)).toHaveCount(1);
+      expect(await page.locator(`section#${slug} [data-fixture-state]`).count()).toBeGreaterThan(0);
+    }
+    await expect(page.locator('section#listbox [data-fixture-state="hover"]')).toContainText('State forced for review');
+    await expect(page.locator('section#listbox [data-fixture-state="disabled-item"]')).toContainText('State forced for review');
+  });
+
+  test('the live dialog traps focus, closes on Escape and returns focus to its trigger', async ({ page }) => {
+    await openReady(page);
+    const trigger = page.getByRole('button', { name: 'Open dialog' });
+    await trigger.scrollIntoViewIfNeeded();
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+    const dialog = page.getByRole('dialog', { name: 'About this dialog' });
+    await expect(dialog).toBeVisible();
+    // The overlay portals into the instrument surface, so it carries the surface's tokens.
+    await expect(page.locator(SURFACE).getByRole('dialog')).toHaveCount(1);
+    for (let i = 0; i < 6; i += 1) {
+      await page.keyboard.press('Tab');
+      expect(await dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
+    }
+    for (let i = 0; i < 6; i += 1) {
+      await page.keyboard.press('Shift+Tab');
+      expect(await dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
+    }
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+
+  test('the alertdialog starts on the safe action and ignores a scrim press', async ({ page }) => {
+    await openReady(page);
+    const trigger = page.getByRole('button', { name: 'Open alert dialog' });
+    await trigger.scrollIntoViewIfNeeded();
+    await trigger.click();
+    const dialog = page.getByRole('alertdialog', { name: 'Discard this comparison?' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Keep comparison' })).toBeFocused();
+    await page.mouse.click(4, 4);
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+
+  test('a live sheet closes on Escape and on a scrim press, and focus returns to its trigger', async ({ page }) => {
+    await openReady(page);
+    const right = page.getByRole('button', { name: 'Open right sheet' });
+    await right.scrollIntoViewIfNeeded();
+    await right.click();
+    const sheet = page.getByRole('dialog', { name: 'Right sheet' });
+    await expect(sheet).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(sheet).toHaveCount(0);
+    await expect(right).toBeFocused();
+
+    const bottom = page.getByRole('button', { name: 'Open bottom sheet' });
+    await bottom.click();
+    const tray = page.getByRole('dialog', { name: 'Bottom sheet' });
+    await expect(tray).toBeVisible();
+    await page.mouse.click(4, 4);
+    await expect(tray).toHaveCount(0);
+    await expect(bottom).toBeFocused();
+  });
+
+  test('the listbox moves with arrows, Home, End, PageDown and typeahead, and Enter selects', async ({ page }) => {
+    await openReady(page);
+    const list = page.getByRole('listbox', { name: 'Reference sites, all' });
+    await list.scrollIntoViewIfNeeded();
+    await list.focus();
+    const options = list.getByRole('option');
+    await expect(options.first()).toBeFocused();
+    await expect(options.first()).toContainText(CONTRACT_SITES[0]?.site_id ?? '');
+    await page.keyboard.press('ArrowDown');
+    await expect(options.nth(1)).toBeFocused();
+    await page.keyboard.press('End');
+    await expect(options.last()).toBeFocused();
+    await page.keyboard.press('Home');
+    await expect(options.first()).toBeFocused();
+    await page.keyboard.press('PageDown');
+    await expect
+      .poll(async () => options.evaluateAll((nodes) => nodes.indexOf(document.activeElement as HTMLElement)))
+      .toBeGreaterThan(1);
+    await page.keyboard.press('Home');
+    // Typeahead: the id of the last site in the contract.
+    const last = CONTRACT_SITES[CONTRACT_SITES.length - 1]?.site_id ?? '';
+    expect(last).not.toBe('');
+    await page.keyboard.type(last);
+    const target = list.getByRole('option', { name: new RegExp(`^${last}\\b`) });
+    await expect(target).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(target).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('below 1024 px the section list opens from a Sections button in a Sheet', async ({ page }) => {
+    await page.setViewportSize({ width: 800, height: 900 });
+    await openReady(page);
+    const button = page.getByRole('button', { name: 'Sections' });
+    await expect(button).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Fixture sections' })).toHaveCount(0);
+    await button.click();
+    const sheet = page.getByRole('dialog', { name: 'Sections' });
+    await expect(sheet).toBeVisible();
+    await sheet.getByRole('link', { name: 'Listbox' }).click();
+    await expect(sheet).toHaveCount(0);
+    await expect(page).toHaveURL(/#listbox$/);
+  });
+
+  test('at 1024 px and up there is no Sections button and the list is a column', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await openReady(page);
+    await expect(page.getByRole('button', { name: 'Sections' })).toHaveCount(0);
+    await expect(page.getByRole('navigation', { name: 'Fixture sections' })).toBeVisible();
+  });
+
+  for (const direction of DIRECTION_LIST) {
+    test(`an open dialog has a filled panel and a scrim in ${direction}`, async ({ page }) => {
+      await openReady(page, `?direction=${direction}`);
+      await page.getByRole('button', { name: 'Open dialog' }).click();
+      const dialog = page.getByRole('dialog', { name: 'About this dialog' });
+      await expect(dialog).toBeVisible();
+      await expect
+        .poll(async () =>
+          dialog.evaluate((node) => {
+            const modal = node.parentElement as HTMLElement;
+            const scrim = modal.parentElement as HTMLElement;
+            const panel = getComputedStyle(modal).backgroundColor;
+            const veil = getComputedStyle(scrim).backgroundColor;
+            return panel !== '' && panel !== 'rgba(0, 0, 0, 0)' && veil !== '' && veil !== 'rgba(0, 0, 0, 0)' && panel !== veil;
+          }),
+        )
+        .toBe(true);
+    });
+  }
+
+  test('under reduced motion the overlay transitions are zero length', async ({ page }) => {
+    await openReady(page, '?reduced=1');
+    await page.getByRole('button', { name: 'Open right sheet' }).click();
+    const sheet = page.getByRole('dialog', { name: 'Right sheet' });
+    await expect(sheet).toBeVisible();
+    await expect
+      .poll(async () =>
+        sheet.evaluate((node) => {
+          const modal = node.parentElement as HTMLElement;
+          const scrim = modal.parentElement as HTMLElement;
+          const a = getComputedStyle(modal).transitionDuration;
+          const b = getComputedStyle(scrim).transitionDuration;
+          const zero = (value: string) => value !== '' && value.split(',').every((d) => d.trim() === '0s');
+          return zero(a) && zero(b);
+        }),
+      )
+      .toBe(true);
+    expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
+  });
+
+  for (const direction of DIRECTION_LIST) {
+    for (const slug of ['dialog', 'sheet', 'listbox']) {
+      test(`axe: ${slug} has no serious or critical violation in ${direction}`, async ({ page }) => {
+        await page.goto(`/dev/fixtures/${slug}/?direction=${direction}`, { waitUntil: 'load' });
+        await expect(page.locator(`section#${slug} [data-fixture-state]`).first()).toBeVisible();
+        // The contract-backed cells settle once the data has arrived.
+        await expect(page.locator(`section#${slug} [data-fixture-state$="-loading"]`)).toHaveCount(0);
+        const results = await new AxeBuilder({ page }).include(`section#${slug}`).analyze();
+        const bad = results.violations.filter((v) => BAD_IMPACTS.has(v.impact ?? ''));
+        expect(bad.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+      });
+    }
+  }
+
+  test('axe: an open dialog and an open sheet have no serious or critical violation', async ({ page }) => {
+    await openReady(page);
+    await page.getByRole('button', { name: 'Open dialog' }).click();
+    await expect(page.getByRole('dialog', { name: 'About this dialog' })).toBeVisible();
+    let results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations.filter((v) => BAD_IMPACTS.has(v.impact ?? '')).map((v) => v.id)).toEqual([]);
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Open bottom sheet' }).click();
+    await expect(page.getByRole('dialog', { name: 'Bottom sheet' })).toBeVisible();
+    results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations.filter((v) => BAD_IMPACTS.has(v.impact ?? '')).map((v) => v.id)).toEqual([]);
   });
 });
 
