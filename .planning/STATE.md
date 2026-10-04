@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 4
 current_phase_name: Design System & Instrument Primitives
 status: executing
-stopped_at: Completed 04-05-PLAN.md
-last_updated: "2026-10-04T17:30:06.210Z"
+stopped_at: Completed 04-06-PLAN.md
+last_updated: "2026-10-04T17:41:21.822Z"
 last_activity: 2026-10-04
-last_activity_desc: 04-05 complete (React Aria Components 1.21.1; Button, LinkButton, ToggleGroup, ToggleButton, Tooltip)
-state_head: 4feec879f49b3f6c64e7e35f19c90a89185a8447
+last_activity_desc: 04-06 complete (/dev/fixtures route behind NEXT_PUBLIC_DEV_FIXTURES, scoped fonts, CI production-exclusion check)
+state_head: e23633397ec98e469c597dd6722dd4454d739d24
 progress:
   total_phases: 17
   completed_phases: 3
   total_plans: 72
-  completed_plans: 53
+  completed_plans: 54
   percent: 18
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 04-05 complete (5 of 24; unit 878 passing, build green); CI green on 04-02 (a48ff40, visual 33/33); 04-03 to 04-05 CI pending; next 04-06
-Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, requirement not yet complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup and Tooltip, not complete; DS-06 groundwork only)
-Last activity: 2026-10-04 — 04-05 React Aria Components install, Button, ToggleGroup and Tooltip complete
+Plan: 04-06 complete (6 of 24; unit 889 passing, build green, e2e 80 passing); CI green on 04-02 (a48ff40, visual 33/33); 04-03 to 04-06 CI pending; next 04-07
+Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, requirement not yet complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup and Tooltip, not complete; DS-08 route and production exclusion in place, sections arrive in 04-07; DS-06 groundwork only)
+Last activity: 2026-10-04 — 04-06 /dev/fixtures route, scoped fonts and production-exclusion check complete
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
@@ -115,6 +115,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 04 P03 | 14min | 2 tasks | 14 files |
 | Phase 04 P04 | 10min | 3 tasks | 11 files |
 | Phase 04 P05 | 17min | 3 tasks | 9 files |
+| Phase 04 P06 | 25min | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -204,6 +205,8 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-04: mark boundary gate uses the ink outline on light directions and falls back to the fill where the outline equals the ground (nocturne); fill-on-hover is printed, not gated (restored_early and unknown measure 2.80 to 2.93 on light hover grounds) — Nocturne's outline is the ground colour by design and can never reach 3:1 on dark grounds
 - [Phase 04]: 04-05: react-aria-components pinned at 1.21.1 (legitimacy seam judges only the latest release, so the plan's fallback applies); Button, ToggleGroup and Tooltip join classes with clsx because tailwind-merge 2.x drops Tailwind 4 custom text utilities — Silent class loss (text-body, text-on-control) and no way to age-check an older RAC version
 - [Phase 04]: 04-05: RAC does not forward aria-busy or aria-invalid, so Button and ToggleGroup set them on the node through a ref effect — filterDOMProps keeps only id, aria-label, aria-labelledby, aria-describedby, aria-details and data-*
+- [Phase 04]: 04-06: next.config.js always defines NEXT_PUBLIC_DEV_FIXTURES ('1' or '0') because Next substitutes a NEXT_PUBLIC_ variable only when defined; unset, the flag-gated dynamic import was not eliminated and fixture code shipped in a flag-less build — Found by grepping the build for the fixtures marker; CI script check-dev-fixtures-excluded.mjs now guards it
+- [Phase 04]: 04-06: FixturesApp Suspense fallback is the atlas-default surface so html:has(surface) matches in prerendered HTML (no dark body flash) — Legacy body bg-abyss would otherwise show until client hydration
 
 ### Pending Todos
 
@@ -227,6 +230,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-04T17:30:05.760Z
-Stopped at: Completed 04-05-PLAN.md
+Last session: 2026-10-04T17:41:21.288Z
+Stopped at: Completed 04-06-PLAN.md
 Resume file: None

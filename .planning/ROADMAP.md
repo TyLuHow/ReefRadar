@@ -300,7 +300,7 @@ Plans:
   4. A dev-only fixtures route renders every instrument primitive (Transport, Spectrogram, WindowStrip, BandToggle, CompareRow, ProvenanceChip/Why panel, StripPlot, ProbabilityBar with abstain, DataTable, data-driven Legend with counts, Empty/Error/Loading) in every state from contract fixtures, under screenshot visual regression and visual review.
   5. Motion is limited to continuity (selection, layout morph, playhead, view transitions), and with reduced-motion enabled no primitive animates.
 
-**Plans**: 5/24 plans executed (23 waves, sequential execution; 04-01 lands alone and gates the rest on a green CI visual job)
+**Plans**: 6/24 plans executed (23 waves, sequential execution; 04-01 lands alone and gates the rest on a green CI visual job)
 
 Plans:
 
@@ -309,7 +309,7 @@ Plans:
 - [x] 04-03-PLAN.md — DSP core: WAV parser, STFT on the fixed -120 to -50 dB range, magma LUT, level helpers
 - [x] 04-04-PLAN.md — Palette, contrast and semantic-token gates; status shapes and StatusMark
 - [x] 04-05-PLAN.md — React Aria install; Button, ToggleGroup, Tooltip
-- [ ] 04-06-PLAN.md — /dev/fixtures route behind NEXT_PUBLIC_DEV_FIXTURES, scoped fonts, ConditionalShell carve-out, CI exclusion check
+- [x] 04-06-PLAN.md — /dev/fixtures route behind NEXT_PUBLIC_DEV_FIXTURES, scoped fonts, ConditionalShell carve-out, CI exclusion check
 - [ ] 04-07-PLAN.md — Fixtures chrome, section registry and pages, direction switcher, reduced-motion toggle, Tokens and Status palette sections
 - [ ] 04-08-PLAN.md — Empty/Error/Loading, RLabel, Stat, AccentBlock, BandSection primitives
 - [ ] 04-09-PLAN.md — Fixtures sections for Button, ToggleGroup, Tooltip, states and numerals
@@ -564,7 +564,7 @@ Numeric order (1 → 17) is a valid order. With parallelization, Data & ML phase
 | 1. Truth & Reproducibility | 20/20 | Complete    | 2026-10-01 |
 | 2. Data Contract v1 | 13/13 | Complete    | 2026-10-02 |
 | 3. Platform Upgrade & Stack Consolidation | 15/15 | Complete    | 2026-10-03 |
-| 4. Design System & Instrument Primitives | 5/24 | In Progress|  |
+| 4. Design System & Instrument Primitives | 6/24 | In Progress|  |
 | 5. Preprocessing Parity & Grouped Evaluation | 0/TBD | Not started | - |
 | 6. Instrument Shell & Atlas | 0/TBD | Not started | - |
 | 7. Listening Bench | 0/TBD | Not started | - |
