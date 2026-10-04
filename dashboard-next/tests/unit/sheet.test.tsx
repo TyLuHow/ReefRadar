@@ -53,7 +53,7 @@ describe('Sheet: focus and dismissal', () => {
     await openBasic(user);
     await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(screen.getByRole('button', { name: 'Open sheet' })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Open sheet' })).toHaveFocus());
   });
 
   it('the Close button (44 by 44) closes it and focus returns to the trigger', async () => {
@@ -65,7 +65,7 @@ describe('Sheet: focus and dismissal', () => {
     expect(close.className).toContain('size-11');
     await user.click(close);
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(screen.getByRole('button', { name: 'Open sheet' })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Open sheet' })).toHaveFocus());
   });
 
   it('a scrim press closes it and focus returns to the trigger', async () => {
@@ -74,7 +74,7 @@ describe('Sheet: focus and dismissal', () => {
     const dialog = await openBasic(user);
     await user.click(scrimOf(dialog));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(screen.getByRole('button', { name: 'Open sheet' })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Open sheet' })).toHaveFocus());
   });
 
   it('works the same from the bottom edge', async () => {
@@ -83,7 +83,7 @@ describe('Sheet: focus and dismissal', () => {
     await openBasic(user);
     await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(screen.getByRole('button', { name: 'Open sheet' })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Open sheet' })).toHaveFocus());
   });
 });
 

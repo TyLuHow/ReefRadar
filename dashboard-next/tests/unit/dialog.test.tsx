@@ -58,7 +58,7 @@ describe('Dialog: open, focus and close', () => {
     render(<Basic />);
     await user.tab();
     await user.tab();
-    expect(screen.getByRole('button', { name: 'Open dialog' })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Open dialog' })).toHaveFocus());
     await user.keyboard('{Enter}');
     expect(await screen.findByRole('dialog', { name: 'Reference label' })).toBeInTheDocument();
   });
@@ -91,7 +91,7 @@ describe('Dialog: open, focus and close', () => {
     await openBasic(user);
     await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(screen.getByRole('button', { name: 'Open dialog' })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Open dialog' })).toHaveFocus());
   });
 
   it('an action that calls close closes it and focus returns to the trigger', async () => {
@@ -100,7 +100,7 @@ describe('Dialog: open, focus and close', () => {
     await openBasic(user);
     await user.click(screen.getByRole('button', { name: 'Done' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(screen.getByRole('button', { name: 'Open dialog' })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Open dialog' })).toHaveFocus());
   });
 
   it('reports open and close through onOpenChange when controlled', async () => {
@@ -262,7 +262,7 @@ describe('AlertDialog', () => {
     await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(onConfirm).not.toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Open alert dialog' })).toHaveFocus();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Open alert dialog' })).toHaveFocus());
   });
 
   it('the safe action closes it without confirming', async () => {
