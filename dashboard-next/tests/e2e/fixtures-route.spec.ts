@@ -376,6 +376,9 @@ test.describe('/dev/fixtures overlays and listbox (04-10)', () => {
     await expect(dialog.getByRole('button', { name: 'Keep comparison' })).toBeFocused();
     await page.mouse.click(4, 4);
     await expect(dialog).toBeVisible();
+    // The press blurs the focused action; React Aria puts focus back inside the dialog on the next
+    // frame, and Escape is only heard once it has.
+    await expect.poll(async () => dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
     await page.keyboard.press('Escape');
     await expect(dialog).toHaveCount(0);
     await expect(trigger).toBeFocused();
