@@ -129,7 +129,8 @@ describe('CommandPalette: structure', () => {
     expect(panel.className).toContain('max-h-[70dvh]');
     expect(panel.className).toContain('rule-top-heavy');
     expect(panel.className).toContain('bg-ground');
-    expect(within(dialog).getByRole('listbox').className).toContain('overflow-y-auto');
+    // The list scrolls in its own container, which is a focusable labelled region once it overflows.
+    expect(within(dialog).getByRole('listbox').parentElement?.className).toContain('overflow-y-auto');
   });
 
   it('states the keys in a footer hint that is hidden on coarse pointers', async () => {

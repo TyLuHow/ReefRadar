@@ -748,6 +748,318 @@ test.describe('/dev/fixtures slider, table and data table (04-11)', () => {
   }
 });
 
+test.describe('/dev/fixtures command palette and provenance (04-12)', () => {
+  const DIRECTION_LIST = ['atlas', 'nocturne', 'poster'] as const;
+  const BAD_IMPACTS = new Set(['serious', 'critical']);
+  // Heavy top rule width per direction (tokens.css --rule-w-heavy): the Why panel's top border.
+  const HEAVY_RULE_PX = { atlas: 3, nocturne: 1, poster: 6 } as const;
+
+  interface FullSite {
+    site_id: string;
+    label_assigned_by: string;
+    label_definition: string | null;
+    dataset_url: string;
+    doi: string | null;
+    doi_note: string | null;
+    licence_url: string | null;
+  }
+  const SITE_DATA = (
+    JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', 'contracts', 'bucket', 'v1', 'sites.json'), 'utf8')) as {
+      sites: FullSite[];
+    }
+  ).sites;
+  // tests/e2e -> tests -> dashboard-next: the audio manifest the clips group is built from.
+  const CLIP_IDS = (
+    JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'src', 'data', 'audio-manifest.json'), 'utf8')) as {
+      excerpts: { excerpt_id: string }[];
+    }
+  ).excerpts.map((excerpt) => excerpt.excerpt_id);
+  const METHOD_NAMES = ['Model card', 'Frequency bands', 'Datasets', 'Limitations'];
+  const PALETTE_TITLES = [...SITE_DATA.map((site) => site.site_id), ...CLIP_IDS, ...METHOD_NAMES];
+  const matches = (query: string) => PALETTE_TITLES.filter((title) => title.toLowerCase().includes(query.toLowerCase())).length;
+
+  const IND_H1 = SITE_DATA.find((site) => site.site_id === 'ind_H1') as FullSite;
+  const NULL_DOI = SITE_DATA.find((site) => site.doi === null) as FullSite;
+  const LONGEST = SITE_DATA.reduce((best, site) => ((site.label_definition?.length ?? 0) > (best.label_definition?.length ?? 0) ? site : best), SITE_DATA[0]);
+
+  /** The chrome only exists once the client has rendered (the Suspense fallback has none), so a press is never lost to hydration. */
+  async function openReady(page: Page, query = '') {
+    await openFixtures(page, query);
+    await expect(page.getByRole('radiogroup', { name: 'Direction' })).toBeVisible();
+  }
+
+  const cell = (page: Page, slug: string, state: string) => page.locator(`section#${slug} [data-fixture-state="${state}"]`);
+  const paletteOf = (page: Page) => page.getByRole('dialog', { name: 'Command palette' });
+  const chipOf = (page: Page, kind: string) => cell(page, 'provenance', 'default').locator(`button[data-kind="${kind}"]`);
+  const valueOf = (root: ReturnType<Page['locator']>, term: string) =>
+    root.locator('dt', { hasText: new RegExp(`^${term}$`) }).locator('xpath=following-sibling::dd[1]');
+
+  test('both sections are listed and their cells carry markers', async ({ page }) => {
+    await openReady(page);
+    for (const slug of ['command-palette', 'provenance']) {
+      await expect(page.locator(`section#${slug}`)).toHaveCount(1);
+      expect(await page.locator(`section#${slug} [data-fixture-state]`).count()).toBeGreaterThan(0);
+    }
+    for (const state of ['hover', 'focus', 'pressed']) {
+      await expect(cell(page, 'provenance', state)).toContainText('State forced for review');
+    }
+  });
+
+  test('Ctrl+K opens the palette, typing filters and counts, arrows move, Enter runs and closes', async ({ page }) => {
+    await openReady(page);
+    await page.keyboard.press('Control+k');
+    const dialog = paletteOf(page);
+    await expect(dialog).toBeVisible();
+    // The overlay portals into the instrument surface, so it carries the surface's tokens.
+    await expect(page.locator(SURFACE).getByRole('dialog', { name: 'Command palette' })).toHaveCount(1);
+    const input = dialog.getByRole('searchbox', { name: 'Search' });
+    await expect(input).toBeFocused();
+    await expect(dialog.getByRole('status')).toHaveText(`${PALETTE_TITLES.length} results`);
+
+    await page.keyboard.type('ind_h');
+    const expected = matches('ind_h');
+    await expect(dialog.getByRole('option')).toHaveCount(expected);
+    await expect(dialog.getByRole('status')).toHaveText(`${expected} results`);
+
+    await expect.poll(async () => input.getAttribute('aria-activedescendant')).toBeTruthy();
+    const first = await input.getAttribute('aria-activedescendant');
+    await page.keyboard.press('ArrowDown');
+    await expect.poll(async () => input.getAttribute('aria-activedescendant')).not.toBe(first);
+    await page.keyboard.press('Enter');
+    await expect(dialog).toHaveCount(0);
+    await expect(cell(page, 'command-palette', 'closed').getByTestId('palette-action')).toHaveText(/Result run: (site|clip):/);
+  });
+
+  test('Cmd+K opens it too', async ({ page }) => {
+    await openReady(page);
+    await page.keyboard.press('Meta+k');
+    await expect(paletteOf(page)).toBeVisible();
+  });
+
+  test('the button opens it, Escape closes it in one press and focus returns to the button', async ({ page }) => {
+    await openReady(page);
+    const opener = cell(page, 'command-palette', 'closed').getByRole('button', { name: 'Open command palette' });
+    await opener.scrollIntoViewIfNeeded();
+    await opener.focus();
+    await page.keyboard.press('Enter');
+    const dialog = paletteOf(page);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('searchbox', { name: 'Search' })).toBeFocused();
+    await page.keyboard.type('ken');
+    await expect(dialog.getByRole('searchbox', { name: 'Search' })).toHaveValue('ken');
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(opener).toBeFocused();
+  });
+
+  test('a query with no match says so and announces 0 results', async ({ page }) => {
+    await openReady(page);
+    await page.keyboard.press('Control+k');
+    const dialog = paletteOf(page);
+    await expect(dialog).toBeVisible();
+    await page.keyboard.type('zzz');
+    await expect(dialog.getByText('No results for “zzz”.')).toBeVisible();
+    await expect(dialog.getByRole('status')).toHaveText('0 results');
+  });
+
+  test('the result list scrolls inside a panel capped at 70dvh', async ({ page }) => {
+    await openReady(page);
+    await page.keyboard.press('Control+k');
+    const dialog = paletteOf(page);
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('listbox').getByRole('option').first()).toBeVisible();
+    // The scroll container is a focusable, labelled region once the list overflows.
+    const region = dialog.getByRole('region', { name: 'Results, scrollable' });
+    await expect(region).toHaveCount(1);
+    const verdict = await region.evaluate((node) => {
+      const panel = node.closest('[role="dialog"]')?.parentElement as HTMLElement;
+      return {
+        scrolls: node.scrollHeight > node.clientHeight + 1,
+        overflowY: getComputedStyle(node).overflowY,
+        panel: panel.getBoundingClientRect().height,
+        cap: window.innerHeight * 0.7,
+      };
+    });
+    expect(verdict.scrolls).toBe(true);
+    expect(verdict.overflowY).toBe('auto');
+    expect(verdict.panel).toBeLessThanOrEqual(verdict.cap + 1);
+  });
+
+  test('the arrow keys keep the active result inside the scrolling list', async ({ page }) => {
+    await openReady(page);
+    await page.keyboard.press('Control+k');
+    const dialog = paletteOf(page);
+    await expect(dialog).toBeVisible();
+    const input = dialog.getByRole('searchbox', { name: 'Search' });
+    await expect(input).toBeFocused();
+    for (let i = 0; i < 40; i += 1) await page.keyboard.press('ArrowDown');
+    await expect
+      .poll(async () =>
+        input.evaluate((node) => {
+          const id = node.getAttribute('aria-activedescendant');
+          const active = id ? document.getElementById(id) : null;
+          const region = node.closest('[role="dialog"]')?.querySelector('[data-results-scroll]') as HTMLElement | null;
+          if (!active || !region) return false;
+          const a = active.getBoundingClientRect();
+          const r = region.getBoundingClientRect();
+          return a.top >= r.top - 1 && a.bottom <= r.bottom + 1;
+        }),
+      )
+      .toBe(true);
+  });
+
+  test('the static cells show computed counts, the no-results text and the loading and error states', async ({ page }) => {
+    await openReady(page);
+    const results = cell(page, 'command-palette', 'results');
+    await results.scrollIntoViewIfNeeded();
+    await expect(results.getByRole('option')).toHaveCount(matches('ind'));
+    await expect(results.getByRole('status')).toHaveText(`${matches('ind')} results`);
+    await expect(cell(page, 'command-palette', 'no-results')).toContainText('No results for “zzz”.');
+    await expect(cell(page, 'command-palette', 'no-results').getByRole('status')).toHaveText('0 results');
+    await expect(cell(page, 'command-palette', 'open-empty-query').getByRole('option')).toHaveCount(PALETTE_TITLES.length);
+    await expect(cell(page, 'command-palette', 'loading')).toContainText('Loading search…');
+    await expect(cell(page, 'command-palette', 'error')).toContainText('Search is unavailable.');
+    await expect(cell(page, 'command-palette', 'error')).toContainText('Reload the page to try again.');
+  });
+
+  test('the label chip opens the Why panel with the contract fields, and Escape returns focus to the chip', async ({ page }) => {
+    await openReady(page);
+    const chip = chipOf(page, 'label');
+    await chip.scrollIntoViewIfNeeded();
+    await expect(chip).toHaveAttribute('aria-expanded', 'false');
+    await chip.focus();
+    await page.keyboard.press('Enter');
+    const panel = page.getByRole('dialog', { name: 'Where this label comes from' });
+    await expect(panel).toBeVisible();
+    await expect(chip).toHaveAttribute('aria-expanded', 'true');
+    await expect(panel.locator('dt')).toHaveText([
+      'Assigned by',
+      'Definition',
+      'Dataset',
+      'DOI',
+      'Licence',
+      'Dataset version',
+      'Model version',
+      'Recorded',
+    ]);
+    await expect(valueOf(panel, 'Assigned by')).toHaveText(IND_H1.label_assigned_by);
+    await expect(valueOf(panel, 'Definition')).toHaveText(`“${IND_H1.label_definition}”`);
+    await expect(valueOf(panel, 'Model version')).toHaveText(MODEL_VERSION);
+    await expect(valueOf(panel, 'Recorded')).toContainText('(recorder clock), timezone unverified');
+    await expect(valueOf(panel, 'DOI').getByRole('link')).toHaveAttribute('href', `https://doi.org/${IND_H1.doi}`);
+    await expect(valueOf(panel, 'Dataset').getByRole('link')).toHaveAttribute('href', IND_H1.dataset_url);
+    await expect(valueOf(panel, 'Licence').getByRole('link')).toHaveAttribute('href', IND_H1.licence_url as string);
+    await expect(panel.getByRole('link', { name: 'Methods and limits' })).toHaveAttribute('href', '/about/');
+    // Every link in the panel is https or a path on this site.
+    const hrefs = await panel.locator('a').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('href') ?? ''));
+    expect(hrefs.every((href) => href.startsWith('https://') || href.startsWith('/'))).toBe(true);
+
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+    await expect(chip).toBeFocused();
+    await expect(chip).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('the chip is 28 px high with a 44 px hit area', async ({ page }) => {
+    await openReady(page);
+    const chip = chipOf(page, 'source');
+    await chip.scrollIntoViewIfNeeded();
+    const verdict = await chip.evaluate((node) => ({
+      height: node.getBoundingClientRect().height,
+      inset: getComputedStyle(node, '::after').top,
+      marked: node.hasAttribute('data-hit-expanded'),
+    }));
+    expect(Math.round(verdict.height)).toBe(28);
+    expect(verdict.inset).toBe('-8px');
+    expect(verdict.marked).toBe(true);
+  });
+
+  for (const direction of DIRECTION_LIST) {
+    test(`the Why panel has a 1 px ink border and a heavy top rule in ${direction}`, async ({ page }) => {
+      await openReady(page, `?direction=${direction}`);
+      const chip = chipOf(page, 'source');
+      await chip.scrollIntoViewIfNeeded();
+      await chip.click();
+      const panel = page.getByRole('dialog', { name: 'Source of this recording' });
+      await expect(panel).toBeVisible();
+      await expect
+        .poll(async () =>
+          panel.evaluate((node) => {
+            const frame = node.closest('[data-placement]') as HTMLElement;
+            const style = getComputedStyle(frame);
+            return { top: style.borderTopWidth, left: style.borderLeftWidth, placed: frame.getAttribute('data-placement') !== null };
+          }),
+        )
+        .toEqual({ top: `${HEAVY_RULE_PX[direction]}px`, left: '1px', placed: true });
+    });
+  }
+
+  test('a missing DOI keeps its row and shows "Not recorded" with the stored reason', async ({ page }) => {
+    await openReady(page);
+    const surface = cell(page, 'provenance', 'missing').locator('[data-why-panel-surface]');
+    await surface.scrollIntoViewIfNeeded();
+    const doi = valueOf(surface, 'DOI');
+    await expect(doi).toContainText('Not recorded');
+    await expect(doi).toContainText(NULL_DOI.doi_note as string);
+    await expect(doi.getByRole('link')).toHaveCount(0);
+  });
+
+  test('the empty cell is the missing kind: a dashed chip that says the source is not recorded', async ({ page }) => {
+    await openReady(page);
+    const chip = cell(page, 'provenance', 'empty').locator('button[data-kind="missing"]');
+    await expect(chip).toHaveText('Source not recorded');
+    await expect.poll(async () => chip.evaluate((node) => getComputedStyle(node).borderTopStyle)).toBe('dashed');
+  });
+
+  test('long definitions wrap inside the panel and are never cut with an ellipsis', async ({ page }) => {
+    await openReady(page);
+    const surface = cell(page, 'provenance', 'long-text').locator('[data-why-panel-surface]');
+    await surface.scrollIntoViewIfNeeded();
+    await expect(valueOf(surface, 'Definition')).toHaveText(`“${LONGEST.label_definition}”`);
+    const verdict = await surface.evaluate((node) =>
+      Array.from(node.querySelectorAll('dd')).every((dd) => {
+        const style = getComputedStyle(dd);
+        return style.textOverflow !== 'ellipsis' && style.whiteSpace !== 'nowrap' && dd.scrollWidth <= dd.clientWidth + 1;
+      }),
+    );
+    expect(verdict).toBe(true);
+  });
+
+  test('on a phone the panel opens as a bottom sheet', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openReady(page);
+    const chip = chipOf(page, 'label');
+    await chip.scrollIntoViewIfNeeded();
+    await chip.click();
+    const sheet = page.getByRole('dialog', { name: 'Where this label comes from' });
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByRole('button', { name: 'Close' })).toBeVisible();
+    await expect
+      .poll(async () => {
+        const box = await sheet.boundingBox();
+        return box === null ? null : { width: Math.round(box.width), bottom: Math.round(box.y + box.height) };
+      })
+      .toEqual({ width: 390, bottom: 844 });
+    await page.keyboard.press('Escape');
+    await expect(sheet).toHaveCount(0);
+    await expect(chip).toBeFocused();
+  });
+
+  for (const direction of DIRECTION_LIST) {
+    for (const slug of ['command-palette', 'provenance']) {
+      test(`axe: ${slug} has no serious or critical violation in ${direction}`, async ({ page }) => {
+        await page.goto(`/dev/fixtures/${slug}/?direction=${direction}`, { waitUntil: 'load' });
+        await expect(page.locator(`section#${slug} [data-fixture-state]`).first()).toBeVisible();
+        // The contract-backed cells settle once the data has arrived.
+        await expect(page.locator(`section#${slug} [data-fixture-state$="-loading"]`)).toHaveCount(0);
+        const results = await new AxeBuilder({ page }).include(`section#${slug}`).analyze();
+        const bad = results.violations.filter((v) => BAD_IMPACTS.has(v.impact ?? ''));
+        expect(bad.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+      });
+    }
+  }
+});
+
 test.describe('font scoping', () => {
   test('a legacy route loads none of the new fonts', async ({ page }) => {
     await page.goto('/about/', { waitUntil: 'load' });

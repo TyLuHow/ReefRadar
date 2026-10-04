@@ -2,7 +2,7 @@
 
 import clsx from 'clsx';
 import { AudioLines, BookOpen, Layers, Lightbulb, MapPin, Search } from 'lucide-react';
-import { useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import {
   Autocomplete,
   Dialog as RacDialog,
@@ -138,6 +138,44 @@ function Row({ item }: { item: CommandPaletteItem }) {
   );
 }
 
+/**
+ * The results scroll inside the panel. Focus stays in the search input (the arrow keys move a virtual
+ * focus through the list), so a scroll container axe cannot see any focusable content in would fail
+ * `scrollable-region-focusable`. When the list is taller than the room it has, the container becomes a
+ * focusable labelled region (a tab stop: Tab leaves the input for it, the arrow keys then scroll it),
+ * the same fix the Dialog body uses. React Aria scrolls the active result into view with the browser's
+ * `scrollIntoView`, which reaches this container as well as the list.
+ */
+function ScrollRegion({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [overflows, setOverflows] = useState(false);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return undefined;
+    const measure = () => setOverflows(node.scrollHeight > node.clientHeight + 1);
+    measure();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    if (node.firstElementChild) observer.observe(node.firstElementChild);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      data-results-scroll=""
+      tabIndex={overflows ? 0 : undefined}
+      role={overflows ? 'region' : undefined}
+      aria-label={overflows ? 'Results, scrollable' : undefined}
+      className="min-h-0 flex-1 overflow-y-auto focus-visible:focus-ring-inset"
+    >
+      {children}
+    </div>
+  );
+}
+
 interface PaletteBodyProps extends StateCopy {
   groups: CommandPaletteGroup[];
   state: CommandPaletteState;
@@ -188,21 +226,23 @@ function PaletteBody({
     results = <ErrorState announce="status" headingLevel={3} title={errorTitle} body={errorBody} className="mx-4 my-4" />;
   } else {
     results = (
-      <ListBox
-        aria-label="Results"
-        onAction={(key) => onRun?.(String(key))}
-        renderEmptyState={() => <p className="px-4 py-6 text-body text-ink">{`No results for “${needle}”.`}</p>}
-        className="min-h-0 flex-1 overflow-y-auto outline-none"
-      >
-        {groups.map((group) => (
-          <ListBoxSection key={group.id}>
-            <Header className="type-eyebrow text-muted px-4 pt-4 pb-2 border-b border-rule bg-ground">{group.heading}</Header>
-            {group.items.map((item) => (
-              <Row key={item.id} item={item} />
-            ))}
-          </ListBoxSection>
-        ))}
-      </ListBox>
+      <ScrollRegion>
+        <ListBox
+          aria-label="Results"
+          onAction={(key) => onRun?.(String(key))}
+          renderEmptyState={() => <p className="px-4 py-6 text-body text-ink">{`No results for “${needle}”.`}</p>}
+          className="outline-none"
+        >
+          {groups.map((group) => (
+            <ListBoxSection key={group.id}>
+              <Header className="type-eyebrow text-muted px-4 pt-4 pb-2 border-b border-rule bg-ground">{group.heading}</Header>
+              {group.items.map((item) => (
+                <Row key={item.id} item={item} />
+              ))}
+            </ListBoxSection>
+          ))}
+        </ListBox>
+      </ScrollRegion>
     );
   }
 
