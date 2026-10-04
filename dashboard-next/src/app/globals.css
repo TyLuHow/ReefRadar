@@ -39,6 +39,25 @@
   --text-3xl--line-height: 2.25rem;
   --text-4xl--line-height: 2.5rem;
 
+  /* Tailwind 3 default palette values for the stock colours the legacy routes use (v4 ships oklch palettes that paint differently). */
+  --color-amber-100: #fef3c7;
+  --color-amber-200: #fde68a;
+  --color-amber-400: #fbbf24;
+  --color-amber-500: #f59e0b;
+  --color-amber-900: #78350f;
+  --color-sky-100: #e0f2fe;
+  --color-sky-200: #bae6fd;
+  --color-sky-300: #7dd3fc;
+  --color-sky-500: #0ea5e9;
+  --color-sky-900: #0c4a6e;
+  --color-gray-100: #f3f4f6;
+  --color-gray-200: #e5e7eb;
+  --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280;
+  --color-gray-600: #4b5563;
+  --color-gray-700: #374151;
+  --color-gray-900: #111827;
+
   --animate-pulse-slow: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-wave: wave 2s ease-in-out infinite;
 
@@ -73,6 +92,25 @@
   button:not(:disabled),
   [role='button']:not(:disabled) {
     cursor: pointer;
+  }
+
+  /* Tailwind 3 preflight left these at the browser default; Tailwind 4 preflight zeroes or clears them. */
+  option {
+    padding-block: 0 1px;
+    padding-inline: 2px;
+  }
+
+  input:not([type='button'], [type='reset'], [type='submit']),
+  select,
+  textarea,
+  optgroup {
+    background-color: revert;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    opacity: 1;
+    color: #9ca3af;
   }
 }
 
