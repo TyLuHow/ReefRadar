@@ -54,7 +54,7 @@ export class TokenError extends Error {
     super(
       value === ''
         ? `Token "${key}" (--dir-${key}) is not defined on the element read; is it inside an instrument surface?`
-        : `Token "${key}" (--dir-${key}) must be a six-digit hex such as #1A2B3C, got "${value}".`,
+        : `Token "${key}" (--dir-${key}) must be a six-digit hex (a # followed by six hex digits), got "${value}".`,
     );
     this.name = 'TokenError';
     this.key = key;
