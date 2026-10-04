@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 4
 current_phase_name: Design System & Instrument Primitives
 status: executing
-stopped_at: Completed 04-10-PLAN.md
-last_updated: "2026-10-04T19:41:10.291Z"
+stopped_at: Completed 04-11-PLAN.md
+last_updated: "2026-10-04T20:17:36.082Z"
 last_activity: 2026-10-04
-last_activity_desc: 04-10 complete (Dialog, AlertDialog, Sheet, Listbox and their fixtures sections; Sheet-based phone section list; overlay portal-target fix)
-state_head: c7b6c3886e95bed7ade2d2531e7b8c35efb884bc
+last_activity_desc: 04-11 complete (Slider, RangeSlider, base Table, DataTable and their fixtures sections; ten-step slider pages; container-measured phone scroll region)
+state_head: f68b185dca132b270bd931c9bba694e1c1e33686
 progress:
   total_phases: 17
   completed_phases: 3
   total_plans: 72
-  completed_plans: 58
+  completed_plans: 59
   percent: 18
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 04-10 complete (10 of 24; unit 1019 passing, lint 0 errors, flag-less build green and fixtures excluded, full fixture-mocked e2e 119 passed, 04-10 e2e block 210/210 at --repeat-each=10); CI unit race fixed in d2190cc, CI green on d2190cc (all jobs, visual 33/33); next 04-11
-Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, not complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup, Tooltip, Dialog, AlertDialog, Sheet and Listbox, not complete; DS-05 advanced by the state primitives, RLabel, Stat, AccentBlock, BandSection, not complete; DS-08 route, production exclusion, registry, chrome and ten sections in place, remaining sections arrive with each primitive plan; DS-06 reduced-motion hook and toggle in place, overlay transitions asserted zero under reduced motion)
-Last activity: 2026-10-04 — 04-10 Dialog, Sheet and Listbox with fixtures sections and the Sections sheet complete
+Plan: 04-11 complete (11 of 24; unit 1069 passing, lint 0 errors, flag-less build green and fixtures excluded, full fixture-mocked e2e 140 passed, 04-11 e2e block 105/105 at --repeat-each=5); next 04-12
+Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, not complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup, Tooltip, Dialog, AlertDialog, Sheet, Listbox, Slider, RangeSlider and Table, not complete; DS-05 advanced by the state primitives, RLabel, Stat, AccentBlock, BandSection and DataTable, not complete; DS-08 route, production exclusion, registry, chrome and thirteen sections in place, remaining sections arrive with each primitive plan; DS-06 reduced-motion hook and toggle in place)
+Last activity: 2026-10-04 — 04-11 Slider, Table and DataTable with fixtures sections complete
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
@@ -120,6 +120,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 04 P08 | 8min | 2 tasks | 12 files |
 | Phase 04 P09 | 55min | 2 tasks | 8 files |
 | Phase 04 P10 | 150min | 3 tasks | 14 files |
+| Phase 04 P11 | 55min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -217,6 +218,8 @@ Recent decisions affecting current work:
 - [Phase 04]: 04-09: no request-id error cell (no committed fixture holds a request id); ToggleGroup fixture cells are named 'Options, ...' so they never match the chrome's Direction radiogroup; the swatch-label e2e now polls label and --dir-ground together (CI race on cb42a64)
 - [Phase 04]: 04-10: overlays portal into the surface root, resolved when the overlay opens (SurfaceModalOverlay), because the prerendered fallback surface is discarded by the client and a first-render lookup mounted the dialog into a detached node in production builds only — Found by the production e2e; unit tests and next dev were green. Tokens, next/font variables and resets live on the surface subtree
 - [Phase 04]: 04-10: Listbox rows speak the status word as sr-only text and a disabled row gives its reason in text plus a hand-placed hover tooltip; the dialog long-content cell shows each site's own label definition rather than one definition repeated — RAC Tooltip needs a focusable trigger and a disabled option cannot take focus; repeating a definition under other site ids would misattribute a label
+- [Phase 04]: [04-11] PageUp and PageDown move ten steps (React Aria pages by a tenth of the range): the Slider wrapper takes the keys in a capture handler; aria-valuetext, thumb names and aria-invalid are written onto each thumb input per render — React Aria's page size, Intl-only value text and label concatenation do not match the UI-SPEC contract
+- [Phase 04]: [04-11] DataTable scroll region is decided by measuring the container (under 640 px or overflowing), not the window; caption count is the whole set (total), footer is Showing k of n — Lets the phone layout be reviewed at 390 px in a wide page and keeps counts computed
 
 ### Pending Todos
 
@@ -240,6 +243,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-04T19:41:09.171Z
-Stopped at: Completed 04-10-PLAN.md
+Last session: 2026-10-04T20:17:31.198Z
+Stopped at: Completed 04-11-PLAN.md
 Resume file: None
