@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import type { FixtureGroup, FixtureSectionMeta } from './parts/FixtureSection';
 import { BUTTON_META, ButtonSection } from './sections/ButtonSection';
+import { DIALOG_META, DialogSection } from './sections/DialogSection';
 import { NUMERALS_META, NumeralsSection } from './sections/NumeralsSection';
 import { STATES_META, StatesSection } from './sections/StatesSection';
 import { STATUS_PALETTE_META, StatusPaletteSection } from './sections/StatusPaletteSection';
@@ -29,6 +30,7 @@ export const FIXTURE_SECTIONS: readonly FixtureSectionDef[] = [
   define(TOKENS_META, TokensSection),
   define(STATUS_PALETTE_META, StatusPaletteSection),
   define(BUTTON_META, ButtonSection),
+  define(DIALOG_META, DialogSection),
   define(TOGGLE_GROUP_META, ToggleGroupSection),
   define(TOOLTIP_META, TooltipSection),
   define(STATES_META, StatesSection),
