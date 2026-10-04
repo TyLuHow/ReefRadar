@@ -60,6 +60,17 @@ Out of this phase:
 - Motion carries much of the life: playhead sweep, spectrogram scroll during playback, and crossfade. These are continuity motion and stay within DS-06; all stop under reduced motion.
 - Every fixture for these stays real: shared-scale spectrograms, counts from the contract, and the projection's own caveat (the plane shows 33% of the variance; near does not mean similar).
 
+### Alternative directions stay open (owner instruction, 2026-10-03)
+- The owner wants to keep seeing bold alternative design directions while the product is built. Direction C with colour option 1 is the working default, not a final lock.
+- A design direction is therefore a swappable theme, not hardcoded values:
+  - Components read semantic tokens only (surface, ink, rule, accent, display / body / mono font, radius, well, status-*). No component names a raw colour, font or radius.
+  - Each direction is one token set selected by an attribute on the root of the new surfaces (for example `data-direction`). Default: `atlas`.
+  - Ship two further heavy directions as token sets in this phase so the owner can compare on real components. Claude designs them; they must differ strongly from Atlas and from each other (for example a dark-first immersive direction where the spectrogram is the page, and a colour-blocked poster direction with oversized type). Both keep the integrity rules, the status shapes and passing contrast.
+  - The `/dev/fixtures` route has a direction switcher. Screenshot baselines cover the default direction in every state; the alternates get a smaller representative set.
+  - The status palette and spectrogram scale are data colour, chosen separately (option 1 + magma), and stay the same across directions unless a direction cannot meet contrast with them.
+- At every later UI gate (each new screen in Phase 6+), show two or three bold alternatives beside the default before locking that screen.
+- Legacy pages are not themed by any of this.
+
 ### Components and scope (owner accepted all recommendations)
 - React Aria Components for every interactive primitive listed in DS-04.
 - Tailwind v3 → v4 CSS-first (`@theme` tokens in CSS). Legacy pages keep their dark look: the 33 existing Linux visual baselines must stay unchanged, so the new light tokens are scoped to new surfaces and the legacy dark tokens are carried over as-is.
