@@ -43,9 +43,9 @@ export type SliderForcedState = 'hover' | 'focus' | 'pressed';
 /** Pages move this many steps (UI-SPEC "Keyboard"). */
 const PAGE_STEPS = 10;
 
-// Disabled fills and text: rule-strong lightened 40% toward the ground (UI-SPEC common rules).
+// Disabled fills: rule-strong lightened 40% toward the ground (UI-SPEC common rules). The label and the value stay at full
+// contrast: they are information, not the control, and a disabled control still has to be readable.
 const DISABLED_FILL = 'data-disabled:bg-[color:color-mix(in_srgb,var(--dir-rule-strong)_60%,var(--dir-ground))]';
-const DISABLED_TEXT = 'data-disabled:text-[color:color-mix(in_srgb,var(--dir-rule-strong)_60%,var(--dir-ground))]';
 
 const TONE = {
   light: {
@@ -177,7 +177,7 @@ function Core({
 }: CoreProps) {
   const helperId = useId();
   const palette = TONE[tone];
-  const labelClass = clsx('type-eyebrow', palette.label, DISABLED_TEXT);
+  const labelClass = clsx('type-eyebrow', palette.label);
 
   if (state === 'loading') {
     return (
@@ -233,7 +233,7 @@ function Core({
       >
         <div className="flex items-baseline justify-between gap-4">
           <Label className={labelClass}>{label}</Label>
-          <SliderOutput className={clsx('font-data text-small tabular text-end', palette.value, DISABLED_TEXT)}>{outputText}</SliderOutput>
+          <SliderOutput className={clsx('font-data text-small tabular text-end', palette.value)}>{outputText}</SliderOutput>
         </div>
         <SliderTrack className="relative mx-2.5 h-11 touch-none">
           {({ state: sliderState }) => {
