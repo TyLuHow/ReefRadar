@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 04-11 complete (11 of 24; unit 1069 passing, lint 0 errors, flag-less build green and fixtures excluded, full fixture-mocked e2e 140 passed, 04-11 e2e block 105/105 at --repeat-each=5); next 04-12
+Plan: 04-11 complete (11 of 24; unit 1069 passing, lint 0 errors, flag-less build green and fixtures excluded, full fixture-mocked e2e 140 passed, 04-11 e2e block 105/105 at --repeat-each=5); CI e2e tooltip-count race fixed in ea7a718, CI green on ea7a718 (all jobs, visual 33/33); next 04-12
 Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, not complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup, Tooltip, Dialog, AlertDialog, Sheet, Listbox, Slider, RangeSlider and Table, not complete; DS-05 advanced by the state primitives, RLabel, Stat, AccentBlock, BandSection and DataTable, not complete; DS-08 route, production exclusion, registry, chrome and thirteen sections in place, remaining sections arrive with each primitive plan; DS-06 reduced-motion hook and toggle in place)
 Last activity: 2026-10-04 — 04-11 Slider, Table and DataTable with fixtures sections complete
 

@@ -168,6 +168,8 @@ status: complete
 
 **Total deviations:** 3 auto-fixed (Rule 1), 7 judgement calls. **Impact:** none on scope beyond the added e2e block and the extra optional props.
 
+**Post-push (orchestrator):** CI on c2452ba failed the 04-09 live-tooltip e2e (3 tooltips after Escape, 2 expected): the page-wide `role=tooltip` count picked up an unrelated tooltip once 04-10/04-11 added a hover-opened Listbox tooltip and many more Tab stops. Fixed in ea7a718 by asserting on the positioned React Aria overlay with the live text and parking the pointer; 10/10 locally, full e2e 140 passed, CI green on ea7a718 (all jobs, visual 33/33).
+
 ## Verification run
 
 - Task acceptance: `npx vitest run` for `slider`, `data-table`, `semantic-tokens`, `fixtures-registry` and `copy-claims` all pass; `npm run typecheck` exits 0; `NEXT_PUBLIC_DEV_FIXTURES=1 npm run build` exits 0 (also run by Playwright's webServer several times).
