@@ -590,7 +590,9 @@ test.use({ reducedMotion: 'reduce' });
 | A7 | Alternate-direction values (Nocturne, Poster) and their font choices are design proposals, mechanically validated only | Pattern 11 | Owner dislikes them; they are token sets, cheap to change |
 | A8 | `Bricolage_Grotesque` / `IBM_Plex_*` / `Fraunces` are exported by `next/font/google` under those names | Pattern 4 | Rename at plan time; Anton and Fraunces confirmed in Next's font-data.json (grep), the others not checked |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All six resolved: see 04-CONTEXT.md "Decisions after research" and the 04-01 gate.
 
 1. **Reduced motion and the playhead.**
    - What we know: DS-06 says nothing animates under reduced motion; a moving playhead is functional, not decorative.
