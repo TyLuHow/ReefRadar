@@ -4,6 +4,8 @@ import { Suspense, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { DEV_FIXTURES_MARKER } from './marker';
 import { parseFixtureQuery } from './query';
+import { FixtureChromeProvider } from './parts/FixtureSection';
+import { FIXTURE_SECTIONS } from './registry';
 
 /**
  * The instrument surface root for the dev-only design-system fixtures (DS-08).
@@ -18,16 +20,28 @@ const SURFACE_CLASS = 'min-h-screen bg-ground text-ink font-body';
 
 function Heading() {
   return (
-    <main className="p-6">
+    <header className="p-6">
       <h1 className="font-numeral text-title">ReefRadar fixtures</h1>
       <p className="text-small text-muted">
         Dev-only review surface for the design system. Not linked from the product.
       </p>
+    </header>
+  );
+}
+
+/** Every registered section, or only the one whose slug is `section`. */
+function Sections({ section }: { section?: string }) {
+  const shown = section === undefined ? FIXTURE_SECTIONS : FIXTURE_SECTIONS.filter((def) => def.slug === section);
+  return (
+    <main className="px-6 pb-24 grid gap-20">
+      {shown.map(({ slug, Component }) => (
+        <Component key={slug} />
+      ))}
     </main>
   );
 }
 
-function FixturesSurface() {
+function FixturesSurface({ section }: { section?: string }) {
   const searchParams = useSearchParams();
   const { direction, reduced, tokenOverrides } = parseFixtureQuery(searchParams);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -54,7 +68,10 @@ function FixturesSurface() {
       data-fixtures-marker={DEV_FIXTURES_MARKER}
       className={SURFACE_CLASS}
     >
-      <Heading />
+      <FixtureChromeProvider value={{ direction, reduced }}>
+        <Heading />
+        <Sections section={section} />
+      </FixtureChromeProvider>
     </div>
   );
 }
@@ -64,7 +81,7 @@ function FixturesSurface() {
  * already carries data-surface and the page paints the atlas ground from the first frame instead
  * of flashing the legacy dark body colour until the query has been read on the client.
  */
-function FixturesSurfaceFallback() {
+function FixturesSurfaceFallback({ section }: { section?: string }) {
   return (
     <div
       data-surface="instrument"
@@ -73,14 +90,15 @@ function FixturesSurfaceFallback() {
       className={SURFACE_CLASS}
     >
       <Heading />
+      <Sections section={section} />
     </div>
   );
 }
 
-export function FixturesApp() {
+export function FixturesApp({ section }: { section?: string }) {
   return (
-    <Suspense fallback={<FixturesSurfaceFallback />}>
-      <FixturesSurface />
+    <Suspense fallback={<FixturesSurfaceFallback section={section} />}>
+      <FixturesSurface section={section} />
     </Suspense>
   );
 }
