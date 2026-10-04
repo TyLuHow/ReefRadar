@@ -1,5 +1,6 @@
 @import 'tailwindcss' source(none);
 @import '../styles/legacy.css';
+@import '../styles/tokens.css';
 @source "../pages";
 @source "../components";
 @source "../app";
