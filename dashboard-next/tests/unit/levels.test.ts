@@ -71,9 +71,9 @@ describe('bandMeanDb', () => {
     const rate = 16000;
     const hz = 2000; // bin 128
     const samples = Float32Array.from({ length: 8192 }, (_, i) => Math.sin((2 * Math.PI * hz * i) / rate));
-    const inBand = bandMeanDb(samples, rate, 1900, 2100); // bins 122..134 (13 bins), one carries power 1
-    expect(inBand).toBeGreaterThan(10 * Math.log10(1 / 13) - 1.5); // the Hann skirt adds a little
-    expect(inBand).toBeLessThan(10 * Math.log10(1 / 13) + 1.5);
+    // bins 122..134 (13 bins): the sine carries power 1 and its two Hann neighbours 0.25 each.
+    const inBand = bandMeanDb(samples, rate, 1900, 2100);
+    expect(inBand).toBeCloseTo(10 * Math.log10(1.5 / 13), 1);
     const outOfBand = bandMeanDb(samples, rate, 5000, 6000);
     expect(outOfBand).toBeLessThan(-80);
   });

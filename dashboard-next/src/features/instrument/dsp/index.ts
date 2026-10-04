@@ -8,3 +8,5 @@ export { WavFormatError, parseWavPcm16 } from './wav';
 export type { ParsedWav } from './wav';
 export { binHz, computeSpectrogram, dbAt, frameCount, frameMagnitudes } from './stft';
 export type { SpectrogramMatrix } from './stft';
+export { MAGMA_LUT, lutColor, matrixToImageData } from './colormap';
+export { bandMeanDb, rmsDbfs, windowLevelsDb } from './levels';
