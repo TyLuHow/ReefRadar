@@ -127,6 +127,25 @@ describe('computeSpectrogram on the ind_H1 excerpt', () => {
     expect(dbAt(loud, 0, 512)).toBeCloseTo(-50, 9);
   });
 
+  it('matches the recorded golden statistics within plus or minus 1 level', () => {
+    // Recorded once from this implementation: clip ind_H1_20220830_120000, 1024-point periodic
+    // Hann, hop 256, range -120 to -50 dB re full scale (levels 0..255). Exact checksums are
+    // avoided because the last bit of Math.log10 can differ across Node versions.
+    let sum = 0;
+    for (const level of matrix.data) sum += level;
+    expect(Math.abs(sum / matrix.data.length - 95.451)).toBeLessThanOrEqual(1);
+    const cells: Array<[frame: number, bin: number, level: number]> = [
+      [100, 20, 127],
+      [500, 64, 98],
+      [900, 128, 85],
+      [1300, 256, 90],
+      [1800, 480, 89],
+    ];
+    for (const [frame, bin, level] of cells) {
+      expect(Math.abs(matrix.data[frame * matrix.bins + bin] - level), `frame ${frame} bin ${bin}`).toBeLessThanOrEqual(1);
+    }
+  });
+
   it('does not auto-scale: a clip scaled by 0.5 reads about 6 dB lower, not the same', () => {
     const half = computeSpectrogram(
       wav.samples.map((s) => s * 0.5),
