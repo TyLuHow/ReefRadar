@@ -522,6 +522,226 @@ test.describe('/dev/fixtures overlays and listbox (04-10)', () => {
   });
 });
 
+test.describe('/dev/fixtures slider, table and data table (04-11)', () => {
+  const DIRECTION_LIST = ['atlas', 'nocturne', 'poster'] as const;
+  const BAD_IMPACTS = new Set(['serious', 'critical']);
+  const SITE_COUNT = CONTRACT_SITES.length;
+
+  /** The chrome only exists once the client has rendered (the Suspense fallback has none), so a press is never lost to hydration. */
+  async function openReady(page: Page, query = '') {
+    await openFixtures(page, query);
+    await expect(page.getByRole('radiogroup', { name: 'Direction' })).toBeVisible();
+  }
+
+  const cell = (page: Page, slug: string, state: string) => page.locator(`section#${slug} [data-fixture-state="${state}"]`);
+  const thumbOf = (page: Page) =>
+    cell(page, 'slider', 'default')
+      .getByRole('slider', { name: 'Playback position' })
+      .locator('xpath=ancestor::div[contains(@class,"size-5")][1]');
+
+  test('the three sections are listed and their cells carry markers', async ({ page }) => {
+    await openReady(page);
+    for (const slug of ['table', 'slider', 'data-table']) {
+      await expect(page.locator(`section#${slug}`)).toHaveCount(1);
+      expect(await page.locator(`section#${slug} [data-fixture-state]`).count()).toBeGreaterThan(0);
+    }
+    for (const [slug, state] of [
+      ['slider', 'hover'],
+      ['slider', 'focus'],
+      ['slider', 'pressed'],
+      ['table', 'hover-row'],
+      ['data-table', 'hover'],
+      ['data-table', 'disabled-row'],
+    ] as const) {
+      await expect(cell(page, slug, state)).toContainText('State forced for review');
+    }
+  });
+
+  test('the data table lists every contract site with computed counts', async ({ page }) => {
+    await openReady(page);
+    const live = cell(page, 'data-table', 'default');
+    await expect(live.getByRole('row')).toHaveCount(SITE_COUNT + 1);
+    await expect(live).toContainText(`${SITE_COUNT} sites`);
+    await expect(live).toContainText(`Showing ${SITE_COUNT} of ${SITE_COUNT} sites`);
+    await expect(cell(page, 'data-table', 'one-row')).toContainText(`Showing 1 of ${SITE_COUNT} sites`);
+    await expect(cell(page, 'data-table', 'one-row').getByRole('row')).toHaveCount(2);
+  });
+
+  test('the slider moves by step and by ten steps, jumps to the ends and the range thumbs cannot cross', async ({ page }) => {
+    await openReady(page);
+    const live = cell(page, 'slider', 'default');
+    const position = live.getByRole('slider', { name: 'Playback position' });
+    await position.scrollIntoViewIfNeeded();
+    await position.focus();
+    await expect(position).toHaveValue('12');
+    await expect(position).toHaveAttribute('aria-valuetext', '0:12 of 0:30');
+    await page.keyboard.press('ArrowRight');
+    await expect(position).toHaveValue('12.1');
+    await page.keyboard.press('PageUp');
+    await expect(position).toHaveValue('13.1');
+    await page.keyboard.press('PageDown');
+    await page.keyboard.press('PageDown');
+    await expect(position).toHaveValue('11.1');
+    await page.keyboard.press('End');
+    await expect(position).toHaveValue('30');
+    await expect(position).toHaveAttribute('aria-valuetext', '0:30 of 0:30');
+    await page.keyboard.press('Home');
+    await expect(position).toHaveValue('0');
+
+    const minimum = live.getByRole('slider', { name: 'Frequency range minimum' });
+    const maximum = live.getByRole('slider', { name: 'Frequency range maximum' });
+    await expect(minimum).toHaveAttribute('aria-valuetext', '2,000 Hz');
+    await expect(maximum).toHaveAttribute('aria-valuetext', '6,000 Hz');
+    await minimum.focus();
+    await page.keyboard.press('PageUp');
+    await expect(minimum).toHaveValue('3000');
+    await page.keyboard.press('End');
+    await expect(minimum).toHaveValue('6000');
+    await expect(maximum).toHaveValue('6000');
+    await page.keyboard.press('Tab');
+    await expect(maximum).toBeFocused();
+    await page.keyboard.press('Home');
+    await expect(maximum).toHaveValue('6000');
+  });
+
+  test('the base table is one tab stop, rows move with the arrows, Space selects and a header sorts', async ({ page }) => {
+    await openReady(page);
+    const grid = cell(page, 'table', 'default').getByRole('grid');
+    await grid.scrollIntoViewIfNeeded();
+    const rows = grid.getByRole('row');
+    const country = grid.getByRole('columnheader', { name: 'Country' });
+    await expect(country).not.toHaveAttribute('aria-sort', /ascending|descending/);
+    await country.focus();
+    await page.keyboard.press('Enter');
+    await expect(country).toHaveAttribute('aria-sort', 'ascending');
+    await page.keyboard.press('Space');
+    await expect(country).toHaveAttribute('aria-sort', 'descending');
+    // From a header the Down arrow enters the cell below it; rows are reached directly and the
+    // arrow keys then move from row to row.
+    await rows.nth(1).focus();
+    await expect(rows.nth(1)).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(rows.nth(2)).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(rows.nth(2)).toHaveAttribute('aria-selected', 'true');
+    // One tab stop: Tab leaves the grid.
+    await page.keyboard.press('Tab');
+    expect(await grid.evaluate((node) => node.contains(document.activeElement))).toBe(false);
+  });
+
+  test('the data table runs the row action on Enter, selects on Space and sorts on the Site header', async ({ page }) => {
+    await openReady(page);
+    const live = cell(page, 'data-table', 'default');
+    const grid = live.getByRole('grid');
+    await grid.scrollIntoViewIfNeeded();
+    const site = grid.getByRole('columnheader', { name: 'Site' });
+    await expect(site).toHaveAttribute('aria-sort', 'ascending');
+    await site.focus();
+    await page.keyboard.press('Enter');
+    await expect(site).toHaveAttribute('aria-sort', 'descending');
+    await page.keyboard.press('Enter');
+    await expect(site).toHaveAttribute('aria-sort', 'ascending');
+
+    const first = grid.getByRole('row').nth(1);
+    await first.focus();
+    await expect(first).toBeFocused();
+    const firstId = ((await first.getByRole('rowheader').textContent()) ?? '').trim();
+    expect(firstId).not.toBe('');
+    await page.keyboard.press('Enter');
+    await expect(live.getByTestId('row-action')).toHaveText(`Row action: open ${firstId}.`);
+    await page.keyboard.press('Space');
+    await expect(first).toHaveAttribute('aria-selected', 'true');
+  });
+
+  test('on a phone-width container the table is a focusable labelled region with a pinned first column', async ({ page }) => {
+    await openReady(page);
+    const phone = cell(page, 'data-table', 'phone-scroll');
+    const region = phone.getByRole('region', { name: 'Reference sites, phone, scrollable' });
+    await region.scrollIntoViewIfNeeded();
+    await expect(region).toHaveAttribute('tabindex', '0');
+    await region.focus();
+    await expect(region).toBeFocused();
+    expect(await region.evaluate((node) => node.scrollWidth > node.clientWidth)).toBe(true);
+    await region.evaluate((node) => {
+      node.scrollLeft = 160;
+    });
+    await expect
+      .poll(async () =>
+        region.evaluate((node) => {
+          const pinned = node.querySelector('tbody td') as HTMLElement;
+          const edge = node.getBoundingClientRect().left;
+          return {
+            sticky: getComputedStyle(pinned).position,
+            pinned: Math.abs(pinned.getBoundingClientRect().left - edge) < 2,
+          };
+        }),
+      )
+      .toEqual({ sticky: 'sticky', pinned: true });
+  });
+
+  test('a wide data table has no scroll region', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await openReady(page);
+    await expect(cell(page, 'data-table', 'default').getByRole('grid')).toBeVisible();
+    await expect(cell(page, 'data-table', 'default').getByRole('region')).toHaveCount(0);
+  });
+
+  test('long text wraps inside its cell and is never cut with an ellipsis', async ({ page }) => {
+    await openReady(page);
+    const long = cell(page, 'data-table', 'long-text');
+    await long.scrollIntoViewIfNeeded();
+    await expect(long.getByRole('row')).toHaveCount(5);
+    const verdict = await long.evaluate((node) =>
+      Array.from(node.querySelectorAll('td')).every((td) => {
+        const style = getComputedStyle(td);
+        return style.textOverflow !== 'ellipsis' && style.whiteSpace !== 'nowrap' && td.scrollWidth <= td.clientWidth + 1;
+      }),
+    );
+    expect(verdict).toBe(true);
+  });
+
+  test('under reduced motion the slider thumb transition is zero length', async ({ page }) => {
+    await openReady(page, '?reduced=1');
+    await expect.poll(async () => thumbOf(page).evaluate((node) => getComputedStyle(node).transitionDuration)).toMatch(/^0s(, 0s)*$/);
+  });
+
+  for (const direction of DIRECTION_LIST) {
+    test(`the pinned first column and the thumbs are filled in ${direction}`, async ({ page }) => {
+      await openReady(page, `?direction=${direction}`);
+      const grid = cell(page, 'data-table', 'default').getByRole('grid');
+      await expect
+        .poll(async () =>
+          grid.evaluate((node) => {
+            const pinned = getComputedStyle(node.querySelector('tbody td') as HTMLElement).backgroundColor;
+            return pinned !== '' && pinned !== 'rgba(0, 0, 0, 0)';
+          }),
+        )
+        .toBe(true);
+      await expect
+        .poll(async () => thumbOf(page).evaluate((node) => getComputedStyle(node).backgroundColor))
+        .not.toMatch(/rgba\(0, 0, 0, 0\)|^$/);
+    });
+  }
+
+  for (const direction of DIRECTION_LIST) {
+    for (const slug of ['table', 'slider', 'data-table']) {
+      test(`axe: ${slug} has no serious or critical violation in ${direction}`, async ({ page }) => {
+        await page.goto(`/dev/fixtures/${slug}/?direction=${direction}`, { waitUntil: 'load' });
+        await expect(page.locator(`section#${slug} [data-fixture-state]`).first()).toBeVisible();
+        // The contract-backed cells settle once the data has arrived.
+        await expect(page.locator(`section#${slug} [data-fixture-state$="-loading"]`)).toHaveCount(0);
+        // The phone cell measures its container before the region attributes exist.
+        if (slug === 'data-table') {
+          await expect(cell(page, slug, 'phone-scroll').getByRole('region')).toHaveCount(1);
+        }
+        const results = await new AxeBuilder({ page }).include(`section#${slug}`).analyze();
+        const bad = results.violations.filter((v) => BAD_IMPACTS.has(v.impact ?? ''));
+        expect(bad.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+      });
+    }
+  }
+});
+
 test.describe('font scoping', () => {
   test('a legacy route loads none of the new fonts', async ({ page }) => {
     await page.goto('/about/', { waitUntil: 'load' });

@@ -13,4 +13,6 @@ export { AccentBlock } from './AccentBlock';
 export type { AccentBlockProps } from './AccentBlock';
 export { BandSection } from './BandSection';
 export type { BandSectionProps } from './BandSection';
+export { DataTable } from './DataTable';
+export type { DataTableColumn, DataTableProps, DataTableState } from './DataTable';
 export * from './dsp';
