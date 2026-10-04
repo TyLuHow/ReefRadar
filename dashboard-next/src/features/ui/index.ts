@@ -17,6 +17,8 @@ export { Listbox, ListboxItem, ListboxSection } from './Listbox';
 export type { ListboxItemProps, ListboxProps, ListboxSectionProps, ListboxState } from './Listbox';
 export { Sheet, SheetSurface } from './Sheet';
 export type { SheetProps, SheetSide, SheetSurfaceProps } from './Sheet';
+export { RangeSlider, Slider } from './Slider';
+export type { RangeSliderProps, SliderForcedState, SliderProps, SliderState, SliderTone } from './Slider';
 export { Tooltip, TooltipSurface } from './Tooltip';
 export type { TooltipProps } from './Tooltip';
 export { Skeleton } from './Skeleton';
