@@ -48,7 +48,10 @@ export default defineConfig({
       // review.spec.ts (03-14) is the unhidden before/after capture run by
       // playwright.review.config.ts only; it asserts nothing and must never gate.
       // The computed-style fingerprint spec (04-01) runs only under playwright.fingerprint.config.ts and needs FINGERPRINT_OUT.
-      testIgnore: /visual\.spec\.ts|-live\.spec\.ts|gallery-parity\.spec\.ts|review\.spec\.ts|style-fingerprint\.spec\.ts/,
+      // The fixtures screenshot spec (04-23) belongs to the fixtures-shots project only: its baselines are Docker-pinned
+      // and must never run, or fail, inside this fixture-mocked project. The pattern is anchored so it cannot swallow
+      // the other fixtures-*.spec.ts browser gates, which stay in this project.
+      testIgnore: /visual\.spec\.ts|-live\.spec\.ts|gallery-parity\.spec\.ts|review\.spec\.ts|style-fingerprint\.spec\.ts|(^|[\\/])fixtures\.spec\.ts$/,
       use: { ...devices['Desktop Chrome'] },
     },
     {
@@ -56,6 +59,16 @@ export default defineConfig({
       testMatch: /visual\.spec\.ts/,
       snapshotPathTemplate: '{testDir}/{testFilePath}-snapshots/{arg}-{projectName}-{platform}{ext}',
       use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      // Element screenshots of every /dev/fixtures section and state grid (04-23, DS-08). Its own project, spec and
+      // snapshot directory, so regenerating these never touches the 33 legacy baselines (guarded by
+      // tests/unit/legacy-baselines.test.ts). Self-skips unless PW_VISUAL=1 (Docker-pinned Linux CI). reducedMotion
+      // is emulated so the kit's motion is already at its reduced-motion state before every capture.
+      name: 'fixtures-shots',
+      testMatch: /(^|[\\/])fixtures\.spec\.ts$/,
+      snapshotPathTemplate: '{testDir}/{testFilePath}-snapshots/{arg}-{projectName}-{platform}{ext}',
+      use: { ...devices['Desktop Chrome'], reducedMotion: 'reduce' },
     },
   ],
 });
