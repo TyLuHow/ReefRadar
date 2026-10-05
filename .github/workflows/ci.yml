@@ -128,7 +128,26 @@ jobs:
     env:
       PW_VISUAL: "1"
     steps:
+      # The fixtures baselines are in Git LFS (04-24). The Playwright image may lack git and
+      # git-lfs; without git, actions/checkout falls back to a tarball with LFS pointer files.
+      - name: Install git and git-lfs
+        working-directory: .
+        run: apt-get update && apt-get install -y --no-install-recommends git git-lfs
       - uses: actions/checkout@v4
+      # Pull LFS objects through a cache keyed on the object list, so pushes don't re-download
+      # the baselines against the LFS bandwidth quota.
+      - name: List LFS objects
+        working-directory: .
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git lfs ls-files --long | cut -d ' ' -f1 | sort > .lfs-assets-id
+      - uses: actions/cache@v4
+        with:
+          path: .git/lfs
+          key: lfs-${{ hashFiles('.lfs-assets-id') }}
+      - name: Pull LFS objects
+        working-directory: .
+        run: git lfs pull
       - uses: actions/setup-node@v4
         with:
           node-version: 22

@@ -1,2 +1,4 @@
 contracts/**/*.json text eol=lf
 contracts/**/*.f32 binary
+# Fixtures screenshot baselines (04-24) live in Git LFS; legacy visual baselines stay in plain git.
+dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/*.png filter=lfs diff=lfs merge=lfs -text
