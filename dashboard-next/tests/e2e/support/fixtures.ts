@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { FIXTURE_STATE_MANIFEST } from '../../../src/features/fixtures/state-manifest';
 import { mockApi } from './mock-api';
 
 /**
@@ -24,6 +25,12 @@ export interface OpenSectionOptions {
   reduced?: boolean;
   /** `?tok=--dir-x:#RRGGBB` overrides. */
   tok?: string[];
+  /**
+   * Wait for every cell the state manifest lists before settling (default true), so a page that is
+   * still mounting is never measured half-rendered. The state-manifest spec turns this off because
+   * it asserts those cells itself.
+   */
+  waitForCells?: boolean;
 }
 
 /** Pages that already have the API and contract mock, so a spec that also installs it is not doubled. */
@@ -57,8 +64,21 @@ export async function openSection(page: Page, slug: string, opts: OpenSectionOpt
   await page.evaluate(() => document.fonts.ready);
   const section = page.locator(`section#${slug}`);
   await expect(section).toHaveCount(1);
+  // Every cell the manifest lists is mounted: without this a page still mounting would pass every
+  // "nothing is loading" check below vacuously.
+  if (opts.waitForCells !== false) {
+    for (const state of FIXTURE_STATE_MANIFEST[slug] ?? []) {
+      await expect(section.locator(`[data-fixture-state="${state}"]`).first(), `${slug}/${state}`).toBeAttached();
+    }
+  }
   // Contract-backed cells show a "...-loading" placeholder until the data has arrived.
   await expect(section.locator('[data-fixture-state$="-loading"]')).toHaveCount(0);
+  // The committed audio excerpts and the contract have been fetched.
+  await page.waitForLoadState('networkidle');
+  // Nothing is still loading outside the cells that exist to show a loading or pending state.
+  await expect(
+    section.locator('[data-fixture-state]:not([data-fixture-state*="loading"]):not([data-fixture-state="pending"]) [aria-busy="true"]'),
+  ).toHaveCount(0);
   // Every spectrogram and waveform well in the section has drawn.
   await expect(section.locator('[data-ready="false"]')).toHaveCount(0);
 }
