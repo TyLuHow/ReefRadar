@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react';
 import type { FixtureGroup, FixtureSectionMeta } from './parts/FixtureSection';
+import { BAND_TOGGLE_META, BandToggleSection } from './sections/BandToggleSection';
 import { BUTTON_META, ButtonSection } from './sections/ButtonSection';
 import { COMMAND_PALETTE_META, CommandPaletteSection } from './sections/CommandPaletteSection';
 import { DATA_TABLE_META, DataTableSection } from './sections/DataTableSection';
@@ -18,6 +19,7 @@ import { TOGGLE_GROUP_META, ToggleGroupSection } from './sections/ToggleGroupSec
 import { TOKENS_META, TokensSection } from './sections/TokensSection';
 import { TOOLTIP_META, TooltipSection } from './sections/TooltipSection';
 import { TRANSPORT_META, TransportSection } from './sections/TransportSection';
+import { WINDOW_STRIP_META, WindowStripSection } from './sections/WindowStripSection';
 
 /**
  * The /dev/fixtures sections in UI-SPEC "Section order". Every primitive plan appends its section
@@ -51,6 +53,8 @@ export const FIXTURE_SECTIONS: readonly FixtureSectionDef[] = [
   define(COMMAND_PALETTE_META, CommandPaletteSection),
   define(TRANSPORT_META, TransportSection),
   define(SPECTROGRAM_META, SpectrogramSection),
+  define(WINDOW_STRIP_META, WindowStripSection),
+  define(BAND_TOGGLE_META, BandToggleSection),
   define(PROVENANCE_META, ProvenanceSection),
   define(DATA_TABLE_META, DataTableSection),
   define(STATES_META, StatesSection),

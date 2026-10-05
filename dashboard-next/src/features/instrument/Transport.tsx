@@ -2,7 +2,7 @@
 
 import clsx from 'clsx';
 import { Pause, Play, RotateCcw, SkipBack, SkipForward } from 'lucide-react';
-import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
+import { useLayoutEffect, useRef, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { Button, ErrorState, Slider, type ButtonTone, type SliderTone } from '@/features/ui';
 import type { TransportStatus } from './useTransport';
 
@@ -23,6 +23,12 @@ import type { TransportStatus } from './useTransport';
  * colours use the important modifier, because the icon variant already sets its own `size-11`,
  * background and text colour and the cascade order of two utilities for one property is not
  * something to rely on. Classes are joined with `clsx`, not `cn` (see Button.tsx).
+ *
+ * Focus survives a pending press. While the engine decodes after a press its status is `loading`,
+ * and the controls are disabled for that moment (UI-SPEC "Loading"); a disabled control cannot
+ * hold focus, so a keyboard user would land on the page body. The Transport remembers where focus
+ * was inside it and puts it back once the controls are usable again, unless the person has moved
+ * focus elsewhere in the meantime.
  *
  * `status` adds three display-only values to the engine's: `disabled` (no recording to act on yet),
  * `empty` (nothing selected) and the engine's own `loading`, `error` and `unsupported`. In
@@ -193,6 +199,10 @@ export function Transport({
   className,
 }: TransportProps) {
   const t = TONES[tone];
+  const rootRef = useRef<HTMLDivElement>(null);
+  const focusInside = useRef(false);
+  const lastFocused = useRef<HTMLElement | null>(null);
+  const restoreTo = useRef<HTMLElement | null>(null);
   const active = status === 'idle' || status === 'playing' || status === 'ended';
   const unsupported = status === 'unsupported';
   const buttonsDisabled = !active;
@@ -212,6 +222,30 @@ export function Transport({
     else if (action === 'previous') onStep(-1);
     else if (action === 'start') onSeek(0);
     else onSeek(duration);
+  }
+
+  // Keep focus through a disabled moment (see the header): note it on the way out, restore it on the way back.
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const at = document.activeElement as HTMLElement | null;
+    const usable = at !== null && root.contains(at) && !(at as HTMLButtonElement).disabled;
+    if (!active) {
+      if (focusInside.current && !usable) restoreTo.current = lastFocused.current;
+      return;
+    }
+    const node = restoreTo.current;
+    restoreTo.current = null;
+    if (node && node.isConnected && (at === null || at === document.body || at === node)) node.focus();
+  }, [active]);
+
+  function handleFocus(event: ReactFocusEvent<HTMLElement>) {
+    focusInside.current = true;
+    lastFocused.current = event.target as HTMLElement;
+  }
+
+  function handleBlur(event: ReactFocusEvent<HTMLElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) focusInside.current = false;
   }
 
   const forced = forcedState ? { [FORCED_ATTRIBUTE[forcedState]]: '' } : {};
@@ -274,12 +308,15 @@ export function Transport({
 
   return (
     <div
+      ref={rootRef}
       role="group"
       aria-label="Playback"
       data-transport=""
       data-transport-size={size}
       data-transport-status={status}
       onKeyDown={handleKeyDown}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
       className={clsx('flex flex-col gap-3', t.text, className)}
     >
       <div className="flex flex-wrap items-center gap-3">
@@ -327,9 +364,10 @@ export function Transport({
         {readout}
       </div>
       {notice}
-      {showScrub && active ? (
+      {showScrub && (active || status === 'loading') ? (
         <Slider
           label="Playback position"
+          isDisabled={!active}
           tone={t.slider}
           minValue={0}
           maxValue={duration > 0 ? duration : 1}

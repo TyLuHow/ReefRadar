@@ -7,7 +7,7 @@
  * words and the size classes. Real audio and the clock are covered by useTransport's own tests
  * (playhead-clock.test.ts) and by the fixtures page.
  */
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Transport, formatClock, formatScrubText, transportKeyAction } from '@/features/instrument';
@@ -262,5 +262,78 @@ describe('Transport: forced state', () => {
   it('draws hover on the play button for review', () => {
     setup({ forcedState: 'hover' });
     expect(screen.getByRole('button', { name: 'Play' })).toHaveAttribute('data-force-hover');
+  });
+});
+
+/**
+ * Chrome drops focus to the body, without a blur event, when the focused control becomes disabled;
+ * jsdom keeps it. This blurs the active element with its blur and focusout events swallowed, so the
+ * component sees what it sees in a browser: focus gone and no event to say so.
+ */
+function silentFocusLoss() {
+  const swallow = (event: Event) => event.stopImmediatePropagation();
+  document.addEventListener('focusout', swallow, true);
+  document.addEventListener('blur', swallow, true);
+  (document.activeElement as HTMLElement).blur();
+  document.removeEventListener('focusout', swallow, true);
+  document.removeEventListener('blur', swallow, true);
+}
+
+describe('Transport: focus survives a pending press', () => {
+  function Props(status: React.ComponentProps<typeof Transport>['status'], extra: Partial<React.ComponentProps<typeof Transport>> = {}) {
+    return <Transport size="compact" status={status} position={0} duration={30} onPlayPause={() => undefined} onStep={() => undefined} onSeek={() => undefined} {...extra} />;
+  }
+
+  it('puts focus back on the play button after the loading moment', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(Props('idle'));
+    await user.click(screen.getByRole('button', { name: 'Play' }));
+    expect(screen.getByRole('button', { name: 'Play' })).toHaveFocus();
+    silentFocusLoss();
+    rerender(Props('loading'));
+    expect(screen.getByRole('button', { name: 'Play' })).toBeDisabled();
+    rerender(Props('playing'));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Pause' })).toHaveFocus());
+  });
+
+  it('keeps the scrub slider mounted (disabled) while loading and returns focus to it', async () => {
+    const { rerender } = render(Props('idle', { showScrub: true }));
+    screen.getByRole('slider', { name: 'Playback position' }).focus();
+    silentFocusLoss();
+    rerender(Props('loading', { showScrub: true }));
+    expect(screen.getByRole('slider', { name: 'Playback position' })).toBeDisabled();
+    rerender(Props('playing', { showScrub: true }));
+    await waitFor(() => expect(screen.getByRole('slider', { name: 'Playback position' })).toHaveFocus());
+  });
+
+  it('does not steal focus the person moved elsewhere during the loading moment', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <>
+        {Props('idle')}
+        <button type="button">elsewhere</button>
+      </>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Play' }));
+    rerender(
+      <>
+        {Props('loading')}
+        <button type="button">elsewhere</button>
+      </>,
+    );
+    await user.click(screen.getByRole('button', { name: 'elsewhere' }));
+    rerender(
+      <>
+        {Props('playing')}
+        <button type="button">elsewhere</button>
+      </>,
+    );
+    expect(screen.getByRole('button', { name: 'elsewhere' })).toHaveFocus();
+  });
+
+  it('does not take focus when the person never had it in the Transport', () => {
+    const { rerender } = render(Props('loading'));
+    rerender(Props('idle'));
+    expect(screen.getByRole('button', { name: 'Play' })).not.toHaveFocus();
   });
 });

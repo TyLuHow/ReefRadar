@@ -52,3 +52,19 @@ export type {
   TransportSize,
   TransportTone,
 } from './Transport';
+export { BandToggle, bandLimitReason, formatBandRange, isBandAboveLimit } from './BandToggle';
+export type { BandDefinition, BandToggleProps, BandToggleState } from './BandToggle';
+export {
+  WINDOW_DENSE_PX,
+  WindowCell,
+  WindowStrip,
+  energyOpacity,
+  isDenseStrip,
+  readingOpacity,
+  windowCellKind,
+  windowLegend,
+  windowOptionName,
+  windowSummary,
+  windowTooltipText,
+} from './WindowStrip';
+export type { WindowCellData, WindowCellKind, WindowReading, WindowStripProps, WindowStripState } from './WindowStrip';
