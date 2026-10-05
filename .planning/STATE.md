@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 22 of 24 complete (04-22 browser gates merged: 263 new e2e tests, full e2e 597 x2 in worktree; five touch-target defects fixed). Next 04-23 (fixtures screenshot regression). DS-01 pending for the phase verifier.
+Plan: 23 of 24 complete (04-23 fixtures-shots project merged: 184 shots, skipped on push until baselines exist; dispatch step + review page generator). Next 04-24 (baselines via CI dispatch, owner visual review checkpoint). DS-01 pending for the phase verifier.
 Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, not complete; DS-03 advanced by the Spectrogram well, ColourBar and Waveform on the fixed -120 to -50 dB range, not complete; DS-04 advanced by Button, ToggleGroup, Tooltip, Dialog, AlertDialog, Sheet, Listbox, Slider, RangeSlider, Table and CommandPalette, not complete; DS-05 advanced by the state primitives, RLabel, Stat, AccentBlock, BandSection, DataTable, ProvenanceChip, the Why panel, the Spectrogram, the audio engine and useTransport and now Transport, BandToggle and WindowStrip, not complete; DS-08 route, production exclusion, registry, chrome and twenty sections in place; DS-06 reduced-motion hook and toggle in place and the playhead clock honours it at 1 Hz, not complete)
-Last activity: 2026-10-05 — 04-22 browser gates merged
+Last activity: 2026-10-05 — 04-23 fixtures screenshot wiring merged
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
