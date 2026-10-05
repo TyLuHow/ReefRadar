@@ -40,3 +40,7 @@ export { WAVEFORM_RANGE, Waveform, waveformEnvelope } from './Waveform';
 export type { WaveformProps } from './Waveform';
 export { UnequalLengthError, createAudioEngine, equalPowerGains, isAudioSupported } from './audio-engine';
 export type { AudioEngine, AudioEngineOptions, PlayOptions } from './audio-engine';
+export { createPlayheadClock } from './playhead-clock';
+export type { PlayheadClock, PlayheadClockOptions } from './playhead-clock';
+export { STEP_SECONDS, useTransport } from './useTransport';
+export type { Transport, TransportClip, TransportStatus, UseTransportOptions } from './useTransport';
