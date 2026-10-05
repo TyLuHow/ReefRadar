@@ -1,4 +1,6 @@
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useTransport } from '@/features/instrument';
 import { createPlayheadClock } from '@/features/instrument/playhead-clock';
 
 /** rAF is replaced by a manual queue so a "frame" runs exactly when the test says. */
@@ -190,8 +192,7 @@ describe('useTransport', () => {
     vi.stubGlobal('matchMedia', () => ({ matches: reduced, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
   }
 
-  async function mount() {
-    const [{ act, renderHook }, { useTransport }] = await Promise.all([import('@testing-library/react'), import('@/features/instrument')]);
+  function mount() {
     const wellA = { current: { setPlayhead: vi.fn() } };
     const wellB = { current: { setPlayhead: vi.fn() } };
     const clips = [
@@ -203,13 +204,13 @@ describe('useTransport', () => {
       renders++;
       return useTransport({ clips, wells: [wellA, wellB] });
     });
-    return { act, hook, wellA, wellB, renders: () => renders };
+    return { hook, wellA, wellB, renders: () => renders };
   }
 
   it('under reduced motion steps the wells once a second with no frame loop, and the readout follows', async () => {
     const ctx = stubAudio();
     stubReduced(true);
-    const { act, hook, wellA, wellB } = await mount();
+    const { hook, wellA, wellB } = mount();
     await act(async () => {
       hook.result.current.playPause();
     });
@@ -232,7 +233,7 @@ describe('useTransport', () => {
   it('with motion allowed drives the wells per frame without a React render per frame', async () => {
     const ctx = stubAudio();
     stubReduced(false);
-    const { act, hook, wellA, renders } = await mount();
+    const { hook, wellA, renders } = mount();
     await act(async () => {
       hook.result.current.playPause();
     });
@@ -252,7 +253,7 @@ describe('useTransport', () => {
   it('pausing writes the playhead at once, updates the readout and leaves no loop running', async () => {
     const ctx = stubAudio();
     stubReduced(true);
-    const { act, hook, wellA } = await mount();
+    const { hook, wellA } = mount();
     await act(async () => {
       hook.result.current.playPause();
     });
@@ -272,7 +273,7 @@ describe('useTransport', () => {
   it('seek and step land immediately and clamp to the clip', async () => {
     stubAudio();
     stubReduced(true);
-    const { act, hook, wellA } = await mount();
+    const { hook, wellA } = mount();
     act(() => hook.result.current.seek(12));
     expect(hook.result.current.positionS).toBe(12);
     expect(wellA.current.setPlayhead).toHaveBeenLastCalledWith(12);
@@ -292,7 +293,7 @@ describe('useTransport', () => {
     vi.stubGlobal('AudioContext', undefined);
     vi.stubGlobal('webkitAudioContext', undefined);
     stubReduced(false);
-    const { act, hook } = await mount();
+    const { hook } = mount();
     expect(hook.result.current.status).toBe('unsupported');
     act(() => hook.result.current.playPause());
     expect(hook.result.current.status).toBe('unsupported');
