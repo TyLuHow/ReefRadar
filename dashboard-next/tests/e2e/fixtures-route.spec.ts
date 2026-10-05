@@ -892,7 +892,21 @@ test.describe('/dev/fixtures command palette and provenance (04-12)', () => {
     await expect(dialog).toBeVisible();
     const input = dialog.getByRole('searchbox', { name: 'Search' });
     await expect(input).toBeFocused();
-    for (let i = 0; i < 40; i += 1) await page.keyboard.press('ArrowDown');
+    // React Aria wires the list to the input and moves the virtual focus on later frames: a key pressed
+    // before that is lost, so each key is repeated until the active result has moved, then the next.
+    await expect(dialog.getByRole('option').first()).toBeVisible();
+    let previous = await input.getAttribute('aria-activedescendant');
+    for (let i = 0; i < 40; i += 1) {
+      const before = previous;
+      await expect
+        .poll(async () => {
+          await page.keyboard.press('ArrowDown');
+          await page.waitForTimeout(50);
+          return input.getAttribute('aria-activedescendant');
+        })
+        .not.toBe(before);
+      previous = await input.getAttribute('aria-activedescendant');
+    }
     await expect
       .poll(async () =>
         input.evaluate((node) => {
