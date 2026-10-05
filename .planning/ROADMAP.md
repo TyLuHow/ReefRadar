@@ -300,7 +300,7 @@ Plans:
   4. A dev-only fixtures route renders every instrument primitive (Transport, Spectrogram, WindowStrip, BandToggle, CompareRow, ProvenanceChip/Why panel, StripPlot, ProbabilityBar with abstain, DataTable, data-driven Legend with counts, Empty/Error/Loading) in every state from contract fixtures, under screenshot visual regression and visual review.
   5. Motion is limited to continuity (selection, layout morph, playhead, view transitions), and with reduced-motion enabled no primitive animates.
 
-**Plans**: 19/24 plans executed (23 waves, sequential execution; 04-01 lands alone and gates the rest on a green CI visual job)
+**Plans**: 20/24 plans executed (23 waves, sequential execution; 04-01 lands alone and gates the rest on a green CI visual job)
 
 Plans:
 
@@ -319,7 +319,7 @@ Plans:
 - [x] 04-13-PLAN.md — Spectrogram well (four variants), ColourBar, Waveform
 - [x] 04-14-PLAN.md — Audio engine and playhead clock
 - [x] 04-15-PLAN.md — Transport, BandToggle, WindowStrip and their sections
-- [ ] 04-16-PLAN.md — CompareRow and CompareDeck (shared scale, playhead, crossfader), ClipCard
+- [x] 04-16-PLAN.md — CompareRow and CompareDeck (shared scale, playhead, crossfader), ClipCard
 - [x] 04-17-PLAN.md — ProbabilityBar with abstain, Legend, StatusBand
 - [x] 04-18-PLAN.md — Live ind_H1 analysis capture and the ProbabilityBar, Legend, StatusBand sections
 - [x] 04-19-PLAN.md — StripPlot strip, paired and scatter variants; useProjection
@@ -564,7 +564,7 @@ Numeric order (1 → 17) is a valid order. With parallelization, Data & ML phase
 | 1. Truth & Reproducibility | 20/20 | Complete    | 2026-10-01 |
 | 2. Data Contract v1 | 13/13 | Complete    | 2026-10-02 |
 | 3. Platform Upgrade & Stack Consolidation | 15/15 | Complete    | 2026-10-03 |
-| 4. Design System & Instrument Primitives | 19/24 | In Progress|  |
+| 4. Design System & Instrument Primitives | 20/24 | In Progress|  |
 | 5. Preprocessing Parity & Grouped Evaluation | 0/TBD | Not started | - |
 | 6. Instrument Shell & Atlas | 0/TBD | Not started | - |
 | 7. Listening Bench | 0/TBD | Not started | - |

@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 19 of 24 complete. Parallel tracks (worktrees on, 2026-10-05): A 04-15 done, 04-16 running; B 04-17 + 04-18 merged (CI green 3e677a3); C 04-19 + 04-20 merged (6e9e69c; merged tree unit 1402, full e2e 267). 04-21 starts after 04-16 merges and CI is green. DS-01: 04-20 proves success criterion 1 (one token change drives UI, map and chart scales); left pending for the phase verifier since 04-22 and 04-24 also list it.
+Plan: 20 of 24 complete. Parallel tracks A (04-15, 04-16), B (04-17, 04-18) and C (04-19, 04-20) all merged (ca3d6cd; merged tree unit 1470, full e2e 295). Next 04-21 (sequential from here). DS-01: 04-20 proves success criterion 1; left pending for the phase verifier since 04-22 and 04-24 also list it.
 Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, not complete; DS-03 advanced by the Spectrogram well, ColourBar and Waveform on the fixed -120 to -50 dB range, not complete; DS-04 advanced by Button, ToggleGroup, Tooltip, Dialog, AlertDialog, Sheet, Listbox, Slider, RangeSlider, Table and CommandPalette, not complete; DS-05 advanced by the state primitives, RLabel, Stat, AccentBlock, BandSection, DataTable, ProvenanceChip, the Why panel, the Spectrogram, the audio engine and useTransport and now Transport, BandToggle and WindowStrip, not complete; DS-08 route, production exclusion, registry, chrome and twenty sections in place; DS-06 reduced-motion hook and toggle in place and the playhead clock honours it at 1 Hz, not complete)
-Last activity: 2026-10-05 — track C (04-19 StripPlot, 04-20 token bridge probe) merged
+Last activity: 2026-10-05 — track A 04-16 (CompareRow, CompareDeck, Crossfader, ClipCard) merged; all parallel tracks joined
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
