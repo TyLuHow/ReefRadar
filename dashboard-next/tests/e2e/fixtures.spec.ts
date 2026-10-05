@@ -14,8 +14,8 @@ import { ALTERNATE_SHOTS, ATLAS_SHOTS } from './support/fixture-shots';
  * never locally: the spectrogram canvases and the web fonts are deterministic only in that pinned
  * image. The 33 legacy baselines belong to visual.spec.ts and are not touched here.
  *
- * Until the baselines are committed every test skips with an annotation, so CI stays green; 04-24
- * replaces that skip with a CI failure.
+ * The baselines are committed (04-24). In CI a missing or empty baseline directory fails every test
+ * instead of skipping it, so the gate can never turn into a silent no-op; locally it still skips.
  *
  * Determinism, per capture:
  *  - Readiness: openSection waits for every cell the state manifest lists, for web fonts
@@ -42,13 +42,22 @@ function snapshotsExist(): boolean {
   return fs.existsSync(SNAPSHOT_DIR) && fs.readdirSync(SNAPSHOT_DIR).length > 0;
 }
 
-/** Skip unless this is the pinned visual run, and, while no baselines exist, unless they are being generated. */
+// In CI the gate must never silently turn into a no-op: a deleted or empty baseline directory would
+// otherwise skip every test and leave CI green with zero visual verification. Locally it still skips.
+const FAIL_WITHOUT_BASELINES = process.env.CI === 'true' || process.env.CI === '1';
+
+/** Skip unless this is the pinned visual run; fail in CI when the baselines are missing. */
 function gate(): void {
   test.skip(process.env.PW_VISUAL !== '1', 'Visual regression only runs with PW_VISUAL=1 (Docker-pinned Linux CI).');
-  test.skip(
-    process.env.PW_UPDATE !== '1' && !snapshotsExist(),
-    'No fixtures baselines yet; plan 04-24 generates them with the update_snapshots dispatch.',
-  );
+  if (process.env.PW_UPDATE !== '1' && !snapshotsExist()) {
+    if (FAIL_WITHOUT_BASELINES) {
+      throw new Error(
+        'PW_VISUAL=1 in CI but no fixtures baselines exist in tests/e2e/fixtures.spec.ts-snapshots. ' +
+          'Regenerate them with the update_snapshots workflow input.',
+      );
+    }
+    test.skip(true, 'No fixtures baselines yet; generate them with the update_snapshots dispatch.');
+  }
 }
 
 /** Two animation frames: the second callback runs after the browser has painted the first. */
