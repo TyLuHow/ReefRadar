@@ -34,6 +34,8 @@ export interface AudioExcerpt {
   channels: number;
   bytes: number;
   sha256: string;
+  /** Whole-clip RMS level in dB re full scale, as recorded in the manifest (uncalibrated). */
+  rms_dbfs?: number;
   label?: AudioLabel;
 }
 

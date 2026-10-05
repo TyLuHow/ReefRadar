@@ -52,7 +52,7 @@ describe('isClipPath', () => {
 
 describe('loadClip', () => {
   it('fetches, parses and transforms a real excerpt, and keeps the raw bytes', async () => {
-    const fetchMock = vi.fn(async () => okResponse());
+    const fetchMock = vi.fn(async (_url: string) => okResponse());
     vi.stubGlobal('fetch', fetchMock);
 
     const clip = await loadClip(EXCERPT.url_path);

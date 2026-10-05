@@ -21,3 +21,7 @@ export { WhyPanel, WhyPanelBody, WhyPanelContent, WhyPanelSurface, whyPanelDataF
 export type { WhyPanelBodyProps, WhyPanelData, WhyPanelKind, WhyPanelProps, WhyPanelState, WhyPanelSurfaceProps } from './WhyPanel';
 export { doiUrl, safeHttpsUrl } from './safe-url';
 export * from './dsp';
+export { SCROLL_PLAYHEAD_FRACTION, backingStoreSize, frequencyTicks, playheadX, scrollSourceRect, timeTickStep, timeTicks } from './playhead';
+export type { PlayMode, SourceRect } from './playhead';
+export { clearClipCache, isClipPath, loadClip, useClipSpectrogram } from './useClipSpectrogram';
+export type { ClipSpectrogram, LoadedClip } from './useClipSpectrogram';
