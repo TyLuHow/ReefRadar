@@ -20,6 +20,8 @@ import { TOKENS_META, TokensSection } from './sections/TokensSection';
 import { TOOLTIP_META, TooltipSection } from './sections/TooltipSection';
 import { TRANSPORT_META, TransportSection } from './sections/TransportSection';
 import { WINDOW_STRIP_META, WindowStripSection } from './sections/WindowStripSection';
+// 04-19
+import { STRIP_PLOT_META, StripPlotSection } from './sections/StripPlotSection';
 
 /**
  * The /dev/fixtures sections in UI-SPEC "Section order". Every primitive plan appends its section
@@ -56,6 +58,7 @@ export const FIXTURE_SECTIONS: readonly FixtureSectionDef[] = [
   define(WINDOW_STRIP_META, WindowStripSection),
   define(BAND_TOGGLE_META, BandToggleSection),
   define(PROVENANCE_META, ProvenanceSection),
+  define(STRIP_PLOT_META, StripPlotSection), // 04-19
   define(DATA_TABLE_META, DataTableSection),
   define(STATES_META, StatesSection),
   define(NUMERALS_META, NumeralsSection),
