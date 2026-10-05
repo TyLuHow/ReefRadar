@@ -25,3 +25,16 @@ export { SCROLL_PLAYHEAD_FRACTION, backingStoreSize, frequencyTicks, playheadX, 
 export type { PlayMode, SourceRect } from './playhead';
 export { clearClipCache, isClipPath, loadClip, useClipSpectrogram } from './useClipSpectrogram';
 export type { ClipSpectrogram, LoadedClip } from './useClipSpectrogram';
+export { ColourBar, formatDb } from './ColourBar';
+export type { ColourBarProps } from './ColourBar';
+export { Spectrogram, spectrogramCaption } from './Spectrogram';
+export type {
+  SpectrogramBand,
+  SpectrogramCaption,
+  SpectrogramHandle,
+  SpectrogramProps,
+  SpectrogramState,
+  SpectrogramVariant,
+} from './Spectrogram';
+export { WAVEFORM_RANGE, Waveform, waveformEnvelope } from './Waveform';
+export type { WaveformProps } from './Waveform';
