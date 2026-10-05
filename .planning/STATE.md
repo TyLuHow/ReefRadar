@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 23 of 24 complete (04-23 fixtures-shots project merged: 184 shots, skipped on push until baselines exist; dispatch step + review page generator). Next 04-24 (baselines via CI dispatch, owner visual review checkpoint). DS-01 pending for the phase verifier.
-Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, not complete; DS-03 advanced by the Spectrogram well, ColourBar and Waveform on the fixed -120 to -50 dB range, not complete; DS-04 advanced by Button, ToggleGroup, Tooltip, Dialog, AlertDialog, Sheet, Listbox, Slider, RangeSlider, Table and CommandPalette, not complete; DS-05 advanced by the state primitives, RLabel, Stat, AccentBlock, BandSection, DataTable, ProvenanceChip, the Why panel, the Spectrogram, the audio engine and useTransport and now Transport, BandToggle and WindowStrip, not complete; DS-08 route, production exclusion, registry, chrome and twenty sections in place; DS-06 reduced-motion hook and toggle in place and the playhead clock honours it at 1 Hz, not complete)
-Last activity: 2026-10-05 — 04-23 fixtures screenshot wiring merged
+Plan: 04-24 at Task 3 (owner visual review checkpoint). Baselines: 184 from dispatch 37294867133 in Git LFS (owner decision), CI 217/217 visual on 0adef04; fixtures gate fails closed in CI; review page docs/deploy/phase-4-fixtures-review/index.html and record docs/deploy/PHASE-4-VISUAL-REVIEW.md. Awaiting owner: keep-atlas / nocturne / poster / changes plus open questions.
+Status: Executing Phase 4 — blocked on owner decision (04-24 Task 3)
+Last activity: 2026-10-05 — 04-24 Task 2 merged; owner visual review pending
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
