@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 4
 current_phase_name: Design System & Instrument Primitives
 status: executing
-stopped_at: Completed 04-14-PLAN.md
-last_updated: "2026-10-05T02:01:28.017Z"
+stopped_at: Completed 04-15-PLAN.md
+last_updated: "2026-10-05T02:39:04.172Z"
 last_activity: 2026-10-05
-last_activity_desc: 04-14 complete (Web Audio engine with equal-power gains and equal-length enforcement, playhead clock with rAF only while playing and visible and a 1 Hz step under reduced motion, useTransport driving wells through setPlayhead)
-state_head: 58beeec74f03bde8effd8b645c5ed1e8f9b22985
+last_activity_desc: 04-15 complete (Transport in three sizes with the keyboard contract and focus kept through the loading moment, BandToggle with the computed above-limit rule and at-least-one-on, WindowStrip with unclassified and measured-energy cells only; three fixtures sections on the real ind_H1 clip)
+state_head: 0a1c674693e11521e354ecd1a40cd2247440a895
 progress:
   total_phases: 17
   completed_phases: 3
   total_plans: 72
-  completed_plans: 62
+  completed_plans: 63
   percent: 18
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 04-14 complete (14 of 24; unit 1224 passing, lint 0 errors, flag-less build green and fixtures excluded, fences OK; no rendered change so e2e not re-run); next 04-15
-Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, not complete; DS-03 advanced by the Spectrogram well, ColourBar and Waveform on the fixed -120 to -50 dB range, not complete; DS-04 advanced by Button, ToggleGroup, Tooltip, Dialog, AlertDialog, Sheet, Listbox, Slider, RangeSlider, Table and CommandPalette, not complete; DS-05 advanced by the state primitives, RLabel, Stat, AccentBlock, BandSection, DataTable, ProvenanceChip, the Why panel, the Spectrogram and now the audio engine, clock and useTransport, not complete; DS-08 route, production exclusion, registry, chrome and seventeen sections in place; DS-06 reduced-motion hook and toggle in place and the playhead clock honours it at 1 Hz, not complete)
-Last activity: 2026-10-04 — 04-14 audio engine, playhead clock and useTransport complete
+Plan: 04-15 complete (15 of 24; unit 1310 passing, lint 0 errors, flag-less build green and fixtures excluded, fences OK; full fixture-mocked e2e 235 passed, new spec 200/200 at repeat 5, fixtures-route 276/276 at repeat 3); next 04-16
+Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, not complete; DS-03 advanced by the Spectrogram well, ColourBar and Waveform on the fixed -120 to -50 dB range, not complete; DS-04 advanced by Button, ToggleGroup, Tooltip, Dialog, AlertDialog, Sheet, Listbox, Slider, RangeSlider, Table and CommandPalette, not complete; DS-05 advanced by the state primitives, RLabel, Stat, AccentBlock, BandSection, DataTable, ProvenanceChip, the Why panel, the Spectrogram, the audio engine and useTransport and now Transport, BandToggle and WindowStrip, not complete; DS-08 route, production exclusion, registry, chrome and twenty sections in place; DS-06 reduced-motion hook and toggle in place and the playhead clock honours it at 1 Hz, not complete)
+Last activity: 2026-10-05 — 04-15 Transport, BandToggle and WindowStrip complete
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
@@ -124,6 +124,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 4 P04-12 | 3h | 2 tasks | 14 files |
 | Phase 04 P13 | 45min | 3 tasks | 17 files |
 | Phase 04 P14 | 40 min | 2 tasks | 6 files |
+| Phase 04 P15 | 3 h | 2 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -226,6 +227,8 @@ Recent decisions affecting current work:
 - [Phase 04]: [04-13] Scroll mode uses the true playhead fraction when the window is clamped at the clip ends; the waveform has one fixed +-0.25 full-scale range; time labels thin below 640 px and the phone colourbar fills its width — A clamped window cannot keep the playhead at 22 percent without pointing at the wrong time; a shared fixed waveform range keeps the no-auto-scaling rule; labels and the -60/-50 ticks collided at 390 px
 - [Phase 04]: [04-13] useClipSpectrogram is the only new fetch site (allowlisted in api-client.test.ts); it refuses everything but /audio/*.wav and caches one transform per URL, keeping the raw buffer for the audio engine — T-04-13-02 same-origin guard; decodeAudioData detaches its input, so consumers pass buffer.slice(0)
 - [Phase 04]: 04-14: reduced motion steps the playhead clock once per second (setInterval, zero requestAnimationFrame); the AudioContext is created and resumed synchronously inside the first play press, decoding happens afterwards from a private copy of the bytes
+- [Phase 04]: 04-15: Transport restores focus after the loading moment following a press (Chrome drops focus to the body without a blur when the focused control is disabled); window numbers in names are one-based, index zero-based; useTransport's return type renamed TransportController
+- [Phase 04]: 04-15: WindowStrip legend is computed from what is on screen; fixtures show only unclassified and measured-energy cells, the reading and abstain paths are reached only by unit-test inputs
 
 ### Pending Todos
 
@@ -249,6 +252,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-05T02:01:04.421Z
-Stopped at: Completed 04-14-PLAN.md
+Last session: 2026-10-05T02:38:29.689Z
+Stopped at: Completed 04-15-PLAN.md
 Resume file: None
