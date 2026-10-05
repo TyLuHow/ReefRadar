@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 4
 current_phase_name: Design System & Instrument Primitives
 status: executing
-stopped_at: Completed 04-11-PLAN.md
-last_updated: "2026-10-04T20:17:36.082Z"
+stopped_at: Completed 04-12-PLAN.md
+last_updated: "2026-10-05T00:19:54.091Z"
 last_activity: 2026-10-04
-last_activity_desc: 04-11 complete (Slider, RangeSlider, base Table, DataTable and their fixtures sections; ten-step slider pages; container-measured phone scroll region)
-state_head: f68b185dca132b270bd931c9bba694e1c1e33686
+last_activity_desc: 04-12 complete (CommandPalette, ProvenanceChip, Why panel, safe URL helper and their fixtures sections; one-press Escape; focusable results region; https-only provenance links)
+state_head: 5caa1ee0bb9a3e429983874f6f31448269140be0
 progress:
   total_phases: 17
   completed_phases: 3
   total_plans: 72
-  completed_plans: 59
+  completed_plans: 60
   percent: 18
 ---
 
@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 04-11 complete (11 of 24; unit 1069 passing, lint 0 errors, flag-less build green and fixtures excluded, full fixture-mocked e2e 140 passed, 04-11 e2e block 105/105 at --repeat-each=5); CI e2e tooltip-count race fixed in ea7a718, CI green on ea7a718 (all jobs, visual 33/33); next 04-12
-Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, not complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup, Tooltip, Dialog, AlertDialog, Sheet, Listbox, Slider, RangeSlider and Table, not complete; DS-05 advanced by the state primitives, RLabel, Stat, AccentBlock, BandSection and DataTable, not complete; DS-08 route, production exclusion, registry, chrome and thirteen sections in place, remaining sections arrive with each primitive plan; DS-06 reduced-motion hook and toggle in place)
-Last activity: 2026-10-04 — 04-11 Slider, Table and DataTable with fixtures sections complete
+Plan: 04-12 complete (12 of 24; unit 1120 passing, lint 0 errors, flag-less build green and fixtures excluded, full fixture-mocked e2e 163 passed, 04-12 e2e block 115/115 at --repeat-each=5, whole fixtures spec 276 passed at --repeat-each=3); next 04-13
+Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, not complete; DS-03 advanced by the DSP core, not complete; DS-04 advanced by Button, ToggleGroup, Tooltip, Dialog, AlertDialog, Sheet, Listbox, Slider, RangeSlider, Table and CommandPalette, not complete; DS-05 advanced by the state primitives, RLabel, Stat, AccentBlock, BandSection, DataTable, ProvenanceChip and the Why panel, not complete; DS-08 route, production exclusion, registry, chrome and fifteen sections in place, remaining sections arrive with each primitive plan; DS-06 reduced-motion hook and toggle in place)
+Last activity: 2026-10-04 — 04-12 Command palette, ProvenanceChip and Why panel with fixtures sections complete
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
@@ -121,6 +121,7 @@ Progress: [████████████████████] 20/20 p
 | Phase 04 P09 | 55min | 2 tasks | 8 files |
 | Phase 04 P10 | 150min | 3 tasks | 14 files |
 | Phase 04 P11 | 55min | 3 tasks | 13 files |
+| Phase 4 P04-12 | 3h | 2 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -243,6 +244,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-04T20:17:31.198Z
-Stopped at: Completed 04-11-PLAN.md
+Last session: 2026-10-05T00:19:53.564Z
+Stopped at: Completed 04-12-PLAN.md
 Resume file: None
