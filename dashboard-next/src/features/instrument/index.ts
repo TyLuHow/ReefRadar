@@ -38,3 +38,5 @@ export type {
 } from './Spectrogram';
 export { WAVEFORM_RANGE, Waveform, waveformEnvelope } from './Waveform';
 export type { WaveformProps } from './Waveform';
+export { UnequalLengthError, createAudioEngine, equalPowerGains, isAudioSupported } from './audio-engine';
+export type { AudioEngine, AudioEngineOptions, PlayOptions } from './audio-engine';
