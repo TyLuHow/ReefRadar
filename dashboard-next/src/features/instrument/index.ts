@@ -68,3 +68,15 @@ export {
   windowTooltipText,
 } from './WindowStrip';
 export type { WindowCellData, WindowCellKind, WindowReading, WindowStripProps, WindowStripState } from './WindowStrip';
+// 04-17
+export { ProbabilityBar } from './ProbabilityBar';
+export type {
+  ProbabilityBarModelCard,
+  ProbabilityBarProps,
+  ProbabilityBarReference,
+  ProbabilityBarState,
+} from './ProbabilityBar';
+export { Legend } from './Legend';
+export type { LegendEvidence, LegendProps, LegendState } from './Legend';
+export { StatusBand } from './StatusBand';
+export type { StatusBandProps, StatusBandState } from './StatusBand';

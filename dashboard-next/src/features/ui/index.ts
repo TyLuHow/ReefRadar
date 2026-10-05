@@ -53,3 +53,5 @@ export {
   statusColorVar,
 } from './status-shapes';
 export type { HabitatStatus, PlotStatusSymbol, StatusShape, SymbolContext } from './status-shapes';
+// 04-17
+export { countBy } from './count-by';
