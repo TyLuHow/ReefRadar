@@ -17,6 +17,7 @@ import { TABLE_META, TableSection } from './sections/TableSection';
 import { TOGGLE_GROUP_META, ToggleGroupSection } from './sections/ToggleGroupSection';
 import { TOKENS_META, TokensSection } from './sections/TokensSection';
 import { TOOLTIP_META, TooltipSection } from './sections/TooltipSection';
+import { TRANSPORT_META, TransportSection } from './sections/TransportSection';
 
 /**
  * The /dev/fixtures sections in UI-SPEC "Section order". Every primitive plan appends its section
@@ -48,6 +49,7 @@ export const FIXTURE_SECTIONS: readonly FixtureSectionDef[] = [
   define(TOGGLE_GROUP_META, ToggleGroupSection),
   define(TOOLTIP_META, TooltipSection),
   define(COMMAND_PALETTE_META, CommandPaletteSection),
+  define(TRANSPORT_META, TransportSection),
   define(SPECTROGRAM_META, SpectrogramSection),
   define(PROVENANCE_META, ProvenanceSection),
   define(DATA_TABLE_META, DataTableSection),

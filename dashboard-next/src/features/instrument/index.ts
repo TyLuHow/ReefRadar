@@ -43,4 +43,12 @@ export type { AudioEngine, AudioEngineOptions, PlayOptions } from './audio-engin
 export { createPlayheadClock } from './playhead-clock';
 export type { PlayheadClock, PlayheadClockOptions } from './playhead-clock';
 export { STEP_SECONDS, useTransport } from './useTransport';
-export type { Transport, TransportClip, TransportStatus, UseTransportOptions } from './useTransport';
+export type { TransportClip, TransportController, TransportStatus, UseTransportOptions } from './useTransport';
+export { Transport, formatClock, formatScrubText, transportKeyAction } from './Transport';
+export type {
+  TransportDisplayStatus,
+  TransportKeyAction,
+  TransportProps,
+  TransportSize,
+  TransportTone,
+} from './Transport';

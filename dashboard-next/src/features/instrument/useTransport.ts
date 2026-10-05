@@ -37,7 +37,8 @@ export interface UseTransportOptions {
   observe?: RefObject<Element | null>;
 }
 
-export interface Transport {
+/** What `useTransport` returns. (Named apart from the `Transport` component.) */
+export interface TransportController {
   status: TransportStatus;
   /** Seconds, for the readout. Changes at most once a second while playing. */
   positionS: number;
@@ -79,7 +80,7 @@ function mixGains(clips: TransportClip[], x: number): Record<string, number> | u
 
 const noopSubscribe = () => () => undefined;
 
-export function useTransport({ clips, wells, observe }: UseTransportOptions): Transport {
+export function useTransport({ clips, wells, observe }: UseTransportOptions): TransportController {
   const reduced = useReducedMotion(observe);
   const supported = useSyncExternalStore(noopSubscribe, isAudioSupported, () => true);
 
