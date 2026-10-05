@@ -300,7 +300,7 @@ Plans:
   4. A dev-only fixtures route renders every instrument primitive (Transport, Spectrogram, WindowStrip, BandToggle, CompareRow, ProvenanceChip/Why panel, StripPlot, ProbabilityBar with abstain, DataTable, data-driven Legend with counts, Empty/Error/Loading) in every state from contract fixtures, under screenshot visual regression and visual review.
   5. Motion is limited to continuity (selection, layout morph, playhead, view transitions), and with reduced-motion enabled no primitive animates.
 
-**Plans**: 12/24 plans executed (23 waves, sequential execution; 04-01 lands alone and gates the rest on a green CI visual job)
+**Plans**: 13/24 plans executed (23 waves, sequential execution; 04-01 lands alone and gates the rest on a green CI visual job)
 
 Plans:
 
@@ -316,7 +316,7 @@ Plans:
 - [x] 04-10-PLAN.md — Dialog, AlertDialog, Sheet, Listbox
 - [x] 04-11-PLAN.md — Slider and RangeSlider, Table, DataTable
 - [x] 04-12-PLAN.md — Command palette; ProvenanceChip and Why panel
-- [ ] 04-13-PLAN.md — Spectrogram well (four variants), ColourBar, Waveform
+- [x] 04-13-PLAN.md — Spectrogram well (four variants), ColourBar, Waveform
 - [ ] 04-14-PLAN.md — Audio engine and playhead clock
 - [ ] 04-15-PLAN.md — Transport, BandToggle, WindowStrip and their sections
 - [ ] 04-16-PLAN.md — CompareRow and CompareDeck (shared scale, playhead, crossfader), ClipCard
@@ -564,7 +564,7 @@ Numeric order (1 → 17) is a valid order. With parallelization, Data & ML phase
 | 1. Truth & Reproducibility | 20/20 | Complete    | 2026-10-01 |
 | 2. Data Contract v1 | 13/13 | Complete    | 2026-10-02 |
 | 3. Platform Upgrade & Stack Consolidation | 15/15 | Complete    | 2026-10-03 |
-| 4. Design System & Instrument Primitives | 12/24 | In Progress|  |
+| 4. Design System & Instrument Primitives | 13/24 | In Progress|  |
 | 5. Preprocessing Parity & Grouped Evaluation | 0/TBD | Not started | - |
 | 6. Instrument Shell & Atlas | 0/TBD | Not started | - |
 | 7. Listening Bench | 0/TBD | Not started | - |
