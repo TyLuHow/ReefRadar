@@ -92,3 +92,10 @@ export type { CompareDeckProps } from './CompareDeck';
 // 04-16: ClipCard.
 export { ClipCard, clipCardPlaceLine } from './ClipCard';
 export type { ClipCardProps, ClipCardState } from './ClipCard';
+// 04-21: composition parts.
+export { haversineKm } from './geo';
+export type { LatLon } from './geo';
+export { INSTRUMENT_DESTINATIONS, InstrumentHeader, contractChipText } from './InstrumentHeader';
+export type { InstrumentDestination, InstrumentHeaderProps } from './InstrumentHeader';
+export { AttributionFooter } from './AttributionFooter';
+export type { AttributionFooterProps } from './AttributionFooter';
