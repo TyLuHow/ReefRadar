@@ -68,3 +68,11 @@ export {
   windowTooltipText,
 } from './WindowStrip';
 export type { WindowCellData, WindowCellKind, WindowReading, WindowStripProps, WindowStripState } from './WindowStrip';
+// 04-17
+export { ProbabilityBar } from './ProbabilityBar';
+export type {
+  ProbabilityBarModelCard,
+  ProbabilityBarProps,
+  ProbabilityBarReference,
+  ProbabilityBarState,
+} from './ProbabilityBar';
