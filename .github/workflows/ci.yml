@@ -145,9 +145,25 @@ jobs:
         with:
           name: visual-snapshots
           path: dashboard-next/tests/e2e/visual.spec.ts-snapshots
+      # The fixtures route (04-23) has its own Playwright project, spec and snapshot directory, so
+      # regenerating it never touches the legacy baselines above. Dispatch only, and no workflow
+      # input is interpolated into the command (T-04-23-02).
+      - if: ${{ github.event_name == 'workflow_dispatch' && inputs.update_snapshots }}
+        name: Update fixtures snapshots
+        env:
+          PW_UPDATE: "1"
+        run: npx playwright test --project=fixtures-shots --update-snapshots
+      - if: ${{ github.event_name == 'workflow_dispatch' && inputs.update_snapshots }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixtures-snapshots
+          path: dashboard-next/tests/e2e/fixtures.spec.ts-snapshots
+          if-no-files-found: error
+      # One build serves both projects. fixtures-shots skips with an annotation until its baselines
+      # are committed (04-24), so a normal push stays green.
       - if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.update_snapshots) }}
         name: Run visual regression
-        run: npx playwright test --project=visual
+        run: npx playwright test --project=visual --project=fixtures-shots
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
