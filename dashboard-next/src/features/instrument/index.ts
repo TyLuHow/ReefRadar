@@ -68,3 +68,7 @@ export {
   windowTooltipText,
 } from './WindowStrip';
 export type { WindowCellData, WindowCellKind, WindowReading, WindowStripProps, WindowStripState } from './WindowStrip';
+// 04-16: comparison maths and the A/B crossfader.
+export { DIMMED_OPACITY, LENGTH_TOLERANCE_S, dbToLinear, durationsMatch, formatGain, formatMix, levelMatchGains, specsMatch, wellOpacity } from './compare-math';
+export { CROSSFADER_PAGE_STEP, CROSSFADER_STEP, Crossfader } from './Crossfader';
+export type { CrossfaderProps } from './Crossfader';
