@@ -22,6 +22,7 @@ import { TRANSPORT_META, TransportSection } from './sections/TransportSection';
 import { WINDOW_STRIP_META, WindowStripSection } from './sections/WindowStripSection';
 // 04-16
 import { COMPARE_META, CompareSection } from './sections/CompareSection';
+import { CLIP_CARD_META, ClipCardSection } from './sections/ClipCardSection';
 
 /**
  * The /dev/fixtures sections in UI-SPEC "Section order". Every primitive plan appends its section
@@ -61,6 +62,8 @@ export const FIXTURE_SECTIONS: readonly FixtureSectionDef[] = [
   define(COMPARE_META, CompareSection),
   define(PROVENANCE_META, ProvenanceSection),
   define(DATA_TABLE_META, DataTableSection),
+  // 04-16
+  define(CLIP_CARD_META, ClipCardSection),
   define(STATES_META, StatesSection),
   define(NUMERALS_META, NumeralsSection),
 ];

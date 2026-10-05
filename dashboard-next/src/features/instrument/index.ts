@@ -77,3 +77,6 @@ export { CompareRow, levelLine, recordedLine } from './CompareRow';
 export type { CompareRowData, CompareRowIdentity, CompareRowProps, CompareRowState, CompareSlot } from './CompareRow';
 export { CompareDeck } from './CompareDeck';
 export type { CompareDeckProps } from './CompareDeck';
+// 04-16: ClipCard.
+export { ClipCard, clipCardPlaceLine } from './ClipCard';
+export type { ClipCardProps, ClipCardState } from './ClipCard';
