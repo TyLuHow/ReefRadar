@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 04-15 complete (15 of 24; unit 1310 passing, lint 0 errors, flag-less build green and fixtures excluded, fences OK; full fixture-mocked e2e 235 passed, new spec 200/200 at repeat 5, fixtures-route 276/276 at repeat 3); next 04-16
+Plan: 17 of 24 complete. Parallel tracks (worktrees on, 2026-10-05): A 04-15 done (CI green 4a213b0), 04-16 running; B 04-17 + 04-18 merged (unit 1362, e2e 256 in its worktree; one read-only ind_H1 /visualize capture 2026-10-05T02:48:14Z); C 04-19 + 04-20 running. 04-21 starts after A and C merge and CI is green.
 Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, not complete; DS-03 advanced by the Spectrogram well, ColourBar and Waveform on the fixed -120 to -50 dB range, not complete; DS-04 advanced by Button, ToggleGroup, Tooltip, Dialog, AlertDialog, Sheet, Listbox, Slider, RangeSlider, Table and CommandPalette, not complete; DS-05 advanced by the state primitives, RLabel, Stat, AccentBlock, BandSection, DataTable, ProvenanceChip, the Why panel, the Spectrogram, the audio engine and useTransport and now Transport, BandToggle and WindowStrip, not complete; DS-08 route, production exclusion, registry, chrome and twenty sections in place; DS-06 reduced-motion hook and toggle in place and the playhead clock honours it at 1 Hz, not complete)
-Last activity: 2026-10-05 — 04-15 Transport, BandToggle and WindowStrip complete
+Last activity: 2026-10-05 — track B (04-17 ProbabilityBar/Legend/StatusBand, 04-18 fixtures) merged
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
