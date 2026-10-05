@@ -24,6 +24,10 @@ import { WINDOW_STRIP_META, WindowStripSection } from './sections/WindowStripSec
 import { LEGEND_META, LegendSection } from './sections/LegendSection';
 import { PROBABILITY_BAR_META, ProbabilityBarSection } from './sections/ProbabilityBarSection';
 import { STATUS_BAND_META, StatusBandSection } from './sections/StatusBandSection';
+// 04-19
+import { STRIP_PLOT_META, StripPlotSection } from './sections/StripPlotSection';
+// 04-20
+import { TOKEN_PROBE_META, TokenProbeSection } from './sections/TokenProbeSection';
 
 /**
  * The /dev/fixtures sections in UI-SPEC "Section order". Every primitive plan appends its section
@@ -60,6 +64,7 @@ export const FIXTURE_SECTIONS: readonly FixtureSectionDef[] = [
   define(WINDOW_STRIP_META, WindowStripSection),
   define(BAND_TOGGLE_META, BandToggleSection),
   define(PROVENANCE_META, ProvenanceSection),
+  define(STRIP_PLOT_META, StripPlotSection), // 04-19
   // 04-18 (UI-SPEC order: probability-bar, data-table, legend, status-band)
   define(PROBABILITY_BAR_META, ProbabilityBarSection),
   define(DATA_TABLE_META, DataTableSection),
@@ -68,4 +73,5 @@ export const FIXTURE_SECTIONS: readonly FixtureSectionDef[] = [
   define(STATUS_BAND_META, StatusBandSection),
   define(STATES_META, StatesSection),
   define(NUMERALS_META, NumeralsSection),
+  define(TOKEN_PROBE_META, TokenProbeSection), // 04-20
 ];

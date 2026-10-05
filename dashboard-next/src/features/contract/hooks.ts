@@ -5,7 +5,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { expectedManifestSha256, loadArtifact, loadContractSites, loadLatestPointer, loadManifest } from './client';
 import { ContractFetchError, ContractVersionParamError } from './errors';
 import { echoParam, useContractVersionStore } from './version';
-import { ModelVersion, type ContractManifest, type ContractSite, type Coverage } from './schema';
+import { ModelVersion, Projection, type ContractManifest, type ContractSite, type Coverage } from './schema';
 
 /**
  * TanStack hooks over the verified contract client (02-07).
@@ -218,6 +218,42 @@ export function useModelVersion(version?: number): ContractQueryResult<ModelVers
     following: contract.following,
     verified: contract.verified,
     isLoading: model.data === undefined && error === null,
+    error,
+    refreshError: split.refreshError ?? contract.refreshError,
+    refetch,
+  };
+}
+
+/** The 2-D projection of the reference embeddings (coordinates, explained variance, caveat note) of the pinned or latest contract version. */
+export function useProjection(version?: number): ContractQueryResult<Projection> {
+  const contract = useContract(version);
+  const manifest = contract.data;
+
+  const projection = useQuery({
+    queryKey: versionedKey(contract.version, 'projection', contract.verified),
+    queryFn: () => loadArtifact(manifest as ContractManifest, 'projection', Projection),
+    enabled: manifest !== undefined,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    retry: retryTransient,
+    placeholderData: contract.following ? keepPreviousData : undefined,
+  });
+
+  const refetchContract = contract.refetch;
+  const refetchProjection = projection.refetch;
+  const refetch = useCallback(async () => {
+    await refetchContract();
+    await refetchProjection();
+  }, [refetchContract, refetchProjection]);
+
+  const split = splitErrors([{ ...projection, error: projection.error as Error | null }]);
+  const error = (split.error ?? contract.error ?? null) as Error | null;
+  return {
+    data: projection.data,
+    version: contract.version,
+    following: contract.following,
+    verified: contract.verified,
+    isLoading: projection.data === undefined && error === null,
     error,
     refreshError: split.refreshError ?? contract.refreshError,
     refetch,

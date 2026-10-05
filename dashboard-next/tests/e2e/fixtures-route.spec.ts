@@ -1286,3 +1286,61 @@ test.describe('/dev/fixtures probability bar, legend and status band (04-18)', (
     }
   }
 });
+
+// 04-19: StripPlot (strip, paired, scatter) on real contract and audio data.
+test.describe('/dev/fixtures StripPlot (04-19)', () => {
+  const STRIP = 'section#strip-plot';
+  const DIRECTIONS_19 = ['atlas', 'nocturne', 'poster'] as const;
+  const BAD_19 = new Set(['serious', 'critical']);
+
+  async function openStripPlot(page: Page, direction = 'atlas') {
+    await page.goto(`/dev/fixtures/strip-plot/?direction=${direction}`, { waitUntil: 'load' });
+    await expect(page.locator(SURFACE)).toHaveAttribute('data-direction', direction);
+    // The band levels are computed from the two real WAVs, so the paired cell settles last.
+    for (const state of ['default', 'paired', 'scatter']) {
+      await expect(page.locator(`${STRIP} [data-fixture-state="${state}"] svg`)).toBeVisible({ timeout: 30_000 });
+    }
+  }
+
+  test('the table discloses from the keyboard and lists every plotted site', async ({ page }) => {
+    await openStripPlot(page);
+    const cell = page.locator(`${STRIP} [data-fixture-state="default"]`);
+    await cell.getByRole('button', { name: 'Show as table' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(cell.getByRole('button', { name: 'Hide table' })).toHaveAttribute('aria-expanded', 'true');
+    await expect
+      .poll(async () => {
+        const caption = await cell.locator('figcaption').innerText();
+        const n = Number(/for (\d+) reference sites/.exec(caption)?.[1]);
+        return n > 0 && (await cell.getByRole('row').count()) === n + 1;
+      })
+      .toBe(true);
+  });
+
+  test('marks are not focusable and the scatter prints its computed caveat with one accent ring', async ({ page }) => {
+    await openStripPlot(page);
+    await expect(page.locator(`${STRIP} svg [tabindex]`)).toHaveCount(0);
+    const scatter = page.locator(`${STRIP} [data-fixture-state="scatter"]`);
+    await expect(scatter.getByText(/^The plane shows \d+% of the variation, so near here does not mean similar in sound\.$/)).toBeVisible();
+    await expect(scatter.locator('svg g[stroke="var(--dir-accent)"] circle')).toHaveCount(1);
+    // The accent never fills a mark in any variant.
+    await expect(page.locator(`${STRIP} svg [fill="var(--dir-accent)"]`)).toHaveCount(0);
+  });
+
+  test('a selectable strip follows a table Select button', async ({ page }) => {
+    await openStripPlot(page);
+    const cell = page.locator(`${STRIP} [data-fixture-state="selected"]`);
+    await cell.getByRole('button', { name: 'Show as table' }).click();
+    await cell.getByRole('button', { name: 'Select aus_D1' }).click();
+    await expect(cell.getByTestId('strip-plot-selected')).toHaveText('Selected: aus_D1');
+  });
+
+  for (const direction of DIRECTIONS_19) {
+    test(`axe: strip-plot has no serious or critical violation in ${direction}`, async ({ page }) => {
+      await openStripPlot(page, direction);
+      const results = await new AxeBuilder({ page }).include(STRIP).analyze();
+      const bad = results.violations.filter((v) => BAD_19.has(v.impact ?? ''));
+      expect(bad.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+    });
+  }
+});

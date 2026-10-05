@@ -13,3 +13,12 @@ export { PlotFigure } from './PlotFigure';
 export type { PlotFigureProps, PlotTable } from './PlotFigure';
 export { probabilityBars, seriesLine, PLOT_STYLE } from './encodings';
 export type { FigureSpec, ProbabilityBarsOptions, SeriesLineOptions, SeriesPoint } from './encodings';
+
+// 04-19: StripPlot (strip, paired and scatter) and its token Plot theme. Consumers load StripPlot through
+// `next/dynamic` with `ssr: false` (it pulls Plot), and keep the spec from stripSpec, pairedSpec or scatterSpec memoised:
+//   const StripPlot = dynamic(() => import('@/features/charts').then((m) => m.StripPlot), { ssr: false });
+export { StripPlot } from './StripPlot';
+export type { StripPlotProps, StripPlotState } from './StripPlot';
+export { stripSpec, pairedSpec, scatterSpec, projectionCaveat } from './strip-plot-specs';
+export type { StripPlotSpec, StripPoint, StripOptions, PairedInput, PairedSide, ScatterInput, ScatterSite } from './strip-plot-specs';
+export { PLOT_TOKEN_STYLE, RULE, INK, ACCENT } from './plot-theme';
