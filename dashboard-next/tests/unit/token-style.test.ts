@@ -12,7 +12,7 @@ import {
   buildTokenMapStyle,
   probeGeoJson,
   statusColorExpression,
-} from '@/features/map';
+} from '@/features/map/token-style';
 import { JS_TOKEN_KEYS, type Tokens } from '@/features/ui/tokens';
 
 /** Distinct, valid six-digit hexes so a mix-up between two tokens cannot pass. */

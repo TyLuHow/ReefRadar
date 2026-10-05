@@ -14,3 +14,9 @@ export {
   countSites,
   statusColor,
 } from './layers';
+
+// 04-20: the token wiring probe (tile-free map that follows the tokens). Load TokenProbeMap through next/dynamic with ssr: false.
+export { TokenProbeMap } from './TokenProbeMap';
+export type { TokenProbeMapProps } from './TokenProbeMap';
+export { PROBE_SOURCE_ID, PROBE_LAYER_ID, PROBE_BACKGROUND_ID, buildTokenMapStyle, probeGeoJson, statusColorExpression } from './token-style';
+export type { ProbeSite, ProbeFeatureCollection } from './token-style';
