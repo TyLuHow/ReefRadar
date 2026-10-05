@@ -85,6 +85,11 @@ export function StripPlot({ spec, state, onSelect, loadingHeight = 220, classNam
       queueMicrotask(() => setFailedSpec(spec));
       return;
     }
+    // The figure is one image to assistive tech (UI-SPEC: role="img" plus the caption); the table is the
+    // detail. Plot labels each mark group ("dot", "rule", "text") with an aria-label on a role-less <g>,
+    // which ARIA prohibits, so those labels are dropped and the root carries the name and description.
+    node.setAttribute('role', 'img');
+    node.querySelectorAll('[aria-label]').forEach((child) => child.removeAttribute('aria-label'));
     host.append(node);
     return () => {
       node?.remove();

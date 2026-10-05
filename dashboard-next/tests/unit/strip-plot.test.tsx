@@ -97,6 +97,16 @@ describe('StripPlot: strip', () => {
     expect(container.querySelector('svg [fill="var(--dir-accent)"]')).toBeNull();
   });
 
+  it('is one image to assistive tech: role img with the name and takeaway on the root, no role-less labelled groups', () => {
+    const spec = stripSpec(POINTS, { measureLabel: MEASURE });
+    const { container } = render(<StripPlot spec={spec} />);
+    const svg = container.querySelector('svg')!;
+    expect(svg.getAttribute('role')).toBe('img');
+    expect(svg.getAttribute('aria-label')).toBe(spec.ariaLabel);
+    expect(svg.getAttribute('aria-description')).toBe(spec.ariaDescription);
+    expect(svg.querySelectorAll('[aria-label]')).toHaveLength(0);
+  });
+
   it('draws one mark per site, and the row labels carry the counts', () => {
     const spec = stripSpec(POINTS, { measureLabel: MEASURE });
     const { container } = render(<StripPlot spec={spec} />);
@@ -222,7 +232,7 @@ describe('pairedSpec', () => {
     expect(container.querySelectorAll('svg path[fill="var(--dir-hab-degraded)"]')).toHaveLength(3);
 
     expect(container.querySelector('svg g[stroke="var(--dir-ink)"][stroke-width="5"]')).not.toBeNull();
-    expect(container.querySelector('svg g[aria-label="rule"][stroke="var(--dir-rule)"]')).not.toBeNull();
+    expect(container.querySelector('svg g[stroke="var(--dir-rule)"]')).not.toBeNull();
 
     const texts = Array.from(container.querySelectorAll('svg text')).map((node) => node.textContent);
     expect(texts).toEqual(expect.arrayContaining(['−50.1 / −55.4 dB', '−60.2 / −58.0 dB', '−70.3 / −72.0 dB']));
