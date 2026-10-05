@@ -985,7 +985,7 @@ test.describe('/dev/fixtures command palette and provenance (04-12)', () => {
       marked: node.hasAttribute('data-hit-expanded'),
     }));
     expect(Math.round(verdict.height)).toBe(28);
-    expect(verdict.inset).toBe('-8px');
+    expect(verdict.inset).toBe('-9px');
     expect(verdict.marked).toBe(true);
   });
 

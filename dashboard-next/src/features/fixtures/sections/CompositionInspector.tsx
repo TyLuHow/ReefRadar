@@ -59,7 +59,8 @@ const BANDS: BandDefinition[] = ['Low', 'Mid', 'High'].map((label, index) => ({
 const BAND_NOTE =
   "Fixture bands split 0 to the recording's top frequency into three equal ranges. The cited band table arrives in a later phase. The selection does not filter any audio.";
 
-const LINK = 'underline underline-offset-4 hover:no-underline [overflow-wrap:anywhere]';
+// A link in a facts list stands alone on its line, so it is a full 44 px high touch target.
+const LINK = 'inline-flex min-h-11 items-center underline underline-offset-4 hover:no-underline [overflow-wrap:anywhere]';
 
 function modelCardOf(model: ModelVersion): ProbabilityBarModelCard {
   return { rows: model.training.rows, sites: model.training.sites, countries: model.training.countries, evaluation: model.evaluation };
@@ -138,7 +139,7 @@ function Facts({ site }: { site: ContractSite }) {
 
       <div className="flex flex-col gap-2 sm:col-span-2 lg:col-span-1">
         <p className="type-eyebrow text-muted">Source</p>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-small">
+        <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1 text-small">
           <dt className="text-muted">Dataset</dt>
           <dd className="text-ink">
             <ExternalLink href={site.dataset_url}>{site.dataset_name}</ExternalLink>
@@ -152,7 +153,7 @@ function Facts({ site }: { site: ContractSite }) {
             <ExternalLink href={site.licence_url}>{site.licence}</ExternalLink>
           </dd>
         </dl>
-        <div className="flex flex-wrap items-center gap-3 pt-1">
+        <div className="flex flex-wrap items-center gap-4 pt-1">
           <ProvenanceChip kind="source" panel={panel} />
           <ProvenanceChip kind="label" panel={panel} />
         </div>

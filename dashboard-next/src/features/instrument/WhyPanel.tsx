@@ -119,7 +119,8 @@ function BreakAfterUnderscores({ text }: { text: string }) {
   );
 }
 
-const LINK = 'text-accent underline underline-offset-2';
+// A link in a definition list stands alone on its line, so it is a full 44 px high touch target.
+const LINK = 'inline-flex min-h-11 items-center text-accent underline underline-offset-2';
 
 /** A new-tab link when the URL is a safe https URL; otherwise the label as plain text. */
 function ExternalLink({ href, className, children }: { href: string | null | undefined; className?: string; children: ReactNode }) {
@@ -198,7 +199,7 @@ function MethodsLink({ href }: { href: string }) {
   const safe = safeMethodsHref(href);
   if (safe === undefined) return null;
   return (
-    <a href={safe} className={clsx(LINK, 'hit-area inline-block')}>
+    <a href={safe} className={LINK}>
       Methods and limits
     </a>
   );

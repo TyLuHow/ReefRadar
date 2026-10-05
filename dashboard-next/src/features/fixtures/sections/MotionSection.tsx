@@ -244,7 +244,7 @@ function SwapCell({ sites }: { sites: readonly ContractSite[] }) {
                 <p className="text-body font-semibold text-ink">{site.label_original ?? STATUS_LABELS[site.status]}</p>
                 <p className="text-small text-muted">{`Assigned by ${site.label_assigned_by}`}</p>
               </RLabel>
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-4">
                 {(['source', 'label'] as const).map((kind) => (
                   <ProvenanceChip
                     key={kind}
