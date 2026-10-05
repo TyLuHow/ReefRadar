@@ -24,8 +24,9 @@ import type { SpectrogramMatrix } from './dsp';
  * States replace parts, never the identity: Disabled keeps the identity and replaces the well with
  * "Recording unavailable"; Loading draws skeletons with "Loading recording…"; Empty is a dashed slot
  * with a secondary button; Error puts the error primitive in the well area with Retry and Remove.
- * `dimmed` is the crossfader's visual (opacity of the well, set by the deck, with a 120 ms transition
- * that the duration token zeroes under reduced motion).
+ * `dimmed` is the crossfader's visual: the opacity of the drawn spectrogram, set by the deck, with a
+ * 120 ms transition that the duration token zeroes under reduced motion. Only the picture fades; the
+ * axes and chips keep full contrast (a dimmed well must still pass the contrast check).
  *
  * Classes are joined with `clsx`, not `cn`: tailwind-merge 2.x predates Tailwind 4's custom text
  * sizes and would drop one of two `text-*` utilities (see Button.tsx).
@@ -68,7 +69,7 @@ export interface CompareRowProps extends CompareRowData {
   wellRef?: Ref<SpectrogramHandle>;
   /** Static playhead position in seconds (a drawn state); live rows are moved through `wellRef`. */
   playheadSeconds?: number;
-  /** Opacity of the well, 0 to 1. */
+  /** Opacity of the drawn spectrogram, 0 to 1 (the labels stay at full strength). */
   dimmed?: number;
   /** This row is the listening focus: a 3 px ink bar on the start edge. */
   isFocus?: boolean;
@@ -129,7 +130,7 @@ function WrappedId({ id }: { id: string }) {
 }
 
 const WELL_BOX = 'h-[160px] sm:h-[200px] lg:h-[230px]';
-const FADE = '[&_[data-well]]:transition-opacity [&_[data-well]]:duration-(--duration-fast)';
+const FADE = '[&_canvas]:transition-opacity [&_canvas]:duration-(--duration-fast)';
 
 export function CompareRow({
   slot,

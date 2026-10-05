@@ -149,7 +149,7 @@ function deck(props: Partial<React.ComponentProps<typeof CompareDeck>> = {}) {
 }
 
 const rowOf = (container: HTMLElement, slot: string) => container.querySelector(`[data-compare-row][data-slot="${slot}"]`) as HTMLElement;
-const wellOpacityOf = (container: HTMLElement, slot: string) => (rowOf(container, slot).querySelector('[data-well]') as HTMLElement).style.opacity;
+const wellOpacityOf = (container: HTMLElement, slot: string) => (rowOf(container, slot).querySelector('canvas') as HTMLElement).style.opacity;
 const mixSlider = () => screen.getByRole('slider', { name: 'Mix between A and B' });
 
 describe('CompareDeck: one scale, one strip', () => {
@@ -328,6 +328,17 @@ describe('CompareDeck: crossfader and dim', () => {
       expect(opacity).toBeGreaterThan(0.45);
       expect(opacity).toBeLessThan(1);
     });
+  });
+
+  it('fades the picture only: the well, its axes and its chips stay at full strength', async () => {
+    const user = userEvent.setup();
+    const { container } = deck();
+    mixSlider().focus();
+    await user.keyboard('{End}');
+    await waitFor(() => expect(wellOpacityOf(container, 'A')).toBe('0.45'));
+    const well = rowOf(container, 'A').querySelector('[data-well]') as HTMLElement;
+    expect(well.style.opacity).toBe('');
+    for (const chip of Array.from(rowOf(container, 'A').querySelectorAll('[data-chip]'))) expect((chip as HTMLElement).style.opacity).toBe('');
   });
 
   it('under reduced motion the dim switches at the 50% point, with no ramp', async () => {
