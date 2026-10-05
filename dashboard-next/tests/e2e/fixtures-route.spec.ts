@@ -1103,3 +1103,186 @@ test.describe('font scoping', () => {
     expect(archivo.every((face) => face.status === 'unloaded')).toBe(true);
   });
 });
+
+// 04-18
+test.describe('/dev/fixtures probability bar, legend and status band (04-18)', () => {
+  const DIRECTION_LIST = ['atlas', 'nocturne', 'poster'] as const;
+  const BAD_IMPACTS = new Set(['serious', 'critical']);
+  const STATUS_ORDER = ['degraded', 'restored_early', 'restored_mid', 'healthy', 'unknown'] as const;
+  const STATUS_WORD: Record<string, string> = {
+    degraded: 'Degraded',
+    restored_early: 'Restored (early)',
+    restored_mid: 'Restored (mid)',
+    healthy: 'Healthy',
+    unknown: 'Unknown',
+  };
+  // The published contract sites, read from disk: the page must show these counts, computed.
+  const SITES = (
+    JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', '..', 'contracts', 'bucket', 'v1', 'sites.json'), 'utf8')) as {
+      sites: { country: string; site_id: string; status: string }[];
+    }
+  ).sites;
+  const CAPTURE = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'api', 'visualize-ind_H1-captured.json'), 'utf8')) as {
+    analysis_id: string;
+    _capture: { captured_at: string };
+  };
+  const countOf = (status: string) => SITES.filter((site) => site.status === status).length;
+
+  /** The chrome only exists once the client has rendered, so a press is never lost to hydration. */
+  async function openReady(page: Page, query = '') {
+    await openFixtures(page, query);
+    await expect(page.getByRole('radiogroup', { name: 'Direction' })).toBeVisible();
+  }
+
+  const cell = (page: Page, slug: string, state: string) => page.locator(`section#${slug} [data-fixture-state="${state}"]`);
+
+  test('the three sections are listed, their cells carry markers and forced cells say so', async ({ page }) => {
+    await openReady(page);
+    for (const slug of ['probability-bar', 'legend', 'status-band']) {
+      await expect(page.locator(`section#${slug}`)).toHaveCount(1);
+      await expect(page.locator(`section#${slug} [data-fixture-state]`).first()).toBeVisible();
+    }
+    await expect(cell(page, 'probability-bar', 'abstain')).toContainText('State forced for review');
+    await expect(cell(page, 'status-band', 'hover')).toContainText('State forced for review');
+    await expect(cell(page, 'probability-bar', 'default')).not.toContainText('State forced for review');
+  });
+
+  test('the default probability bar is the captured ind_H1 reading beside its reference label', async ({ page }) => {
+    await openReady(page);
+    const bar = cell(page, 'probability-bar', 'default');
+    const group = bar.getByRole('group', { name: 'Model reading: class probabilities' });
+    await expect(group).toBeVisible();
+    // Largest-remainder integer percentages of the captured probabilities (0.955584, 0.035958, 0.008458).
+    await expect(group.locator('[data-class="degraded"]')).toHaveText('Degraded95%');
+    await expect(group.locator('[data-class="healthy"]')).toHaveText('Healthy4%');
+    await expect(group.locator('[data-class="restored_early"]')).toHaveText('Restored (early)1%');
+    await expect(bar).toContainText("The model's highest probability, Degraded, differs from the reference label, Healthy.");
+    await expect(bar).toContainText('Reference label: Healthy, assigned by MARRS research team');
+    await expect(bar).toContainText(`One-time read-only capture of the live analysis, ${CAPTURE._capture.captured_at.slice(0, 10)}.`);
+    await expect(bar).toContainText('It has not been tested on recordings from new sites.');
+    await expect
+      .poll(async () => {
+        const values = await group.locator('[data-percent]').evaluateAll((nodes) => nodes.map((node) => Number(node.getAttribute('data-percent'))));
+        return values.reduce((sum, value) => sum + value, 0);
+      })
+      .toBe(100);
+  });
+
+  test('the agree cell is the stamped test fixture and says so', async ({ page }) => {
+    await openReady(page);
+    const bar = cell(page, 'probability-bar', 'agree');
+    await expect(bar.locator('[data-class="healthy"]')).toHaveText('Healthy58%');
+    await expect(bar).toContainText("The model's highest probability, Healthy, matches the reference label.");
+    await expect(bar).toContainText('Test fixture, not a real analysis.');
+  });
+
+  test('abstain says "Can\'t tell" with neutral hatched bars and no class colour', async ({ page }) => {
+    await openReady(page);
+    const bar = cell(page, 'probability-bar', 'abstain');
+    await expect(bar.getByRole('heading', { name: "Can't tell" })).toBeVisible();
+    await expect(bar).toContainText('The model withheld a reading for this recording.');
+    // The interim model has no abstain threshold, so the threshold sentence is absent.
+    await expect(bar).not.toContainText('No class reached');
+    await expect
+      .poll(async () => bar.locator('[data-bar-fill]').evaluateAll((nodes) => nodes.every((node) => node.getAttribute('data-hatched') === 'true' && !/hab-/.test(node.className))))
+      .toBe(true);
+    await expect(bar.locator('svg[data-shape="ring"]')).toHaveCount(1);
+    await expect(bar.locator('svg[data-shape="circle"], svg[data-shape="down-triangle"], svg[data-shape="diamond"]')).toHaveCount(0);
+  });
+
+  test('the loading, empty and error cells use the UI-SPEC copy', async ({ page }) => {
+    await openReady(page);
+    await expect(cell(page, 'probability-bar', 'loading')).toContainText('Loading model reading…');
+    await expect(cell(page, 'probability-bar', 'empty')).toContainText('A reading appears after the recording has been analysed.');
+    await expect(cell(page, 'probability-bar', 'error')).toContainText('The recording and its reference label are unaffected.');
+  });
+
+  test('the static legend shows the contract counts in ordinal order', async ({ page }) => {
+    await openReady(page);
+    const legend = cell(page, 'legend', 'static');
+    await expect(legend).toContainText(`${SITES.length} sites shown`);
+    for (const status of STATUS_ORDER) {
+      await expect(legend.locator(`[data-legend-row="${status}"]`)).toHaveText(`${STATUS_WORD[status]} ${countOf(status)}`);
+    }
+    await expect
+      .poll(async () => legend.locator('[data-legend-row]').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-legend-row'))))
+      .toEqual([...STATUS_ORDER]);
+  });
+
+  test('the evidence cell lists acoustic references and location-only sites', async ({ page }) => {
+    await openReady(page);
+    const evidence = cell(page, 'legend', 'with-evidence');
+    await expect(evidence.getByText('Evidence', { exact: true })).toBeVisible();
+    await expect(evidence.getByText(/^Acoustic reference \d+$/)).toBeVisible();
+    await expect(evidence.getByText(/^Location only \d+$/)).toBeVisible();
+  });
+
+  test('the interactive legend disables a computed zero row and toggles the others', async ({ page }) => {
+    await openReady(page);
+    const legend = cell(page, 'legend', 'interactive');
+    const group = legend.getByRole('toolbar', { name: 'Filter by habitat status' });
+    await expect(group).toBeVisible();
+    // At least one status has no site under the country filter: its row is disabled and still reads 0.
+    await expect(group.locator('[data-legend-row][disabled]').first()).toHaveText(/ 0$/);
+    const enabled = group.locator('[data-legend-row]:not([disabled])').first();
+    await expect(enabled).toHaveAttribute('aria-pressed', 'false');
+    await enabled.click();
+    await expect(enabled).toHaveAttribute('aria-pressed', 'true');
+    await enabled.click();
+    await expect(enabled).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('the selected legend cell has one row pressed and every row at least 44 px high', async ({ page }) => {
+    await openReady(page);
+    const legend = cell(page, 'legend', 'selected');
+    await expect(legend.locator('[data-legend-row][aria-pressed="true"]')).toHaveCount(1);
+    await expect
+      .poll(async () => legend.locator('[data-legend-row]').evaluateAll((nodes) => nodes.every((node) => node.getBoundingClientRect().height >= 44)))
+      .toBe(true);
+  });
+
+  test('the status band sizes each segment by its computed count', async ({ page }) => {
+    await openReady(page);
+    const band = cell(page, 'status-band', 'default').getByRole('group', { name: 'Sites by habitat status' });
+    for (const status of STATUS_ORDER) {
+      const segment = band.locator(`[data-segment="${status}"]`);
+      await expect(segment).toHaveAttribute('aria-label', `${STATUS_WORD[status]}: ${countOf(status)} sites`);
+      await expect.poll(async () => segment.evaluate((node) => getComputedStyle(node).flexGrow)).toBe(String(countOf(status)));
+    }
+    await expect(band).toBeVisible();
+  });
+
+  test('the status band labels sit under their segments at width and in a grid in a phone container', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await openReady(page);
+    const labelsOf = (state: string) => cell(page, 'status-band', state).locator('[data-band-labels]');
+    await expect.poll(async () => labelsOf('default').evaluate((node) => getComputedStyle(node).display)).toBe('flex');
+    await expect.poll(async () => labelsOf('phone').evaluate((node) => getComputedStyle(node).display)).toBe('grid');
+    await expect.poll(async () => cell(page, 'status-band', 'phone').locator('[data-band-labels]').evaluate((node) => node.getBoundingClientRect().width)).toBeLessThanOrEqual(390);
+  });
+
+  test('the interactive status band toggles a segment and the selected cell starts with one on', async ({ page }) => {
+    await openReady(page);
+    const band = cell(page, 'status-band', 'selected').getByRole('toolbar', { name: 'Sites by habitat status' });
+    await expect(band.getByRole('button', { name: `Healthy: ${countOf('healthy')} sites` })).toHaveAttribute('aria-pressed', 'true');
+    const degraded = band.getByRole('button', { name: `Degraded: ${countOf('degraded')} sites` });
+    await expect(degraded).toHaveAttribute('aria-pressed', 'false');
+    await degraded.click();
+    await expect(degraded).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  for (const direction of DIRECTION_LIST) {
+    for (const slug of ['probability-bar', 'legend', 'status-band']) {
+      test(`axe: ${slug} has no serious or critical violation in ${direction}`, async ({ page }) => {
+        await page.goto(`/dev/fixtures/${slug}/?direction=${direction}`, { waitUntil: 'load' });
+        await expect(page.locator(`section#${slug} [data-fixture-state]`).first()).toBeVisible();
+        // The contract-backed cells settle once the data has arrived.
+        await expect(page.locator(`section#${slug} [data-fixture-state$="-loading"]`)).toHaveCount(0);
+        await expect(page.locator(`section#${slug} [data-fixture-state="${slug === 'probability-bar' ? 'abstain' : slug === 'legend' ? 'with-evidence' : 'phone'}"]`)).toBeVisible();
+        const results = await new AxeBuilder({ page }).include(`section#${slug}`).analyze();
+        const bad = results.violations.filter((v) => BAD_IMPACTS.has(v.impact ?? ''));
+        expect(bad.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
+      });
+    }
+  }
+});

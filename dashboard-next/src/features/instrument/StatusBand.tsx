@@ -52,6 +52,8 @@ export interface StatusBandProps<T> {
   /** The statuses currently toggled on (interactive only). */
   selected?: readonly HabitatStatus[];
   state?: StatusBandState;
+  /** Fixtures only (interactive): draws the hover treatment on one segment, as a forced state. */
+  forcedHover?: HabitatStatus;
   className?: string;
 }
 
@@ -79,7 +81,7 @@ function grow(count: number): CSSProperties {
 }
 
 /** The proportion band of habitat statuses, sized by counts computed from the data. */
-export function StatusBand<T>({ items, statusOf, onSelect, selected = [], state = 'default', className }: StatusBandProps<T>) {
+export function StatusBand<T>({ items, statusOf, onSelect, selected = [], state = 'default', forcedHover, className }: StatusBandProps<T>) {
   let body: ReactNode;
 
   if (state === 'loading') {
@@ -125,6 +127,7 @@ export function StatusBand<T>({ items, statusOf, onSelect, selected = [], state 
                 <ToggleButton
                   id={status}
                   data-segment={status}
+                  data-force-hover={forcedHover === status ? '' : undefined}
                   aria-label={sitesLabel(status, count)}
                   className={clsx(SEGMENT_BASE, SEGMENT_TOGGLE, STATUS_BG_CLASS[status])}
                   style={{ ...grow(count), minWidth: MIN_SEGMENT_PX }}
