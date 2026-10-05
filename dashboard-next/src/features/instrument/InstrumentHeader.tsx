@@ -29,7 +29,7 @@ export function contractChipText(contractVersion: number | string | undefined, s
   return `Contract v${contractVersion} · ${siteCount} ${siteCount === 1 ? 'site' : 'sites'}`;
 }
 
-const LINK = 'inline-flex min-h-11 items-center text-body underline-offset-8 hover:underline';
+const LINK = 'inline-flex min-h-11 min-w-11 items-center justify-center text-body underline-offset-8 hover:underline';
 
 export function InstrumentHeader({ current, contractVersion, siteCount }: InstrumentHeaderProps) {
   return (

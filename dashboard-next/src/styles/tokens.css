@@ -437,14 +437,16 @@ html:has([data-surface='instrument'][data-reduced-motion='true']) {
   font-variant-numeric: tabular-nums;
 }
 
-/* Small chips and links reach a 44 px hit area through an invisible expansion. */
+/* Small chips reach a 44 px hit area through an invisible expansion. The expansion is measured from the
+   padding box, so 9 px (not 8) leaves a full 8 px beyond the painted edge of a chip with a 1 px border:
+   28 + 16 = 44. */
 @utility hit-area {
   position: relative;
 
   &::after {
     content: '';
     position: absolute;
-    inset: -8px;
+    inset: -9px;
   }
 }
 

@@ -77,7 +77,7 @@ export function Column({ align = 'start', sticky = false, className, children, .
     <RacColumn
       {...rest}
       className={clsx(
-        'type-eyebrow border-b border-ink bg-ground px-4 py-3 font-normal text-muted outline-none',
+        'type-eyebrow h-11 border-b border-ink bg-ground px-4 py-3 font-normal text-muted outline-none',
         align === 'end' ? 'text-end' : 'text-start',
         'data-[allows-sorting]:cursor-pointer data-[allows-sorting]:text-ink',
         'focus-state:focus-ring-inset',
