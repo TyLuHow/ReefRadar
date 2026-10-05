@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 04-24 at Task 3 (owner visual review checkpoint). Baselines: 184 from dispatch 37294867133 in Git LFS (owner decision), CI 217/217 visual on 0adef04; fixtures gate fails closed in CI; review page docs/deploy/phase-4-fixtures-review/index.html and record docs/deploy/PHASE-4-VISUAL-REVIEW.md. Awaiting owner: keep-atlas / nocturne / poster / changes plus open questions.
-Status: Executing Phase 4 — blocked on owner decision (04-24 Task 3)
-Last activity: 2026-10-05 — 04-24 Task 2 merged; owner visual review pending
+Plan: 24 of 24 complete. Owner chose keep-atlas (2026-10-05); palette, accents, touch-target and composition questions carried open into Phase 6; manual device checks pending. Next: phase verification.
+Status: Phase 4 plans complete; verifying
+Last activity: 2026-10-05 — 04-24 owner review: keep-atlas
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
@@ -232,7 +232,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- [Phase 4, for the 04-24 owner review]: open target-size questions from 04-22 (named exemptions in fixtures-targets.spec.ts): (1) WindowStrip cells are 39 px wide on a 390 px phone (13 px dense) to stay time-aligned; options: scroll on phones, drop alignment, or accept with Transport prev/next as the 44 px path. (2) StatusBand segments sized by count (6-site segment 34 px wide on phone); option: make the label grid the 44 px toggles on coarse pointers. (3) Inline footer licence/DOI links use the WCAG 2.5.8 inline exception (18-39 px); own lines if 44 px wanted.
+- [Phase 4 -> Phase 6, open after 04-24 keep-atlas]: open target-size questions from 04-22 (named exemptions in fixtures-targets.spec.ts): (1) WindowStrip cells are 39 px wide on a 390 px phone (13 px dense) to stay time-aligned; options: scroll on phones, drop alignment, or accept with Transport prev/next as the 44 px path. (2) StatusBand segments sized by count (6-site segment 34 px wide on phone); option: make the label grid the 44 px toggles on coarse pointers. (3) Inline footer licence/DOI links use the WCAG 2.5.8 inline exception (18-39 px); own lines if 44 px wanted.
 None yet.
 
 ### Blockers/Concerns

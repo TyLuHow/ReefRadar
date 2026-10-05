@@ -3,7 +3,7 @@ phase: 04-design-system-instrument-primitives
 plan: 24
 subsystem: testing
 tags: [playwright, visual-regression, fixtures, ci, git-lfs, review-page]
-status: in-progress
+status: complete
 
 requires:
   - phase: 04-design-system-instrument-primitives
@@ -41,11 +41,11 @@ completed: pending-owner-decision
 
 # Phase 4 Plan 24: Fixtures baselines, fail-closed gate and owner review Summary
 
-**184 fixtures baselines from CI dispatch 37294867133 (Git LFS) are now guarded by a name-exact unit test and a CI gate that fails instead of skipping; the review page and record are ready. Task 3, the owner visual review, is pending the owner decision.**
+**184 fixtures baselines from CI dispatch 37294867133 (Git LFS) are now guarded by a name-exact unit test and a CI gate that fails instead of skipping; the review page and record are ready. Task 3: the owner chose `keep-atlas` on 2026-10-05.**
 
 ## Status
 
-Task 1 done (orchestrator), Task 2 done (this executor), Task 3 pending: the owner has not yet decided, and the "Owner decision" section of `docs/deploy/PHASE-4-VISUAL-REVIEW.md` is intentionally empty.
+Task 1 done (orchestrator), Task 2 done (this executor), Task 3 done: the owner chose `keep-atlas` (2026-10-05), recorded under "Owner decision" in `docs/deploy/PHASE-4-VISUAL-REVIEW.md`. Palette, accents and the open questions got no notes and stay open into Phase 6. No manual checks reported.
 
 ## Task 1 (orchestrator, human-action)
 
@@ -83,6 +83,9 @@ None to the plan's tasks. The worktree had no `node_modules`, so `npm ci` was ru
 
 None.
 
-## Pending: Task 3 (owner decision)
+## Task 3 (owner decision): keep-atlas, 2026-10-05
+
+The original pending note is kept below for the record.
+
 
 Options: keep-atlas, nocturne, poster, changes. The decision, its date, palette acceptance and the manual-check results go under "Owner decision" in `docs/deploy/PHASE-4-VISUAL-REVIEW.md`. Not filled in yet.

@@ -103,3 +103,10 @@ The touch-target gate passes with three exemptions. Decide whether each is accep
 
 ## Owner decision
 
+
+**2026-10-05: `keep-atlas`.** Atlas stays the working default for the Phase 6 screens. Nocturne and Poster remain available as token sets and are shown beside the default at later UI gates.
+
+- Status palette: no change requested. The darker values above are not formally signed off.
+- Accent changes (04-04): no change requested. Nocturne #96a9ff and Poster #bd0047 stay as they are.
+- Open questions (touch targets, visual concerns): no decision given. They stay open and carry into Phase 6 for decision when the real screens are built.
+- Manual checks: none reported. All rows in the table above remain pending.
