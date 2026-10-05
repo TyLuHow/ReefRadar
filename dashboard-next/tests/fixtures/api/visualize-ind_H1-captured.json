@@ -1,0 +1,38 @@
+{
+  "_capture": {
+    "captured_at": "2026-10-05T02:48:14Z",
+    "record": "docs/deploy/DEPLOY-LOG.md",
+    "source": "GET /visualize/d5e62ea6-d107-44a5-a54f-c8ee87a0d204"
+  },
+  "analysis_id": "d5e62ea6-d107-44a5-a54f-c8ee87a0d204",
+  "classification": {
+    "confidence": 0.955584,
+    "label": "degraded",
+    "model_version": "interim-real-only",
+    "probabilities": {
+      "degraded": 0.955584,
+      "healthy": 0.035958,
+      "restored_early": 0.008458
+    },
+    "region": {
+      "confidence_adjusted": false,
+      "coordinates_provided": true,
+      "detected": "INDONESIA",
+      "in_training_distribution": true,
+      "in_training_region": true,
+      "name": "Indonesia",
+      "scope": "specific",
+      "training_countries": [
+        "Indonesia",
+        "Kenya"
+      ],
+      "training_sites_in_region": 4
+    }
+  },
+  "contract_version": null,
+  "dataset_version": null,
+  "model_version": null,
+  "preprocessing_spec_version": null,
+  "similar_sites": [],
+  "status": "complete"
+}
