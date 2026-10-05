@@ -79,7 +79,7 @@ function useCardFacts(excerpt: AudioExcerpt) {
 }
 
 /** One card that plays its own recording; `activeId` makes the others pause when another starts. */
-function LiveCard({ excerpt, activeId, onActivate }: { excerpt: AudioExcerpt; activeId: string | null; onActivate: (id: string) => void }) {
+export function LiveCard({ excerpt, activeId, onActivate }: { excerpt: AudioExcerpt; activeId: string | null; onActivate: (id: string) => void }) {
   const facts = useCardFacts(excerpt);
   const clip = useClipSpectrogram(excerpt.url_path);
   const wellRef = useRef<SpectrogramHandle>(null);

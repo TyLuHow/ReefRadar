@@ -490,6 +490,24 @@ html:has([data-surface='instrument']) body {
   color: var(--dir-ink);
 }
 
+/* Continuity motion through <ViewTransition> (04-21). The two classes are set on the transition
+   elements in the Motion fixtures: motion-morph moves a reordered row (transform only, the
+   --duration-morph token) and motion-view crossfades a content swap (the --duration-view token). The
+   pseudo-elements sit under the root, so the durations are read from html:has(...) above. */
+html:has([data-surface='instrument'])::view-transition-group(.motion-morph),
+html:has([data-surface='instrument'])::view-transition-old(.motion-morph),
+html:has([data-surface='instrument'])::view-transition-new(.motion-morph) {
+  animation-duration: var(--duration-morph);
+  animation-timing-function: var(--ease);
+}
+
+html:has([data-surface='instrument'])::view-transition-group(.motion-view),
+html:has([data-surface='instrument'])::view-transition-old(.motion-view),
+html:has([data-surface='instrument'])::view-transition-new(.motion-view) {
+  animation-duration: var(--duration-view);
+  animation-timing-function: var(--ease);
+}
+
 /* View transitions do not animate under reduced motion. */
 @media (prefers-reduced-motion: reduce) {
   html:has([data-surface='instrument'])::view-transition-group(*),

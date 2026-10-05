@@ -43,10 +43,11 @@ test.describe('/dev/fixtures', () => {
     const response = await openFixtures(page);
     expect(response?.status()).toBe(200);
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
-    // The legacy Navbar is absent; the only navigation is the fixtures section list.
-    await expect(page.locator('nav')).toHaveCount(1);
+    // The legacy Navbar is absent; the only page navigation is the fixtures section list. (Each composition
+    // carries its own "Primary" header navigation and attribution footer inside its section: 04-21.)
+    await expect(page.locator('nav:not([aria-label="Primary"])')).toHaveCount(1);
     await expect(page.getByRole('navigation', { name: 'Fixture sections' })).toBeVisible();
-    await expect(page.locator('footer')).toHaveCount(0);
+    await expect(page.locator('footer:not(section footer)')).toHaveCount(0);
     await expect(page.getByRole('heading', { level: 1, name: 'ReefRadar' })).toBeVisible();
   });
 
