@@ -19,6 +19,6 @@ export type { FigureSpec, ProbabilityBarsOptions, SeriesLineOptions, SeriesPoint
 //   const StripPlot = dynamic(() => import('@/features/charts').then((m) => m.StripPlot), { ssr: false });
 export { StripPlot } from './StripPlot';
 export type { StripPlotProps, StripPlotState } from './StripPlot';
-export { stripSpec } from './strip-plot-specs';
-export type { StripPlotSpec, StripPoint, StripOptions } from './strip-plot-specs';
+export { stripSpec, pairedSpec, scatterSpec, projectionCaveat } from './strip-plot-specs';
+export type { StripPlotSpec, StripPoint, StripOptions, PairedInput, PairedSide, ScatterInput, ScatterSite } from './strip-plot-specs';
 export { PLOT_TOKEN_STYLE, RULE, INK, ACCENT } from './plot-theme';

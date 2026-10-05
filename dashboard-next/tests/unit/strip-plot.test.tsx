@@ -205,8 +205,8 @@ describe('pairedSpec', () => {
 
   it('ticks the x axis every 5 dB over a domain that covers both clips', () => {
     const x = pairedSpec(PAIRED).build(700).x as { domain: [number, number]; ticks: number[] };
-    expect(x.domain).toEqual([-75, -50]);
-    expect(x.ticks).toEqual([-75, -70, -65, -60, -55, -50]);
+    expect(x.domain).toEqual([-75, -45]);
+    expect(x.ticks).toEqual([-75, -70, -65, -60, -55, -50, -45]);
   });
 
   it('refuses a side whose levels do not match the bands, rather than plotting a guess', () => {
@@ -222,7 +222,7 @@ describe('pairedSpec', () => {
     expect(container.querySelectorAll('svg path[fill="var(--dir-hab-degraded)"]')).toHaveLength(3);
 
     expect(container.querySelector('svg g[stroke="var(--dir-ink)"][stroke-width="5"]')).not.toBeNull();
-    expect(container.querySelector('svg g[stroke="var(--dir-rule)"][stroke-width="1"]')).not.toBeNull();
+    expect(container.querySelector('svg g[aria-label="rule"][stroke="var(--dir-rule)"]')).not.toBeNull();
 
     const texts = Array.from(container.querySelectorAll('svg text')).map((node) => node.textContent);
     expect(texts).toEqual(expect.arrayContaining(['−50.1 / −55.4 dB', '−60.2 / −58.0 dB', '−70.3 / −72.0 dB']));
@@ -308,7 +308,7 @@ describe('scatterSpec (real contract data)', () => {
 
   it('rings the selected site in the accent (3 px, 44 px across), enlarges it to 24 px and sets its id at 24 px', () => {
     const { container } = render(<StripPlot spec={scatterSpec({ ...SCATTER, selectedId: 'ind_H1' })} />);
-    const rings = container.querySelectorAll('svg circle[stroke="var(--dir-accent)"]');
+    const rings = container.querySelectorAll('svg g[stroke="var(--dir-accent)"] circle');
     expect(rings).toHaveLength(1);
     expect(rings[0].getAttribute('r')).toBe('22');
     expect(rings[0].closest('[stroke-width]')?.getAttribute('stroke-width')).toBe('3');
