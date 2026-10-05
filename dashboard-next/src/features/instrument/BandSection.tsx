@@ -23,7 +23,7 @@ export function BandSection({ eyebrow, headline, headingLevel = 2, children, as:
   return (
     <Tag className={clsx('w-full bg-band text-on-band', className)}>
       {eyebrow ? <p className="type-eyebrow text-on-band-muted">{eyebrow}</p> : null}
-      {headline ? <Heading className="type-display text-display-xl">{headline}</Heading> : null}
+      {headline ? <Heading className={clsx('type-display text-display-xl', eyebrow && 'mt-4')}>{headline}</Heading> : null}
       {children}
     </Tag>
   );

@@ -31,6 +31,12 @@ import { TOKEN_PROBE_META, TokenProbeSection } from './sections/TokenProbeSectio
 // 04-16
 import { COMPARE_META, CompareSection } from './sections/CompareSection';
 import { CLIP_CARD_META, ClipCardSection } from './sections/ClipCardSection';
+// 04-21
+import { MOTION_META, MotionSection } from './sections/MotionSection';
+import { COMPOSITION_INSPECTOR_META, CompositionInspector } from './sections/CompositionInspector';
+import { COMPOSITION_LISTEN_META, CompositionListen } from './sections/CompositionListen';
+import { COMPOSITION_COMPARE_META, CompositionCompare } from './sections/CompositionCompare';
+import { COMPOSITION_EXPLORE_META, CompositionExplore } from './sections/CompositionExplore';
 
 /**
  * The /dev/fixtures sections in UI-SPEC "Section order". Every primitive plan appends its section
@@ -80,5 +86,11 @@ export const FIXTURE_SECTIONS: readonly FixtureSectionDef[] = [
   define(CLIP_CARD_META, ClipCardSection),
   define(STATES_META, StatesSection),
   define(NUMERALS_META, NumeralsSection),
+  // 04-21
+  define(MOTION_META, MotionSection),
+  define(COMPOSITION_INSPECTOR_META, CompositionInspector),
+  define(COMPOSITION_LISTEN_META, CompositionListen),
+  define(COMPOSITION_COMPARE_META, CompositionCompare),
+  define(COMPOSITION_EXPLORE_META, CompositionExplore),
   define(TOKEN_PROBE_META, TokenProbeSection), // 04-20
 ];

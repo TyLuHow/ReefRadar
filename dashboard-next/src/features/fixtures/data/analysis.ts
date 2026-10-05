@@ -17,9 +17,20 @@ import stamped from '../../../../tests/fixtures/api/visualize-3class-stamped.jso
 
 export type AnalysisSource = 'captured' | 'test-fixture';
 
+/** One entry of an analysis's `similar_sites`, exactly as the API returned it. */
+export interface SimilarSite {
+  site_id: string;
+  country: string;
+  status: string;
+  /** The similarity as returned; never rescaled. */
+  similarity: number;
+}
+
 export interface FixtureAnalysis {
   /** The model's probabilities as stored, by class. */
   probabilities: Record<string, number>;
+  /** The analysis's own `similar_sites` (empty when it returned none, as the captured live analysis did). */
+  similarSites: readonly SimilarSite[];
   /** The top class the API reported. */
   label: string;
   /** The contract site this recording belongs to, or the site the fixture's closest match names. */
@@ -41,6 +52,7 @@ function captureDate(capturedAt: string): string {
 
 export const FIXTURE_ANALYSIS: FixtureAnalysis = {
   probabilities: captured.classification.probabilities,
+  similarSites: captured.similar_sites as readonly SimilarSite[],
   label: captured.classification.label,
   siteId: 'ind_H1',
   analysisId: captured.analysis_id,
@@ -51,6 +63,7 @@ export const FIXTURE_ANALYSIS: FixtureAnalysis = {
 
 export const STAMPED_TEST_ANALYSIS: FixtureAnalysis = {
   probabilities: stamped.classification.probabilities,
+  similarSites: stamped.similar_sites as readonly SimilarSite[],
   label: stamped.classification.label,
   // The fixture's closest reference site (first of its similar_sites), a real contract site.
   siteId: stamped.similar_sites[0].site_id,
