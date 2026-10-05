@@ -28,6 +28,9 @@ import { STATUS_BAND_META, StatusBandSection } from './sections/StatusBandSectio
 import { STRIP_PLOT_META, StripPlotSection } from './sections/StripPlotSection';
 // 04-20
 import { TOKEN_PROBE_META, TokenProbeSection } from './sections/TokenProbeSection';
+// 04-16
+import { COMPARE_META, CompareSection } from './sections/CompareSection';
+import { CLIP_CARD_META, ClipCardSection } from './sections/ClipCardSection';
 
 /**
  * The /dev/fixtures sections in UI-SPEC "Section order". Every primitive plan appends its section
@@ -63,6 +66,8 @@ export const FIXTURE_SECTIONS: readonly FixtureSectionDef[] = [
   define(SPECTROGRAM_META, SpectrogramSection),
   define(WINDOW_STRIP_META, WindowStripSection),
   define(BAND_TOGGLE_META, BandToggleSection),
+  // 04-16
+  define(COMPARE_META, CompareSection),
   define(PROVENANCE_META, ProvenanceSection),
   define(STRIP_PLOT_META, StripPlotSection), // 04-19
   // 04-18 (UI-SPEC order: probability-bar, data-table, legend, status-band)
@@ -71,6 +76,8 @@ export const FIXTURE_SECTIONS: readonly FixtureSectionDef[] = [
   // 04-18
   define(LEGEND_META, LegendSection),
   define(STATUS_BAND_META, StatusBandSection),
+  // 04-16
+  define(CLIP_CARD_META, ClipCardSection),
   define(STATES_META, StatesSection),
   define(NUMERALS_META, NumeralsSection),
   define(TOKEN_PROBE_META, TokenProbeSection), // 04-20

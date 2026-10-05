@@ -80,3 +80,15 @@ export { Legend } from './Legend';
 export type { LegendEvidence, LegendProps, LegendState } from './Legend';
 export { StatusBand } from './StatusBand';
 export type { StatusBandProps, StatusBandState } from './StatusBand';
+// 04-16: comparison maths and the A/B crossfader.
+export { DIMMED_OPACITY, LENGTH_TOLERANCE_S, dbToLinear, durationsMatch, formatGain, formatMix, levelMatchGains, specsMatch, wellOpacity } from './compare-math';
+export { CROSSFADER_PAGE_STEP, CROSSFADER_STEP, Crossfader } from './Crossfader';
+export type { CrossfaderProps } from './Crossfader';
+// 04-16: CompareRow and CompareDeck.
+export { CompareRow, levelLine, recordedLine } from './CompareRow';
+export type { CompareRowData, CompareRowIdentity, CompareRowProps, CompareRowState, CompareSlot } from './CompareRow';
+export { CompareDeck } from './CompareDeck';
+export type { CompareDeckProps } from './CompareDeck';
+// 04-16: ClipCard.
+export { ClipCard, clipCardPlaceLine } from './ClipCard';
+export type { ClipCardProps, ClipCardState } from './ClipCard';

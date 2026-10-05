@@ -98,7 +98,11 @@ export interface SpectrogramProps {
   state?: SpectrogramState;
   /** Shows the pointer readout for this cell as if hovering (static review cell). */
   forcePointer?: { seconds: number; hz: number };
-  /** Opacity of the well, 0 to 1 (the quieter well in a crossfade). */
+  /**
+   * Opacity of the picture, 0 to 1 (the well the crossfade moves away from, 04-16). Only the drawn
+   * spectrogram fades into the dark well: the axes, chips and readout keep full strength, so their
+   * text never falls below its contrast ratio while the picture is dimmed.
+   */
   dimmed?: number;
   onReady?: () => void;
   /** Called with the pointed time on a press and while dragging. */
@@ -546,7 +550,12 @@ export function Spectrogram({
         if (!draggingRef.current) setPointer(null);
       }}
     >
-      <canvas ref={canvasRef} aria-hidden="true" className="absolute inset-0 block h-full w-full" />
+      <canvas
+        ref={canvasRef}
+        aria-hidden="true"
+        className="absolute inset-0 block h-full w-full"
+        style={dimmed === undefined ? undefined : { opacity: dimmed }}
+      />
       {edges.map((hz) => (
         <div
           key={hz}
@@ -622,7 +631,6 @@ export function Spectrogram({
             'grid-cols-[auto_minmax(0,1fr)] grid-rows-[minmax(0,1fr)_auto]',
             WELL_HEIGHT.panel,
           )}
-          style={dimmed === undefined ? undefined : { opacity: dimmed }}
         >
           <FrequencyAxis nyquist={nyquist} />
           {plot}
@@ -636,7 +644,6 @@ export function Spectrogram({
         <div
           data-well=""
           className={clsx('relative bg-well', variant === 'hero' ? '' : 'rounded-surface', WELL_HEIGHT[variant])}
-          style={dimmed === undefined ? undefined : { opacity: dimmed }}
         >
           {plot}
         </div>
