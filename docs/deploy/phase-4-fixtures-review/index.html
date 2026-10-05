@@ -1,0 +1,962 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 4 fixtures review</title>
+<style>
+body{margin:0;font:16px/1.5 system-ui,sans-serif;color:#1a1a1a;background:#fff}
+header,main{max-width:1500px;margin:0 auto;padding:1.5rem}
+nav a{display:inline-block;margin-right:1rem;padding:.5rem 0;color:#0b5394}
+h1{margin:0 0 .25rem}
+h2{margin:2.5rem 0 .25rem;padding-top:1rem;border-top:3px solid #1a1a1a}
+h3{margin:2rem 0 .5rem;font-size:1.05rem}
+p.note{margin:.25rem 0 1rem;color:#444}
+.row{display:flex;gap:1.5rem;align-items:flex-start;overflow-x:auto;padding-bottom:.75rem}
+figure{margin:0;flex:0 0 auto}
+figcaption{font:13px/1.4 ui-monospace,monospace;color:#444;margin-bottom:.25rem}
+img{display:block;max-width:100%;height:auto;border:1px solid #bbb}
+</style>
+</head>
+<body>
+<header>
+<h1 id="top">Phase 4 fixtures review</h1>
+<p class="note">Element screenshots of every <code>/dev/fixtures</code> section, as committed from the CI snapshot dispatch. Each image is the committed regression baseline; this page only arranges them. The token probe map is masked in the screenshots because its GPU raster is not reproducible; its swatches and table are captured.</p>
+<nav aria-label="Direction">
+<a href="#atlas">atlas (128)</a>
+<a href="#nocturne">nocturne (28)</a>
+<a href="#poster">poster (28)</a>
+</nav>
+</header>
+<main>
+<section id="atlas">
+<h2>atlas</h2>
+<p class="note">Atlas: the default direction, every section at four widths. <a href="#top">Back to the top</a></p>
+<h3 id="atlas-tokens">tokens</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/tokens-atlas-1440-fixtures-shots-linux.png" alt="tokens, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/tokens-atlas-1024-fixtures-shots-linux.png" alt="tokens, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/tokens-atlas-768-fixtures-shots-linux.png" alt="tokens, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/tokens-atlas-390-fixtures-shots-linux.png" alt="tokens, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-status-palette">status-palette</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/status-palette-atlas-1440-fixtures-shots-linux.png" alt="status-palette, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/status-palette-atlas-1024-fixtures-shots-linux.png" alt="status-palette, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/status-palette-atlas-768-fixtures-shots-linux.png" alt="status-palette, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/status-palette-atlas-390-fixtures-shots-linux.png" alt="status-palette, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-spectrogram-scale">spectrogram-scale</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/spectrogram-scale-atlas-1440-fixtures-shots-linux.png" alt="spectrogram-scale, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/spectrogram-scale-atlas-1024-fixtures-shots-linux.png" alt="spectrogram-scale, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/spectrogram-scale-atlas-768-fixtures-shots-linux.png" alt="spectrogram-scale, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/spectrogram-scale-atlas-390-fixtures-shots-linux.png" alt="spectrogram-scale, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-button">button</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/button-atlas-1440-fixtures-shots-linux.png" alt="button, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/button-atlas-1024-fixtures-shots-linux.png" alt="button, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/button-atlas-768-fixtures-shots-linux.png" alt="button, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/button-atlas-390-fixtures-shots-linux.png" alt="button, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-dialog">dialog</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/dialog-atlas-1440-fixtures-shots-linux.png" alt="dialog, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/dialog-atlas-1024-fixtures-shots-linux.png" alt="dialog, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/dialog-atlas-768-fixtures-shots-linux.png" alt="dialog, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/dialog-atlas-390-fixtures-shots-linux.png" alt="dialog, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-sheet">sheet</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/sheet-atlas-1440-fixtures-shots-linux.png" alt="sheet, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/sheet-atlas-1024-fixtures-shots-linux.png" alt="sheet, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/sheet-atlas-768-fixtures-shots-linux.png" alt="sheet, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/sheet-atlas-390-fixtures-shots-linux.png" alt="sheet, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-listbox">listbox</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/listbox-atlas-1440-fixtures-shots-linux.png" alt="listbox, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/listbox-atlas-1024-fixtures-shots-linux.png" alt="listbox, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/listbox-atlas-768-fixtures-shots-linux.png" alt="listbox, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/listbox-atlas-390-fixtures-shots-linux.png" alt="listbox, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-table">table</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/table-atlas-1440-fixtures-shots-linux.png" alt="table, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/table-atlas-1024-fixtures-shots-linux.png" alt="table, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/table-atlas-768-fixtures-shots-linux.png" alt="table, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/table-atlas-390-fixtures-shots-linux.png" alt="table, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-slider">slider</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/slider-atlas-1440-fixtures-shots-linux.png" alt="slider, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/slider-atlas-1024-fixtures-shots-linux.png" alt="slider, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/slider-atlas-768-fixtures-shots-linux.png" alt="slider, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/slider-atlas-390-fixtures-shots-linux.png" alt="slider, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-toggle-group">toggle-group</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/toggle-group-atlas-1440-fixtures-shots-linux.png" alt="toggle-group, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/toggle-group-atlas-1024-fixtures-shots-linux.png" alt="toggle-group, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/toggle-group-atlas-768-fixtures-shots-linux.png" alt="toggle-group, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/toggle-group-atlas-390-fixtures-shots-linux.png" alt="toggle-group, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-tooltip">tooltip</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/tooltip-atlas-1440-fixtures-shots-linux.png" alt="tooltip, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/tooltip-atlas-1024-fixtures-shots-linux.png" alt="tooltip, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/tooltip-atlas-768-fixtures-shots-linux.png" alt="tooltip, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/tooltip-atlas-390-fixtures-shots-linux.png" alt="tooltip, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-command-palette">command-palette</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/command-palette-atlas-1440-fixtures-shots-linux.png" alt="command-palette, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/command-palette-atlas-1024-fixtures-shots-linux.png" alt="command-palette, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/command-palette-atlas-768-fixtures-shots-linux.png" alt="command-palette, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/command-palette-atlas-390-fixtures-shots-linux.png" alt="command-palette, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-transport">transport</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/transport-atlas-1440-fixtures-shots-linux.png" alt="transport, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/transport-atlas-1024-fixtures-shots-linux.png" alt="transport, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/transport-atlas-768-fixtures-shots-linux.png" alt="transport, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/transport-atlas-390-fixtures-shots-linux.png" alt="transport, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-spectrogram">spectrogram</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/spectrogram-atlas-1440-fixtures-shots-linux.png" alt="spectrogram, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/spectrogram-atlas-1024-fixtures-shots-linux.png" alt="spectrogram, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/spectrogram-atlas-768-fixtures-shots-linux.png" alt="spectrogram, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/spectrogram-atlas-390-fixtures-shots-linux.png" alt="spectrogram, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-window-strip">window-strip</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/window-strip-atlas-1440-fixtures-shots-linux.png" alt="window-strip, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/window-strip-atlas-1024-fixtures-shots-linux.png" alt="window-strip, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/window-strip-atlas-768-fixtures-shots-linux.png" alt="window-strip, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/window-strip-atlas-390-fixtures-shots-linux.png" alt="window-strip, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-band-toggle">band-toggle</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/band-toggle-atlas-1440-fixtures-shots-linux.png" alt="band-toggle, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/band-toggle-atlas-1024-fixtures-shots-linux.png" alt="band-toggle, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/band-toggle-atlas-768-fixtures-shots-linux.png" alt="band-toggle, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/band-toggle-atlas-390-fixtures-shots-linux.png" alt="band-toggle, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-compare">compare</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/compare-atlas-1440-fixtures-shots-linux.png" alt="compare, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/compare-atlas-1024-fixtures-shots-linux.png" alt="compare, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/compare-atlas-768-fixtures-shots-linux.png" alt="compare, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/compare-atlas-390-fixtures-shots-linux.png" alt="compare, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-provenance">provenance</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/provenance-atlas-1440-fixtures-shots-linux.png" alt="provenance, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/provenance-atlas-1024-fixtures-shots-linux.png" alt="provenance, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/provenance-atlas-768-fixtures-shots-linux.png" alt="provenance, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/provenance-atlas-390-fixtures-shots-linux.png" alt="provenance, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-strip-plot">strip-plot</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/strip-plot-atlas-1440-fixtures-shots-linux.png" alt="strip-plot, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/strip-plot-atlas-1024-fixtures-shots-linux.png" alt="strip-plot, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/strip-plot-atlas-768-fixtures-shots-linux.png" alt="strip-plot, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/strip-plot-atlas-390-fixtures-shots-linux.png" alt="strip-plot, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-probability-bar">probability-bar</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/probability-bar-atlas-1440-fixtures-shots-linux.png" alt="probability-bar, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/probability-bar-atlas-1024-fixtures-shots-linux.png" alt="probability-bar, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/probability-bar-atlas-768-fixtures-shots-linux.png" alt="probability-bar, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/probability-bar-atlas-390-fixtures-shots-linux.png" alt="probability-bar, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-data-table">data-table</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/data-table-atlas-1440-fixtures-shots-linux.png" alt="data-table, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/data-table-atlas-1024-fixtures-shots-linux.png" alt="data-table, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/data-table-atlas-768-fixtures-shots-linux.png" alt="data-table, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/data-table-atlas-390-fixtures-shots-linux.png" alt="data-table, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-legend">legend</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/legend-atlas-1440-fixtures-shots-linux.png" alt="legend, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/legend-atlas-1024-fixtures-shots-linux.png" alt="legend, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/legend-atlas-768-fixtures-shots-linux.png" alt="legend, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/legend-atlas-390-fixtures-shots-linux.png" alt="legend, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-status-band">status-band</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/status-band-atlas-1440-fixtures-shots-linux.png" alt="status-band, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/status-band-atlas-1024-fixtures-shots-linux.png" alt="status-band, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/status-band-atlas-768-fixtures-shots-linux.png" alt="status-band, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/status-band-atlas-390-fixtures-shots-linux.png" alt="status-band, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-clip-card">clip-card</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/clip-card-atlas-1440-fixtures-shots-linux.png" alt="clip-card, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/clip-card-atlas-1024-fixtures-shots-linux.png" alt="clip-card, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/clip-card-atlas-768-fixtures-shots-linux.png" alt="clip-card, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/clip-card-atlas-390-fixtures-shots-linux.png" alt="clip-card, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-states">states</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/states-atlas-1440-fixtures-shots-linux.png" alt="states, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/states-atlas-1024-fixtures-shots-linux.png" alt="states, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/states-atlas-768-fixtures-shots-linux.png" alt="states, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/states-atlas-390-fixtures-shots-linux.png" alt="states, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-numerals">numerals</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/numerals-atlas-1440-fixtures-shots-linux.png" alt="numerals, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/numerals-atlas-1024-fixtures-shots-linux.png" alt="numerals, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/numerals-atlas-768-fixtures-shots-linux.png" alt="numerals, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/numerals-atlas-390-fixtures-shots-linux.png" alt="numerals, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-motion">motion</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/motion-atlas-1440-fixtures-shots-linux.png" alt="motion, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/motion-atlas-1024-fixtures-shots-linux.png" alt="motion, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/motion-atlas-768-fixtures-shots-linux.png" alt="motion, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/motion-atlas-390-fixtures-shots-linux.png" alt="motion, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-composition-inspector">composition-inspector</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-inspector-atlas-1440-fixtures-shots-linux.png" alt="composition-inspector, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-inspector-atlas-1024-fixtures-shots-linux.png" alt="composition-inspector, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-inspector-atlas-768-fixtures-shots-linux.png" alt="composition-inspector, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-inspector-atlas-390-fixtures-shots-linux.png" alt="composition-inspector, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-composition-listen">composition-listen</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-listen-atlas-1440-fixtures-shots-linux.png" alt="composition-listen, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-listen-atlas-1024-fixtures-shots-linux.png" alt="composition-listen, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-listen-atlas-768-fixtures-shots-linux.png" alt="composition-listen, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-listen-atlas-390-fixtures-shots-linux.png" alt="composition-listen, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-composition-compare">composition-compare</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-compare-atlas-1440-fixtures-shots-linux.png" alt="composition-compare, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-compare-atlas-1024-fixtures-shots-linux.png" alt="composition-compare, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-compare-atlas-768-fixtures-shots-linux.png" alt="composition-compare, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-compare-atlas-390-fixtures-shots-linux.png" alt="composition-compare, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-composition-explore">composition-explore</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-explore-atlas-1440-fixtures-shots-linux.png" alt="composition-explore, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-explore-atlas-1024-fixtures-shots-linux.png" alt="composition-explore, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-explore-atlas-768-fixtures-shots-linux.png" alt="composition-explore, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-explore-atlas-390-fixtures-shots-linux.png" alt="composition-explore, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="atlas-token-probe">token-probe</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/token-probe-atlas-1440-fixtures-shots-linux.png" alt="token-probe, atlas, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>1024 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/token-probe-atlas-1024-fixtures-shots-linux.png" alt="token-probe, atlas, 1024 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>768 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/token-probe-atlas-768-fixtures-shots-linux.png" alt="token-probe, atlas, 768 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/token-probe-atlas-390-fixtures-shots-linux.png" alt="token-probe, atlas, 390 px" loading="lazy">
+</figure>
+</div>
+</section>
+<section id="nocturne">
+<h2>nocturne</h2>
+<p class="note">Nocturne: dark-first, the spectrogram is the page. Representative set at 1440 and 390 px. <a href="#top">Back to the top</a></p>
+<h3 id="nocturne-tokens">tokens</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/tokens-nocturne-1440-fixtures-shots-linux.png" alt="tokens, nocturne, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/tokens-nocturne-390-fixtures-shots-linux.png" alt="tokens, nocturne, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="nocturne-status-palette">status-palette</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/status-palette-nocturne-1440-fixtures-shots-linux.png" alt="status-palette, nocturne, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/status-palette-nocturne-390-fixtures-shots-linux.png" alt="status-palette, nocturne, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="nocturne-transport-default">transport/default</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/transport-default-nocturne-1440-fixtures-shots-linux.png" alt="transport/default, nocturne, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/transport-default-nocturne-390-fixtures-shots-linux.png" alt="transport/default, nocturne, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="nocturne-transport-large">transport/large</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/transport-large-nocturne-1440-fixtures-shots-linux.png" alt="transport/large, nocturne, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/transport-large-nocturne-390-fixtures-shots-linux.png" alt="transport/large, nocturne, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="nocturne-spectrogram-hero">spectrogram/hero</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/spectrogram-hero-nocturne-1440-fixtures-shots-linux.png" alt="spectrogram/hero, nocturne, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/spectrogram-hero-nocturne-390-fixtures-shots-linux.png" alt="spectrogram/hero, nocturne, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="nocturne-probability-bar-abstain">probability-bar/abstain</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/probability-bar-abstain-nocturne-1440-fixtures-shots-linux.png" alt="probability-bar/abstain, nocturne, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/probability-bar-abstain-nocturne-390-fixtures-shots-linux.png" alt="probability-bar/abstain, nocturne, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="nocturne-probability-bar-default">probability-bar/default</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/probability-bar-default-nocturne-1440-fixtures-shots-linux.png" alt="probability-bar/default, nocturne, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/probability-bar-default-nocturne-390-fixtures-shots-linux.png" alt="probability-bar/default, nocturne, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="nocturne-data-table-default">data-table/default</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/data-table-default-nocturne-1440-fixtures-shots-linux.png" alt="data-table/default, nocturne, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/data-table-default-nocturne-390-fixtures-shots-linux.png" alt="data-table/default, nocturne, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="nocturne-legend">legend</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/legend-nocturne-1440-fixtures-shots-linux.png" alt="legend, nocturne, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/legend-nocturne-390-fixtures-shots-linux.png" alt="legend, nocturne, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="nocturne-status-band">status-band</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/status-band-nocturne-1440-fixtures-shots-linux.png" alt="status-band, nocturne, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/status-band-nocturne-390-fixtures-shots-linux.png" alt="status-band, nocturne, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="nocturne-composition-inspector">composition-inspector</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-inspector-nocturne-1440-fixtures-shots-linux.png" alt="composition-inspector, nocturne, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-inspector-nocturne-390-fixtures-shots-linux.png" alt="composition-inspector, nocturne, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="nocturne-composition-listen">composition-listen</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-listen-nocturne-1440-fixtures-shots-linux.png" alt="composition-listen, nocturne, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-listen-nocturne-390-fixtures-shots-linux.png" alt="composition-listen, nocturne, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="nocturne-composition-compare">composition-compare</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-compare-nocturne-1440-fixtures-shots-linux.png" alt="composition-compare, nocturne, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-compare-nocturne-390-fixtures-shots-linux.png" alt="composition-compare, nocturne, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="nocturne-composition-explore">composition-explore</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-explore-nocturne-1440-fixtures-shots-linux.png" alt="composition-explore, nocturne, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-explore-nocturne-390-fixtures-shots-linux.png" alt="composition-explore, nocturne, 390 px" loading="lazy">
+</figure>
+</div>
+</section>
+<section id="poster">
+<h2>poster</h2>
+<p class="note">Poster: colour-blocked and loud. Representative set at 1440 and 390 px. <a href="#top">Back to the top</a></p>
+<h3 id="poster-tokens">tokens</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/tokens-poster-1440-fixtures-shots-linux.png" alt="tokens, poster, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/tokens-poster-390-fixtures-shots-linux.png" alt="tokens, poster, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="poster-status-palette">status-palette</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/status-palette-poster-1440-fixtures-shots-linux.png" alt="status-palette, poster, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/status-palette-poster-390-fixtures-shots-linux.png" alt="status-palette, poster, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="poster-transport-default">transport/default</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/transport-default-poster-1440-fixtures-shots-linux.png" alt="transport/default, poster, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/transport-default-poster-390-fixtures-shots-linux.png" alt="transport/default, poster, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="poster-transport-large">transport/large</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/transport-large-poster-1440-fixtures-shots-linux.png" alt="transport/large, poster, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/transport-large-poster-390-fixtures-shots-linux.png" alt="transport/large, poster, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="poster-spectrogram-hero">spectrogram/hero</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/spectrogram-hero-poster-1440-fixtures-shots-linux.png" alt="spectrogram/hero, poster, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/spectrogram-hero-poster-390-fixtures-shots-linux.png" alt="spectrogram/hero, poster, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="poster-probability-bar-abstain">probability-bar/abstain</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/probability-bar-abstain-poster-1440-fixtures-shots-linux.png" alt="probability-bar/abstain, poster, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/probability-bar-abstain-poster-390-fixtures-shots-linux.png" alt="probability-bar/abstain, poster, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="poster-probability-bar-default">probability-bar/default</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/probability-bar-default-poster-1440-fixtures-shots-linux.png" alt="probability-bar/default, poster, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/probability-bar-default-poster-390-fixtures-shots-linux.png" alt="probability-bar/default, poster, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="poster-data-table-default">data-table/default</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/data-table-default-poster-1440-fixtures-shots-linux.png" alt="data-table/default, poster, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/data-table-default-poster-390-fixtures-shots-linux.png" alt="data-table/default, poster, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="poster-legend">legend</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/legend-poster-1440-fixtures-shots-linux.png" alt="legend, poster, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/legend-poster-390-fixtures-shots-linux.png" alt="legend, poster, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="poster-status-band">status-band</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/status-band-poster-1440-fixtures-shots-linux.png" alt="status-band, poster, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/status-band-poster-390-fixtures-shots-linux.png" alt="status-band, poster, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="poster-composition-inspector">composition-inspector</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-inspector-poster-1440-fixtures-shots-linux.png" alt="composition-inspector, poster, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-inspector-poster-390-fixtures-shots-linux.png" alt="composition-inspector, poster, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="poster-composition-listen">composition-listen</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-listen-poster-1440-fixtures-shots-linux.png" alt="composition-listen, poster, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-listen-poster-390-fixtures-shots-linux.png" alt="composition-listen, poster, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="poster-composition-compare">composition-compare</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-compare-poster-1440-fixtures-shots-linux.png" alt="composition-compare, poster, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-compare-poster-390-fixtures-shots-linux.png" alt="composition-compare, poster, 390 px" loading="lazy">
+</figure>
+</div>
+<h3 id="poster-composition-explore">composition-explore</h3>
+<div class="row">
+<figure>
+<figcaption>1440 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-explore-poster-1440-fixtures-shots-linux.png" alt="composition-explore, poster, 1440 px" loading="lazy">
+</figure>
+<figure>
+<figcaption>390 px</figcaption>
+<img src="../../../dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/composition-explore-poster-390-fixtures-shots-linux.png" alt="composition-explore, poster, 390 px" loading="lazy">
+</figure>
+</div>
+</section>
+</main>
+</body>
+</html>
