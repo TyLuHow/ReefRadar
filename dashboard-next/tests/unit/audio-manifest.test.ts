@@ -9,6 +9,12 @@ describe('audio-manifest accessors (01-17, D-05/D-06/D-07)', () => {
     expect(() => getExcerpt('not-a-real-id')).toThrow(/Unknown audio excerpt id/);
   });
 
+  it('exposes the manifest RMS level (dBFS) on an excerpt (04-13)', () => {
+    const excerpt = getExcerpt('ind_H1_20220830_120000');
+    expect(typeof excerpt.rms_dbfs).toBe('number');
+    expect(excerpt.rms_dbfs).toBeCloseTo(-60.93, 2);
+  });
+
   it('demoPair returns the ind_H1 vs ind_D1 healthy_vs_degraded story pair', () => {
     const pair = demoPair();
     expect(pair.a.excerpt_id).toBe('ind_H1_20220830_120000');
