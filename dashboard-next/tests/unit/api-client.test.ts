@@ -106,6 +106,7 @@ const FETCH_ALLOWLIST = new Set([
   'src/components/audio/AudioCompare.tsx', // same-origin audio loader
   'src/components/experience/useDemoAudio.ts', // same-origin audio loader
   'src/components/experience/useLocationAudio.ts', // same-origin audio loader
+  'src/features/instrument/useClipSpectrogram.ts', // same-origin /audio/ wav loader for the spectrogram wells (04-13); isClipPath refuses any other path before fetch
 ]);
 
 const API_HOME = 'src/lib/api.ts';
