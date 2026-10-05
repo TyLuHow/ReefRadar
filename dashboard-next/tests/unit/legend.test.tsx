@@ -170,6 +170,15 @@ describe('Legend: interactive', () => {
     for (const row of Array.from(document.querySelectorAll('[data-legend-row]'))) expect(row.className).toContain('min-h-11');
   });
 
+  it('prints the unknown explainer only while unknown sites are shown', () => {
+    const { unmount } = render(<Legend items={SITES} filtered={inCountry} statusOf={statusOf} mode="interactive" />);
+    expect(countOf(inCountry, 'unknown')).toBe(0);
+    expect(screen.queryByText(/No health status is assigned/)).toBeNull();
+    unmount();
+    render(<Legend items={SITES} statusOf={statusOf} mode="interactive" />);
+    expect(screen.getByText(/No health status is assigned/)).toBeInTheDocument();
+  });
+
   it('counts the Evidence group under the current filter', () => {
     render(<Legend items={SITES} filtered={inCountry} statusOf={statusOf} evidenceOf={evidenceOf} mode="interactive" />);
     const acoustic = inCountry.filter((site) => site.reference_role === 'acoustic_reference').length;

@@ -156,7 +156,7 @@ export function Legend<T>({ items, statusOf, evidenceOf, mode, filtered, selecte
           </ul>
         )}
         <p className="border-rule text-small text-muted border-t px-2 pt-3">{sitesShown(shown.length)}</p>
-        {rows.includes('unknown') ? (
+        {(shownCounts.get('unknown') ?? 0) > 0 ? (
           <p className="text-small text-muted px-2">No health status is assigned to these sites; see each site&apos;s status basis.</p>
         ) : null}
         {evidenceOf && evidenceRows.length > 0 ? (
