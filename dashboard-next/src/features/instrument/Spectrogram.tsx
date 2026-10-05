@@ -220,9 +220,16 @@ function StateBlock({ variant, state, className }: { variant: SpectrogramVariant
 interface AxisProps {
   duration: number;
   tone: string;
+  /** Keeps the first and last label off the very edge of a full-bleed image. */
+  inset?: boolean;
 }
 
-function TimeAxis({ duration, tone, trackRef, className }: AxisProps & { trackRef: Ref<HTMLDivElement>; className: string }) {
+/**
+ * Time labels along the image. Every second label (index 1, 3, ...) is hidden below 640 px so five
+ * second labels never collide on a phone; they stay in the DOM. The track is moved by transform in
+ * scroll mode, so the labels pan with the image.
+ */
+function TimeAxis({ duration, tone, inset = false, trackRef, className }: AxisProps & { trackRef: Ref<HTMLDivElement>; className: string }) {
   const ticks = timeTicks(duration);
   return (
     <div data-axis="time" className={clsx('relative overflow-hidden', className)}>
@@ -231,10 +238,12 @@ function TimeAxis({ duration, tone, trackRef, className }: AxisProps & { trackRe
           <span
             key={seconds}
             data-tick=""
-            className={clsx('absolute top-0 whitespace-nowrap font-data text-eyebrow leading-5', tone)}
+            className={clsx('absolute top-0 whitespace-nowrap font-data text-eyebrow leading-5', index % 2 === 1 && 'max-sm:hidden', tone)}
             style={{
               left: `${(seconds / duration) * 100}%`,
-              transform: `translateX(${index === 0 ? '0%' : index === ticks.length - 1 && seconds === duration ? '-100%' : '-50%'})`,
+              transform: `translateX(${
+                index === 0 ? (inset ? '4px' : '0%') : index === ticks.length - 1 && seconds === duration ? (inset ? 'calc(-100% - 4px)' : '-100%') : '-50%'
+              })`,
             }}
           >
             {formatClock(seconds)}
@@ -591,7 +600,7 @@ export function Spectrogram({
     </div>
   );
 
-  const phoneBar = <ColourBar orientation="horizontal" labels="all" tone="surface" className="mt-2 sm:hidden" />;
+  const phoneBar = <ColourBar orientation="horizontal" labels="all" tone="surface" length="fill" className="mt-2 sm:hidden" />;
 
   return (
     <div
@@ -634,10 +643,12 @@ export function Spectrogram({
       )}
 
       {hero ? (
-        <div className="px-(--gutter)">
-          <TimeAxis duration={duration} tone="text-on-band-muted" trackRef={timeTrackRef} className="mt-1 h-6" />
-          <ColourBar orientation="horizontal" labels="ends" tone="band" className="mt-2" />
-        </div>
+        <>
+          <TimeAxis duration={duration} tone="text-on-band-muted" inset trackRef={timeTrackRef} className="mt-1 h-6" />
+          <div className="px-(--gutter)">
+            <ColourBar orientation="horizontal" labels="ends" tone="band" className="mt-2" />
+          </div>
+        </>
       ) : null}
       {variant === 'panel' ? phoneBar : null}
 

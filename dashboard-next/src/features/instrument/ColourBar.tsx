@@ -20,8 +20,8 @@ import { DB_TICKS, SPECTROGRAM_SPEC, lutColor } from './dsp';
 
 export interface ColourBarProps {
   orientation: 'vertical' | 'horizontal';
-  /** Length of the strip in CSS pixels. Vertical default: fill the parent height. Horizontal default: 220. */
-  length?: number;
+  /** Length of the strip in CSS pixels, or `fill` for the whole parent. Vertical default: fill the parent height. Horizontal default: 220. */
+  length?: number | 'fill';
   /** `all` prints every DB_TICKS value; `ends` prints the lowest and highest only. */
   labels: 'all' | 'ends';
   /** A line under the bar (for example the uncalibrated note). */
@@ -71,7 +71,7 @@ export function ColourBar({ orientation, length, labels, caption, tone = 'well',
   const vertical = orientation === 'vertical';
   const ticks = labels === 'all' ? DB_TICKS : [DB_TICKS[0], DB_TICKS[DB_TICKS.length - 1]];
   const text = TICK_TEXT[tone];
-  const size = vertical ? (length === undefined ? undefined : length) : (length ?? HORIZONTAL_LENGTH);
+  const size = length === 'fill' ? undefined : vertical ? length : (length ?? HORIZONTAL_LENGTH);
 
   return (
     <div
@@ -79,7 +79,7 @@ export function ColourBar({ orientation, length, labels, caption, tone = 'well',
       data-orientation={orientation}
       data-labels={labels}
       className={clsx(vertical ? 'flex h-full flex-col' : 'flex max-w-full flex-col', className)}
-      style={vertical ? { height: size === undefined ? undefined : `${size}px` } : { width: `${size}px` }}
+      style={vertical ? { height: size === undefined ? undefined : `${size}px` } : { width: size === undefined ? '100%' : `${size}px` }}
     >
       <div role="img" aria-label={ACCESSIBLE_NAME} className={clsx(vertical ? 'flex min-h-0 flex-1 flex-row' : 'flex flex-col')}>
         <div
