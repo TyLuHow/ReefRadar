@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: 20 of 24 complete. Parallel tracks A (04-15, 04-16), B (04-17, 04-18) and C (04-19, 04-20) all merged (ca3d6cd; merged tree unit 1470, full e2e 295). Next 04-21 (sequential from here). DS-01: 04-20 proves success criterion 1; left pending for the phase verifier since 04-22 and 04-24 also list it.
+Plan: 21 of 24 complete (04-21 compositions merged; worktree unit 1493, full e2e 334). Next 04-22 (browser gates). DS-01: 04-20 proves success criterion 1; left pending for the phase verifier.
 Status: Executing Phase 4 (DS-01 stays pending until the token plans land; DS-02 palette gates in place, not complete; DS-03 advanced by the Spectrogram well, ColourBar and Waveform on the fixed -120 to -50 dB range, not complete; DS-04 advanced by Button, ToggleGroup, Tooltip, Dialog, AlertDialog, Sheet, Listbox, Slider, RangeSlider, Table and CommandPalette, not complete; DS-05 advanced by the state primitives, RLabel, Stat, AccentBlock, BandSection, DataTable, ProvenanceChip, the Why panel, the Spectrogram, the audio engine and useTransport and now Transport, BandToggle and WindowStrip, not complete; DS-08 route, production exclusion, registry, chrome and twenty sections in place; DS-06 reduced-motion hook and toggle in place and the playhead clock honours it at 1 Hz, not complete)
-Last activity: 2026-10-05 — track A 04-16 (CompareRow, CompareDeck, Crossfader, ClipCard) merged; all parallel tracks joined
+Last activity: 2026-10-05 — 04-21 Motion section and the Inspector, Listen, Compare, Explore compositions merged
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
