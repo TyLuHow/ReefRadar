@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from 'react';
 import { useReducedMotion } from '@/features/ui';
 import { createAudioEngine, equalPowerGains, isAudioSupported, type AudioEngine } from './audio-engine';
+import { dbToLinear } from './compare-math';
 import { createPlayheadClock } from './playhead-clock';
 import type { SpectrogramHandle } from './Spectrogram';
 
@@ -35,6 +36,12 @@ export interface UseTransportOptions {
   wells: RefObject<SpectrogramHandle | null>[];
   /** Optional element (the wells' container). While it is off-screen the clock is paused. */
   observe?: RefObject<Element | null>;
+  /**
+   * 04-16: a level-matching gain in dB for each clip, in the same order as `clips`. Multiplied into
+   * the clip's playback gain (with the crossfade gain when there are two clips). Only attenuation is
+   * expected (0 or negative), so matching never plays a clip louder than its original. Absent means 0 dB.
+   */
+  levelGainsDb?: number[];
 }
 
 /** What `useTransport` returns. (Named apart from the `Transport` component.) */
@@ -72,15 +79,21 @@ function sameClips(a: TransportClip[], b: TransportClip[]): boolean {
   return a.length === b.length && a.every((clip, index) => clip.id === b[index].id && clip.buffer === b[index].buffer && clip.durationS === b[index].durationS);
 }
 
-function mixGains(clips: TransportClip[], x: number): Record<string, number> | undefined {
+/** Linear gain for a clip's level-matching dB (04-16); 1 when none is given or it is not a number. */
+function levelFactor(levelGainsDb: number[] | undefined, index: number): number {
+  const db = levelGainsDb?.[index];
+  return db === undefined || !Number.isFinite(db) ? 1 : dbToLinear(db);
+}
+
+function mixGains(clips: TransportClip[], x: number, levelGainsDb?: number[]): Record<string, number> | undefined {
   if (clips.length < 2) return undefined;
   const { a, b } = equalPowerGains(x);
-  return { [clips[0].id]: a, [clips[1].id]: b };
+  return { [clips[0].id]: a * levelFactor(levelGainsDb, 0), [clips[1].id]: b * levelFactor(levelGainsDb, 1) };
 }
 
 const noopSubscribe = () => () => undefined;
 
-export function useTransport({ clips, wells, observe }: UseTransportOptions): TransportController {
+export function useTransport({ clips, wells, observe, levelGainsDb }: UseTransportOptions): TransportController {
   const reduced = useReducedMotion(observe);
   const supported = useSyncExternalStore(noopSubscribe, isAudioSupported, () => true);
 
@@ -105,6 +118,10 @@ export function useTransport({ clips, wells, observe }: UseTransportOptions): Tr
   useEffect(() => {
     wellsRef.current = wells;
   });
+  const levelsRef = useRef(levelGainsDb);
+  useEffect(() => {
+    levelsRef.current = levelGainsDb;
+  });
   const gainsRef = useRef<Record<string, number> | undefined>(undefined);
   const lastReadout = useRef(-1);
 
@@ -128,7 +145,7 @@ export function useTransport({ clips, wells, observe }: UseTransportOptions): Tr
   useEffect(() => {
     if (!supported) return;
     for (const clip of stableClips) engine.load(clip.id, clip.buffer);
-    gainsRef.current = mixGains(stableClips, 0);
+    gainsRef.current = mixGains(stableClips, 0, levelsRef.current);
     lastReadout.current = -1;
     for (const well of wellsRef.current) well.current?.setPlayhead(0);
     const unsubscribe = engine.onEnded(() => {
@@ -204,7 +221,7 @@ export function useTransport({ clips, wells, observe }: UseTransportOptions): Tr
 
   const setMix = useCallback(
     (x: number) => {
-      const gains = mixGains(stableClips, x);
+      const gains = mixGains(stableClips, x, levelsRef.current);
       if (!gains) return;
       gainsRef.current = gains;
       engine.setGains(gains);

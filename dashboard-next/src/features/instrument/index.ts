@@ -72,3 +72,8 @@ export type { WindowCellData, WindowCellKind, WindowReading, WindowStripProps, W
 export { DIMMED_OPACITY, LENGTH_TOLERANCE_S, dbToLinear, durationsMatch, formatGain, formatMix, levelMatchGains, specsMatch, wellOpacity } from './compare-math';
 export { CROSSFADER_PAGE_STEP, CROSSFADER_STEP, Crossfader } from './Crossfader';
 export type { CrossfaderProps } from './Crossfader';
+// 04-16: CompareRow and CompareDeck.
+export { CompareRow, levelLine, recordedLine } from './CompareRow';
+export type { CompareRowData, CompareRowIdentity, CompareRowProps, CompareRowState, CompareSlot } from './CompareRow';
+export { CompareDeck } from './CompareDeck';
+export type { CompareDeckProps } from './CompareDeck';
