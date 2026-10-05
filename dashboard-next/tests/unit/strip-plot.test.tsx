@@ -54,8 +54,8 @@ describe('stripSpec', () => {
   it('says where the axis starts when it does not include zero, and not otherwise', () => {
     const positive = stripSpec(
       [
-        { id: 'a', status: 'degraded', value: 2.2 },
-        { id: 'b', status: 'healthy', value: 3.8 },
+        { id: 'a', status: 'degraded', value: 2.05 },
+        { id: 'b', status: 'healthy', value: 3.95 },
       ],
       { measureLabel: 'Level' },
     );
@@ -113,7 +113,7 @@ describe('StripPlot: strip', () => {
     expect(radii[0]).toBeCloseTo(7, 1);
     expect(radii[1]).toBeCloseTo(10.5, 1);
 
-    const rings = container.querySelectorAll('svg path[stroke="var(--dir-ink)"]');
+    const rings = container.querySelectorAll('svg [stroke="var(--dir-ink)"]');
     expect(rings).toHaveLength(1);
     expect(rings[0].closest('[stroke-width]')?.getAttribute('stroke-width')).toBe('2');
   });
@@ -191,6 +191,20 @@ describe('StripPlot: states', () => {
     expect(screen.getByText('Adjust the selection to include at least one site.')).toBeInTheDocument();
     expect(container.querySelector('svg')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Show as table' })).toBeNull();
+  });
+
+  it('a draw that throws becomes the error state with the table, instead of breaking the page', async () => {
+    const real = stripSpec(POINTS, { measureLabel: MEASURE });
+    const broken = {
+      ...real,
+      build: () => {
+        throw new Error('boom');
+      },
+    };
+    const { container } = render(<StripPlot spec={broken} />);
+    expect(await screen.findByText('The plot could not be drawn.')).toBeInTheDocument();
+    expect(container.querySelector('svg')).toBeNull();
+    expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(6);
   });
 
   it('error says the plot could not be drawn and still shows the table with the same values', () => {
