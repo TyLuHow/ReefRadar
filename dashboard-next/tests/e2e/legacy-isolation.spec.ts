@@ -103,6 +103,8 @@ test.describe('legacy routes', () => {
         )
         .toEqual({ body: ABYSS, scrollBehavior: 'smooth' });
       const families = await page.evaluate(() => Array.from(document.fonts).map((face) => face.family));
+      // Positive control: the legacy fonts are registered, so an empty match list means "no new font", not "no fonts".
+      expect(families.length).toBeGreaterThan(0);
       expect(families.filter((family) => NEW_FONT_FAMILY.test(family))).toEqual([]);
     });
   }

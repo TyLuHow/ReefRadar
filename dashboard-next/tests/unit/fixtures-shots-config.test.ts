@@ -50,6 +50,13 @@ describe('the fixtures-shots Playwright project', () => {
     expect(shots.snapshotPathTemplate).toBe('{testDir}/{testFilePath}-snapshots/{arg}-{projectName}-{platform}{ext}');
     expect(shots.use?.reducedMotion).toBe('reduce');
   });
+
+  it('uses a screenshot tolerance well under the 1 % of the legacy project', () => {
+    const ratio = shots.expect?.toHaveScreenshot?.maxDiffPixelRatio;
+    expect(ratio).toBeDefined();
+    expect(ratio as number).toBeLessThanOrEqual(0.002);
+    expect(shots.expect?.toHaveScreenshot?.animations).toBe('disabled');
+  });
 });
 
 describe('the e2e project', () => {
@@ -81,6 +88,9 @@ describe('the legacy visual project', () => {
     expect(matches(visual.testMatch, FIXTURES_SPEC)).toBe(false);
     expect(visual.snapshotPathTemplate).toBe('{testDir}/{testFilePath}-snapshots/{arg}-{projectName}-{platform}{ext}');
     expect(visual.use?.reducedMotion).toBeUndefined();
+    // The tighter tolerance is the fixtures project's own: the legacy project keeps the config-wide 0.01.
+    expect(visual.expect).toBeUndefined();
+    expect(config.expect?.toHaveScreenshot?.maxDiffPixelRatio).toBe(0.01);
   });
 });
 

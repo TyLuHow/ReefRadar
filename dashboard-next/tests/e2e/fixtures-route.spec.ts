@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { mockApi, expectNoUnhandledApiCalls } from './support/mock-api';
+import { expectNoUnhandledApiCalls } from './support/mock-api';
+import { ensureMocked, openSection, settleFrames } from './support/fixtures';
 
 /**
  * /dev/fixtures route (04-06, 04-07, DS-08). The e2e build carries NEXT_PUBLIC_DEV_FIXTURES=1
@@ -25,7 +26,8 @@ const CONTRACT_SITES = (
 const NEW_FONT_FAMILY = /newsreader|hanken|spline|archivo/i;
 
 test.beforeEach(async ({ page }) => {
-  await mockApi(page);
+  // ensureMocked records the page, so openSection does not install the mock a second time.
+  await ensureMocked(page);
 });
 
 test.afterEach(({ page }) => {
@@ -35,6 +37,10 @@ test.afterEach(({ page }) => {
 async function openFixtures(page: Page, query = '') {
   const response = await page.goto(`/dev/fixtures/${query}`, { waitUntil: 'load' });
   await expect(page.locator(SURFACE)).toBeVisible();
+  // [data-surface="instrument"] also exists in the Suspense fallback (an atlas-only, pre-hydration prerender with no
+  // inline tokens), so every assertion about the surface would be vacuous against it. The Direction radiogroup exists
+  // only in the hydrated surface (D-WR-01).
+  await expect(page.getByRole('radiogroup', { name: 'Direction' })).toBeVisible();
   return response;
 }
 
@@ -79,12 +85,20 @@ test.describe('/dev/fixtures', () => {
       .poll(() => page.locator(SURFACE).evaluate((el) => (el as HTMLElement).style.getPropertyValue('--dir-hab-healthy')))
       .toBe('#B00020');
 
-    await openFixtures(page, '?tok=--dir-x:red');
+    // A valid override beside the bad one is the positive control: once it is applied the parser has run, so the
+    // bad token's absence is a decision and not the pre-hydration state.
+    await openFixtures(page, '?tok=--dir-hab-healthy:%23B00020&tok=--dir-x:red');
+    await expect
+      .poll(() => page.locator(SURFACE).evaluate((el) => (el as HTMLElement).style.getPropertyValue('--dir-hab-healthy')))
+      .toBe('#B00020');
     const inline = await page.locator(SURFACE).evaluate((el) => (el as HTMLElement).getAttribute('style') ?? '');
     expect(inline).not.toContain('--dir-x');
     expect(inline).not.toContain('red');
 
-    await openFixtures(page, '?tok=background:url(x)');
+    await openFixtures(page, '?tok=--dir-hab-healthy:%23B00020&tok=background:url(x)');
+    await expect
+      .poll(() => page.locator(SURFACE).evaluate((el) => (el as HTMLElement).style.getPropertyValue('--dir-hab-healthy')))
+      .toBe('#B00020');
     const inlineBackground = await page.locator(SURFACE).evaluate((el) => (el as HTMLElement).getAttribute('style') ?? '');
     expect(inlineBackground).not.toContain('url(');
   });
@@ -292,10 +306,9 @@ test.describe('/dev/fixtures primitive sections (04-09)', () => {
     const stats = page.locator('section#numerals [data-fixture-state="stats"]');
     const siteCount = CONTRACT_SITES.length;
     const countryCount = new Set(CONTRACT_SITES.map((site) => site.country)).size;
-    await expect(stats.locator('p.flex').nth(0)).toContainText(String(siteCount));
-    await expect(stats.locator('p.flex').nth(0)).toContainText('reference sites');
-    await expect(stats.locator('p.flex').nth(1)).toContainText(String(countryCount));
-    await expect(stats.locator('p.flex').nth(1)).toContainText('countries');
+    // Anchored: a substring match would let a site count of 54 pass as 154, or 7 countries as 17.
+    await expect(stats.locator('p.flex').nth(0)).toHaveText(new RegExp(`^\\s*${siteCount}\\s*reference sites\\s*$`));
+    await expect(stats.locator('p.flex').nth(1)).toHaveText(new RegExp(`^\\s*${countryCount}\\s*countries\\s*$`));
   });
 
   test('the error cells show no request id and the long-wait cell says so', async ({ page }) => {
@@ -381,13 +394,15 @@ test.describe('/dev/fixtures overlays and listbox (04-10)', () => {
     await expect(dialog).toBeVisible();
     // The overlay portals into the instrument surface, so it carries the surface's tokens.
     await expect(page.locator(SURFACE).getByRole('dialog')).toHaveCount(1);
+    // React Aria moves focus into the dialog on the next frame; the sweep and Escape are only meaningful once it has (D-WR-04).
+    await expect.poll(() => dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
     for (let i = 0; i < 6; i += 1) {
       await page.keyboard.press('Tab');
-      expect(await dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
+      await expect.poll(() => dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
     }
     for (let i = 0; i < 6; i += 1) {
       await page.keyboard.press('Shift+Tab');
-      expect(await dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
+      await expect.poll(() => dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
     }
     await page.keyboard.press('Escape');
     await expect(dialog).toHaveCount(0);
@@ -419,6 +434,8 @@ test.describe('/dev/fixtures overlays and listbox (04-10)', () => {
     await right.click();
     const sheet = page.getByRole('dialog', { name: 'Right sheet' });
     await expect(sheet).toBeVisible();
+    // Escape is only heard once focus is inside the overlay (D-WR-04).
+    await expect.poll(() => sheet.evaluate((node) => node.contains(document.activeElement))).toBe(true);
     await page.keyboard.press('Escape');
     await expect(sheet).toHaveCount(0);
     await expect(right).toBeFocused();
@@ -519,16 +536,19 @@ test.describe('/dev/fixtures overlays and listbox (04-10)', () => {
         }),
       )
       .toBe(true);
+    // Two frames have to run before "nothing is animating" is read: an animation that had not started yet would pass.
+    await settleFrames(page);
     expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
   });
 
   for (const direction of DIRECTION_LIST) {
     for (const slug of ['dialog', 'sheet', 'listbox']) {
       test(`axe: ${slug} has no serious or critical violation in ${direction}`, async ({ page }) => {
-        await page.goto(`/dev/fixtures/${slug}/?direction=${direction}`, { waitUntil: 'load' });
-        await expect(page.locator(`section#${slug} [data-fixture-state]`).first()).toBeVisible();
-        // The contract-backed cells settle once the data has arrived.
-        await expect(page.locator(`section#${slug} [data-fixture-state$="-loading"]`)).toHaveCount(0);
+        // openSection waits for the hydrated chrome, every manifest cell and the settled wells, so axe never runs on the
+        // atlas-only Suspense prerender (D-WR-02).
+        test.setTimeout(90_000);
+        await openSection(page, slug, { direction });
+        await expect(page.locator(SURFACE)).toHaveAttribute('data-direction', direction);
         const results = await new AxeBuilder({ page }).include(`section#${slug}`).analyze();
         const bad = results.violations.filter((v) => BAD_IMPACTS.has(v.impact ?? ''));
         expect(bad.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
@@ -628,7 +648,17 @@ test.describe('/dev/fixtures slider, table and data table (04-11)', () => {
     await expect(maximum).toHaveValue('6000');
     await page.keyboard.press('Tab');
     await expect(maximum).toBeFocused();
+    // Home on the upper thumb would cross the lower one, so it is refused and the value stays 6000, which is what it
+    // already was. Give a wrongly handled press its frames, then assert (D-WR-05).
     await page.keyboard.press('Home');
+    await settleFrames(page);
+    await expect(maximum).toHaveValue('6000');
+    await expect(minimum).toHaveValue('6000');
+    // Positive control: keys do reach the lower thumb, and it moves down off the upper one.
+    await page.keyboard.press('Shift+Tab');
+    await expect(minimum).toBeFocused();
+    await page.keyboard.press('ArrowLeft');
+    await expect.poll(async () => Number(await minimum.inputValue())).toBeLessThan(6000);
     await expect(maximum).toHaveValue('6000');
   });
 
@@ -711,6 +741,9 @@ test.describe('/dev/fixtures slider, table and data table (04-11)', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openReady(page);
     await expect(cell(page, 'data-table', 'default').getByRole('grid')).toBeVisible();
+    // The region attributes appear only after a client measurement of the container. The phone cell is the positive
+    // control that the measurement has happened; only then does "the wide cell has none" mean something (D-WR-13).
+    await expect(cell(page, 'data-table', 'phone-scroll').getByRole('region')).toHaveCount(1);
     await expect(cell(page, 'data-table', 'default').getByRole('region')).toHaveCount(0);
   });
 
@@ -719,12 +752,17 @@ test.describe('/dev/fixtures slider, table and data table (04-11)', () => {
     const long = cell(page, 'data-table', 'long-text');
     await long.scrollIntoViewIfNeeded();
     await expect(long.getByRole('row')).toHaveCount(5);
-    const verdict = await long.evaluate((node) =>
-      Array.from(node.querySelectorAll('td')).every((td) => {
-        const style = getComputedStyle(td);
-        return style.textOverflow !== 'ellipsis' && style.whiteSpace !== 'nowrap' && td.scrollWidth <= td.clientWidth + 1;
-      }),
-    );
+    // An empty cell list would make every() true, so the cells must exist (D-WR-08).
+    const verdict = await long.evaluate((node) => {
+      const cells = Array.from(node.querySelectorAll('td'));
+      return (
+        cells.length > 0 &&
+        cells.every((td) => {
+          const style = getComputedStyle(td);
+          return style.textOverflow !== 'ellipsis' && style.whiteSpace !== 'nowrap' && td.scrollWidth <= td.clientWidth + 1;
+        })
+      );
+    });
     expect(verdict).toBe(true);
   });
 
@@ -754,10 +792,11 @@ test.describe('/dev/fixtures slider, table and data table (04-11)', () => {
   for (const direction of DIRECTION_LIST) {
     for (const slug of ['table', 'slider', 'data-table']) {
       test(`axe: ${slug} has no serious or critical violation in ${direction}`, async ({ page }) => {
-        await page.goto(`/dev/fixtures/${slug}/?direction=${direction}`, { waitUntil: 'load' });
-        await expect(page.locator(`section#${slug} [data-fixture-state]`).first()).toBeVisible();
-        // The contract-backed cells settle once the data has arrived.
-        await expect(page.locator(`section#${slug} [data-fixture-state$="-loading"]`)).toHaveCount(0);
+        // openSection waits for the hydrated chrome, every manifest cell and the settled wells, so axe never runs on the
+        // atlas-only Suspense prerender (D-WR-02).
+        test.setTimeout(90_000);
+        await openSection(page, slug, { direction });
+        await expect(page.locator(SURFACE)).toHaveAttribute('data-direction', direction);
         // The phone cell measures its container before the region attributes exist.
         if (slug === 'data-table') {
           await expect(cell(page, slug, 'phone-scroll').getByRole('region')).toHaveCount(1);
@@ -879,6 +918,8 @@ test.describe('/dev/fixtures command palette and provenance (04-12)', () => {
     await page.keyboard.press('Control+k');
     const dialog = paletteOf(page);
     await expect(dialog).toBeVisible();
+    // Typed characters are lost if the search input is not yet focused (D-WR-04).
+    await expect(dialog.getByRole('searchbox', { name: 'Search' })).toBeFocused();
     await page.keyboard.type('zzz');
     await expect(dialog.getByText('No results for “zzz”.')).toBeVisible();
     await expect(dialog.getByRole('status')).toHaveText('0 results');
@@ -988,7 +1029,7 @@ test.describe('/dev/fixtures command palette and provenance (04-12)', () => {
     await expect(panel.getByRole('link', { name: 'Methods and limits' })).toHaveAttribute('href', '/about/');
     // Every link in the panel is https or a path on this site.
     const hrefs = await panel.locator('a').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('href') ?? ''));
-    expect(hrefs.every((href) => href.startsWith('https://') || href.startsWith('/'))).toBe(true);
+    expect(hrefs.length > 0 && hrefs.every((href) => href.startsWith('https://') || href.startsWith('/'))).toBe(true);
 
     await page.keyboard.press('Escape');
     await expect(panel).toHaveCount(0);
@@ -1052,12 +1093,16 @@ test.describe('/dev/fixtures command palette and provenance (04-12)', () => {
     const surface = cell(page, 'provenance', 'long-text').locator('[data-why-panel-surface]');
     await surface.scrollIntoViewIfNeeded();
     await expect(valueOf(surface, 'Definition')).toHaveText(`“${LONGEST.label_definition}”`);
-    const verdict = await surface.evaluate((node) =>
-      Array.from(node.querySelectorAll('dd')).every((dd) => {
-        const style = getComputedStyle(dd);
-        return style.textOverflow !== 'ellipsis' && style.whiteSpace !== 'nowrap' && dd.scrollWidth <= dd.clientWidth + 1;
-      }),
-    );
+    const verdict = await surface.evaluate((node) => {
+      const values = Array.from(node.querySelectorAll('dd'));
+      return (
+        values.length > 0 &&
+        values.every((dd) => {
+          const style = getComputedStyle(dd);
+          return style.textOverflow !== 'ellipsis' && style.whiteSpace !== 'nowrap' && dd.scrollWidth <= dd.clientWidth + 1;
+        })
+      );
+    });
     expect(verdict).toBe(true);
   });
 
@@ -1076,6 +1121,7 @@ test.describe('/dev/fixtures command palette and provenance (04-12)', () => {
         return box === null ? null : { width: Math.round(box.width), bottom: Math.round(box.y + box.height) };
       })
       .toEqual({ width: 390, bottom: 844 });
+    await expect.poll(() => sheet.evaluate((node) => node.contains(document.activeElement))).toBe(true);
     await page.keyboard.press('Escape');
     await expect(sheet).toHaveCount(0);
     await expect(chip).toBeFocused();
@@ -1084,10 +1130,11 @@ test.describe('/dev/fixtures command palette and provenance (04-12)', () => {
   for (const direction of DIRECTION_LIST) {
     for (const slug of ['command-palette', 'provenance']) {
       test(`axe: ${slug} has no serious or critical violation in ${direction}`, async ({ page }) => {
-        await page.goto(`/dev/fixtures/${slug}/?direction=${direction}`, { waitUntil: 'load' });
-        await expect(page.locator(`section#${slug} [data-fixture-state]`).first()).toBeVisible();
-        // The contract-backed cells settle once the data has arrived.
-        await expect(page.locator(`section#${slug} [data-fixture-state$="-loading"]`)).toHaveCount(0);
+        // openSection waits for the hydrated chrome, every manifest cell and the settled wells, so axe never runs on the
+        // atlas-only Suspense prerender (D-WR-02).
+        test.setTimeout(90_000);
+        await openSection(page, slug, { direction });
+        await expect(page.locator(SURFACE)).toHaveAttribute('data-direction', direction);
         const results = await new AxeBuilder({ page }).include(`section#${slug}`).analyze();
         const bad = results.violations.filter((v) => BAD_IMPACTS.has(v.impact ?? ''));
         expect(bad.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
@@ -1101,27 +1148,29 @@ test.describe('font scoping', () => {
     await page.goto('/about/', { waitUntil: 'load' });
     await page.evaluate(() => document.fonts.ready);
     const families = await page.evaluate(() => [...document.fonts].map((face) => face.family));
+    // Positive control: the legacy fonts are registered, so an empty list below means "no new font", not "no fonts".
+    expect(families.length).toBeGreaterThan(0);
     expect(families.filter((family) => NEW_FONT_FAMILY.test(family))).toEqual([]);
   });
 
-  test('/dev/fixtures with atlas never requests an Archivo Black file', async ({ page }, testInfo) => {
-    // next/font hashes the file names, so the Archivo Black request is identified through the
-    // FontFace the browser registered for it: its status stays "unloaded" until a glyph needs it,
-    // and a font request is made only after it leaves "unloaded".
-    const fontRequests: string[] = [];
-    page.on('request', (request) => {
-      if (request.resourceType() === 'font') fontRequests.push(new URL(request.url()).pathname);
-    });
+  test('/dev/fixtures with atlas never loads an Archivo Black file', async ({ page }, testInfo) => {
+    // next/font hashes the file names, so the Archivo Black file is identified through the FontFace the browser
+    // registered for it: its status stays "unloaded" until a glyph needs it, and a font request is made only after
+    // it leaves "unloaded".
     await openFixtures(page, '?direction=atlas');
     await page.evaluate(() => document.fonts.ready);
 
     const faces = await page.evaluate(() => [...document.fonts].map((face) => ({ family: face.family, status: face.status })));
     const archivo = faces.filter((face) => /archivo/i.test(face.family));
-    const record = { fontRequests: fontRequests.length, archivoFaces: archivo, loadedFamilies: faces.filter((f) => f.status === 'loaded').map((f) => f.family) };
-    await testInfo.attach('archivo-font-load-atlas', { body: JSON.stringify(record, null, 2), contentType: 'application/json' });
-    // Printed for RESEARCH assumption A2 (preload: false keeps Archivo Black off atlas).
-    console.log('A2 archivo-font-load-atlas', JSON.stringify(record));
+    await testInfo.attach('archivo-font-load-atlas', {
+      body: JSON.stringify({ archivoFaces: archivo, loadedFamilies: faces.filter((f) => f.status === 'loaded').map((f) => f.family) }, null, 2),
+      contentType: 'application/json',
+    });
 
+    // Positive controls: the new fonts are registered on this page, and an Archivo face exists. A renamed or dropped
+    // Archivo face would otherwise make the every() below true over an empty set.
+    expect(faces.some((face) => NEW_FONT_FAMILY.test(face.family))).toBe(true);
+    expect(archivo.length).toBeGreaterThan(0);
     expect(archivo.every((face) => face.status === 'unloaded')).toBe(true);
   });
 });
@@ -1206,7 +1255,11 @@ test.describe('/dev/fixtures probability bar, legend and status band (04-18)', (
     // The interim model has no abstain threshold, so the threshold sentence is absent.
     await expect(bar).not.toContainText('No class reached');
     await expect
-      .poll(async () => bar.locator('[data-bar-fill]').evaluateAll((nodes) => nodes.every((node) => node.getAttribute('data-hatched') === 'true' && !/hab-/.test(node.className))))
+      .poll(async () =>
+        bar
+          .locator('[data-bar-fill]')
+          .evaluateAll((nodes) => nodes.length > 0 && nodes.every((node) => node.getAttribute('data-hatched') === 'true' && !/hab-/.test(node.className))),
+      )
       .toBe(true);
     await expect(bar.locator('svg[data-shape="ring"]')).toHaveCount(1);
     await expect(bar.locator('svg[data-shape="circle"], svg[data-shape="down-triangle"], svg[data-shape="diamond"]')).toHaveCount(0);
@@ -1259,7 +1312,9 @@ test.describe('/dev/fixtures probability bar, legend and status band (04-18)', (
     const legend = cell(page, 'legend', 'selected');
     await expect(legend.locator('[data-legend-row][aria-pressed="true"]')).toHaveCount(1);
     await expect
-      .poll(async () => legend.locator('[data-legend-row]').evaluateAll((nodes) => nodes.every((node) => node.getBoundingClientRect().height >= 44)))
+      .poll(async () =>
+        legend.locator('[data-legend-row]').evaluateAll((nodes) => nodes.length > 0 && nodes.every((node) => node.getBoundingClientRect().height >= 44)),
+      )
       .toBe(true);
   });
 
@@ -1296,10 +1351,11 @@ test.describe('/dev/fixtures probability bar, legend and status band (04-18)', (
   for (const direction of DIRECTION_LIST) {
     for (const slug of ['probability-bar', 'legend', 'status-band']) {
       test(`axe: ${slug} has no serious or critical violation in ${direction}`, async ({ page }) => {
-        await page.goto(`/dev/fixtures/${slug}/?direction=${direction}`, { waitUntil: 'load' });
-        await expect(page.locator(`section#${slug} [data-fixture-state]`).first()).toBeVisible();
-        // The contract-backed cells settle once the data has arrived.
-        await expect(page.locator(`section#${slug} [data-fixture-state$="-loading"]`)).toHaveCount(0);
+        // openSection waits for the hydrated chrome, every manifest cell and the settled wells, so axe never runs on the
+        // atlas-only Suspense prerender (D-WR-02).
+        test.setTimeout(90_000);
+        await openSection(page, slug, { direction });
+        await expect(page.locator(SURFACE)).toHaveAttribute('data-direction', direction);
         await expect(page.locator(`section#${slug} [data-fixture-state="${slug === 'probability-bar' ? 'abstain' : slug === 'legend' ? 'with-evidence' : 'phone'}"]`)).toBeVisible();
         const results = await new AxeBuilder({ page }).include(`section#${slug}`).analyze();
         const bad = results.violations.filter((v) => BAD_IMPACTS.has(v.impact ?? ''));
@@ -1316,6 +1372,8 @@ test.describe('/dev/fixtures StripPlot (04-19)', () => {
   const BAD_19 = new Set(['serious', 'critical']);
 
   async function openStripPlot(page: Page, direction = 'atlas') {
+    // Three cells may each take 30 s below, so the default 30 s test timeout could never let those waits run (D-WR-17).
+    test.setTimeout(120_000);
     await page.goto(`/dev/fixtures/strip-plot/?direction=${direction}`, { waitUntil: 'load' });
     await expect(page.locator(SURFACE)).toHaveAttribute('data-direction', direction);
     // The band levels are computed from the two real WAVs, so the paired cell settles last.

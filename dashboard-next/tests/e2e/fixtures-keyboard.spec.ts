@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { expectNoUnhandledApiCalls } from './support/mock-api';
-import { focusIsInside, liveCell, openSection, startTabbing, stateCell, tabTo } from './support/fixtures';
+import { focusIsInside, liveCell, openSection, settleFrames, startTabbing, stateCell, tabTo } from './support/fixtures';
 
 /**
  * The keyboard contract of every DS-04 primitive, and of Transport, WindowStrip and the crossfader,
@@ -229,12 +229,21 @@ test.describe('Slider and RangeSlider', () => {
     await expect
       .poll(async () => (await minimum.inputValue()) === (await maximum.inputValue()))
       .toBe(true);
+    const crossed = await maximum.inputValue();
     await page.keyboard.press('Tab');
     await expect(maximum).toBeFocused();
+    // Home on the upper thumb would cross the lower one, so it is refused: the state is the one it started in, which
+    // an assertion resolves at once. Give a wrongly handled press its frames, then assert (D-WR-05).
     await page.keyboard.press('Home');
-    await expect
-      .poll(async () => (await maximum.inputValue()) === (await minimum.inputValue()))
-      .toBe(true);
+    await settleFrames(page);
+    await expect(maximum).toHaveValue(crossed);
+    await expect(minimum).toHaveValue(crossed);
+    // Positive control: keys do reach the lower thumb, and it moves down off the upper one.
+    await page.keyboard.press('Shift+Tab');
+    await expect(minimum).toBeFocused();
+    await page.keyboard.press('ArrowLeft');
+    await expect.poll(async () => Number(await minimum.inputValue())).toBeLessThan(Number(crossed));
+    await expect(maximum).toHaveValue(crossed);
   });
 });
 
@@ -269,11 +278,26 @@ test.describe('ToggleGroup and BandToggle', () => {
     await low.focus();
     await page.keyboard.press('Space');
     await expect(low).toHaveAttribute('aria-pressed', 'false');
+    // Positive control: turn High on, so the Space presses below are known to reach the toolbar, then turn Mid off.
     await page.keyboard.press('ArrowRight');
     await expect(mid).toBeFocused();
+    await page.keyboard.press('ArrowRight');
+    await expect(high).toBeFocused();
     await page.keyboard.press('Space');
-    // The last band on cannot be turned off.
-    await expect(mid).toHaveAttribute('aria-pressed', 'true');
+    await expect(high).toHaveAttribute('aria-pressed', 'true');
+    await page.keyboard.press('ArrowLeft');
+    await expect(mid).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(mid).toHaveAttribute('aria-pressed', 'false');
+    // High is now the last band on, and it cannot be turned off. A refused press leaves the state it started in, so
+    // wait for the press's frames before asserting (D-WR-05).
+    await page.keyboard.press('ArrowRight');
+    await expect(high).toBeFocused();
+    await page.keyboard.press('Space');
+    await settleFrames(page);
+    await expect(high).toHaveAttribute('aria-pressed', 'true');
+    await expect(low).toHaveAttribute('aria-pressed', 'false');
+    await expect(mid).toHaveAttribute('aria-pressed', 'false');
   });
 });
 

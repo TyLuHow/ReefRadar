@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { mockApi, expectNoUnhandledApiCalls } from './support/mock-api';
+import { expectNoUnhandledApiCalls } from './support/mock-api';
+import { ensureMocked, openSection, settleFrames } from './support/fixtures';
 
 /**
  * The Motion section and the four accepted compositions on /dev/fixtures (04-21, DS-05, DS-06, DS-08).
@@ -33,7 +34,8 @@ const EXCERPT_SITES = (
 ).excerpts.map((excerpt) => excerpt.site_id);
 
 test.beforeEach(async ({ page }) => {
-  await mockApi(page);
+  // ensureMocked records the page, so openSection does not install the mock a second time.
+  await ensureMocked(page);
 });
 
 test.afterEach(({ page }) => {
@@ -273,7 +275,18 @@ test.describe('Explore', () => {
     await expect(panel.getByText('REFERENCE LABEL', { exact: true })).toBeVisible();
     await expect(panel.getByRole('link', { name: 'Open site and sources' })).toHaveAttribute('href', '#site-ind_D1');
 
+    // Wait for focus on the clicked option before ArrowDown, then for it to move before Enter: if focus has not
+    // moved, Enter would reselect ind_D1 (D-WR-04).
+    const focusedOption = () =>
+      list.evaluate((node) => {
+        const active = document.activeElement;
+        const id = active?.getAttribute('aria-activedescendant');
+        const target = id ? document.getElementById(id) : active;
+        return target !== null && target !== undefined && node.contains(target) && target !== node ? (target.textContent ?? '') : '';
+      });
+    await expect.poll(focusedOption).toMatch(/^ind_D1/);
     await page.keyboard.press('ArrowDown');
+    await expect.poll(focusedOption).toMatch(/^(?!ind_D1)\S/);
     await page.keyboard.press('Enter');
     await expect
       .poll(async () => {
@@ -334,7 +347,17 @@ test.describe('Motion section', () => {
     await open(page, 'motion');
     const root = section(page, 'motion');
     const rows = () => root.locator('[data-morph-row]').evaluateAll((els) => els.map((el) => el.getAttribute('data-morph-row')));
-    await expect.poll(async () => (await rows()).length).toBeGreaterThan(1);
+    // The initial order is final once two consecutive reads agree on more than one row; capturing it earlier could
+    // compare a later reorder with a half-mounted list (D-WR-09).
+    let previous = '';
+    await expect
+      .poll(async () => {
+        const now = await rows();
+        const stable = now.length > 1 && now.join() === previous;
+        previous = now.join();
+        return stable;
+      })
+      .toBe(true);
     const before = await rows();
     await root.getByRole('button', { name: 'Order by count' }).click();
     await expect.poll(async () => (await rows()).join()).not.toBe(before.join());
@@ -357,6 +380,10 @@ test.describe('Motion section', () => {
     const root = section(page, 'motion');
     await root.getByRole('button', { name: 'Order by count' }).click();
     await root.locator('[data-fixture-state="view-transition"]').getByRole('radio', { name: 'ind_D1' }).click();
+    // The swap has happened, and two frames have run, before "nothing is animating" is read: an animation that
+    // had not started yet would otherwise pass (D-WR-09).
+    await expect(root.locator('[data-fixture-state="view-transition"] [data-swap-content]')).toHaveAttribute('data-swap-content', 'ind_D1');
+    await settleFrames(page);
     await expect.poll(() => page.evaluate(() => document.getAnimations().length)).toBe(0);
     await expect(root.locator('[data-fixture-state="selection"]').getByRole('radio').first()).toHaveCSS('transition-duration', '0s');
   });
@@ -385,7 +412,9 @@ for (const direction of DIRECTIONS) {
       { slug: 'composition-explore', wells: 1, plot: true },
     ]) {
       test(`${slug} has no serious or critical violation`, async ({ page }) => {
-        await open(page, slug, `?direction=${direction}`);
+        test.setTimeout(90_000);
+        // openSection waits for the hydrated chrome, every manifest cell and every drawn well (D-WR-03).
+        await openSection(page, slug, { direction });
         if (slug === 'motion') await expect(section(page, slug).locator('[data-spectrogram][data-ready="true"]')).toHaveCount(wells);
         else await settled(page, slug, wells, plot);
         const results = await new AxeBuilder({ page }).include(`section#${slug}`).analyze();
@@ -395,10 +424,19 @@ for (const direction of DIRECTIONS) {
     }
 
     test('the four compositions render the headline in this direction without horizontal overflow at 390 px', async ({ page }) => {
+      // Four navigations, each settled before it is measured.
+      test.setTimeout(90_000);
       await page.setViewportSize({ width: 390, height: 844 });
-      for (const slug of ['composition-inspector', 'composition-listen', 'composition-compare', 'composition-explore']) {
-        await open(page, slug, `?direction=${direction}`);
+      for (const { slug, wells, plot } of [
+        { slug: 'composition-inspector', wells: 1, plot: false },
+        { slug: 'composition-listen', wells: 9, plot: false },
+        { slug: 'composition-compare', wells: 2, plot: true },
+        { slug: 'composition-explore', wells: 1, plot: true },
+      ]) {
+        await openSection(page, slug, { direction });
+        await settled(page, slug, wells, plot);
         await expect(frame(page, slug).getByRole('navigation', { name: 'Primary' })).toBeVisible();
+        await expect(frame(page, slug).getByRole('heading').first()).toBeVisible();
         await expect(page.locator(SURFACE)).toHaveAttribute('data-direction', direction);
         await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
       }

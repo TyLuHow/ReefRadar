@@ -121,17 +121,19 @@ test.describe('the frame loop', () => {
       await expect(group).toHaveAttribute('data-transport-status', 'idle');
       const playhead = live.locator('[data-playhead]').first();
       const readout = group.getByTestId('transport-readout');
-      const before = await playhead.evaluate((el) => (el as HTMLElement).style.transform);
+      const transformOf = () => playhead.evaluate((el) => (el as HTMLElement).style.transform);
+      // The transform is set by an effect: capture it only once it exists, so '' before mount cannot pass not.toBe(before).
+      await expect.poll(transformOf).not.toBe('');
+      const before = await transformOf();
       await expect(readout).toHaveText(/^00:00\.0 \//);
 
       await group.getByRole('button', { name: 'Play' }).click();
       await expect(group).toHaveAttribute('data-transport-status', 'playing');
       await resetFrames(page);
       // 1.5 s covers at least one 1 Hz tick: the playhead and the readout move, and no frame was requested.
-      await page.waitForTimeout(1500);
-      expect(await frameCalls(page)).toBe(0);
-      await expect.poll(() => playhead.evaluate((el) => (el as HTMLElement).style.transform)).not.toBe(before);
+      // Wait for the tick to have happened first, so the zero-frames assertion is made after the clock advanced.
       await expect(readout).not.toHaveText(/^00:00\.0 \//);
+      await expect.poll(transformOf).not.toBe(before);
       expect(await frameCalls(page)).toBe(0);
 
       await group.getByRole('button', { name: 'Pause' }).click();

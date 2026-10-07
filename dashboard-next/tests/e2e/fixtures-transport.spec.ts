@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { mockApi, expectNoUnhandledApiCalls } from './support/mock-api';
+import { expectNoUnhandledApiCalls } from './support/mock-api';
+import { ensureMocked, openSection } from './support/fixtures';
 
 /**
  * Transport, WindowStrip and BandToggle on /dev/fixtures (04-15, DS-05, DS-06).
@@ -18,7 +19,8 @@ const BAD_IMPACTS = new Set(['serious', 'critical']);
 const START = '00:00.0 / 00:30.0';
 
 test.beforeEach(async ({ page }) => {
-  await mockApi(page);
+  // ensureMocked records the page, so openSection does not install the mock a second time.
+  await ensureMocked(page);
 });
 
 test.afterEach(({ page }) => {
@@ -205,11 +207,14 @@ test.describe('WindowStrip on the real clip', () => {
     await options(live).nth(2).click();
     await expect(readout).toHaveText('00:10.0 / 00:30.0');
     await expect(options(live).nth(2)).toHaveAttribute('aria-selected', 'true');
+    // Wait for focus before each key: React Aria moves it on the next frame (D-WR-04).
+    await expect(options(live).nth(2)).toBeFocused();
     await page.keyboard.press('ArrowRight');
     await expect(options(live).nth(3)).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(readout).toHaveText('00:15.0 / 00:30.0');
     await page.keyboard.press('ArrowRight');
+    await expect(options(live).nth(4)).toBeFocused();
     await page.keyboard.press('Space');
     await expect(readout).toHaveText('00:20.0 / 00:30.0');
     // Choosing the window that is already selected returns the Transport to its start.
@@ -324,7 +329,10 @@ test.describe('BandToggle on the real recording range', () => {
 for (const direction of DIRECTIONS) {
   for (const slug of ['transport', 'window-strip', 'band-toggle']) {
     test(`axe: ${slug} has no serious or critical violation in ${direction}`, async ({ page }) => {
-      await open(page, slug, `?direction=${direction}`);
+      test.setTimeout(90_000);
+      // openSection waits for every manifest cell (including the contract-backed band-toggle cell, which shows
+      // "Loading bands..." until its data arrives) and every drawn well, so axe never samples a half-mounted page (D-WR-03).
+      await openSection(page, slug, { direction });
       if (slug !== 'band-toggle') {
         await expect(cell(page, slug, 'live').locator('[data-spectrogram][data-ready="true"]')).toBeVisible();
       }

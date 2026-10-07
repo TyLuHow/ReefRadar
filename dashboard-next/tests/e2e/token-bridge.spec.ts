@@ -38,7 +38,7 @@ async function requireWebGL2(page: Page, reason: string) {
   const description = available ? 'WebGL2 available' : 'WebGL2 NOT available';
   test.info().annotations.push({ type: 'webgl2', description });
   console.log(`[token-bridge.spec] ${description}`);
-  if (process.env.CI) {
+  if (process.env.CI === 'true' || process.env.CI === '1') {
     expect(available, 'CI image must provide WebGL2 (software GL); the token-bridge proof may not be skipped in CI').toBe(true);
   } else {
     test.skip(!available, reason);
@@ -151,12 +151,21 @@ test.describe('token bridge: one token, three consumers', () => {
   });
 
   test('the probe map never touches the network for tiles, glyphs or sprites', async ({ page }) => {
-    const external: string[] = [];
+    const external: Array<{ url: string; host: string; type: string }> = [];
     page.on('request', (request) => {
       const url = new URL(request.url());
-      if (url.hostname !== 'localhost' && url.hostname !== '127.0.0.1' && !/^data:|^blob:/.test(request.url())) external.push(request.url());
+      if (url.hostname !== 'localhost' && url.hostname !== '127.0.0.1' && !/^data:|^blob:/.test(request.url())) {
+        external.push({ url: request.url(), host: url.hostname, type: request.resourceType() });
+      }
     });
     await openProbe(page);
-    expect(external.filter((url) => !/contract|execute-api|amazonaws|cloudfront/.test(url))).toEqual([]);
+    // The only external hosts the page may reach are the contract CDN and the API (the two hosts mock-api.ts serves),
+    // and only for data requests. The HOSTNAME is compared, not the whole URL: a tile, glyph or sprite request to any
+    // host whose path or query merely contains "contract" or "cloudfront" must fail, as must a font or image request
+    // to an allowed host.
+    const ALLOWED_HOST = /^(?:[a-z0-9]+\.cloudfront\.net|[a-z0-9]+\.execute-api\.[a-z0-9-]+\.amazonaws\.com)$/;
+    const DATA_TYPES = new Set(['fetch', 'xhr']);
+    const offenders = external.filter((request) => !ALLOWED_HOST.test(request.host) || !DATA_TYPES.has(request.type));
+    expect(offenders.map((request) => `${request.type} ${request.url}`)).toEqual([]);
   });
 });

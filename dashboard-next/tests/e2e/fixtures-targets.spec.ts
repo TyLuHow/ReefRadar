@@ -36,7 +36,7 @@ interface Offender {
  * Measure every interactive element in the surface, in the page (scroll, probe and measure in one
  * evaluate, so nothing moves between steps). Returns the elements that fall short.
  */
-async function undersizedTargets(page: Page): Promise<{ checked: number; offenders: Offender[] }> {
+async function undersizedTargets(page: Page): Promise<{ checked: number; offenders: Offender[]; exempt: string[] }> {
   return page.evaluate(
     ({ surface, interactive, min }) => {
       const root = document.querySelector(surface) as HTMLElement;
@@ -66,6 +66,8 @@ async function undersizedTargets(page: Page): Promise<{ checked: number; offende
       };
 
       const offenders: Offender[] = [];
+      /** Every element an exemption swallowed, so a new exempt control fails the sweep instead of passing it. */
+      const exempt: string[] = [];
       let checked = 0;
       const seen = new Set<Element>();
       for (const found of Array.from(root.querySelectorAll<HTMLElement>(interactive))) {
@@ -89,6 +91,7 @@ async function undersizedTargets(page: Page): Promise<{ checked: number; offende
         //    width is data, not design: height only.
         const strip = el.closest('[role="listbox"][data-dense]');
         if (strip !== null || el.hasAttribute('data-segment')) {
+          exempt.push(`${strip !== null ? 'strip-cell' : 'segment'}: ${describe(el)}`);
           const floor = strip !== null && strip.getAttribute('data-dense') === 'false' ? 24 : 0;
           if (r.height < min - 0.5 || r.width < floor) {
             offenders.push({ selector: describe(el), width: Math.round(r.width), height: Math.round(r.height), reason: 'geometry-bound cell under its floor' });
@@ -96,15 +99,19 @@ async function undersizedTargets(page: Page): Promise<{ checked: number; offende
           continue;
         }
 
-        // A link inside a sentence (a paragraph with its own words around the link) is an inline
-        // target, which WCAG 2.5.8 exempts from the size rule; it must still be a real link.
-        if (el instanceof HTMLAnchorElement && el.parentElement?.tagName === 'P') {
+        // A link inside a sentence of an attribution footer ("Audio: Ben Williams ... doi.org/...") is an inline
+        // target, which WCAG 2.5.8 exempts from the size rule. The exemption is scoped to a paragraph inside a
+        // footer (or one marked data-inline-links), not to any paragraph, and every link it swallows is recorded.
+        if (el instanceof HTMLAnchorElement && el.parentElement?.tagName === 'P' && el.closest('footer p, [data-inline-links]') !== null) {
           const own = Array.from(el.parentElement.childNodes)
             .filter((node) => node.nodeType === Node.TEXT_NODE)
             .map((node) => node.textContent ?? '')
             .join('')
             .trim();
-          if (own.length >= 3) continue;
+          if (own.length >= 3) {
+            exempt.push(`inline-link: ${describe(el)}`);
+            continue;
+          }
         }
 
         // Painted box is smaller: it must reach 44 px through a probed expansion.
@@ -153,10 +160,34 @@ async function undersizedTargets(page: Page): Promise<{ checked: number; offende
           if (!ok) offenders.push({ selector: describe(el), width: Math.round(width), height: Math.round(height), reason: 'does not answer 6 px outside its painted box' });
         }
       }
-      return { checked, offenders };
+      return { checked, offenders, exempt };
     },
     { surface: SURFACE, interactive: INTERACTIVE, min: MIN },
   );
+}
+
+/**
+ * What each exemption may swallow, per section. A new exempt control (a link in a new paragraph, a cell in a new
+ * strip) fails the sweep and has to be listed here on purpose. The caps are the live counts with a little headroom
+ * for the data (36 cells live: the section holds several strips).
+ */
+const COMPOSITION_SLUGS = ['composition-inspector', 'composition-listen', 'composition-compare', 'composition-explore'];
+const INLINE_FOOTER_LINKS = ['CC BY 4.0', 'doi.org/10.5522/04/29958062'];
+const EXEMPT_CAPS: Record<string, Record<string, number>> = {
+  'window-strip': { 'strip-cell': 40 },
+  'status-band': { segment: 4 },
+};
+
+function expectExemptions(slug: string, exempt: string[]) {
+  for (const kind of ['strip-cell', 'segment', 'inline-link']) {
+    const mine = exempt.filter((entry) => entry.startsWith(`${kind}:`));
+    if (kind === 'inline-link') {
+      const names = mine.map((entry) => /"([^"]*)"$/.exec(entry)?.[1] ?? entry).sort();
+      expect(names, `${slug}: inline-link exemptions`).toEqual(COMPOSITION_SLUGS.includes(slug) ? [...INLINE_FOOTER_LINKS].sort() : []);
+    } else {
+      expect(mine.length, `${slug}: ${kind} exemptions: ${mine.join(' | ')}`).toBeLessThanOrEqual(EXEMPT_CAPS[slug]?.[kind] ?? 0);
+    }
+  }
 }
 
 test.describe('touch targets under coarse-pointer emulation', () => {
@@ -171,8 +202,9 @@ test.describe('touch targets under coarse-pointer emulation', () => {
     test(`${slug}: every control has a 44 x 44 px hit area`, async ({ page }) => {
       test.setTimeout(90_000);
       await openSection(page, slug);
-      const { checked, offenders } = await undersizedTargets(page);
+      const { checked, offenders, exempt } = await undersizedTargets(page);
       expect(offenders.map((o) => `${o.selector}: ${o.width} x ${o.height} (${o.reason})`)).toEqual([]);
+      expectExemptions(slug, exempt);
       // Sections with no control at all (tokens, scales) check zero; every other section must have found some.
       if (!['tokens', 'status-palette', 'spectrogram-scale', 'numerals', 'states'].includes(slug)) expect(checked).toBeGreaterThan(0);
     });

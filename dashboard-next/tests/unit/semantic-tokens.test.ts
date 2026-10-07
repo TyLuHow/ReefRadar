@@ -50,11 +50,16 @@ const VAR_REFERENCE = /^\s*['"`]?\s*var\(\s*--/;
 const RAW_VALUE_RULES: Rule[] = [
   {
     name: 'raw hex colour',
-    // #rgb or #rrggbb after a quote, backtick, parenthesis, colon, comma or whitespace, and not part of
-    // a longer word or a hyphenated name (so an anchor such as href="#dialog" is not a colour).
-    pattern: /(?<=["'`(:,\s])#(?:[0-9a-fA-F]{6}|[0-9a-fA-F]{3})(?![\w-])/g,
+    // #rgb, #rgba, #rrggbb or #rrggbbaa after a quote, backtick, parenthesis, colon, comma or whitespace, and not
+    // part of a longer word or a hyphenated name (so an anchor such as href="#dialog" is not a colour). Every
+    // length is listed: a four- or eight-digit hex would otherwise fail the lookahead and go unreported.
+    pattern: /(?<=["'`(:,\s])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})(?![\w-])/g,
   },
-  { name: 'raw rgb/hsl colour literal', pattern: /\b(?:rgba?|hsla?|oklch|oklab|hwb)\(\s*[-\d.]/g },
+  { name: 'raw rgb/hsl colour literal', pattern: /\b(?:rgba?|hsla?|oklch|oklab|lab|lch|hwb)\(\s*[-\d.]/g },
+  {
+    name: 'raw color() colour literal',
+    pattern: /\bcolor\(\s*(?:srgb|srgb-linear|display-p3|a98-rgb|prophoto-rgb|rec2020|xyz|xyz-d50|xyz-d65)\b/g,
+  },
   {
     name: 'raw font family',
     pattern: /\b(?:font-family\s*:|fontFamily\s*:)\s*([^;\n}]*)/g,
@@ -92,6 +97,11 @@ describe('findRawValues: planted violations', () => {
   const planted: Array<[string, string]> = [
     ['a single-quoted six-digit hex', "const c = '#914615';"],
     ['a double-quoted three-digit hex', 'const c = "#fff";'],
+    ['a four-digit hex', 'const c = "#fffa";'],
+    ['an eight-digit hex', "const c = '#11223344';"],
+    ['an lab() literal', 'const c = "lab(50% 40 59)";'],
+    ['an lch() literal', 'const c = "lch(50% 80 30)";'],
+    ['a color() literal', 'const c = "color(display-p3 1 0 0)";'],
     ['a hex in a template literal', 'const c = `1px solid #0d0f14`;'],
     ['a hex after a colon', 'a { color:#abcdef; }'],
     ['an rgb() literal', 'const c = rgb(1, 2, 3);'],
@@ -172,6 +182,11 @@ describe('semantic tokens: the real tree', () => {
     ...SCAN_DIRS.flatMap((d) => walk(path.join(DASHBOARD_ROOT, d))),
     ...SCAN_FILES.map((f) => path.join(DASHBOARD_ROOT, f)).filter((f) => fs.existsSync(f)),
   ];
+
+  it('has every scanned directory and file: a rename must not silently drop it from the gate', () => {
+    const missing = [...SCAN_DIRS, ...SCAN_FILES].filter((entry) => !fs.existsSync(path.join(DASHBOARD_ROOT, entry)));
+    expect(missing).toEqual([]);
+  });
 
   it('scans a non-empty set of files', () => {
     expect(files.length).toBeGreaterThan(0);
