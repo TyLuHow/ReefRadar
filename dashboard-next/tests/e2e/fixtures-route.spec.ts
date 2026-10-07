@@ -720,6 +720,9 @@ test.describe('/dev/fixtures slider, table and data table (04-11)', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openReady(page);
     await expect(cell(page, 'data-table', 'default').getByRole('grid')).toBeVisible();
+    // The region attributes appear only after a client measurement of the container. The phone cell is the positive
+    // control that the measurement has happened; only then does "the wide cell has none" mean something (D-WR-13).
+    await expect(cell(page, 'data-table', 'phone-scroll').getByRole('region')).toHaveCount(1);
     await expect(cell(page, 'data-table', 'default').getByRole('region')).toHaveCount(0);
   });
 
