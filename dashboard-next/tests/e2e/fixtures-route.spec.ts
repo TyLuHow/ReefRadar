@@ -374,13 +374,15 @@ test.describe('/dev/fixtures overlays and listbox (04-10)', () => {
     await expect(dialog).toBeVisible();
     // The overlay portals into the instrument surface, so it carries the surface's tokens.
     await expect(page.locator(SURFACE).getByRole('dialog')).toHaveCount(1);
+    // React Aria moves focus into the dialog on the next frame; the sweep and Escape are only meaningful once it has (D-WR-04).
+    await expect.poll(() => dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
     for (let i = 0; i < 6; i += 1) {
       await page.keyboard.press('Tab');
-      expect(await dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
+      await expect.poll(() => dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
     }
     for (let i = 0; i < 6; i += 1) {
       await page.keyboard.press('Shift+Tab');
-      expect(await dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
+      await expect.poll(() => dialog.evaluate((node) => node.contains(document.activeElement))).toBe(true);
     }
     await page.keyboard.press('Escape');
     await expect(dialog).toHaveCount(0);
@@ -412,6 +414,8 @@ test.describe('/dev/fixtures overlays and listbox (04-10)', () => {
     await right.click();
     const sheet = page.getByRole('dialog', { name: 'Right sheet' });
     await expect(sheet).toBeVisible();
+    // Escape is only heard once focus is inside the overlay (D-WR-04).
+    await expect.poll(() => sheet.evaluate((node) => node.contains(document.activeElement))).toBe(true);
     await page.keyboard.press('Escape');
     await expect(sheet).toHaveCount(0);
     await expect(right).toBeFocused();
@@ -874,6 +878,8 @@ test.describe('/dev/fixtures command palette and provenance (04-12)', () => {
     await page.keyboard.press('Control+k');
     const dialog = paletteOf(page);
     await expect(dialog).toBeVisible();
+    // Typed characters are lost if the search input is not yet focused (D-WR-04).
+    await expect(dialog.getByRole('searchbox', { name: 'Search' })).toBeFocused();
     await page.keyboard.type('zzz');
     await expect(dialog.getByText('No results for “zzz”.')).toBeVisible();
     await expect(dialog.getByRole('status')).toHaveText('0 results');
@@ -1071,6 +1077,7 @@ test.describe('/dev/fixtures command palette and provenance (04-12)', () => {
         return box === null ? null : { width: Math.round(box.width), bottom: Math.round(box.y + box.height) };
       })
       .toEqual({ width: 390, bottom: 844 });
+    await expect.poll(() => sheet.evaluate((node) => node.contains(document.activeElement))).toBe(true);
     await page.keyboard.press('Escape');
     await expect(sheet).toHaveCount(0);
     await expect(chip).toBeFocused();
