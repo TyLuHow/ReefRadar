@@ -161,6 +161,25 @@ test.describe('/dev/fixtures chrome (04-07)', () => {
     await expect(page.locator(SURFACE)).toHaveAttribute('data-reduced-motion', 'true');
   });
 
+  test('switching keeps the URL hash, so the current section stays highlighted', async ({ page }) => {
+    await openFixtures(page, '#status-palette');
+    const nav = page.getByRole('navigation', { name: 'Fixture sections' });
+    await expect(nav.getByRole('link', { name: 'Status palette' })).toHaveAttribute('aria-current', 'location');
+    await page.getByRole('radiogroup', DIRECTION_GROUP).getByRole('radio', { name: 'Poster' }).click();
+    await expect(page).toHaveURL(/direction=poster.*#status-palette$/);
+    await expect(nav.getByRole('link', { name: 'Status palette' })).toHaveAttribute('aria-current', 'location');
+  });
+
+  test('a single-section nav keeps the tok overrides along with the direction', async ({ page }) => {
+    await page.goto('/dev/fixtures/status-palette/?direction=poster&tok=--dir-hab-healthy:%23B00020', { waitUntil: 'load' });
+    await expect(page.locator(SURFACE)).toBeVisible();
+    const nav = page.getByRole('navigation', { name: 'Fixture sections' });
+    await expect(nav.getByRole('link', { name: 'Tokens' })).toHaveAttribute(
+      'href',
+      '/dev/fixtures/tokens/?direction=poster&tok=--dir-hab-healthy%3A%23B00020',
+    );
+  });
+
   test('the contract pin shows the contract version and the model version of the mocked contract', async ({ page }) => {
     await openFixtures(page);
     await expect(page.getByTestId('contract-pin')).toHaveText(`Contract v1 · ${MODEL_VERSION}`);

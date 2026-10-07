@@ -176,13 +176,15 @@ function FixturesSurface({ section }: { section?: string }) {
     if (value === null) next.delete(name);
     else next.set(name, value);
     const qs = next.toString();
-    router.replace(qs === '' ? pathname : `${pathname}?${qs}`, { scroll: false });
+    // The hash stays so the current-section link and a reload keep the section being viewed.
+    router.replace(`${qs === '' ? pathname : `${pathname}?${qs}`}${window.location.hash}`, { scroll: false });
   };
 
-  // Links to other sections keep the two switches the toolbar shows.
+  // Links to other sections keep the two switches the toolbar shows and any tok overrides under test.
   const carried = new URLSearchParams();
   if (direction !== DIRECTIONS[0]) carried.set('direction', direction);
   if (reduced) carried.set('reduced', '1');
+  for (const [name, value] of tokenOverrides) carried.append('tok', `${name}:${value}`);
   const query = carried.toString() === '' ? '' : `?${carried.toString()}`;
 
   return (
