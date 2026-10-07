@@ -81,6 +81,34 @@ describe('tailwind 4 sources', () => {
     expect(glassPanelRules).toBeGreaterThan(0);
   });
 
+  it('keeps the Tailwind 3 hover selector outside the instrument surface and the media gate inside it', async () => {
+    const result = await postcss([tailwindcss()]).process(css, { from: GLOBALS });
+    // hover:text-bone is a legacy utility (src/app/page.tsx); hover:underline is used by the kit too.
+    const SURFACE = "[data-surface='instrument']";
+    let legacyUngated = 0;
+    let surfaceGated = 0;
+    result.root.walkRules((rule) => {
+      if (!rule.selector.startsWith(String.raw`.hover\:text-bone`)) return;
+      const gated = (() => {
+        for (let parent = rule.parent; parent && parent.type !== 'root'; parent = parent.parent) {
+          if (parent.type === 'atrule' && (parent as postcss.AtRule).name === 'media') {
+            return (parent as postcss.AtRule).params.replace(/\s+/g, '') === '(hover:hover)';
+          }
+        }
+        return false;
+      })();
+      if (rule.selector.includes(`:not(${SURFACE} *)`)) {
+        expect(gated, 'legacy hover must fire on touch, as under Tailwind 3').toBe(false);
+        legacyUngated += 1;
+      } else if (rule.selector.includes(`:where(${SURFACE} *)`)) {
+        expect(gated, 'inside the instrument surface hover stays media-gated').toBe(true);
+        surfaceGated += 1;
+      }
+    });
+    expect(legacyUngated).toBeGreaterThan(0);
+    expect(surfaceGated).toBeGreaterThan(0);
+  });
+
   it('has no Tailwind 3 config and one PostCSS plugin, @tailwindcss/postcss', () => {
     expect(fs.existsSync(path.join(ROOT, 'tailwind.config.js'))).toBe(false);
     expect(fs.existsSync(path.join(ROOT, 'tailwind.config.ts'))).toBe(false);
