@@ -450,7 +450,9 @@ test.describe('/dev/fixtures overlays and listbox (04-10)', () => {
   });
 
   test('the listbox moves with arrows, Home, End, PageDown and typeahead, and Enter selects', async ({ page }) => {
-    await openReady(page);
+    // The listbox's own section page: the whole index (every section, spectrogram STFTs included) kept the main
+    // thread busy enough under CI load that the key presses ran out the 30 s test budget.
+    await openReady(page, 'listbox/');
     const list = page.getByRole('listbox', { name: 'Reference sites, all' });
     await list.scrollIntoViewIfNeeded();
     await list.focus();
