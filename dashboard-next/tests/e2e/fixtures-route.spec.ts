@@ -3,7 +3,7 @@ import path from 'node:path';
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { expectNoUnhandledApiCalls } from './support/mock-api';
-import { ensureMocked, openSection } from './support/fixtures';
+import { ensureMocked, openSection, settleFrames } from './support/fixtures';
 
 /**
  * /dev/fixtures route (04-06, 04-07, DS-08). The e2e build carries NEXT_PUBLIC_DEV_FIXTURES=1
@@ -626,7 +626,17 @@ test.describe('/dev/fixtures slider, table and data table (04-11)', () => {
     await expect(maximum).toHaveValue('6000');
     await page.keyboard.press('Tab');
     await expect(maximum).toBeFocused();
+    // Home on the upper thumb would cross the lower one, so it is refused and the value stays 6000, which is what it
+    // already was. Give a wrongly handled press its frames, then assert (D-WR-05).
     await page.keyboard.press('Home');
+    await settleFrames(page);
+    await expect(maximum).toHaveValue('6000');
+    await expect(minimum).toHaveValue('6000');
+    // Positive control: keys do reach the lower thumb, and it moves down off the upper one.
+    await page.keyboard.press('Shift+Tab');
+    await expect(minimum).toBeFocused();
+    await page.keyboard.press('ArrowLeft');
+    await expect.poll(async () => Number(await minimum.inputValue())).toBeLessThan(6000);
     await expect(maximum).toHaveValue('6000');
   });
 

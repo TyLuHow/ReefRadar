@@ -127,3 +127,13 @@ export async function tabTo(page: Page, target: Locator, max = 150): Promise<voi
 export async function focusIsInside(inside: Locator): Promise<boolean> {
   return inside.evaluate((node) => node.contains(document.activeElement));
 }
+
+/**
+ * Wait for two animation frames. A refused key press ("the last band cannot be turned off", "the thumbs cannot
+ * cross") leaves the state it started in, so a web-first assertion on that state resolves at once; this gives a
+ * wrongly handled press its frames to show before the unchanged state is asserted. Pair it with a positive control
+ * that proves keys reach the control.
+ */
+export async function settleFrames(page: Page): Promise<void> {
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+}
