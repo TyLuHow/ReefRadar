@@ -163,6 +163,8 @@ test.describe('/dev/fixtures chrome (04-07)', () => {
 
   test('switching keeps the URL hash, so the current section stays highlighted', async ({ page }) => {
     await openFixtures(page, '#status-palette');
+    // The contract pin only fills in once the client has hydrated; a click before that is not handled.
+    await expect(page.getByTestId('contract-pin')).toHaveText(/^Contract v1/);
     const nav = page.getByRole('navigation', { name: 'Fixture sections' });
     await expect(nav.getByRole('link', { name: 'Status palette' })).toHaveAttribute('aria-current', 'location');
     await page.getByRole('radiogroup', DIRECTION_GROUP).getByRole('radio', { name: 'Poster' }).click();
