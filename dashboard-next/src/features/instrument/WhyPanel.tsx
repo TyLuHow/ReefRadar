@@ -189,9 +189,25 @@ function rowsOf(data: WhyPanelData): Row[] {
   return rows;
 }
 
-/** A methods destination is a path on this site or an https URL; anything else is dropped. */
+const PLACEHOLDER_ORIGIN = 'https://placeholder.invalid';
+
+/**
+ * A methods destination is a path on this site or an https URL; anything else is dropped. A path is
+ * resolved against a fixed placeholder origin and kept only when it stays on that origin: the URL
+ * parser strips tab, CR and LF and reads a backslash as a slash, so `/<TAB>/evil.com` and
+ * `/\evil.com` would otherwise pass a plain "second character is not a slash" test and leave the site.
+ * The normalised path is what is emitted.
+ */
 function safeMethodsHref(href: string): string | undefined {
-  if (/^\/(?!\/)/.test(href)) return href;
+  if (href.startsWith('/')) {
+    try {
+      const url = new URL(href, PLACEHOLDER_ORIGIN);
+      if (url.origin !== PLACEHOLDER_ORIGIN) return undefined;
+      return `${url.pathname}${url.search}${url.hash}`;
+    } catch {
+      return undefined;
+    }
+  }
   return safeHttpsUrl(href);
 }
 
