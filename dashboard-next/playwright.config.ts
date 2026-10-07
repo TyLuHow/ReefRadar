@@ -69,6 +69,11 @@ export default defineConfig({
       testMatch: /(^|[\\/])fixtures\.spec\.ts$/,
       snapshotPathTemplate: '{testDir}/{testFilePath}-snapshots/{arg}-{projectName}-{platform}{ext}',
       use: { ...devices['Desktop Chrome'], reducedMotion: 'reduce' },
+      // These shots are whole sections (up to 1440 px wide and thousands of px tall), so the project-level 1 % would let
+      // a 200 x 200 px block change unnoticed. The baselines were generated in this same pinned image, so the ratio is
+      // 10x tighter here only (the legacy visual project keeps 0.01): a few hundred px on the smallest (390 px) shot,
+      // still room for anti-aliasing noise. The per-pixel colour threshold stays at its default.
+      expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.001, animations: 'disabled' } },
     },
   ],
 });
