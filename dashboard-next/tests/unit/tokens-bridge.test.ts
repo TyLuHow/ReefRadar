@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { JS_TOKEN_KEYS, TokenError, findSurfaceRoot, readTokens, useTokens } from '@/features/ui';
 
 /**
@@ -150,16 +150,21 @@ describe('useTokens', () => {
     unmount();
   });
 
-  it('stops observing after unmount', async () => {
-    const surface = mountSurface();
-    const ref = { current: surface as Element | null };
-    const { result, unmount } = renderHook(() => useTokens(ref));
-    await waitFor(() => expect(result.current.tokens).not.toBeNull());
-    const before = result.current.version;
-    unmount();
-    surface.setAttribute('data-direction', 'nocturne');
-    await Promise.resolve();
-    expect(result.current.version).toBe(before);
+  it('disconnects its MutationObserver on unmount', async () => {
+    // Observe the observer, not the hook result: after unmount the hook never renders again, so a
+    // leaked observer's setState would be a silent no-op and result.current would stay frozen.
+    const disconnect = vi.spyOn(MutationObserver.prototype, 'disconnect');
+    try {
+      const surface = mountSurface();
+      const ref = { current: surface as Element | null };
+      const { result, unmount } = renderHook(() => useTokens(ref));
+      await waitFor(() => expect(result.current.tokens).not.toBeNull());
+      disconnect.mockClear();
+      unmount();
+      expect(disconnect).toHaveBeenCalledTimes(1);
+    } finally {
+      disconnect.mockRestore();
+    }
   });
 
   it('returns null tokens when the ref is empty or outside an instrument surface', async () => {
