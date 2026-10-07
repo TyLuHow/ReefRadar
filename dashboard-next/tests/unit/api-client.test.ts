@@ -111,8 +111,12 @@ const FETCH_ALLOWLIST = new Set([
 
 const API_HOME = 'src/lib/api.ts';
 
-/** `fetch(` as a call, not `refetch(` or `obj.fetch(`. */
-const FETCH_CALL = /(?<![\w.$])fetch\s*\(/;
+/**
+ * `fetch(` as a call, including through a global receiver (`window.fetch(`, `globalThis.fetch(`, `self.fetch(`), but
+ * not `refetch(` or a method on some other object (`client.fetch(`). The lookbehind excludes a leading `.`, so
+ * `client.fetch(` does not match while `window.fetch(` does (the match starts at `window`).
+ */
+const FETCH_CALL = /(?<![\w.$])(?:(?:window|globalThis|self)\s*\.\s*)?fetch\s*\(/;
 
 /** Pure checker: returns the file paths in `files` that contain a fetch( call but are not allowlisted. */
 export function findDisallowedFetchSites(
@@ -177,7 +181,12 @@ describe('API source fence (T-03-01-01)', () => {
     expect(findDisallowedFetchSites(planted)).toEqual(['src/components/Planted.tsx']);
   });
 
-  it('does not flag refetch( or method-style .fetch( calls', () => {
+  it.each(['window.fetch', 'globalThis.fetch', 'self.fetch', 'window . fetch'])('reports a planted %s( call (a global receiver is still the network)', (receiver) => {
+    const planted = [{ path: 'src/components/Planted.tsx', text: `export const x = () => ${receiver}('https://evil.example/api');` }];
+    expect(findDisallowedFetchSites(planted)).toEqual(['src/components/Planted.tsx']);
+  });
+
+  it('does not flag refetch( or a .fetch( method on a non-global object', () => {
     const benign = [
       { path: 'src/a.tsx', text: 'onClick={() => refetch()}' },
       { path: 'src/b.ts', text: 'client.fetch(x)' },
