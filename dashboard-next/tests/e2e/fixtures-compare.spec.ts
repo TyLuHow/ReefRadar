@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { mockApi, expectNoUnhandledApiCalls } from './support/mock-api';
+import { expectNoUnhandledApiCalls } from './support/mock-api';
+import { ensureMocked, openSection } from './support/fixtures';
 
 /**
  * CompareRow, CompareDeck and ClipCard on /dev/fixtures (04-16, DS-05, DS-06).
@@ -29,7 +30,8 @@ const NINE = [
 ];
 
 test.beforeEach(async ({ page }) => {
-  await mockApi(page);
+  // ensureMocked records the page, so openSection does not install the mock a second time.
+  await ensureMocked(page);
 });
 
 test.afterEach(({ page }) => {
@@ -314,8 +316,10 @@ test.describe('ClipCard over the nine excerpts', () => {
 for (const direction of DIRECTIONS) {
   for (const slug of ['compare', 'clip-card']) {
     test(`axe: ${slug} has no serious or critical violation in ${direction}`, async ({ page }) => {
-      await open(page, slug, `?direction=${direction}`);
-      await expect(page.locator(`section#${slug} [data-spectrogram][data-ready="false"]`)).toHaveCount(0);
+      test.setTimeout(90_000);
+      // openSection waits for every manifest cell, the settled wells and the idle network, so axe never samples a
+      // deck whose second well has not mounted (D-WR-03).
+      await openSection(page, slug, { direction });
       await expect(page.locator(`section#${slug} [data-spectrogram][data-ready="true"]`).first()).toBeVisible();
       const results = await new AxeBuilder({ page }).include(`section#${slug}`).analyze();
       const bad = results.violations.filter((v) => BAD_IMPACTS.has(v.impact ?? ''));
