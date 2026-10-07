@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { computeSpectrogram, parseWavPcm16, type SpectrogramMatrix } from './dsp';
+import { SPECTROGRAM_SPEC, WavFormatError, computeSpectrogram, parseWavPcm16, type SpectrogramMatrix } from './dsp';
 
 /**
  * Clip loader for the spectrogram wells (DS-03, 04-13). Fetches a committed same-origin WAV,
@@ -62,6 +62,13 @@ async function fetchAndTransform(urlPath: string): Promise<LoadedClip> {
   if (!response.ok) throw new Error(`The recording could not be loaded (HTTP ${response.status}).`);
   const buffer = await response.arrayBuffer();
   const wav = parseWavPcm16(buffer);
+  // Shorter than one analysis window there is no frame to draw: report it as an error here rather
+  // than hand the wells an empty matrix (B WR-02).
+  if (wav.samples.length < SPECTROGRAM_SPEC.fftSize) {
+    throw new WavFormatError(
+      `The recording is too short to analyse (${wav.samples.length} samples; at least ${SPECTROGRAM_SPEC.fftSize} are needed).`,
+    );
+  }
   const matrix = computeSpectrogram(wav.samples, wav.sampleRate);
   return { matrix, samples: wav.samples, sampleRate: wav.sampleRate, buffer };
 }

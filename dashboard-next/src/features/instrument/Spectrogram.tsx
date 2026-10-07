@@ -516,7 +516,9 @@ export function Spectrogram({
     }
   };
 
-  const shownState: SpectrogramState | null = state ?? (unsupported ? 'unsupported' : source ? null : 'empty');
+  // A matrix with no frame or no duration cannot be drawn: it is an error, never a NaN readout (B WR-02).
+  const undrawable = source !== undefined && (source.frames < 1 || !(source.durationSeconds > 0));
+  const shownState: SpectrogramState | null = state ?? (undrawable ? 'error' : unsupported ? 'unsupported' : source ? null : 'empty');
   if (shownState || !source) {
     return <StateBlock variant={variant} state={shownState ?? 'empty'} className={className} />;
   }

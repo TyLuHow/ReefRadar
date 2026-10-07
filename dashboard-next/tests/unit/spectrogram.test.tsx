@@ -466,6 +466,14 @@ describe('Spectrogram: states', () => {
     expect(container.querySelector('[data-spectrogram-state="empty"]')).not.toBeNull();
   });
 
+  it('a matrix with no frames reads as the error state, never a NaN readout (B WR-02)', () => {
+    const empty: SpectrogramMatrix = { ...matrix, frames: 0, durationSeconds: 0, data: new Uint8Array(0) };
+    const { container } = renderWell({ source: empty, variant: 'panel' });
+    expect(container.querySelector('[data-spectrogram-state="error"]')).not.toBeNull();
+    expect(container.querySelector('canvas')).toBeNull();
+    expect(container.textContent ?? '').not.toMatch(/NaN/);
+  });
+
   it('loading and error are announced as status regions', () => {
     const loading = renderWell({ state: 'loading' });
     expect(loading.container.querySelector('[data-spectrogram-state="loading"]')).toHaveAttribute('role', 'status');

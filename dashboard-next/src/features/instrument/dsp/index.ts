@@ -4,7 +4,7 @@
  */
 export { DB_TICKS, SPECTROGRAM_SPEC } from './spec';
 export type { SpectrogramSpec } from './spec';
-export { WavFormatError, parseWavPcm16 } from './wav';
+export { MAX_SAMPLE_RATE_HZ, MIN_SAMPLE_RATE_HZ, WavFormatError, parseWavPcm16 } from './wav';
 export type { ParsedWav } from './wav';
 export { binHz, computeSpectrogram, dbAt, frameCount, frameMagnitudes } from './stft';
 export type { SpectrogramMatrix } from './stft';
