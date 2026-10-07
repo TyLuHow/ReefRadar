@@ -1,8 +1,14 @@
 'use client';
 
 import clsx from 'clsx';
-import type { ReactNode } from 'react';
-import { Tooltip as RacTooltip, TooltipTrigger, type TooltipProps as RacTooltipProps } from 'react-aria-components';
+import { useContext, useState, type ReactNode } from 'react';
+import {
+  Tooltip as RacTooltip,
+  TooltipTrigger,
+  TooltipTriggerStateContext,
+  type TooltipProps as RacTooltipProps,
+} from 'react-aria-components';
+import { overlayContainer } from './Dialog';
 
 /**
  * Tooltip and TooltipSurface (DS-04, UI-SPEC "Tooltip").
@@ -12,6 +18,10 @@ import { Tooltip as RacTooltip, TooltipTrigger, type TooltipProps as RacTooltipP
  * focus, and closes on blur, pointer leave and Escape (React Aria behaviour). No arrow.
  * Classes are joined with `clsx`, not `cn`, because tailwind-merge 2.x predates Tailwind 4's custom
  * colour and size names (see Button.tsx).
+ *
+ * A live tooltip portals into the instrument surface root when one exists (as Dialog and the other
+ * overlays do), so the font variables the layout puts on that subtree, the reset rules and the
+ * reduced-motion attribute reach it; otherwise it falls to `document.body`.
  */
 
 // The visual box, shared by the live tooltip and the static surface.
@@ -35,14 +45,28 @@ export interface TooltipProps {
   defaultOpen?: boolean;
 }
 
+/**
+ * A React Aria Tooltip that portals into the instrument surface. The surface root is looked up when
+ * the tooltip opens, not at first render (see SurfaceModalOverlay in Dialog.tsx for why).
+ */
+function SurfaceRacTooltip(props: Omit<RacTooltipProps, 'UNSTABLE_portalContainer'>) {
+  const open = useContext(TooltipTriggerStateContext)?.isOpen === true;
+  const [held, setHeld] = useState<HTMLElement | undefined>(undefined);
+  if (open && (held === undefined || !held.isConnected)) {
+    const next = overlayContainer();
+    if (next !== held) setHeld(next);
+  }
+  return <RacTooltip {...props} UNSTABLE_portalContainer={held} />;
+}
+
 /** A hover and focus tooltip around a focusable React Aria trigger. */
 export function Tooltip({ content, children, delay = 300, placement = 'top', isOpen, defaultOpen }: TooltipProps) {
   return (
     <TooltipTrigger delay={delay} isOpen={isOpen} defaultOpen={defaultOpen}>
       {children}
-      <RacTooltip offset={8} placement={placement} className={clsx(BOX, OVERLAY_MOTION)}>
+      <SurfaceRacTooltip offset={8} placement={placement} className={clsx(BOX, OVERLAY_MOTION)}>
         {content}
-      </RacTooltip>
+      </SurfaceRacTooltip>
     </TooltipTrigger>
   );
 }
