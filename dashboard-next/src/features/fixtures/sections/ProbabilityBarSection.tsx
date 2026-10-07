@@ -37,6 +37,11 @@ function noop() {
   /* a review page has nothing to retry */
 }
 
+/** The class count as a word for small numbers, so the copy follows the model card instead of a typed "three". */
+function countWord(count: number): string {
+  return ['no', 'one', 'two', 'three', 'four', 'five', 'six'][count] ?? String(count);
+}
+
 function modelCardOf(model: ModelVersion): ProbabilityBarModelCard {
   return { rows: model.training.rows, sites: model.training.sites, countries: model.training.countries, evaluation: model.evaluation };
 }
@@ -103,7 +108,7 @@ function DataCells() {
         <StateCell
           primitive="probability-bar"
           state="partial-classes"
-          note="The reading alone. The model has three classes; Restored (mid) is a reference label, not a model output, so it is not drawn."
+          note={`The reading alone. The model has ${countWord(classes.length)} classes; Restored (mid) is a reference label, not a model output, so it is not drawn.`}
         >
           <ProbabilityBar probabilities={real.probabilities} modelClasses={classes} modelCard={card} note={real.note} />
         </StateCell>

@@ -13,7 +13,7 @@ import {
 import { attributionLine } from '@/lib/audio-manifest';
 import { FixtureSection, type FixtureSectionMeta } from '../parts/FixtureSection';
 import { StateCell } from '../parts/StateCell';
-import { useFixtureClip } from '../parts/useFixtureClip';
+import { FIXTURE_EXCERPT, useFixtureClip } from '../parts/useFixtureClip';
 
 /**
  * Transport (DS-05, DS-06): the live cell plays the real committed ind_H1 excerpt (30 s, 16 kHz,
@@ -34,7 +34,8 @@ export const TRANSPORT_META: FixtureSectionMeta = {
 };
 
 const noop = () => undefined;
-const DURATION_S = 30;
+/** The excerpt's own duration from the audio manifest, not a typed value. */
+const DURATION_S = FIXTURE_EXCERPT.duration_s;
 const PLAYING_AT = 12.4;
 
 type StaticProps = Pick<TransportProps, 'tone' | 'medium' | 'showScrub' | 'showHint' | 'forcedState'> & {
@@ -110,7 +111,7 @@ export function TransportSection() {
       <StateCell primitive="transport" state="default">
         <Static status="idle" showHint />
       </StateCell>
-      <StateCell primitive="transport" state="playing" forced note="Position forced at 12.4 s of 30.0 s.">
+      <StateCell primitive="transport" state="playing" forced note={`Position forced at ${PLAYING_AT} s of ${DURATION_S.toFixed(1)} s.`}>
         <Static status="playing" position={PLAYING_AT} />
       </StateCell>
       <StateCell primitive="transport" state="ended">

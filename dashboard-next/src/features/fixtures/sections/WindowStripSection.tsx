@@ -16,6 +16,7 @@ import { attributionLine } from '@/lib/audio-manifest';
 import { FixtureSection, type FixtureSectionMeta } from '../parts/FixtureSection';
 import { StateCell } from '../parts/StateCell';
 import { useFixtureClip, type FixtureClip } from '../parts/useFixtureClip';
+import { WINDOW_S, windowCount, windowLabel } from '../parts/windowCopy';
 
 /**
  * WindowStrip (DS-05, T-04-15-01): the 5 s windows of the real ind_H1 excerpt, drawn as
@@ -25,8 +26,9 @@ import { useFixtureClip, type FixtureClip } from '../parts/useFixtureClip';
  * level in dB re full scale (uncalibrated), computed by `windowLevelsDb` from the recording itself.
  *
  * The wide cells sit directly under a panel Spectrogram and are inset to its plot area (measured
- * from the DOM), so cell k lies under seconds [5k, 5k + 5). "Window 2" in a note is the second
- * window, the one covering 5 to 10 s (index 1).
+ * from the DOM), so cell k lies under seconds [5k, 5k + 5). Notes name windows from ONE through
+ * `windowLabel` (index 1 is "Window 2", 5 to 10 s), the same numbering WindowStrip's own names use.
+ * The expected count is the recording's duration divided into windows, not a typed number.
  */
 
 export const WINDOW_STRIP_META: FixtureSectionMeta = {
@@ -39,7 +41,9 @@ export const WINDOW_STRIP_META: FixtureSectionMeta = {
   data: 'public/audio/marrs/ind_H1_20220830_120000.wav through data/audio-manifest.json (url_path, duration_s, sample_rate_hz); window levels computed by dsp/levels.ts windowLevelsDb (RMS dB re full scale, 5 s windows); dataset_name from contract sites.json (ind_H1)',
 };
 
-const WINDOW_S = 5;
+const INITIAL_SELECTED = 1;
+const PLAYING_INDEX = 1;
+const PLAYHEAD_S = (PLAYING_INDEX + 0.5) * WINDOW_S;
 const noop = () => undefined;
 
 function useWindows(fixture: FixtureClip): { plain: WindowCellData[]; energy: WindowCellData[] } {
@@ -111,7 +115,7 @@ function WellAndStrip({
       />
       {children}
       <div style={inset}>
-        <WindowStrip clipLabel={fixture.excerpt.site_id} expectedCount={6} {...strip} state={fixture.failed ? 'error' : fixture.waiting ? 'loading' : strip.state} />
+        <WindowStrip clipLabel={fixture.excerpt.site_id} expectedCount={windowCount(fixture.excerpt.duration_s)} {...strip} state={fixture.failed ? 'error' : fixture.waiting ? 'loading' : strip.state} />
       </div>
     </div>
   );
@@ -146,7 +150,7 @@ function LiveCell({ fixture, windows }: { fixture: FixtureClip; windows: WindowC
         <WindowStrip
           clipLabel={fixture.excerpt.site_id}
           windows={windows}
-          expectedCount={6}
+          expectedCount={windowCount(fixture.excerpt.duration_s)}
           selectedIndex={selected}
           playingIndex={playingIndex}
           onSelectWindow={(index) => {
@@ -174,10 +178,10 @@ function LiveCell({ fixture, windows }: { fixture: FixtureClip; windows: WindowC
 function Cells() {
   const fixture = useFixtureClip();
   const { plain, energy } = useWindows(fixture);
-  const [selected, setSelected] = useState(1);
+  const [selected, setSelected] = useState(INITIAL_SELECTED);
 
   const stripState = fixture.failed ? ('error' as const) : fixture.waiting ? ('loading' as const) : undefined;
-  const small = { clipLabel: fixture.excerpt.site_id, expectedCount: 6, state: stripState } satisfies Partial<WindowStripProps>;
+  const small = { clipLabel: fixture.excerpt.site_id, expectedCount: windowCount(fixture.excerpt.duration_s), state: stripState } satisfies Partial<WindowStripProps>;
 
   return (
     <>
@@ -205,15 +209,15 @@ function Cells() {
       >
         <WellAndStrip fixture={fixture} strip={{ windows: energy }} />
       </StateCell>
-      <StateCell primitive="window-strip" state="selected" span="full" note="Window 2 (5 s to 10 s) selected; the well outlines the same window. Choose another cell to move it.">
+      <StateCell primitive="window-strip" state="selected" span="full" note={`${windowLabel(selected)} selected; the well outlines the same window. Choose another cell to move it.`}>
         <WellAndStrip
           fixture={fixture}
           selectedWindow={selected}
           strip={{ windows: energy, selectedIndex: selected, onSelectWindow: setSelected }}
         />
       </StateCell>
-      <StateCell primitive="window-strip" state="playing" forced span="full" note="Window 2 selected and playing, playhead forced at 7.5 s.">
-        <WellAndStrip fixture={fixture} selectedWindow={1} playheadSeconds={7.5} strip={{ windows: energy, selectedIndex: 1, playingIndex: 1, onSelectWindow: noop }} />
+      <StateCell primitive="window-strip" state="playing" forced span="full" note={`${windowLabel(PLAYING_INDEX)} selected and playing, playhead forced at ${PLAYHEAD_S} s.`}>
+        <WellAndStrip fixture={fixture} selectedWindow={PLAYING_INDEX} playheadSeconds={PLAYHEAD_S} strip={{ windows: energy, selectedIndex: PLAYING_INDEX, playingIndex: PLAYING_INDEX, onSelectWindow: noop }} />
       </StateCell>
       <StateCell primitive="window-strip" state="hover" forced>
         <WindowStrip {...small} windows={energy} forced={{ index: 2, state: 'hover' }} />
@@ -225,7 +229,7 @@ function Cells() {
         <WindowStrip {...small} windows={energy} isDisabled />
       </StateCell>
       <StateCell primitive="window-strip" state="loading">
-        <WindowStrip clipLabel={fixture.excerpt.site_id} windows={[]} state="loading" expectedCount={6} />
+        <WindowStrip clipLabel={fixture.excerpt.site_id} windows={[]} state="loading" expectedCount={windowCount(fixture.excerpt.duration_s)} />
       </StateCell>
       <StateCell primitive="window-strip" state="empty">
         <WindowStrip clipLabel={fixture.excerpt.site_id} windows={[]} />
@@ -236,7 +240,7 @@ function Cells() {
       <StateCell
         primitive="window-strip"
         state="dense"
-        note="The same six windows in an 80 px wide container: each cell is narrower than 16 px, so the glyphs go, the row keeps its 44 px height and the tooltips carry the detail."
+        note="The same windows in an 80 px wide container: each cell is narrower than 16 px, so the glyphs go, the row keeps its 44 px height and the tooltips carry the detail."
       >
         <div className="w-20">
           <WindowStrip {...small} windows={energy} />

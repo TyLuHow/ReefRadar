@@ -75,7 +75,8 @@ function useCompareFixture(): CompareFixture {
   const row = (slot: 'A' | 'B', excerpt: AudioExcerpt, clip: typeof a): CompareRowData => {
     const identity = slot === 'A' ? identityA : identityB;
     if (clip.status === 'error' || failed) return { slot, identity, state: 'error' };
-    if (clip.status !== 'ready') return { slot, state: 'loading' };
+    // A missing dataset name is still loading: a well without its caption would show the recording with no provenance.
+    if (clip.status !== 'ready' || datasetOf(excerpt.site_id) === undefined) return { slot, state: 'loading' };
     return { slot, identity, matrix: clip.matrix, caption: captionFor(excerpt, datasetOf(excerpt.site_id)) };
   };
 
@@ -94,7 +95,7 @@ function useCompareFixture(): CompareFixture {
     return computeSpectrogram(b.samples, b.sampleRate, { ...SPECTROGRAM_SPEC, hop: 512 } as unknown as SpectrogramSpec);
   }, [b.samples, b.sampleRate]);
 
-  const ready = a.status === 'ready' && b.status === 'ready' && !failed;
+  const ready = a.status === 'ready' && b.status === 'ready' && !failed && sites.data !== undefined;
   const coarseRows = ready && coarse ? [rows[0], { ...rows[1], matrix: coarse }] : undefined;
 
   return { rows, clips, coarseRows, ready };
@@ -126,7 +127,7 @@ export function CompareSection() {
       <StateCell primitive="compare" state="selected" span="full" note="B is the listening focus: a 3 px ink bar on its start edge, and the mix is at B alone.">
         <CompareDeck rows={rows} clips={clips} defaultListening="B" defaultMix={1} />
       </StateCell>
-      <StateCell primitive="compare" state="playing" forced span="full" note="Position forced at 12.4 s of 30.0 s; the transport in this cell does nothing.">
+      <StateCell primitive="compare" state="playing" forced span="full" note={`Position forced at ${PLAYING_AT} s of ${H1.duration_s.toFixed(1)} s; the transport in this cell does nothing.`}>
         <CompareDeck rows={rows} clips={clips} forcedPlaying={{ positionS: PLAYING_AT }} />
       </StateCell>
       <StateCell primitive="compare" state="disabled-row" span="full" note="Row B is unavailable: its identity stays, the well is replaced, and playing is off.">

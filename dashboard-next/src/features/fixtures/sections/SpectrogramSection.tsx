@@ -16,6 +16,7 @@ import {
 import { attributionLine, getExcerpt } from '@/lib/audio-manifest';
 import { FixtureSection, type FixtureSectionMeta } from '../parts/FixtureSection';
 import { StateCell } from '../parts/StateCell';
+import { windowLabel } from '../parts/windowCopy';
 
 /**
  * Spectrogram well (DS-03): the four variants, the playhead, selected window, scroll mode, bands,
@@ -41,6 +42,8 @@ export const SPECTROGRAM_META: FixtureSectionMeta = {
 const EXCERPT = getExcerpt('ind_H1_20220830_120000');
 const HOVER_AT = { seconds: 12.4, hz: 3200 };
 const PLAYHEAD_AT = 12.4;
+/** Zero-based index of the outlined window; the note names it from one through windowLabel. */
+const SELECTED_WINDOW = 2;
 
 function describeClip(): string {
   const rate = Number((EXCERPT.sample_rate_hz / 1000).toFixed(3));
@@ -107,8 +110,8 @@ function Cells() {
       <StateCell primitive="spectrogram" state="hover" forced span="full" note="Readout forced at 12.4 s and 3.2 kHz; in use it follows the pointer.">
         <Spectrogram {...common} variant="panel" forcePointer={HOVER_AT} />
       </StateCell>
-      <StateCell primitive="spectrogram" state="selected-window" span="full" note="Window 2 (10 s to 15 s) outlined, playhead at 12.4 s.">
-        <Spectrogram {...common} variant="panel" selectedWindow={2} playheadSeconds={PLAYHEAD_AT} />
+      <StateCell primitive="spectrogram" state="selected-window" span="full" note={`${windowLabel(SELECTED_WINDOW)} outlined, playhead at ${PLAYHEAD_AT} s.`}>
+        <Spectrogram {...common} variant="panel" selectedWindow={SELECTED_WINDOW} playheadSeconds={PLAYHEAD_AT} />
       </StateCell>
       <StateCell
         primitive="spectrogram"

@@ -98,7 +98,10 @@ function Body() {
     <div className="flex flex-col gap-10">
       <div className="flex flex-col gap-4">
         <h3 className="type-display text-display-l [overflow-wrap:anywhere]">{compareHeadline(siteA.status, siteB.status, km)}</h3>
-        <p className="max-w-[72ch] text-body text-muted">{compareSubline(COMPARE_A.recorded_at_recorder_clock, COMPARE_B.recorded_at_recorder_clock)}</p>
+        <p className="max-w-[72ch] text-body text-muted">{compareSubline(COMPARE_A.recorded_at_recorder_clock, COMPARE_B.recorded_at_recorder_clock, {
+            a: siteA.label_assigned_by,
+            b: siteB.label_assigned_by,
+          })}</p>
       </div>
       <CompareDeck rows={fixture.rows} clips={fixture.clips} onRetry={() => window.location.reload()} />
       <div className="flex flex-col gap-6">

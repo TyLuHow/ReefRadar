@@ -21,8 +21,8 @@ const D1 = getExcerpt('ind_D1_20220830_120000');
 
 describe('compareHeadline', () => {
   it('names both statuses and prints the distance to one decimal', () => {
-    expect(compareHeadline('healthy', 'degraded', 0.8123)).toBe('Healthy and degraded, 0.8 km apart.');
-    expect(compareHeadline('degraded', 'restored_early', 12)).toBe('Degraded and restored (early), 12.0 km apart.');
+    expect(compareHeadline('healthy', 'degraded', 0.8123)).toBe('Reference labels: healthy and degraded, 0.8 km apart.');
+    expect(compareHeadline('degraded', 'restored_early', 12)).toBe('Reference labels: degraded and restored (early), 12.0 km apart.');
   });
 
   it('computes the real ind_H1 and ind_D1 distance from the contract coordinates', () => {
@@ -30,7 +30,7 @@ describe('compareHeadline', () => {
     const b = SITES.find((site) => site.site_id === 'ind_D1');
     expect(a && b).toBeTruthy();
     const km = haversineKm({ lat: a!.latitude, lon: a!.longitude }, { lat: b!.latitude, lon: b!.longitude });
-    expect(compareHeadline(a!.status, b!.status, km)).toBe(`Healthy and degraded, ${km.toFixed(1)} km apart.`);
+    expect(compareHeadline(a!.status, b!.status, km)).toBe(`Reference labels: healthy and degraded, ${km.toFixed(1)} km apart.`);
     expect(km).toBeGreaterThan(0);
   });
 });
@@ -42,6 +42,14 @@ describe('compareSubline', () => {
     expect(compareSubline(H1.recorded_at_recorder_clock, D1.recorded_at_recorder_clock)).toBe(
       `Both recorded ${date} at ${time} on the recorder clock. One colour scale for both, so brighter means louder in either.`,
     );
+  });
+
+  it('names who assigned the two reference labels first, once when the assigner is shared', () => {
+    const shared = { a: 'MARRS research team', b: 'MARRS research team' };
+    expect(compareSubline('2022-08-30T12:00:00', '2022-08-30T12:00:00', shared)).toBe(
+      'Labels assigned by MARRS research team. Both recorded 2022-08-30 at 12:00 on the recorder clock. One colour scale for both, so brighter means louder in either.',
+    );
+    expect(compareSubline('2022-08-30T12:00:00', '2022-08-30T12:00:00', { a: 'Lab A', b: 'Lab B' })).toMatch(/^Labels assigned by Lab A and Lab B\. Both recorded/);
   });
 
   it('dates each recording when they differ', () => {
