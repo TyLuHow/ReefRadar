@@ -30,6 +30,7 @@ import { formatDb } from './ColourBar';
  * - energy: no reading, but the window's measured RMS level (dB re full scale, computed from the
  *   recording itself): `ink` at an opacity mapped linearly from the clip's own quietest to loudest
  *   window onto 0.15 to 0.85. The level is in the option name and the tooltip.
+ * The legend states that the energy shade is relative within the clip, with the range it spans.
  * The legend under the strip says which of these is on screen, so a shaded cell is never read as a
  * model result.
  *
@@ -139,15 +140,23 @@ export function windowTooltipText(cell: WindowCellData): string {
 
 const MODEL_LEGEND = "Colour is the model's reading for that window. Shade is the model's probability for that class, not a calibrated confidence.";
 const ENERGY_LEGEND = 'Shade is the measured RMS level of each 5 s window, from the recording itself.';
+const ENERGY_SCALE =
+  "Shading is relative within this clip, from its quietest to its loudest window, so strips from different clips cannot be compared by shade";
 const NO_READINGS = 'No model readings exist for these windows yet.';
 
 /** The legend line(s) for what is on screen. */
 export function windowLegend(windows: WindowCellData[]): string[] {
   const hasReading = windows.some((cell) => cell.reading !== null && 'status' in cell.reading);
-  const hasEnergy = windows.some((cell) => windowCellKind(cell) === 'energy');
+  const levels = windows.flatMap((cell) => (windowCellKind(cell) === 'energy' && cell.energyDb !== undefined ? [cell.energyDb] : []));
+  const hasEnergy = levels.length > 0;
   const lines: string[] = [];
   if (hasReading) lines.push(MODEL_LEGEND);
-  if (hasEnergy) lines.push(hasReading ? ENERGY_LEGEND : `${ENERGY_LEGEND} ${NO_READINGS}`);
+  if (hasEnergy) {
+    // The shade is mapped from this clip's own range (energyOpacity), so the legend says so and
+    // gives the range: two strips cannot be compared by eye (B WR-06).
+    const scale = `${ENERGY_SCALE} (${formatDb(Math.min(...levels))} to ${formatDb(Math.max(...levels))} dB RMS).`;
+    lines.push(hasReading ? `${ENERGY_LEGEND} ${scale}` : `${ENERGY_LEGEND} ${scale} ${NO_READINGS}`);
+  }
   if (!hasReading && !hasEnergy) lines.push(NO_READINGS);
   return lines;
 }
