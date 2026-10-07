@@ -36,6 +36,12 @@ export type CompareRowState = 'loading' | 'disabled' | 'empty' | 'error';
 export type CompareSlot = 'A' | 'B' | 'C';
 
 export interface CompareRowIdentity {
+  /**
+   * A unique id for this recording (the manifest's excerpt id), the key the deck matches the row to
+   * its audio, gains and engine id by. Two rows from one site (times of day, events) differ here, so
+   * the second never plays the first's audio under its own label (B WR-07).
+   */
+  clipId: string;
   siteId: string;
   /** Picks the status mark's shape and colour. */
   status: HabitatStatus;

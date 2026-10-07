@@ -17,6 +17,7 @@ export function excerptStatus(excerpt: AudioExcerpt): HabitatStatus {
 
 export function excerptIdentity(excerpt: AudioExcerpt): CompareRowIdentity {
   return {
+    clipId: excerpt.excerpt_id,
     siteId: excerpt.site_id,
     status: excerptStatus(excerpt),
     label: excerpt.label?.label_original ?? 'Unlabelled',

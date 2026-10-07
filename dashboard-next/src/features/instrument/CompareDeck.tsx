@@ -42,7 +42,7 @@ import { useTransport, type TransportClip } from './useTransport';
 export interface CompareDeckProps {
   /** Two or three rows, in slot order. Rows A and B must both be playable for the audio to be enabled. */
   rows: CompareRowData[];
-  /** The clips' bytes for the audio engine, matched by `id === row.identity.siteId`. */
+  /** The clips' bytes for the audio engine, matched by `id === row.identity.clipId` (never by site: two clips can share one). */
   clips: TransportClip[];
   onAdd?: (slot: CompareSlot) => void;
   onRetry?: (slot: CompareSlot) => void;
@@ -60,6 +60,7 @@ export interface CompareDeckProps {
 
 const DIFFERENT_SCALES = 'These recordings use different analysis settings, so they cannot share one colour scale.';
 const DIFFERENT_LENGTHS = 'These recordings are different lengths, so they cannot be played together. Nothing is stretched to fit.';
+const SAME_RECORDING = 'Both slots hold the same recording, so there is nothing to compare by ear. Choose a different recording for one of them.';
 const DISCLOSURE =
   'Playback levels are matched to the same RMS level so clips can be compared at similar volume. Original recording levels differ and are not shown by loudness.';
 const DISCLOSURE_UNMATCHED =
@@ -95,13 +96,19 @@ export function CompareDeck({
     const pick = (slot: 'A' | 'B') => {
       const row = rows.find((candidate) => candidate.slot === slot);
       if (!row || row.state || !row.matrix || !row.identity) return null;
-      const clip = clips.find((candidate) => candidate.id === row.identity?.siteId);
+      const clip = clips.find((candidate) => candidate.id === row.identity?.clipId);
       return clip ? { row, clip } : null;
     };
     const a = pick('A');
     const b = pick('B');
-    return a && b ? [a, b] : [];
+    // The same recording in both slots would collapse into one engine id and one gain: not a pair.
+    return a && b && a.clip.id !== b.clip.id ? [a, b] : [];
   }, [rows, clips]);
+  const sameRecording = useMemo(() => {
+    const idOf = (slot: 'A' | 'B') => rows.find((row) => row.slot === slot && !row.state && row.matrix)?.identity?.clipId;
+    const a = idOf('A');
+    return a !== undefined && a === idOf('B');
+  }, [rows]);
 
   // Level matching from the manifest RMS, only when every playable clip has one.
   const gainsDb = useMemo(() => {
@@ -109,9 +116,9 @@ export function CompareDeck({
     return rms.length > 0 && rms.every(isNumber) ? levelMatchGains(rms) : undefined;
   }, [playable]);
   const gainKey = gainsDb ? gainsDb.join(',') : '';
-  const gainBySite = useMemo(() => {
+  const gainByClip = useMemo(() => {
     const map = new Map<string, number>();
-    if (gainsDb) playable.forEach((entry, index) => map.set(entry.row.identity?.siteId ?? '', gainsDb[index]));
+    if (gainsDb) playable.forEach((entry, index) => map.set(entry.clip.id, gainsDb[index]));
     return map;
   }, [gainsDb, playable]);
 
@@ -163,7 +170,7 @@ export function CompareDeck({
       {sameScale ? (
         <>
           {rows.map((row, index) => {
-            const gainDb = gainBySite.get(row.identity?.siteId ?? '');
+            const gainDb = gainByClip.get(row.identity?.clipId ?? '');
             const identity = row.identity && gainDb !== undefined ? { ...row.identity, gainDb } : row.identity;
             return (
               <Fragment key={row.slot}>
@@ -216,6 +223,11 @@ export function CompareDeck({
           </p>
           {rows.length > 2 ? (
             <p className="text-small text-muted">The crossfader mixes A and B. The other recording is shown on the same scale and playhead but is not played.</p>
+          ) : null}
+          {sameRecording ? (
+            <p role="status" data-notice="same-recording" className={NOTICE}>
+              {SAME_RECORDING}
+            </p>
           ) : null}
           {lengthNotice ? (
             <p role="status" data-notice="lengths" className={NOTICE}>
