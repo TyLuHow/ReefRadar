@@ -74,6 +74,31 @@
 }
 
 /*
+  Tailwind 4 wraps every `hover:` utility in `@media (hover: hover)`; Tailwind 3 did not, so on a
+  touch device a tap fired the legacy hover styles (card lift, button tint, link colour). Restore
+  the v3 selector for everything outside the instrument surface (the legacy routes, and the map
+  popup used on them). Inside `[data-surface="instrument"]` the v4 media gate stays: the kit's
+  `hover:` utilities (ClipCard, links) must not stick on touch. The kit's own `hover-state:` variant
+  is a different variant (tokens.css) and is not touched. `:where()` keeps the specificity at the
+  plain `:hover` of v3 and v4.
+*/
+@custom-variant hover {
+  &:where(:not([data-surface='instrument'] *)) {
+    &:hover {
+      @slot;
+    }
+  }
+
+  &:where([data-surface='instrument'] *) {
+    @media (hover: hover) {
+      &:hover {
+        @slot;
+      }
+    }
+  }
+}
+
+/*
   The default border color has changed to `currentcolor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still
   looks the same as it did with Tailwind CSS v3.

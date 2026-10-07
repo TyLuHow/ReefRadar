@@ -153,6 +153,34 @@ describe('Tooltip: box', () => {
   });
 });
 
+describe('Tooltip: portal', () => {
+  it('portals into the instrument surface root when one is mounted', async () => {
+    const user = userEvent.setup();
+    render(
+      <div data-surface="instrument" data-testid="surface">
+        <Tooltip content="In the surface">
+          <Button variant="icon" aria-label="Play" />
+        </Tooltip>
+      </div>,
+    );
+    await user.tab();
+    const tooltip = screen.getByRole('tooltip');
+    expect(screen.getByTestId('surface').contains(tooltip)).toBe(true);
+  });
+
+  it('falls back to document.body when no instrument surface is mounted', async () => {
+    const user = userEvent.setup();
+    render(
+      <Tooltip content="On the body">
+        <Button variant="icon" aria-label="Play" />
+      </Tooltip>,
+    );
+    await user.tab();
+    expect(screen.getByRole('tooltip').closest('[data-surface]')).toBeNull();
+    expect(document.body.contains(screen.getByRole('tooltip'))).toBe(true);
+  });
+});
+
 describe('TooltipSurface', () => {
   it('renders the same visual box as a plain role="tooltip" element', () => {
     render(<TooltipSurface>Static open cell</TooltipSurface>);

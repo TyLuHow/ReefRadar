@@ -196,7 +196,7 @@ describe('Dialog: surface and states', () => {
     const user = userEvent.setup();
     render(<Basic bodyState="loading" loadingLabel="Loading site details…" />);
     const dialog = await openBasic(user);
-    expect(dialog.querySelector('[role="status"][aria-busy="true"]')).not.toBeNull();
+    expect(dialog.querySelector('[role="status"]:not([aria-busy])')).not.toBeNull();
     expect(dialog).toHaveTextContent('Loading site details…');
     expect(dialog).not.toHaveTextContent('Assigned by the dataset authors.');
   });

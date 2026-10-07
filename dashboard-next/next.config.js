@@ -1,3 +1,13 @@
+// The dev fixtures route and its synthetic or fixture content must never ship to production. Fail the
+// build loudly when the flag is on for a Vercel production deployment (VERCEL_ENV is set by Vercel:
+// 'production', 'preview' or 'development'). Previews and local or CI builds may still enable it.
+if (process.env.NEXT_PUBLIC_DEV_FIXTURES === '1' && process.env.VERCEL_ENV === 'production') {
+  throw new Error(
+    'NEXT_PUBLIC_DEV_FIXTURES=1 must not be set for a production build: it would ship the /dev/fixtures route. ' +
+      'Remove the variable from the Vercel Production environment.',
+  );
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   trailingSlash: true,

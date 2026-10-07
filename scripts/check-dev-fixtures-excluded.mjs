@@ -84,10 +84,12 @@ function killTree(child) {
   }
 }
 
+// Throws (never exits) so that checkRoutes can stop the server it started before it fails.
 async function waitForServer(child, exited) {
   const deadline = Date.now() + STARTUP_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    if (exited.value) fail(`next start exited early (code ${child.exitCode})`);
+    if (exited.value) throw new Error(`next start exited early (code ${child.exitCode})`);
+    if (exited.error) throw new Error(`next start could not be spawned: ${exited.error.message}`);
     try {
       // Any HTTP answer, whatever the status, means the server is up.
       await fetch(`http://127.0.0.1:${PORT}/`, { redirect: 'manual', signal: AbortSignal.timeout(2000) });
@@ -96,12 +98,24 @@ async function waitForServer(child, exited) {
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
   }
-  fail(`next start did not answer on port ${PORT} within ${STARTUP_TIMEOUT_MS / 1000} s`);
+  throw new Error(`next start did not answer on port ${PORT} within ${STARTUP_TIMEOUT_MS / 1000} s`);
+}
+
+// A server already answering on the port (a stale run, another build) would be probed instead of
+// the one this script starts, which could give a false pass or a false fail.
+async function assertPortFree() {
+  try {
+    await fetch(`http://127.0.0.1:${PORT}/`, { redirect: 'manual', signal: AbortSignal.timeout(2000) });
+  } catch {
+    return;
+  }
+  fail(`something already answers on port ${PORT}: stop it first (a leftover next start from an earlier run?)`);
 }
 
 async function checkRoutes() {
   const nextBin = path.join(DASHBOARD, 'node_modules', 'next', 'dist', 'bin', 'next');
   if (!fs.existsSync(nextBin)) fail('dashboard-next/node_modules/next is missing (run npm ci)');
+  await assertPortFree();
 
   // Run next's own entry point with this node binary: no shell, no .cmd shim, one process to kill.
   const child = spawn(process.execPath, [nextBin, 'start', '-p', String(PORT)], {
@@ -110,15 +124,30 @@ async function checkRoutes() {
     detached: process.platform !== 'win32',
     env: { ...process.env, NEXT_TELEMETRY_DISABLED: '1' },
   });
-  const exited = { value: false };
+  const exited = { value: false, error: null };
   child.on('exit', () => {
     exited.value = true;
   });
+  child.on('error', (error) => {
+    exited.error = error;
+  });
   let log = '';
-  child.stdout.on('data', (chunk) => (log += chunk));
-  child.stderr.on('data', (chunk) => (log += chunk));
+  child.stdout?.on('data', (chunk) => (log += chunk));
+  child.stderr?.on('data', (chunk) => (log += chunk));
+
+  // The server is stopped on every path: normal end, a thrown error, and Ctrl+C or a termination
+  // signal. fail() calls process.exit, which skips `finally`, so nothing inside the try may call it.
+  const stop = () => killTree(child);
+  const onSignal = (signal) => {
+    stop();
+    process.exit(signal === 'SIGINT' ? 130 : 143);
+  };
+  process.once('SIGINT', onSignal);
+  process.once('SIGTERM', onSignal);
+  process.once('exit', stop);
 
   const statuses = [];
+  let failure = null;
   try {
     await waitForServer(child, exited);
     for (const route of ROUTES) {
@@ -129,10 +158,13 @@ async function checkRoutes() {
       statuses.push([route, response.status]);
     }
   } catch (error) {
-    console.error(log);
-    fail(`could not check routes: ${error instanceof Error ? error.message : String(error)}`);
+    failure = error;
   } finally {
-    killTree(child);
+    stop();
+  }
+  if (failure) {
+    console.error(log);
+    fail(`could not check routes: ${failure instanceof Error ? failure.message : String(failure)}`);
   }
   return statuses;
 }

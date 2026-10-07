@@ -154,7 +154,7 @@ describe('Sheet: body states', () => {
     const user = userEvent.setup();
     render(<Basic bodyState="loading" loadingLabel="Loading sections…" />);
     const dialog = await openBasic(user);
-    expect(dialog.querySelector('[role="status"][aria-busy="true"]')).not.toBeNull();
+    expect(dialog.querySelector('[role="status"]:not([aria-busy])')).not.toBeNull();
     expect(dialog).toHaveTextContent('Loading sections…');
     expect(dialog.querySelector('a')).toBeNull();
   });

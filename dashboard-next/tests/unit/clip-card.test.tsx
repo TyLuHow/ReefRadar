@@ -146,11 +146,12 @@ describe('ClipCard', () => {
     expect(screen.getByText('ind_H1')).toBeInTheDocument();
   });
 
-  it('loading shows skeletons and "Loading recording…" in a busy status region', () => {
+  it('loading shows skeletons and "Loading recording…" in a status region (not aria-busy, so it is announced)', () => {
     const { container } = render(<ClipCard {...props({ state: 'loading' })} />);
     expect(screen.getByText('Loading recording…')).toBeInTheDocument();
-    const region = container.querySelector('[aria-busy="true"]');
+    const region = container.querySelector('[role="status"]');
     expect(region).not.toBeNull();
+    expect(region).not.toHaveAttribute('aria-busy');
     expect(screen.queryByRole('button')).toBeNull();
     expect(container.querySelector('[data-spectrogram]')).toBeNull();
   });
