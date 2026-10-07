@@ -293,7 +293,7 @@ describe('Listbox: states', () => {
     );
     expect(screen.queryByRole('listbox')).toBeNull();
     const status = screen.getByRole('status');
-    expect(status).toHaveAttribute('aria-busy', 'true');
+    expect(status).not.toHaveAttribute('aria-busy');
     expect(status).toHaveTextContent('Loading sites…');
     expect(container.querySelectorAll('[aria-hidden="true"].h-11')).toHaveLength(6);
   });

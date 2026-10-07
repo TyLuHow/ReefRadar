@@ -175,14 +175,14 @@ describe('LoadingState', () => {
     vi.useRealTimers();
   });
 
-  it('is a status region with aria-busy, its label visible and its skeleton children inside', () => {
+  it('is a status region that is not aria-busy (so it is announced), its label visible and its skeleton children inside', () => {
     render(
       <LoadingState label="Loading recording…">
         <Skeleton className="h-10" />
       </LoadingState>,
     );
     const region = screen.getByRole('status');
-    expect(region).toHaveAttribute('aria-busy', 'true');
+    expect(region).not.toHaveAttribute('aria-busy');
     expect(region).toHaveTextContent('Loading recording…');
     expect(region.querySelector('[aria-hidden="true"]')).not.toBeNull();
   });
