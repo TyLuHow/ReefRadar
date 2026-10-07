@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { mockApi, expectNoUnhandledApiCalls } from './support/mock-api';
+import { expectNoUnhandledApiCalls } from './support/mock-api';
+import { ensureMocked, openSection } from './support/fixtures';
 
 /**
  * /dev/fixtures route (04-06, 04-07, DS-08). The e2e build carries NEXT_PUBLIC_DEV_FIXTURES=1
@@ -25,7 +26,8 @@ const CONTRACT_SITES = (
 const NEW_FONT_FAMILY = /newsreader|hanken|spline|archivo/i;
 
 test.beforeEach(async ({ page }) => {
-  await mockApi(page);
+  // ensureMocked records the page, so openSection does not install the mock a second time.
+  await ensureMocked(page);
 });
 
 test.afterEach(({ page }) => {
@@ -516,10 +518,11 @@ test.describe('/dev/fixtures overlays and listbox (04-10)', () => {
   for (const direction of DIRECTION_LIST) {
     for (const slug of ['dialog', 'sheet', 'listbox']) {
       test(`axe: ${slug} has no serious or critical violation in ${direction}`, async ({ page }) => {
-        await page.goto(`/dev/fixtures/${slug}/?direction=${direction}`, { waitUntil: 'load' });
-        await expect(page.locator(`section#${slug} [data-fixture-state]`).first()).toBeVisible();
-        // The contract-backed cells settle once the data has arrived.
-        await expect(page.locator(`section#${slug} [data-fixture-state$="-loading"]`)).toHaveCount(0);
+        // openSection waits for the hydrated chrome, every manifest cell and the settled wells, so axe never runs on the
+        // atlas-only Suspense prerender (D-WR-02).
+        test.setTimeout(90_000);
+        await openSection(page, slug, { direction });
+        await expect(page.locator(SURFACE)).toHaveAttribute('data-direction', direction);
         const results = await new AxeBuilder({ page }).include(`section#${slug}`).analyze();
         const bad = results.violations.filter((v) => BAD_IMPACTS.has(v.impact ?? ''));
         expect(bad.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
@@ -745,10 +748,11 @@ test.describe('/dev/fixtures slider, table and data table (04-11)', () => {
   for (const direction of DIRECTION_LIST) {
     for (const slug of ['table', 'slider', 'data-table']) {
       test(`axe: ${slug} has no serious or critical violation in ${direction}`, async ({ page }) => {
-        await page.goto(`/dev/fixtures/${slug}/?direction=${direction}`, { waitUntil: 'load' });
-        await expect(page.locator(`section#${slug} [data-fixture-state]`).first()).toBeVisible();
-        // The contract-backed cells settle once the data has arrived.
-        await expect(page.locator(`section#${slug} [data-fixture-state$="-loading"]`)).toHaveCount(0);
+        // openSection waits for the hydrated chrome, every manifest cell and the settled wells, so axe never runs on the
+        // atlas-only Suspense prerender (D-WR-02).
+        test.setTimeout(90_000);
+        await openSection(page, slug, { direction });
+        await expect(page.locator(SURFACE)).toHaveAttribute('data-direction', direction);
         // The phone cell measures its container before the region attributes exist.
         if (slug === 'data-table') {
           await expect(cell(page, slug, 'phone-scroll').getByRole('region')).toHaveCount(1);
@@ -1075,10 +1079,11 @@ test.describe('/dev/fixtures command palette and provenance (04-12)', () => {
   for (const direction of DIRECTION_LIST) {
     for (const slug of ['command-palette', 'provenance']) {
       test(`axe: ${slug} has no serious or critical violation in ${direction}`, async ({ page }) => {
-        await page.goto(`/dev/fixtures/${slug}/?direction=${direction}`, { waitUntil: 'load' });
-        await expect(page.locator(`section#${slug} [data-fixture-state]`).first()).toBeVisible();
-        // The contract-backed cells settle once the data has arrived.
-        await expect(page.locator(`section#${slug} [data-fixture-state$="-loading"]`)).toHaveCount(0);
+        // openSection waits for the hydrated chrome, every manifest cell and the settled wells, so axe never runs on the
+        // atlas-only Suspense prerender (D-WR-02).
+        test.setTimeout(90_000);
+        await openSection(page, slug, { direction });
+        await expect(page.locator(SURFACE)).toHaveAttribute('data-direction', direction);
         const results = await new AxeBuilder({ page }).include(`section#${slug}`).analyze();
         const bad = results.violations.filter((v) => BAD_IMPACTS.has(v.impact ?? ''));
         expect(bad.map((v) => `${v.id}: ${v.nodes.length}`)).toEqual([]);
@@ -1287,10 +1292,11 @@ test.describe('/dev/fixtures probability bar, legend and status band (04-18)', (
   for (const direction of DIRECTION_LIST) {
     for (const slug of ['probability-bar', 'legend', 'status-band']) {
       test(`axe: ${slug} has no serious or critical violation in ${direction}`, async ({ page }) => {
-        await page.goto(`/dev/fixtures/${slug}/?direction=${direction}`, { waitUntil: 'load' });
-        await expect(page.locator(`section#${slug} [data-fixture-state]`).first()).toBeVisible();
-        // The contract-backed cells settle once the data has arrived.
-        await expect(page.locator(`section#${slug} [data-fixture-state$="-loading"]`)).toHaveCount(0);
+        // openSection waits for the hydrated chrome, every manifest cell and the settled wells, so axe never runs on the
+        // atlas-only Suspense prerender (D-WR-02).
+        test.setTimeout(90_000);
+        await openSection(page, slug, { direction });
+        await expect(page.locator(SURFACE)).toHaveAttribute('data-direction', direction);
         await expect(page.locator(`section#${slug} [data-fixture-state="${slug === 'probability-bar' ? 'abstain' : slug === 'legend' ? 'with-evidence' : 'phone'}"]`)).toBeVisible();
         const results = await new AxeBuilder({ page }).include(`section#${slug}`).analyze();
         const bad = results.violations.filter((v) => BAD_IMPACTS.has(v.impact ?? ''));
