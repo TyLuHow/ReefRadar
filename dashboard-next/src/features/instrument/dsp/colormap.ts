@@ -45,26 +45,47 @@ export function lutColor(level: number): string {
 }
 
 /**
+ * Widest image `matrixToImageData` builds by default. Browsers refuse a canvas wider than 32,767 px
+ * (Chrome) or larger than about 16.7 million pixels (Safari); 8192 columns x 513 rows is 4.2 million,
+ * inside both. A clip with more frames than this (over about 65 s at 32 kHz) is decimated (B WR-08).
+ */
+export const MAX_IMAGE_COLUMNS = 8192;
+
+/**
  * RGBA pixels for a spectrogram: width = frames, height = bins, time left to right, and low
  * frequencies at the bottom (bin 0 is the last row).
+ *
+ * When there are more than `maxWidth` frames the image is `maxWidth` columns wide and each column
+ * holds the loudest level of the run of frames it covers (max-pooling in time, so a short event is
+ * not averaged away). The levels are the matrix's own quantised levels on the same fixed dB range:
+ * nothing is rescaled, and the caller maps frame positions to columns by `width / frames`.
  */
 export function matrixToImageData(
   matrix: SpectrogramMatrix,
   lut: Uint8ClampedArray = MAGMA_LUT,
+  maxWidth: number = MAX_IMAGE_COLUMNS,
 ): { width: number; height: number; data: Uint8ClampedArray } {
   const { frames, bins } = matrix;
-  const data = new Uint8ClampedArray(frames * bins * 4);
-  for (let frame = 0; frame < frames; frame++) {
-    const column = frame * bins;
+  const width = Math.min(frames, Math.max(1, Math.floor(maxWidth)));
+  const data = new Uint8ClampedArray(width * bins * 4);
+  for (let x = 0; x < width; x++) {
+    // The frames this column covers: exactly one when nothing is decimated.
+    const first = Math.floor((x * frames) / width);
+    const last = Math.max(first + 1, Math.floor(((x + 1) * frames) / width));
     for (let bin = 0; bin < bins; bin++) {
+      let level = 0;
+      for (let frame = first; frame < last; frame++) {
+        const value = matrix.data[frame * bins + bin];
+        if (value > level) level = value;
+      }
       const row = bins - 1 - bin;
-      const src = matrix.data[column + bin] * 4;
-      const dst = (row * frames + frame) * 4;
+      const src = level * 4;
+      const dst = (row * width + x) * 4;
       data[dst] = lut[src];
       data[dst + 1] = lut[src + 1];
       data[dst + 2] = lut[src + 2];
       data[dst + 3] = lut[src + 3];
     }
   }
-  return { width: frames, height: bins, data };
+  return { width, height: bins, data };
 }

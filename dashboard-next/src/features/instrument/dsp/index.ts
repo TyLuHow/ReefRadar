@@ -8,5 +8,5 @@ export { MAX_SAMPLE_RATE_HZ, MIN_SAMPLE_RATE_HZ, WavFormatError, parseWavPcm16 }
 export type { ParsedWav } from './wav';
 export { binHz, computeSpectrogram, dbAt, frameCount, frameMagnitudes } from './stft';
 export type { SpectrogramMatrix } from './stft';
-export { MAGMA_LUT, lutColor, matrixToImageData } from './colormap';
+export { MAGMA_LUT, MAX_IMAGE_COLUMNS, lutColor, matrixToImageData } from './colormap';
 export { bandMeanDb, rmsDbfs, windowLevelsDb } from './levels';

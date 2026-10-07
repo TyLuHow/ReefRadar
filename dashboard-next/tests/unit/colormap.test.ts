@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { MAGMA_LUT, computeSpectrogram, lutColor, matrixToImageData, parseWavPcm16 } from '@/features/instrument/dsp';
+import { MAGMA_LUT, MAX_IMAGE_COLUMNS, computeSpectrogram, lutColor, matrixToImageData, parseWavPcm16 } from '@/features/instrument/dsp';
 import type { SpectrogramMatrix } from '@/features/instrument/dsp';
 import { readClipBuffer } from './support/clips';
 
@@ -108,6 +108,35 @@ describe('matrixToImageData', () => {
     const flat = new Uint8ClampedArray(1024).fill(7);
     const custom = matrixToImageData(matrix, flat);
     expect(Array.from(custom.data.slice(0, 4))).toEqual([7, 7, 7, 7]);
+  });
+
+  it('never builds an image wider than the cap: max-pools runs of frames and keeps the same levels (B WR-08)', () => {
+    const wide = 10;
+    const tall = 2;
+    const levels = new Uint8Array(wide * tall);
+    for (let f = 0; f < wide; f++) {
+      levels[f * tall] = f * 10; // bin 0 rises with time
+      levels[f * tall + 1] = f === 3 ? 200 : 5; // bin 1 has one loud frame
+    }
+    const long: SpectrogramMatrix = { ...matrix, frames: wide, bins: tall, data: levels };
+    const pooled = matrixToImageData(long, MAGMA_LUT, 5); // two frames per column
+    expect(pooled.width).toBe(5);
+    expect(pooled.height).toBe(tall);
+    expect(pooled.data.length).toBe(5 * tall * 4);
+    const pixel = (x: number, y: number) => Array.from(pooled.data.slice((y * pooled.width + x) * 4, (y * pooled.width + x) * 4 + 4));
+    expect(pixel(0, tall - 1)).toEqual(rgba(10)); // columns hold the loudest of frames 0-1 (bin 0)
+    expect(pixel(4, tall - 1)).toEqual(rgba(90)); // frames 8-9
+    expect(pixel(1, 0)).toEqual(rgba(200)); // the loud frame 3 survives in column 1 (bin 1)
+    expect(pixel(0, 0)).toEqual(rgba(5));
+  });
+
+  it('is capped at MAX_IMAGE_COLUMNS by default and is not decimated at or below it', () => {
+    expect(MAX_IMAGE_COLUMNS).toBe(8192);
+    const frames = 30000;
+    const long: SpectrogramMatrix = { ...matrix, frames, bins: 2, data: new Uint8Array(frames * 2) };
+    expect(matrixToImageData(long).width).toBe(MAX_IMAGE_COLUMNS);
+    const exact: SpectrogramMatrix = { ...matrix, frames: MAX_IMAGE_COLUMNS, bins: 2, data: new Uint8Array(MAX_IMAGE_COLUMNS * 2) };
+    expect(matrixToImageData(exact).width).toBe(MAX_IMAGE_COLUMNS);
   });
 
   it('builds a full-size image from a real excerpt', () => {
