@@ -23,9 +23,11 @@ permissions:
 
 # The event name is part of the group so a push run and a workflow_dispatch run on the same ref
 # (the slow snapshot-regeneration and review-capture dispatch) never cancel each other. Duplicate
-# runs of the same event on the same ref (two quick pushes) still cancel the older one.
+# runs of the same event on the same ref (two quick pushes) still cancel the older one. Every
+# workflow_dispatch run gets its own group (the run id), so a quick live-smoke dispatch cannot
+# cancel an in-flight snapshot or review dispatch on the same ref, nor a second regeneration.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref }}
   cancel-in-progress: true
 
 jobs:
