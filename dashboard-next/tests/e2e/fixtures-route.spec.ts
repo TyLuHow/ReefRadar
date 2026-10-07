@@ -727,12 +727,17 @@ test.describe('/dev/fixtures slider, table and data table (04-11)', () => {
     const long = cell(page, 'data-table', 'long-text');
     await long.scrollIntoViewIfNeeded();
     await expect(long.getByRole('row')).toHaveCount(5);
-    const verdict = await long.evaluate((node) =>
-      Array.from(node.querySelectorAll('td')).every((td) => {
-        const style = getComputedStyle(td);
-        return style.textOverflow !== 'ellipsis' && style.whiteSpace !== 'nowrap' && td.scrollWidth <= td.clientWidth + 1;
-      }),
-    );
+    // An empty cell list would make every() true, so the cells must exist (D-WR-08).
+    const verdict = await long.evaluate((node) => {
+      const cells = Array.from(node.querySelectorAll('td'));
+      return (
+        cells.length > 0 &&
+        cells.every((td) => {
+          const style = getComputedStyle(td);
+          return style.textOverflow !== 'ellipsis' && style.whiteSpace !== 'nowrap' && td.scrollWidth <= td.clientWidth + 1;
+        })
+      );
+    });
     expect(verdict).toBe(true);
   });
 
@@ -999,7 +1004,7 @@ test.describe('/dev/fixtures command palette and provenance (04-12)', () => {
     await expect(panel.getByRole('link', { name: 'Methods and limits' })).toHaveAttribute('href', '/about/');
     // Every link in the panel is https or a path on this site.
     const hrefs = await panel.locator('a').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('href') ?? ''));
-    expect(hrefs.every((href) => href.startsWith('https://') || href.startsWith('/'))).toBe(true);
+    expect(hrefs.length > 0 && hrefs.every((href) => href.startsWith('https://') || href.startsWith('/'))).toBe(true);
 
     await page.keyboard.press('Escape');
     await expect(panel).toHaveCount(0);
@@ -1063,12 +1068,16 @@ test.describe('/dev/fixtures command palette and provenance (04-12)', () => {
     const surface = cell(page, 'provenance', 'long-text').locator('[data-why-panel-surface]');
     await surface.scrollIntoViewIfNeeded();
     await expect(valueOf(surface, 'Definition')).toHaveText(`“${LONGEST.label_definition}”`);
-    const verdict = await surface.evaluate((node) =>
-      Array.from(node.querySelectorAll('dd')).every((dd) => {
-        const style = getComputedStyle(dd);
-        return style.textOverflow !== 'ellipsis' && style.whiteSpace !== 'nowrap' && dd.scrollWidth <= dd.clientWidth + 1;
-      }),
-    );
+    const verdict = await surface.evaluate((node) => {
+      const values = Array.from(node.querySelectorAll('dd'));
+      return (
+        values.length > 0 &&
+        values.every((dd) => {
+          const style = getComputedStyle(dd);
+          return style.textOverflow !== 'ellipsis' && style.whiteSpace !== 'nowrap' && dd.scrollWidth <= dd.clientWidth + 1;
+        })
+      );
+    });
     expect(verdict).toBe(true);
   });
 
@@ -1221,7 +1230,11 @@ test.describe('/dev/fixtures probability bar, legend and status band (04-18)', (
     // The interim model has no abstain threshold, so the threshold sentence is absent.
     await expect(bar).not.toContainText('No class reached');
     await expect
-      .poll(async () => bar.locator('[data-bar-fill]').evaluateAll((nodes) => nodes.every((node) => node.getAttribute('data-hatched') === 'true' && !/hab-/.test(node.className))))
+      .poll(async () =>
+        bar
+          .locator('[data-bar-fill]')
+          .evaluateAll((nodes) => nodes.length > 0 && nodes.every((node) => node.getAttribute('data-hatched') === 'true' && !/hab-/.test(node.className))),
+      )
       .toBe(true);
     await expect(bar.locator('svg[data-shape="ring"]')).toHaveCount(1);
     await expect(bar.locator('svg[data-shape="circle"], svg[data-shape="down-triangle"], svg[data-shape="diamond"]')).toHaveCount(0);
@@ -1274,7 +1287,9 @@ test.describe('/dev/fixtures probability bar, legend and status band (04-18)', (
     const legend = cell(page, 'legend', 'selected');
     await expect(legend.locator('[data-legend-row][aria-pressed="true"]')).toHaveCount(1);
     await expect
-      .poll(async () => legend.locator('[data-legend-row]').evaluateAll((nodes) => nodes.every((node) => node.getBoundingClientRect().height >= 44)))
+      .poll(async () =>
+        legend.locator('[data-legend-row]').evaluateAll((nodes) => nodes.length > 0 && nodes.every((node) => node.getBoundingClientRect().height >= 44)),
+      )
       .toBe(true);
   });
 
