@@ -75,7 +75,8 @@ function useCompareFixture(): CompareFixture {
   const row = (slot: 'A' | 'B', excerpt: AudioExcerpt, clip: typeof a): CompareRowData => {
     const identity = slot === 'A' ? identityA : identityB;
     if (clip.status === 'error' || failed) return { slot, identity, state: 'error' };
-    if (clip.status !== 'ready') return { slot, state: 'loading' };
+    // A missing dataset name is still loading: a well without its caption would show the recording with no provenance.
+    if (clip.status !== 'ready' || datasetOf(excerpt.site_id) === undefined) return { slot, state: 'loading' };
     return { slot, identity, matrix: clip.matrix, caption: captionFor(excerpt, datasetOf(excerpt.site_id)) };
   };
 
@@ -94,7 +95,7 @@ function useCompareFixture(): CompareFixture {
     return computeSpectrogram(b.samples, b.sampleRate, { ...SPECTROGRAM_SPEC, hop: 512 } as unknown as SpectrogramSpec);
   }, [b.samples, b.sampleRate]);
 
-  const ready = a.status === 'ready' && b.status === 'ready' && !failed;
+  const ready = a.status === 'ready' && b.status === 'ready' && !failed && sites.data !== undefined;
   const coarseRows = ready && coarse ? [rows[0], { ...rows[1], matrix: coarse }] : undefined;
 
   return { rows, clips, coarseRows, ready };

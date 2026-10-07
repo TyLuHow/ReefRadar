@@ -58,7 +58,8 @@ export function useCompareFixture(): CompareFixture {
   const row = (slot: 'A' | 'B', excerpt: AudioExcerpt, clip: typeof a): CompareRowData => {
     const identity = excerptIdentity(excerpt);
     if (clip.status === 'error' || failed) return { slot, identity, state: 'error' };
-    if (clip.status !== 'ready') return { slot, state: 'loading' };
+    // A missing dataset name is still loading: a well without its caption would show the recording with no provenance.
+    if (clip.status !== 'ready' || datasetOf(excerpt.site_id) === undefined) return { slot, state: 'loading' };
     return { slot, identity, matrix: clip.matrix, caption: captionFor(excerpt, datasetOf(excerpt.site_id)) };
   };
   const rows = [row('A', COMPARE_A, a), row('B', COMPARE_B, b)];
