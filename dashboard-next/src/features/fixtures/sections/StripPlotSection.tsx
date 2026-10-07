@@ -132,7 +132,8 @@ function Cells() {
   const emptySpec = useMemo(() => stripSpec([], { measureLabel: MEASURE }), []);
   const scatter = useMemo(
     () =>
-      projectionData
+      // Both are needed: with the projection but no sites yet the spec would be empty, a false "no values".
+      projectionData && siteData
         ? scatterSpec({
             sites: scatterData,
             explained: [projectionData.explained_variance_ratio[0], projectionData.explained_variance_ratio[1]],
@@ -140,7 +141,7 @@ function Cells() {
             selectedId: SELECTED_ID,
           })
         : undefined,
-    [scatterData, projectionData],
+    [scatterData, projectionData, siteData],
   );
 
   const stateless = [
