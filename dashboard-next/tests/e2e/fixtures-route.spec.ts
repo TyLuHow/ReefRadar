@@ -1114,27 +1114,29 @@ test.describe('font scoping', () => {
     await page.goto('/about/', { waitUntil: 'load' });
     await page.evaluate(() => document.fonts.ready);
     const families = await page.evaluate(() => [...document.fonts].map((face) => face.family));
+    // Positive control: the legacy fonts are registered, so an empty list below means "no new font", not "no fonts".
+    expect(families.length).toBeGreaterThan(0);
     expect(families.filter((family) => NEW_FONT_FAMILY.test(family))).toEqual([]);
   });
 
-  test('/dev/fixtures with atlas never requests an Archivo Black file', async ({ page }, testInfo) => {
-    // next/font hashes the file names, so the Archivo Black request is identified through the
-    // FontFace the browser registered for it: its status stays "unloaded" until a glyph needs it,
-    // and a font request is made only after it leaves "unloaded".
-    const fontRequests: string[] = [];
-    page.on('request', (request) => {
-      if (request.resourceType() === 'font') fontRequests.push(new URL(request.url()).pathname);
-    });
+  test('/dev/fixtures with atlas never loads an Archivo Black file', async ({ page }, testInfo) => {
+    // next/font hashes the file names, so the Archivo Black file is identified through the FontFace the browser
+    // registered for it: its status stays "unloaded" until a glyph needs it, and a font request is made only after
+    // it leaves "unloaded".
     await openFixtures(page, '?direction=atlas');
     await page.evaluate(() => document.fonts.ready);
 
     const faces = await page.evaluate(() => [...document.fonts].map((face) => ({ family: face.family, status: face.status })));
     const archivo = faces.filter((face) => /archivo/i.test(face.family));
-    const record = { fontRequests: fontRequests.length, archivoFaces: archivo, loadedFamilies: faces.filter((f) => f.status === 'loaded').map((f) => f.family) };
-    await testInfo.attach('archivo-font-load-atlas', { body: JSON.stringify(record, null, 2), contentType: 'application/json' });
-    // Printed for RESEARCH assumption A2 (preload: false keeps Archivo Black off atlas).
-    console.log('A2 archivo-font-load-atlas', JSON.stringify(record));
+    await testInfo.attach('archivo-font-load-atlas', {
+      body: JSON.stringify({ archivoFaces: archivo, loadedFamilies: faces.filter((f) => f.status === 'loaded').map((f) => f.family) }, null, 2),
+      contentType: 'application/json',
+    });
 
+    // Positive controls: the new fonts are registered on this page, and an Archivo face exists. A renamed or dropped
+    // Archivo face would otherwise make the every() below true over an empty set.
+    expect(faces.some((face) => NEW_FONT_FAMILY.test(face.family))).toBe(true);
+    expect(archivo.length).toBeGreaterThan(0);
     expect(archivo.every((face) => face.status === 'unloaded')).toBe(true);
   });
 });
