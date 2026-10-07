@@ -65,9 +65,13 @@ export function backingStoreSize(cssWidth: number, cssHeight: number, dpr: numbe
   return { width: Math.max(1, Math.floor(width * scale)), height: Math.max(1, Math.floor(height * scale)) };
 }
 
+const MAX_FREQUENCY_TICKS = 64;
+
 /** Frequency tick values in Hz: every 2 kHz from 0, ending at the Nyquist (a crowded last step is dropped). */
 export function frequencyTicks(nyquistHz: number): number[] {
-  const step = 2000;
+  if (!Number.isFinite(nyquistHz) || nyquistHz <= 0) return [0];
+  // Normally every 2 kHz; a very high Nyquist widens the step so there are never more than 64 ticks.
+  const step = 2000 * Math.max(1, Math.ceil(nyquistHz / 2000 / MAX_FREQUENCY_TICKS));
   const ticks: number[] = [];
   for (let hz = 0; hz <= nyquistHz; hz += step) {
     if (nyquistHz - hz === 0 || nyquistHz - hz >= 1000) ticks.push(hz);

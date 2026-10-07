@@ -164,8 +164,9 @@ test.describe('WindowStrip on the real clip', () => {
     await expect(cell(page, 'window-strip', 'default').locator('[data-cell-kind="empty"]')).toHaveCount(6);
     await expect(cell(page, 'window-strip', 'energy').locator('[data-cell-kind="energy"]')).toHaveCount(6);
     await expect(cell(page, 'window-strip', 'energy')).toContainText(
-      'Shade is the measured RMS level of each 5 s window, from the recording itself. No model readings exist for these windows yet.',
+      'Shade is the measured RMS level of each 5 s window, from the recording itself. Shading is relative within this clip',
     );
+    await expect(cell(page, 'window-strip', 'energy')).toContainText('No model readings exist for these windows yet.');
     await expect(cell(page, 'window-strip', 'default')).toContainText('No model readings exist for these windows yet.');
     await expect(page.locator('section#window-strip')).not.toContainText("Colour is the model's reading");
   });

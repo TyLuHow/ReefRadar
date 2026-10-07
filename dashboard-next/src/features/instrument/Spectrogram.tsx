@@ -140,7 +140,11 @@ type Context2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
 const IMAGES = new WeakMap<SpectrogramMatrix, OffscreenLike>();
 
-/** The precomputed magma image of a matrix (frames wide, bins high), built once and shared. */
+/**
+ * The precomputed magma image of a matrix (bins high, one column per frame up to `MAX_IMAGE_COLUMNS`,
+ * decimated beyond that), built once and shared. A source rectangle in frames maps to image columns
+ * by `image.width / matrix.frames`.
+ */
 function imageFor(matrix: SpectrogramMatrix): OffscreenLike | null {
   const cached = IMAGES.get(matrix);
   if (cached) return cached;
@@ -364,7 +368,8 @@ export function Spectrogram({
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(image, rect.x, 0, rect.width, source.bins, 0, 0, canvas.width, canvas.height);
+      const columnsPerFrame = image.width / source.frames;
+      ctx.drawImage(image, rect.x * columnsPerFrame, 0, rect.width * columnsPerFrame, source.bins, 0, 0, canvas.width, canvas.height);
       if (readyForRef.current !== source) {
         readyForRef.current = source;
         setReadyFor(source);
@@ -516,7 +521,9 @@ export function Spectrogram({
     }
   };
 
-  const shownState: SpectrogramState | null = state ?? (unsupported ? 'unsupported' : source ? null : 'empty');
+  // A matrix with no frame or no duration cannot be drawn: it is an error, never a NaN readout (B WR-02).
+  const undrawable = source !== undefined && (source.frames < 1 || !(source.durationSeconds > 0));
+  const shownState: SpectrogramState | null = state ?? (undrawable ? 'error' : unsupported ? 'unsupported' : source ? null : 'empty');
   if (shownState || !source) {
     return <StateBlock variant={variant} state={shownState ?? 'empty'} className={className} />;
   }

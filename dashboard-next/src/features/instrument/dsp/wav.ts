@@ -26,6 +26,13 @@ const RIFF_HEADER_BYTES = 12;
 const CHUNK_HEADER_BYTES = 8;
 const FMT_MIN_BYTES = 16;
 const FORMAT_PCM = 1;
+/**
+ * The sample rate is a uint32 from the file's own bytes, so it is bounded to the range audio is
+ * actually recorded at. A 4 GHz header would otherwise give a Nyquist of about 2 GHz and an axis
+ * with a million ticks (B WR-03).
+ */
+export const MIN_SAMPLE_RATE_HZ = 8_000;
+export const MAX_SAMPLE_RATE_HZ = 192_000;
 
 function fourCC(view: DataView, offset: number): string {
   return String.fromCharCode(
@@ -61,7 +68,11 @@ export function parseWavPcm16(buffer: ArrayBuffer): ParsedWav {
       if (format !== FORMAT_PCM) throw new WavFormatError(`Unsupported WAV format code ${format}; only PCM (1) is read`);
       if (bits !== 16) throw new WavFormatError(`Unsupported bit depth ${bits}; only 16-bit PCM is read`);
       if (channels < 1) throw new WavFormatError('The file declares zero channels');
-      if (sampleRate < 1) throw new WavFormatError('The file declares a zero sample rate');
+      if (sampleRate < MIN_SAMPLE_RATE_HZ || sampleRate > MAX_SAMPLE_RATE_HZ) {
+        throw new WavFormatError(
+          `Unsupported sample rate ${sampleRate} Hz; recordings from ${MIN_SAMPLE_RATE_HZ} to ${MAX_SAMPLE_RATE_HZ} Hz are read`,
+        );
+      }
       fmt = { channels, sampleRate };
     } else if (id === 'data') {
       if (!fmt) throw new WavFormatError('The data chunk comes before the fmt chunk');

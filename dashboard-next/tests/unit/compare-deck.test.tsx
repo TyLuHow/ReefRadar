@@ -45,8 +45,8 @@ beforeAll(() => {
   matrixH1 = computeSpectrogram(wavH1.samples, wavH1.sampleRate);
   matrixD1 = computeSpectrogram(wavD1.samples, wavD1.sampleRate);
   clips = [
-    { id: H1.site_id, buffer: bufferH1, durationS: wavH1.samples.length / wavH1.sampleRate },
-    { id: D1.site_id, buffer: bufferD1, durationS: wavD1.samples.length / wavD1.sampleRate },
+    { id: H1.excerpt_id, buffer: bufferH1, durationS: wavH1.samples.length / wavH1.sampleRate },
+    { id: D1.excerpt_id, buffer: bufferD1, durationS: wavD1.samples.length / wavD1.sampleRate },
   ];
 });
 
@@ -302,6 +302,45 @@ describe('CompareDeck: audio', () => {
     await waitFor(() => expect(last(gainsCreated[0])).toBeCloseTo(0, 6));
     // All B: the matched B gain, which is at most 1 and attenuated by 5.2 dB.
     expect(last(gainsCreated[1])).toBeCloseTo(10 ** (-5.2 / 20), 3);
+  });
+});
+
+describe('CompareDeck: two clips from one site (B WR-07)', () => {
+  // Two real excerpts (ind_H1 and ind_D1); row B is given ind_H1's site id so that both rows share a
+  // site, as a times-of-day or events comparison does. Only the clip id tells the rows apart.
+  function sameSiteRows(): CompareRowData[] {
+    return [
+      { slot: 'A', identity: excerptIdentity(H1), matrix: matrixH1 },
+      { slot: 'B', identity: { ...excerptIdentity(D1), siteId: H1.site_id }, matrix: matrixD1 },
+    ];
+  }
+
+  it('keeps each row on its own clip, with its own matched gain', () => {
+    const { container } = deck({ rows: sameSiteRows() });
+    expect(within(rowOf(container, 'A')).getByText(`Level matched: ${MINUS}60.9 dB RMS, gain 0.0 dB`)).toBeInTheDocument();
+    expect(within(rowOf(container, 'B')).getByText(`Level matched: ${MINUS}55.8 dB RMS, gain ${MINUS}5.2 dB`)).toBeInTheDocument();
+  });
+
+  it('plays both clips, A then B, with separate crossfade and level gains', async () => {
+    const user = userEvent.setup();
+    deck({ rows: sameSiteRows() });
+    expect(screen.getByRole('button', { name: 'Play both' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Play both' }));
+    await waitFor(() => expect(sourcesStarted).toBe(2));
+    const [gainA, gainB] = gainsCreated.map((entry) => entry.gain.value);
+    expect(gainA).toBeCloseTo(Math.cos(Math.PI / 4), 4);
+    expect(gainB / gainA).toBeCloseTo(10 ** (-5.2 / 20), 3);
+  });
+
+  it('is not a playable pair when both slots hold the same recording, and says so', () => {
+    const same: CompareRowData[] = [
+      { slot: 'A', identity: excerptIdentity(H1), matrix: matrixH1 },
+      { slot: 'B', identity: excerptIdentity(H1), matrix: matrixH1 },
+    ];
+    const { container } = deck({ rows: same });
+    expect(container.querySelector('[data-notice="same-recording"]')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Play both' })).toBeDisabled();
+    expect(mixSlider()).toBeDisabled();
   });
 });
 

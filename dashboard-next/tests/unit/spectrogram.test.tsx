@@ -233,6 +233,42 @@ describe('Spectrogram: canvas', () => {
     expect(calls[0].slice(1)).toEqual([0, 0, matrix.frames, matrix.bins, 0, 0, 1200, 376]);
   });
 
+  it('draws a clip with more frames than the image cap from a decimated image, over the whole clip (B WR-08)', async () => {
+    const frames = 20000;
+    const long: SpectrogramMatrix = {
+      ...matrix,
+      frames,
+      data: new Uint8Array(frames * matrix.bins),
+      durationSeconds: frames * matrix.hopSeconds,
+    };
+    const { wrapper, container } = renderWell({ source: long });
+    await ready(wrapper);
+    const calls = ctxOf(canvasOf(wrapper())).drawImage.mock.calls;
+    expect((calls[0][0] as HTMLCanvasElement).width).toBe(8192);
+    expect(calls[0].slice(1)).toEqual([0, 0, 8192, long.bins, 0, 0, 1200, 376]);
+    expect(container.querySelector('[data-spectrogram-state]')).toBeNull();
+  });
+
+  it('pans a long clip in scroll mode by image columns, not frames (B WR-08)', async () => {
+    const frames = 20000;
+    const long: SpectrogramMatrix = {
+      ...matrix,
+      frames,
+      data: new Uint8Array(frames * matrix.bins),
+      durationSeconds: frames * matrix.hopSeconds,
+    };
+    const handle = createRef<SpectrogramHandle>();
+    const { wrapper } = renderWell({ source: long, ref: handle, playMode: 'scroll', visibleSeconds: long.durationSeconds / 4 });
+    await ready(wrapper);
+    const draw = ctxOf(canvasOf(wrapper())).drawImage;
+    act(() => handle.current?.setPlayhead(long.durationSeconds / 2));
+    const last = draw.mock.calls.at(-1) as unknown[];
+    // A quarter of the clip is 5000 frames, which is 2048 of the 8192 image columns.
+    expect(last[3]).toBeCloseTo(2048, 3);
+    expect(last[1] as number).toBeGreaterThan(0);
+    expect((last[1] as number) + (last[3] as number)).toBeLessThanOrEqual(8192 + 1e-6);
+  });
+
   it('does not repaint when the playhead moves in sweep mode', async () => {
     const handle = createRef<SpectrogramHandle>();
     const { wrapper, rerender } = renderWell({ ref: handle, playheadSeconds: 3 });
@@ -464,6 +500,14 @@ describe('Spectrogram: states', () => {
       </Surface>,
     );
     expect(container.querySelector('[data-spectrogram-state="empty"]')).not.toBeNull();
+  });
+
+  it('a matrix with no frames reads as the error state, never a NaN readout (B WR-02)', () => {
+    const empty: SpectrogramMatrix = { ...matrix, frames: 0, durationSeconds: 0, data: new Uint8Array(0) };
+    const { container } = renderWell({ source: empty, variant: 'panel' });
+    expect(container.querySelector('[data-spectrogram-state="error"]')).not.toBeNull();
+    expect(container.querySelector('canvas')).toBeNull();
+    expect(container.textContent ?? '').not.toMatch(/NaN/);
   });
 
   it('loading and error are announced as status regions', () => {

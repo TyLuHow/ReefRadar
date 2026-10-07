@@ -334,6 +334,34 @@ describe('ProvenanceChip: the Why panel', () => {
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).queryByRole('link', { name: 'Methods and limits' })).toBeNull();
   });
+
+  // The URL parser strips tab, CR and LF and reads a backslash as a slash, so each of these would
+  // leave the site although the second character is not a slash (B WR-01).
+  it.each([
+    ['a tab after the slash', '/\t/evil.example'],
+    ['a line feed after the slash', '/\n/evil.example'],
+    ['a carriage return after the slash', '/\r/evil.example'],
+    ['a backslash after the slash', '/\\evil.example'],
+    ['a protocol-relative URL', '//evil.example/about/'],
+  ])('drops a methods path that resolves off-site: %s', async (_name, href) => {
+    const user = userEvent.setup();
+    render(<Chip methodsHref={href} />);
+    await user.click(chipButton(/Assigned by/));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).queryByRole('link', { name: 'Methods and limits' })).toBeNull();
+    expect(dialog.querySelector('a[href*="evil"]')).toBeNull();
+  });
+
+  it('keeps a same-site path with a query and a fragment', async () => {
+    const user = userEvent.setup();
+    render(<Chip methodsHref="/about/?tab=methods#limits" />);
+    await user.click(chipButton(/Assigned by/));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByRole('link', { name: 'Methods and limits' })).toHaveAttribute(
+      'href',
+      '/about/?tab=methods#limits',
+    );
+  });
 });
 
 describe('ProvenanceChip: the panel on a phone', () => {

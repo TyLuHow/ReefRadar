@@ -7,6 +7,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearClipCache, isClipPath, loadClip, useClipSpectrogram } from '@/features/instrument/useClipSpectrogram';
 import { SPECTROGRAM_SPEC } from '@/features/instrument';
+import { WavFormatError } from '@/features/instrument/dsp';
 import { getExcerpt } from '@/lib/audio-manifest';
 import { readClipBuffer } from './support/clips';
 
@@ -107,6 +108,55 @@ describe('loadClip', () => {
       vi.fn(async () => ({ ok: true, status: 200, arrayBuffer: async () => new ArrayBuffer(64) }) as unknown as Response),
     );
     await expect(loadClip(EXCERPT.url_path)).rejects.toThrow();
+  });
+});
+
+/** A malformed-header fixture: a valid PCM16 header over `frames` mono frames of silence, no real audio. */
+function wavWithFrames(frames: number, sampleRate = 16000): Response {
+  const dataBytes = frames * 2;
+  const buffer = new ArrayBuffer(44 + dataBytes);
+  const view = new DataView(buffer);
+  const ascii = (offset: number, text: string) => [...text].forEach((c, i) => view.setUint8(offset + i, c.charCodeAt(0)));
+  ascii(0, 'RIFF');
+  view.setUint32(4, 36 + dataBytes, true);
+  ascii(8, 'WAVE');
+  ascii(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  ascii(36, 'data');
+  view.setUint32(40, dataBytes, true);
+  return { ok: true, status: 200, arrayBuffer: async () => buffer } as unknown as Response;
+}
+
+describe('a recording too short to analyse (B WR-02)', () => {
+  it.each([0, 1, SPECTROGRAM_SPEC.fftSize - 1])('rejects %i samples with a WavFormatError and caches nothing', async (frames) => {
+    vi.stubGlobal('fetch', vi.fn(async () => wavWithFrames(frames)));
+    await expect(loadClip(EXCERPT.url_path)).rejects.toBeInstanceOf(WavFormatError);
+    await expect(loadClip(EXCERPT.url_path)).rejects.toThrow(/too short/);
+  });
+
+  it('accepts exactly one analysis window', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => wavWithFrames(SPECTROGRAM_SPEC.fftSize)));
+    const clip = await loadClip(EXCERPT.url_path);
+    expect(clip.matrix.frames).toBe(1);
+  });
+
+  it('rejects an out-of-range sample rate', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => wavWithFrames(4096, 4_294_967_295)));
+    await expect(loadClip(EXCERPT.url_path)).rejects.toBeInstanceOf(WavFormatError);
+  });
+
+  it('puts the hook in the error state', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => wavWithFrames(0)));
+    const { result } = renderHook(() => useClipSpectrogram(EXCERPT.url_path));
+    await waitFor(() => expect(result.current.status).toBe('error'));
+    expect(result.current.matrix).toBeUndefined();
+    expect(result.current.error?.message).toMatch(/too short/);
   });
 });
 

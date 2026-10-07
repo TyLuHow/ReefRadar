@@ -236,8 +236,25 @@ describe('WindowStrip: legend', () => {
 
   it('for energy cells says the shade is measured and that no model readings exist', () => {
     mount({ windows: windows(2, (i) => ({ energyDb: [-70, -60][i] })) });
-    expect(screen.getByText('Shade is the measured RMS level of each 5 s window, from the recording itself. No model readings exist for these windows yet.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `Shade is the measured RMS level of each 5 s window, from the recording itself. Shading is relative within this clip, from its quietest to its loudest window, so strips from different clips cannot be compared by shade (${MINUS}70 to ${MINUS}60 dB RMS). No model readings exist for these windows yet.`,
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/Colour is the model's reading/)).toBeNull();
+  });
+
+  it('states that the energy shade is relative to the clip, with its own range (B WR-06)', () => {
+    mount({ windows: windows(3, (i) => ({ energyDb: [-90.4, -84, -80][i] })) });
+    const legend = screen.getByText(/Shading is relative within this clip/);
+    expect(legend).toHaveTextContent('strips from different clips cannot be compared by shade');
+    expect(legend).toHaveTextContent(`(${MINUS}90.4 to ${MINUS}80 dB RMS)`);
+  });
+
+  it('adds the same relative-shade statement next to a model reading line', () => {
+    mount({ windows: windows(2, (i) => (i === 0 ? { reading: { status: 'healthy', p: 0.5 } } : { energyDb: -70 })) });
+    expect(screen.getByText(/Shading is relative within this clip/)).toBeInTheDocument();
+    expect(screen.getByText(/Colour is the model's reading/)).toBeInTheDocument();
   });
 
   it('for unclassified windows says no model readings exist', () => {

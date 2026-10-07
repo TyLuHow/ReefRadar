@@ -84,8 +84,8 @@ function useCompareFixture(): CompareFixture {
 
   const clips = useMemo<TransportClip[]>(() => {
     const out: TransportClip[] = [];
-    if (a.buffer && a.samples && a.sampleRate) out.push({ id: H1.site_id, buffer: a.buffer, durationS: a.samples.length / a.sampleRate });
-    if (b.buffer && b.samples && b.sampleRate) out.push({ id: D1.site_id, buffer: b.buffer, durationS: b.samples.length / b.sampleRate });
+    if (a.buffer && a.samples && a.sampleRate) out.push({ id: H1.excerpt_id, buffer: a.buffer, durationS: a.samples.length / a.sampleRate });
+    if (b.buffer && b.samples && b.sampleRate) out.push({ id: D1.excerpt_id, buffer: b.buffer, durationS: b.samples.length / b.sampleRate });
     return out;
   }, [a.buffer, a.samples, a.sampleRate, b.buffer, b.samples, b.sampleRate]);
 

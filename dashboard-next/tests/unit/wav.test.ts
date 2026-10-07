@@ -8,8 +8,15 @@ import { CLIP_IDS, readClipBuffer } from './support/clips';
  * malformed-header fixtures only; they carry no audio and are never rendered or played.
  */
 
-function header(opts: { format?: number; bits?: number; channels?: number; dataBytes?: number; declared?: number }) {
-  const { format = 1, bits = 16, channels = 1, dataBytes = 4, declared = dataBytes } = opts;
+function header(opts: {
+  format?: number;
+  bits?: number;
+  channels?: number;
+  dataBytes?: number;
+  declared?: number;
+  sampleRate?: number;
+}) {
+  const { format = 1, bits = 16, channels = 1, dataBytes = 4, declared = dataBytes, sampleRate = 16000 } = opts;
   const buffer = new ArrayBuffer(44 + dataBytes);
   const view = new DataView(buffer);
   const ascii = (offset: number, text: string) => [...text].forEach((c, i) => view.setUint8(offset + i, c.charCodeAt(0)));
@@ -20,8 +27,8 @@ function header(opts: { format?: number; bits?: number; channels?: number; dataB
   view.setUint32(16, 16, true);
   view.setUint16(20, format, true);
   view.setUint16(22, channels, true);
-  view.setUint32(24, 16000, true);
-  view.setUint32(28, 16000 * channels * (bits / 8), true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * channels * (bits / 8), true);
   view.setUint16(32, channels * (bits / 8), true);
   view.setUint16(34, bits, true);
   ascii(36, 'data');
@@ -78,6 +85,19 @@ describe('parseWavPcm16 rejects what it cannot read', () => {
     const { buffer: noData } = header({ dataBytes: 0 });
     new DataView(noData).setUint8(36, 'x'.charCodeAt(0)); // data chunk renamed: no data chunk at all
     expect(() => parseWavPcm16(noData)).toThrow(WavFormatError);
+  });
+});
+
+describe('parseWavPcm16 bounds the sample rate (B WR-03)', () => {
+  it.each([0, 1, 7_999, 192_001, 4_294_967_295])('throws WavFormatError for %i Hz', (sampleRate) => {
+    const { buffer } = header({ sampleRate });
+    expect(() => parseWavPcm16(buffer)).toThrow(WavFormatError);
+    expect(() => parseWavPcm16(buffer)).toThrow(/sample rate/i);
+  });
+
+  it.each([8_000, 16_000, 32_000, 44_100, 48_000, 192_000])('reads %i Hz', (sampleRate) => {
+    const { buffer } = header({ sampleRate });
+    expect(parseWavPcm16(buffer).sampleRate).toBe(sampleRate);
   });
 });
 

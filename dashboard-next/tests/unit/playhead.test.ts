@@ -127,6 +127,18 @@ describe('axis ticks', () => {
     expect(frequencyTicks(5000)).toEqual([0, 2000, 4000, 5000]);
   });
 
+  it('never builds an unbounded tick list for a non-finite or absurd Nyquist (B WR-03)', () => {
+    expect(frequencyTicks(Number.POSITIVE_INFINITY)).toEqual([0]);
+    expect(frequencyTicks(Number.NaN)).toEqual([0]);
+    expect(frequencyTicks(0)).toEqual([0]);
+    expect(frequencyTicks(-5)).toEqual([0]);
+    const huge = frequencyTicks(2.1e9);
+    expect(huge.length).toBeLessThanOrEqual(66);
+    expect(huge[0]).toBe(0);
+    expect(huge[huge.length - 1]).toBe(2.1e9);
+    expect(frequencyTicks(96000).length).toBeLessThanOrEqual(50);
+  });
+
   it('drops a step tick that would crowd the Nyquist label', () => {
     expect(frequencyTicks(10500)).toEqual([0, 2000, 4000, 6000, 8000, 10500]);
   });
