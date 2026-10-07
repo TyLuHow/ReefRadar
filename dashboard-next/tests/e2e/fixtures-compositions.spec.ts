@@ -200,7 +200,8 @@ test.describe('Compare', () => {
     await open(page, 'composition-compare');
     await settled(page, 'composition-compare', 2, true);
     const root = frame(page, 'composition-compare');
-    await expect(root.getByRole('heading', { level: 3 }).first()).toHaveText(/^Healthy and degraded, \d+\.\d km apart\.$/);
+    await expect(root.getByRole('heading', { level: 3 }).first()).toHaveText(/^Reference labels: healthy and degraded, \d+\.\d km apart\.$/);
+    await expect(root.getByText('Labels assigned by MARRS research team (Williams, Jones et al. 2025).')).toBeVisible();
     await expect(root.getByText('Both recorded 2022-08-30 at 12:00 on the recorder clock. One colour scale for both, so brighter means louder in either.')).toBeVisible();
     await expect(root.getByRole('heading', { name: 'Where the two differ' })).toBeVisible();
     await expect(root.locator('[data-compare-row]')).toHaveCount(2);

@@ -16,25 +16,36 @@ export function splitRecordedAt(recordedAt: string): { date: string; time: strin
   return { date, time: time.slice(0, 5) };
 }
 
-/** "Healthy and degraded, 0.8 km apart." (the distance to one decimal). */
+/**
+ * "Reference labels: healthy and degraded, 0.8 km apart." (the distance to one decimal). The words
+ * are a dataset's reference labels, never a statement about the reefs; the line under the headline
+ * (compareSubline) names who assigned them.
+ */
 export function compareHeadline(a: HabitatStatus, b: HabitatStatus, km: number): string {
-  return `${STATUS_LABELS[a]} and ${STATUS_LABELS[b].toLowerCase()}, ${km.toFixed(1)} km apart.`;
+  return `Reference labels: ${STATUS_LABELS[a].toLowerCase()} and ${STATUS_LABELS[b].toLowerCase()}, ${km.toFixed(1)} km apart.`;
 }
 
 const SCALE_SENTENCE = 'One colour scale for both, so brighter means louder in either.';
 
+/** "Labels assigned by X." when one assigner gave both labels, otherwise "Labels assigned by X and Y." */
+export function assignedBySentence(assignedByA: string, assignedByB: string): string {
+  return assignedByA === assignedByB ? `Labels assigned by ${assignedByA}.` : `Labels assigned by ${assignedByA} and ${assignedByB}.`;
+}
+
 /**
- * The line under the Compare headline. Two recordings made at the same recorder-clock date and time
- * read "Both recorded {date} at {time} on the recorder clock."; otherwise each is dated on its own.
+ * The line under the Compare headline: who assigned the two reference labels, then when the
+ * recordings were made. Two recordings made at the same recorder-clock date and time read
+ * "Both recorded {date} at {time} on the recorder clock."; otherwise each is dated on its own.
  */
-export function compareSubline(recordedA: string, recordedB: string): string {
+export function compareSubline(recordedA: string, recordedB: string, assignedBy?: { a: string; b: string }): string {
   const a = splitRecordedAt(recordedA);
   const b = splitRecordedAt(recordedB);
   const when =
     a.date === b.date && a.time === b.time
       ? `Both recorded ${a.date} at ${a.time} on the recorder clock.`
       : `Recorded ${a.date} ${a.time} and ${b.date} ${b.time} on the recorder clock.`;
-  return `${when} ${SCALE_SENTENCE}`;
+  const assigner = assignedBy === undefined ? '' : `${assignedBySentence(assignedBy.a, assignedBy.b)} `;
+  return `${assigner}${when} ${SCALE_SENTENCE}`;
 }
 
 /** "A partial map of 45 reef soundscapes." for the sites that have projection coordinates. */
