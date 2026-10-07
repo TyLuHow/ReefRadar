@@ -35,6 +35,10 @@ test.afterEach(({ page }) => {
 async function openFixtures(page: Page, query = '') {
   const response = await page.goto(`/dev/fixtures/${query}`, { waitUntil: 'load' });
   await expect(page.locator(SURFACE)).toBeVisible();
+  // [data-surface="instrument"] also exists in the Suspense fallback (an atlas-only, pre-hydration prerender with no
+  // inline tokens), so every assertion about the surface would be vacuous against it. The Direction radiogroup exists
+  // only in the hydrated surface (D-WR-01).
+  await expect(page.getByRole('radiogroup', { name: 'Direction' })).toBeVisible();
   return response;
 }
 
@@ -79,12 +83,20 @@ test.describe('/dev/fixtures', () => {
       .poll(() => page.locator(SURFACE).evaluate((el) => (el as HTMLElement).style.getPropertyValue('--dir-hab-healthy')))
       .toBe('#B00020');
 
-    await openFixtures(page, '?tok=--dir-x:red');
+    // A valid override beside the bad one is the positive control: once it is applied the parser has run, so the
+    // bad token's absence is a decision and not the pre-hydration state.
+    await openFixtures(page, '?tok=--dir-hab-healthy:%23B00020&tok=--dir-x:red');
+    await expect
+      .poll(() => page.locator(SURFACE).evaluate((el) => (el as HTMLElement).style.getPropertyValue('--dir-hab-healthy')))
+      .toBe('#B00020');
     const inline = await page.locator(SURFACE).evaluate((el) => (el as HTMLElement).getAttribute('style') ?? '');
     expect(inline).not.toContain('--dir-x');
     expect(inline).not.toContain('red');
 
-    await openFixtures(page, '?tok=background:url(x)');
+    await openFixtures(page, '?tok=--dir-hab-healthy:%23B00020&tok=background:url(x)');
+    await expect
+      .poll(() => page.locator(SURFACE).evaluate((el) => (el as HTMLElement).style.getPropertyValue('--dir-hab-healthy')))
+      .toBe('#B00020');
     const inlineBackground = await page.locator(SURFACE).evaluate((el) => (el as HTMLElement).getAttribute('style') ?? '');
     expect(inlineBackground).not.toContain('url(');
   });
