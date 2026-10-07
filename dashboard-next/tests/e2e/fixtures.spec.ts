@@ -1,9 +1,9 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { expectNoUnhandledApiCalls } from './support/mock-api';
-import { openSection } from './support/fixtures';
-import { ALTERNATE_SHOTS, ATLAS_SHOTS } from './support/fixture-shots';
+import { openSection, settleFrames } from './support/fixtures';
+import { ALTERNATE_SHOTS, ATLAS_SHOTS, expectedBaselineFiles } from './support/fixture-shots';
 
 /**
  * Screenshot visual regression of the /dev/fixtures design-system route (04-23, DS-08).
@@ -14,8 +14,10 @@ import { ALTERNATE_SHOTS, ATLAS_SHOTS } from './support/fixture-shots';
  * never locally: the spectrogram canvases and the web fonts are deterministic only in that pinned
  * image. The 33 legacy baselines belong to visual.spec.ts and are not touched here.
  *
- * The baselines are committed (04-24). In CI a missing or empty baseline directory fails every test
- * instead of skipping it, so the gate can never turn into a silent no-op; locally it still skips.
+ * The baselines are committed (04-24). In CI the gate fails closed: a missing PW_VISUAL, a missing baseline
+ * directory or a baseline set that is not complete fails every test instead of skipping it, so the gate can never
+ * turn into a silent no-op. The one exception is the dispatch update path (PW_UPDATE=1), which is how baselines are
+ * written. Locally it still skips.
  *
  * Determinism, per capture:
  *  - Readiness: openSection waits for every cell the state manifest lists, for web fonts
@@ -38,36 +40,36 @@ test.afterEach(({ page }) => {
 
 const SNAPSHOT_DIR = path.join(__dirname, 'fixtures.spec.ts-snapshots');
 
-function snapshotsExist(): boolean {
-  return fs.existsSync(SNAPSHOT_DIR) && fs.readdirSync(SNAPSHOT_DIR).length > 0;
+/** The baselines the spec expects (the same names the baseline-set unit test checks) that are not in the directory. */
+function missingBaselines(): string[] {
+  const present = new Set(fs.existsSync(SNAPSHOT_DIR) ? fs.readdirSync(SNAPSHOT_DIR) : []);
+  return expectedBaselineFiles().filter((file) => !present.has(file));
 }
 
 // In CI the gate must never silently turn into a no-op: a deleted or empty baseline directory would
 // otherwise skip every test and leave CI green with zero visual verification. Locally it still skips.
 const FAIL_WITHOUT_BASELINES = process.env.CI === 'true' || process.env.CI === '1';
 
-/** Skip unless this is the pinned visual run; fail in CI when the baselines are missing. */
+/** Skip unless this is the pinned visual run; in CI fail instead of skipping (except on the dispatch update path). */
 function gate(): void {
-  test.skip(process.env.PW_VISUAL !== '1', 'Visual regression only runs with PW_VISUAL=1 (Docker-pinned Linux CI).');
-  if (process.env.PW_UPDATE !== '1' && !snapshotsExist()) {
+  const updating = process.env.PW_UPDATE === '1';
+  if (process.env.PW_VISUAL !== '1') {
+    if (FAIL_WITHOUT_BASELINES && !updating) {
+      throw new Error('The fixtures-shots project needs PW_VISUAL=1 in CI: skipping would leave CI green with zero visual verification.');
+    }
+    test.skip(true, 'Visual regression only runs with PW_VISUAL=1 (Docker-pinned Linux CI).');
+  }
+  if (updating) return;
+  const missing = missingBaselines();
+  if (missing.length > 0) {
     if (FAIL_WITHOUT_BASELINES) {
       throw new Error(
-        'PW_VISUAL=1 in CI but no fixtures baselines exist in tests/e2e/fixtures.spec.ts-snapshots. ' +
-          'Regenerate them with the update_snapshots workflow input.',
+        `PW_VISUAL=1 in CI but ${missing.length} of ${expectedBaselineFiles().length} fixtures baselines are missing from ` +
+          `tests/e2e/fixtures.spec.ts-snapshots (first: ${missing[0]}). Regenerate them with the update_snapshots workflow input.`,
       );
     }
-    test.skip(true, 'No fixtures baselines yet; generate them with the update_snapshots dispatch.');
+    test.skip(true, 'No complete set of fixtures baselines yet; generate them with the update_snapshots dispatch.');
   }
-}
-
-/** Two animation frames: the second callback runs after the browser has painted the first. */
-async function settleFrames(page: Page): Promise<void> {
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      }),
-  );
 }
 
 const MASK = '[data-visual="skip"]';
