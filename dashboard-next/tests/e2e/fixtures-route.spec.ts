@@ -285,10 +285,9 @@ test.describe('/dev/fixtures primitive sections (04-09)', () => {
     const stats = page.locator('section#numerals [data-fixture-state="stats"]');
     const siteCount = CONTRACT_SITES.length;
     const countryCount = new Set(CONTRACT_SITES.map((site) => site.country)).size;
-    await expect(stats.locator('p.flex').nth(0)).toContainText(String(siteCount));
-    await expect(stats.locator('p.flex').nth(0)).toContainText('reference sites');
-    await expect(stats.locator('p.flex').nth(1)).toContainText(String(countryCount));
-    await expect(stats.locator('p.flex').nth(1)).toContainText('countries');
+    // Anchored: a substring match would let a site count of 54 pass as 154, or 7 countries as 17.
+    await expect(stats.locator('p.flex').nth(0)).toHaveText(new RegExp(`^\\s*${siteCount}\\s*reference sites\\s*$`));
+    await expect(stats.locator('p.flex').nth(1)).toHaveText(new RegExp(`^\\s*${countryCount}\\s*countries\\s*$`));
   });
 
   test('the error cells show no request id and the long-wait cell says so', async ({ page }) => {
