@@ -181,6 +181,21 @@ describe('StripPlot: table and keyboard path', () => {
     expect(picked).toEqual(['ind_H1']);
   });
 
+  it('a click on a mark selects that mark, and a click on blank plot area selects nothing', async () => {
+    const user = userEvent.setup();
+    const picked: string[] = [];
+    const { container } = render(<StripPlot spec={stripSpec(POINTS, { measureLabel: MEASURE })} onSelect={(id) => picked.push(id)} />);
+    const svg = container.querySelector('svg')!;
+    const host = svg.parentElement!;
+    await user.click(svg);
+    await user.click(host);
+    expect(picked).toEqual([]);
+    const mark = Array.from(container.querySelectorAll('svg path')).find((path) => path.querySelector(':scope > title')?.textContent?.startsWith('ind_H1 · '));
+    expect(mark).toBeDefined();
+    await user.click(mark!);
+    expect(picked).toEqual(['ind_H1']);
+  });
+
   it('without onSelect the table has no selection buttons', async () => {
     const user = userEvent.setup();
     render(<StripPlot spec={stripSpec(POINTS, { measureLabel: MEASURE })} />);

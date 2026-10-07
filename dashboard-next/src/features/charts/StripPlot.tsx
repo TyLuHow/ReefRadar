@@ -115,7 +115,11 @@ export function StripPlot({ spec, state, onSelect, loadingHeight = 220, classNam
 
   function handleClick(event: MouseEvent<HTMLDivElement>) {
     if (!onSelect || !spec) return;
-    const title = (event.target as Element).querySelector?.('title')?.textContent;
+    // Resolve the clicked mark, then read the title that is its own direct child. A click on the svg root,
+    // the margins, a gap between marks or the host has no mark under it and selects nothing (a descendant
+    // query from there would return the first mark's title, an arbitrary site).
+    const mark = (event.target as Element).closest?.('path, circle');
+    const title = mark ? Array.from(mark.children).find((child) => child.tagName.toLowerCase() === 'title')?.textContent : undefined;
     const id = idFromTitle(title);
     if (id !== null && spec.table.rows.some((row) => row[0] === id)) onSelect(id);
   }
