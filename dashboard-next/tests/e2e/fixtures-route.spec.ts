@@ -1351,6 +1351,8 @@ test.describe('/dev/fixtures StripPlot (04-19)', () => {
   const BAD_19 = new Set(['serious', 'critical']);
 
   async function openStripPlot(page: Page, direction = 'atlas') {
+    // Three cells may each take 30 s below, so the default 30 s test timeout could never let those waits run (D-WR-17).
+    test.setTimeout(120_000);
     await page.goto(`/dev/fixtures/strip-plot/?direction=${direction}`, { waitUntil: 'load' });
     await expect(page.locator(SURFACE)).toHaveAttribute('data-direction', direction);
     // The band levels are computed from the two real WAVs, so the paired cell settles last.
