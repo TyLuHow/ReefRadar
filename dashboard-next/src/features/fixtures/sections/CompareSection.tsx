@@ -127,7 +127,7 @@ export function CompareSection() {
       <StateCell primitive="compare" state="selected" span="full" note="B is the listening focus: a 3 px ink bar on its start edge, and the mix is at B alone.">
         <CompareDeck rows={rows} clips={clips} defaultListening="B" defaultMix={1} />
       </StateCell>
-      <StateCell primitive="compare" state="playing" forced span="full" note="Position forced at 12.4 s of 30.0 s; the transport in this cell does nothing.">
+      <StateCell primitive="compare" state="playing" forced span="full" note={`Position forced at ${PLAYING_AT} s of ${H1.duration_s.toFixed(1)} s; the transport in this cell does nothing.`}>
         <CompareDeck rows={rows} clips={clips} forcedPlaying={{ positionS: PLAYING_AT }} />
       </StateCell>
       <StateCell primitive="compare" state="disabled-row" span="full" note="Row B is unavailable: its identity stays, the well is replaced, and playing is off.">

@@ -40,7 +40,7 @@ const BANDS: BandDefinition[] = ['Low', 'Mid', 'High'].map((label, index) => ({
 
 const FIXTURE_NOTE = "Fixture bands split 0 to the recording's top frequency into three equal ranges. The cited band table arrives in a later phase.";
 const NO_FILTER_NOTE = 'In this fixture the selection does not filter any audio.';
-const DISABLED_REASON = "Disabled for review: no fixture band lies above this recording's 8 kHz limit.";
+const DISABLED_REASON = `Disabled for review: no fixture band lies above this recording's ${NYQUIST_HZ / 1000} kHz limit.`;
 
 type Rest = Partial<Omit<BandToggleProps, 'bands' | 'nyquistHz' | 'selectedKeys' | 'onSelectionChange'>>;
 
