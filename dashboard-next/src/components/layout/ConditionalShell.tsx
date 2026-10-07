@@ -10,7 +10,9 @@ import { Footer } from '@/components/layout/Footer';
  */
 export function ConditionalShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isImmersive = pathname.startsWith('/experience') || pathname.startsWith('/dev');
+  // `/dev` exactly or under `/dev/` only: a bare startsWith('/dev') would also strip the shell from /developers.
+  const isDevRoute = pathname === '/dev' || pathname.startsWith('/dev/');
+  const isImmersive = pathname.startsWith('/experience') || isDevRoute;
 
   if (isImmersive) {
     return <>{children}</>;
