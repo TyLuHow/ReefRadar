@@ -32,6 +32,17 @@ test.afterEach(({ page }) => {
 
 const cell = (page: Page, state: string, slug = 'spectrogram') => page.locator(`section#${slug} [data-fixture-state="${state}"]`);
 
+/** Whether the playhead's centre sits at `expected` of the plot width (to two decimals), read in one in-page call. */
+const playheadFractionNear = (root: Locator, expected: number) =>
+  root.evaluate(
+    (node, target) => {
+      const plot = (node.querySelector('[data-plot]') as HTMLElement).getBoundingClientRect();
+      const playhead = (node.querySelector('[data-playhead]') as HTMLElement).getBoundingClientRect();
+      return Math.abs((playhead.left + playhead.width / 2 - plot.left) / plot.width - target) < 0.005;
+    },
+    expected,
+  );
+
 /** Opens the single-section page and waits for the chrome and for the panel well to have drawn. */
 async function openSpectrogram(page: Page, query = '') {
   await page.goto(`/dev/fixtures/spectrogram/${query}`, { waitUntil: 'load' });
@@ -135,9 +146,15 @@ test.describe('Spectrogram well on real data', () => {
 
     const plot = cell(page, 'panel').locator('[data-plot]');
     await plot.scrollIntoViewIfNeeded();
-    const bounds = await box(plot);
-    await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
-    await expect(cell(page, 'panel').locator('[data-readout]')).toHaveText(new RegExp(`^15\\.\\d s \\u00b7 [34]\\.\\d kHz \\u00b7 ${MINUS}\\d+ dB$`));
+    // The bounds are read inside the poll, so a layout that moves after fonts and the well settle is followed. The
+    // centre of the plot is 15.0 s, but a pixel of rounding can read 14.9, so the seconds are 14 or 15.
+    await expect
+      .poll(async () => {
+        const bounds = await box(plot);
+        await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+        return (await cell(page, 'panel').locator('[data-readout]').allTextContents()).join('');
+      })
+      .toMatch(new RegExp(`^1[45]\\.\\d s \\u00b7 [34]\\.\\d kHz \\u00b7 ${MINUS}\\d+ dB$`));
     await page.mouse.move(2, 2);
     await expect(cell(page, 'panel').locator('[data-readout]')).toHaveCount(0);
   });
@@ -146,45 +163,38 @@ test.describe('Spectrogram well on real data', () => {
     await openSpectrogram(page);
     const selected = cell(page, 'selected-window');
     await expect(selected.locator('[data-spectrogram][data-ready="true"]')).toBeVisible();
-    // One in-page call reads every box, so the three numbers are from the same layout.
-    const layout = await selected.evaluate((root) => {
-      const rect = (selector: string) => (root.querySelector(selector) as HTMLElement).getBoundingClientRect();
-      const plot = rect('[data-plot]');
-      const playhead = rect('[data-playhead]');
-      const window = rect('[data-selected-window]');
-      return {
-        playhead: (playhead.left + playhead.width / 2 - plot.left) / plot.width,
-        windowLeft: (window.left - plot.left) / plot.width,
-        windowWidth: window.width / plot.width,
-      };
-    });
-    expect(layout.playhead).toBeCloseTo(12.4 / 30, 2);
-    expect(layout.windowLeft).toBeCloseTo(10 / 30, 2);
-    expect(layout.windowWidth).toBeCloseTo(5 / 30, 2);
+    // One in-page call reads every box, so the three numbers are from the same layout; it is polled because the
+    // playhead transform is set by an effect after data-ready.
+    await expect
+      .poll(async () =>
+        selected.evaluate((root) => {
+          const rect = (selector: string) => (root.querySelector(selector) as HTMLElement).getBoundingClientRect();
+          const plot = rect('[data-plot]');
+          const playhead = rect('[data-playhead]');
+          const window = rect('[data-selected-window]');
+          const near = (actual: number, expected: number) => Math.abs(actual - expected) < 0.005;
+          return {
+            playhead: near((playhead.left + playhead.width / 2 - plot.left) / plot.width, 12.4 / 30),
+            windowLeft: near((window.left - plot.left) / plot.width, 10 / 30),
+            windowWidth: near(window.width / plot.width, 5 / 30),
+          };
+        }),
+      )
+      .toEqual({ playhead: true, windowLeft: true, windowWidth: true });
   });
 
   test('scroll mode holds the playhead at 22 % of the width', async ({ page }) => {
     await openSpectrogram(page);
     const scroll = cell(page, 'scroll-mode');
     await expect(scroll.locator('[data-spectrogram][data-ready="true"]')).toHaveAttribute('data-play-mode', 'scroll');
-    const fraction = await scroll.evaluate((root) => {
-      const plot = (root.querySelector('[data-plot]') as HTMLElement).getBoundingClientRect();
-      const playhead = (root.querySelector('[data-playhead]') as HTMLElement).getBoundingClientRect();
-      return (playhead.left + playhead.width / 2 - plot.left) / plot.width;
-    });
-    expect(fraction).toBeCloseTo(0.22, 2);
+    await expect.poll(() => playheadFractionNear(scroll, 0.22)).toBe(true);
   });
 
   test('under reduced motion the scroll cell is a sweep: the playhead is at its elapsed fraction', async ({ page }) => {
     await openSpectrogram(page, '?reduced=1');
     const scroll = cell(page, 'scroll-mode');
     await expect(scroll.locator('[data-spectrogram][data-ready="true"]')).toHaveAttribute('data-play-mode', 'sweep');
-    const fraction = await scroll.evaluate((root) => {
-      const plot = (root.querySelector('[data-plot]') as HTMLElement).getBoundingClientRect();
-      const playhead = (root.querySelector('[data-playhead]') as HTMLElement).getBoundingClientRect();
-      return (playhead.left + playhead.width / 2 - plot.left) / plot.width;
-    });
-    expect(fraction).toBeCloseTo(12.4 / 30, 2);
+    await expect.poll(() => playheadFractionNear(scroll, 12.4 / 30)).toBe(true);
   });
 
   test('the bands cell draws three labelled fixture bands and says they are placeholders', async ({ page }) => {

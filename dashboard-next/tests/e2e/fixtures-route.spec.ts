@@ -516,6 +516,8 @@ test.describe('/dev/fixtures overlays and listbox (04-10)', () => {
         }),
       )
       .toBe(true);
+    // Two frames have to run before "nothing is animating" is read: an animation that had not started yet would pass.
+    await settleFrames(page);
     expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
   });
 

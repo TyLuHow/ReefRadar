@@ -3,7 +3,7 @@ import path from 'node:path';
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { expectNoUnhandledApiCalls } from './support/mock-api';
-import { ensureMocked, openSection } from './support/fixtures';
+import { ensureMocked, openSection, settleFrames } from './support/fixtures';
 
 /**
  * The Motion section and the four accepted compositions on /dev/fixtures (04-21, DS-05, DS-06, DS-08).
@@ -346,7 +346,17 @@ test.describe('Motion section', () => {
     await open(page, 'motion');
     const root = section(page, 'motion');
     const rows = () => root.locator('[data-morph-row]').evaluateAll((els) => els.map((el) => el.getAttribute('data-morph-row')));
-    await expect.poll(async () => (await rows()).length).toBeGreaterThan(1);
+    // The initial order is final once two consecutive reads agree on more than one row; capturing it earlier could
+    // compare a later reorder with a half-mounted list (D-WR-09).
+    let previous = '';
+    await expect
+      .poll(async () => {
+        const now = await rows();
+        const stable = now.length > 1 && now.join() === previous;
+        previous = now.join();
+        return stable;
+      })
+      .toBe(true);
     const before = await rows();
     await root.getByRole('button', { name: 'Order by count' }).click();
     await expect.poll(async () => (await rows()).join()).not.toBe(before.join());
@@ -369,6 +379,10 @@ test.describe('Motion section', () => {
     const root = section(page, 'motion');
     await root.getByRole('button', { name: 'Order by count' }).click();
     await root.locator('[data-fixture-state="view-transition"]').getByRole('radio', { name: 'ind_D1' }).click();
+    // The swap has happened, and two frames have run, before "nothing is animating" is read: an animation that
+    // had not started yet would otherwise pass (D-WR-09).
+    await expect(root.locator('[data-fixture-state="view-transition"] [data-swap-content]')).toHaveAttribute('data-swap-content', 'ind_D1');
+    await settleFrames(page);
     await expect.poll(() => page.evaluate(() => document.getAnimations().length)).toBe(0);
     await expect(root.locator('[data-fixture-state="selection"]').getByRole('radio').first()).toHaveCSS('transition-duration', '0s');
   });
