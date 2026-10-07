@@ -23,6 +23,12 @@ import { RLabel } from './RLabel';
  * card: what it was trained on and, when `evaluation` is null, that it has not been tested on
  * recordings from new sites. Every count and name in those sentences is computed from the data.
  *
+ * Validation (B WR-04): the reading is drawn only when it is a probability distribution over the
+ * classes the model has. A value that is not a finite number from 0 to 1, a class in the reading that
+ * is not in `modelClasses`, or a total that is not 1 (to within rounding) is not shown: the bar says
+ * the reading could not be shown, with no percentage, "highest probability" sentence or verdict, and
+ * never renormalises the numbers into something plausible.
+ *
  * Abstain (`abstain` prop, set by the caller when the reading says the model withheld a verdict):
  * the heading is "Can't tell" beside a hollow ring, the bars are neutral hatching with no habitat
  * status colour and no class mark, so no class looks like a winner, and the comparison and verdict
@@ -53,8 +59,11 @@ export interface ProbabilityBarModelCard {
   sites: readonly string[];
   /** `training.countries`. */
   countries: readonly string[];
-  /** `evaluation`: null unless a grouped, site-held-out evaluation exists. */
-  evaluation: unknown | null;
+  /**
+   * `evaluation`: null (or absent) unless a grouped, site-held-out evaluation exists. Anything other
+   * than an evaluation object reads as "not evaluated", the honest default.
+   */
+  evaluation?: object | null;
 }
 
 export interface ProbabilityBarProps {
@@ -110,22 +119,46 @@ interface Row {
   share: number;
 }
 
-/** Rows for the classes the model has that the reading holds a probability for, largest first. */
-function buildRows(probabilities: ProbabilityBarProps['probabilities'], modelClasses: readonly string[]): Row[] {
-  const classes = knownStatuses(modelClasses).filter((status) => typeof probabilities[status] === 'number');
+/** How far from 1 the total may be before the reading is not a distribution (rounded payloads stay inside it). */
+const TOTAL_TOLERANCE = 0.02;
+
+type Reading = { kind: 'empty' } | { kind: 'invalid' } | { kind: 'ok'; rows: Row[] };
+
+/**
+ * Rows for the classes the model has that the reading holds a probability for, largest first, or why
+ * there are none. A reading that is not a probability distribution over `modelClasses` is `invalid`
+ * and is never repaired.
+ */
+function readingOf(probabilities: ProbabilityBarProps['probabilities'], modelClasses: readonly string[]): Reading {
+  const entries = Object.entries(probabilities).filter(([, value]) => value !== undefined);
+  if (entries.length === 0) return { kind: 'empty' };
+
+  const classes = knownStatuses(modelClasses);
+  if (entries.some(([name]) => !(classes as readonly string[]).includes(name))) return { kind: 'invalid' };
+  if (entries.some(([, value]) => typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1)) {
+    return { kind: 'invalid' };
+  }
+
   const drawn: Partial<Record<HabitatStatus, number>> = {};
-  for (const status of classes) drawn[status] = probabilities[status] as number;
+  for (const status of classes) {
+    const value = probabilities[status];
+    if (typeof value === 'number') drawn[status] = value;
+  }
+  const present = classes.filter((status) => drawn[status] !== undefined);
+  const total = present.reduce((sum, status) => sum + (drawn[status] ?? 0), 0);
+  if (!(total > 0) || Math.abs(total - 1) > TOTAL_TOLERANCE) return { kind: 'invalid' };
+
   const percents = toIntegerPercentages(drawn);
-  const total = classes.reduce((sum, status) => sum + (drawn[status] ?? 0), 0);
-  return classes
+  const rows = present
     .map((status, index) => ({ status, index, probability: drawn[status] ?? 0 }))
     .sort((a, b) => b.probability - a.probability || a.index - b.index)
     .map(({ status, probability }) => ({
       status,
       probability,
       percent: percents[status] ?? 0,
-      share: total > 0 ? (probability / total) * 100 : 0,
+      share: (probability / total) * 100,
     }));
+  return { kind: 'ok', rows };
 }
 
 const HATCH = 'repeating-linear-gradient(45deg, var(--dir-rule-strong) 0 2px, transparent 2px 6px)';
@@ -166,7 +199,8 @@ export function ProbabilityBar({
   className,
 }: ProbabilityBarProps) {
   const summaryId = useId();
-  const rows = buildRows(probabilities, modelClasses);
+  const reading = readingOf(probabilities, modelClasses);
+  const rows = reading.kind === 'ok' ? reading.rows : [];
 
   const header = (
     <RLabel kind="model">
@@ -193,8 +227,19 @@ export function ProbabilityBar({
         headingLevel={headingLevel}
       />
     );
-  } else if (state === 'empty' || rows.length === 0) {
+  } else if (state === 'empty' || reading.kind === 'empty') {
     body = <EmptyState title="No model reading." body="A reading appears after the recording has been analysed." />;
+  } else if (reading.kind === 'invalid') {
+    body = (
+      <div data-invalid-reading="">
+        <ErrorState
+          announce="status"
+          title="The model reading could not be shown."
+          body="The values returned are not a probability distribution over this model's classes, so no percentage or comparison is drawn. The recording and its reference label are unaffected."
+          headingLevel={headingLevel}
+        />
+      </div>
+    );
   } else {
     const top = rows[0];
     const summary = rows
@@ -255,7 +300,7 @@ export function ProbabilityBar({
             </>
           ) : null}
           <p className="text-body text-ink">{trained}</p>
-          {modelCard.evaluation === null ? <p className="text-body text-ink">It has not been tested on recordings from new sites.</p> : null}
+          {modelCard.evaluation == null ? <p className="text-body text-ink">It has not been tested on recordings from new sites.</p> : null}
         </div>
       </div>
     );

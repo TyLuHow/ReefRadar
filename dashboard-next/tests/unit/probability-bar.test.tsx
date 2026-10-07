@@ -65,9 +65,15 @@ describe('ProbabilityBar rows', () => {
   });
 
   it('draws only the classes the model has and states them from the model card', () => {
-    renderBar({ probabilities: { healthy: 0.58, degraded: 0.27, restored_early: 0.15, restored_mid: 0.5 } });
+    renderBar();
     expect(group().querySelector('[data-class="restored_mid"]')).toBeNull();
+    expect(group().querySelectorAll('[data-class]').length).toBe(3);
     expect(screen.getByText('Classes this model has: degraded, healthy, restored early.')).toBeInTheDocument();
+  });
+
+  it('draws a reading that holds only some of the model classes, without inventing a zero row', () => {
+    renderBar({ probabilities: { healthy: 0.6, degraded: 0.4 } });
+    expect(Array.from(group().querySelectorAll('[data-class]')).map((row) => row.getAttribute('data-class'))).toEqual(['healthy', 'degraded']);
   });
 
   it('marks the bars aria-hidden and the status marks as decoration', () => {
@@ -132,6 +138,21 @@ describe('ProbabilityBar limits line', () => {
   });
 });
 
+describe('ProbabilityBar limits line when the evaluation is absent (B WR-05)', () => {
+  it('says the model has not been tested on new sites when evaluation is undefined', () => {
+    renderBar({ modelCard: { rows: 100, sites: ['ind_D2'], countries: ['Indonesia'] } });
+    expect(screen.getByText('It has not been tested on recordings from new sites.')).toBeInTheDocument();
+  });
+
+  it('says it when evaluation is explicitly undefined or null', () => {
+    const { unmount } = renderBar({ modelCard: { ...MODEL_CARD, evaluation: undefined } });
+    expect(screen.getByText('It has not been tested on recordings from new sites.')).toBeInTheDocument();
+    unmount();
+    renderBar({ modelCard: { ...MODEL_CARD, evaluation: null } });
+    expect(screen.getByText('It has not been tested on recordings from new sites.')).toBeInTheDocument();
+  });
+});
+
 describe('ProbabilityBar abstain', () => {
   it("says \"Can't tell\" with a hollow ring and the withheld-reading sentence", () => {
     renderBar({ abstain: {} });
@@ -170,6 +191,41 @@ describe('ProbabilityBar abstain', () => {
     renderBar({ abstain: {} });
     expect(screen.getByText(/Reference label: Healthy, assigned by/)).toBeInTheDocument();
     expect(screen.getByText('It has not been tested on recordings from new sites.')).toBeInTheDocument();
+  });
+});
+
+describe('ProbabilityBar rejects a reading that is not a probability distribution (B WR-04)', () => {
+  const invalid: Array<[string, Record<string, number>]> = [
+    ['a NaN value', { healthy: Number.NaN, degraded: 0.27, restored_early: 0.15 }],
+    ['an infinite value', { healthy: Number.POSITIVE_INFINITY, degraded: 0.27, restored_early: 0.15 }],
+    ['a negative value', { healthy: 1.2, degraded: -0.2, restored_early: 0 }],
+    ['a value above 1', { healthy: 1.5, degraded: 0, restored_early: 0 }],
+    ['all zeros', { healthy: 0, degraded: 0, restored_early: 0 }],
+    ['a total that is not 1', { healthy: 0.2, degraded: 0.2, restored_early: 0.2 }],
+    ['a class the model does not have', { healthy: 0.58, degraded: 0.27, restored_early: 0.15, restored_mid: 0.5 }],
+    ['a class name that is not a habitat status', { healthy: 0.58, degraded: 0.27, restored_early: 0.15, sandy: 0.1 }],
+  ];
+
+  it.each(invalid)('shows the could-not-be-shown state and no verdict for %s', (_name, probabilities) => {
+    const { container } = renderBar({ probabilities });
+    expect(screen.getByText('The model reading could not be shown.')).toBeInTheDocument();
+    expect(container.querySelector('[data-invalid-reading]')).not.toBeNull();
+    expect(screen.queryByRole('group', { name: 'Model reading: class probabilities' })).toBeNull();
+    expect(container.querySelector('[data-class]')).toBeNull();
+    expect(container.querySelector('[data-percent]')).toBeNull();
+    expect(container.textContent ?? '').not.toMatch(/highest probability|matches the reference|differs from|NaN|Infinity|%/);
+  });
+
+  it('rejects the abstain state with an invalid reading too: nothing is drawn', () => {
+    const { container } = renderBar({ abstain: {}, probabilities: { healthy: Number.NaN, degraded: 0.5, restored_early: 0.5 } });
+    expect(screen.getByText('The model reading could not be shown.')).toBeInTheDocument();
+    expect(container.querySelector('[data-bar]')).toBeNull();
+  });
+
+  it('accepts a reading that sums to 1 within rounding and does not renormalise it', () => {
+    renderBar({ probabilities: { healthy: 0.33, degraded: 0.33, restored_early: 0.33 } });
+    expect(group().querySelectorAll('[data-class]').length).toBe(3);
+    expect(screen.queryByText('The model reading could not be shown.')).toBeNull();
   });
 });
 
