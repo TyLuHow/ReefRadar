@@ -32,7 +32,7 @@ Out of scope: retraining or replacing the model (Phase 12, ML-04/05/07), abstain
 ### Grouped evaluation and OOD calibration
 - Leave-one-site-out: 5 folds that retrain the exact interim recipe (`scripts/train_interim_real_only.py`, seed 42) on 4 sites and test the held-out site's 20 windows. The ind_N1 fold is reported as "restored_early not evaluable: class absent from the training fold", with its predicted distribution shown but excluded from macro or balanced averages. Regions are reported per country (Indonesia 4 sites, Kenya 1). The old 100% random-split figure is marked invalid in the report.
 - Bootstrap: two-level cluster bootstrap (resample sites with replacement, then windows within each site), B = 10,000, fixed seed, percentile 95% intervals. An interval is reported only where a group has ≥2 sites; otherwise "CI not estimable (1 site)". Every metric carries n_sites and n_windows.
-- Re-embed the 100 training files through `reef_audio` (figshare HTTP range fetch plus about 10 serial inference calls, under $1). Run LOSO on both the original and the re-embedded sets, and state which matches serving. The OOD reference set uses the re-embedded windows. Deployed weights stay unchanged (retrain is Phase 12). Spec v2 records the known gap "model trained on preproc v1 embeddings → Phase 12".
+- Re-embed the 100 training files through `reef_audio` (figshare HTTP range fetch plus about 10 serial inference calls, under $1). The OOD reference set uses the re-embedded windows. SUPERSEDED in part by the amendments below: the interim model is retrained on the re-embedded set for train/serve parity.
 - OOD metric: cosine distance from each window to its nearest training window (k=1). The threshold is calibrated leave-one-site-out (each training site's nearest-neighbour distances to the other 4 sites, 95th percentile), frozen into a versioned OOD artifact with its sha256, bundled into the classifier zip. The threshold is returned with every distance.
 
 ### Rollout, versioning and autonomy
@@ -59,8 +59,26 @@ Out of scope: retraining or replacing the model (Phase 12, ML-04/05/07), abstain
 - Reference similarity is pinned: bundle the contract's `embeddings.f32` and `row_site_ids` into the classifier zip, so similarity is computed against exactly the stamped dataset_version. This replaces the runtime S3 `reference/metadata_v6.json` read. Also fix the inert `status_map` bug.
 - The evaluation report is JSON with a new additive `evaluation-report.schema.json`, inputs pinned by sha256 (training file, trainer git sha, seed, B), plus a rendered Markdown copy. It is committed under `models/interim-real-only/evaluation/` and published in contract v2, referenced from `model_version.evaluation`.
 
+### Amendments after research (2026-10-12, owner: "no urgency, choose the option that does it right")
+- Normalization (research Q1, resolved): match perch-hoplite's wrapper exactly. Per 5 s window, subtract the window mean, then scale to peak 0.25 (`taxonomy_model_tf.py:54,274`; `zoo_interface.py:157-160`). Silent windows take an explicit branch: upstream `np.divide(where=)` without `out=` returns uninitialised memory. Persist the pre-normalisation peak and RMS dBFS, floored or nulled for silence (never -inf).
+- Train/serve parity (replaces the earlier "deployed weights stay unchanged"): measured embedding drift between the deployed path and `reef_audio` is large (mean cosine 0.23-0.26 on the 54 excerpt windows). The current MLP would call almost every window `degraded`. Phase 5 therefore re-embeds the same 100 training files through `reef_audio` (first window of each file, rows 1:1 with the originals) and retrains the interim 3-class MLP with the exact recipe and seed (`scripts/train_interim_real_only.py`, seed 42). It is published as an interim successor model version with its own sha256, model card and LOSO report. Production serves only the successor together with `reef_audio`, never the old weights with new preprocessing. LOSO is reported for both the original model (original embeddings) and the successor (re-embedded), and the report says which one is served. The real retrain and model selection stay in Phase 12. Production labels and similarities will visibly change. The model card, stamps and DEPLOY-LOG state why.
+- Honest evaluation result: the prototype LOSO on the original model is far below chance (balanced about 6%; degraded recall 2.5%, healthy 10%). The report and any Methods copy must state this plainly with the intervals and the few-cluster caveats (only 35 distinct site multisets; about 6% of replicates leave a class undefined). Use a frozen RNG stream (`np.random.RandomState`) or record the NumPy version.
+- Wave 0 drift probe: before any deploy, measure old-vs-new embedding cosine on the 100 training files and record it in the report. F8a/F8c closure is worded "serving and offline share one pipeline", not "train/serve skew closed". The OOD gate cannot detect an MLP/embedding mismatch, so the successor model is the fix.
+- Resampler (Q5): replicate scipy `resample_poly` defaults exactly in pure NumPy (Kaiser beta 5.0, half-length 10*max(up,down), cutoff 1/max(up,down), DC-normalised times up, zero delay, float64 phase bank with chunked or streamed evaluation). Reject sample rates outside 4-192 kHz. The filter design is frozen in `SPEC_VERSION` (hyphens only, per the contract version pattern). Test against scipy float64 (≤1e-12) and float32 (≤2e-6).
+- Model pin (Q3): pin kagglehub `google/surfperch/tensorFlow2/1/1` and record the recorded SavedModel file sha256s in the spec. `inference.py` is NOT edited in Phase 5 (it is an inference.json member and the container is not rebuilt). The dead fallback handles go to a deferred note.
+- Segment transport (Q7, required, no longer discretionary): binary float32 segments in S3 (`segments.f32` plus a small sidecar), read with ranged GETs of 10 windows at a time. The classifier keeps the legacy JSON reader during rollout. DynamoDB writes convert NumPy scalars to Decimal or native types.
+- Packaging bug (must fix first): `scripts/lambda_packaging.py:86-92` and `scripts/deploy-lambdas.py:101` CRLF-normalise every member, which corrupts binary members (`embeddings.f32`, `.npz`, the OOD artifact). Add a binary suffix allowlist to both readers, with tests.
+- Contract v2 (Q8):
+  - Move the flipped-flag test fixture to a sentinel version held in one constant (for example 99) across `contracts/fixtures`, `check_contract.py`, `build_contract.py`, the Python fixture test and the nine web test/support files.
+  - Replace the checker rule that forces `model_version.preprocessing_spec_version == manifest.preprocessing_spec_version` with an optional `training.preprocessing_spec_version`. For the successor model both equal the reef_audio spec.
+  - Add a v2 build recipe that reads `reef_audio` instead of regex-parsing the preprocessor handler, and add `build_contract.py --version 2 --check` to CI.
+  - Reuse v1 `sites.json`, `embeddings.f32` and `projection.json` by URI.
+  - Extend the Zod mirror, PAIRS and the corpus with a full-result example.
+  - Publish v2 objects and the pointer before deploying a classifier that stamps `contract_version: 2`, then commit the post-publish `PUBLISHED.json` and `published.ts`.
+- scipy for tests only: pin `scipy==1.13.1`, the last version compatible with NumPy 1.26.4. The legitimacy check's SUS verdict is a false positive (github.com/scipy/scipy, around 73M downloads a week, first release 2010), covered by the owner's standing package approval.
+- Commit the LOSO inputs (the 100 original and 100 re-embedded 1280-d rows plus the site ids, small) so CI can recompute the report deterministically. The training JSON itself stays gitignored and is pinned by sha256.
+
 ### Claude's Discretion
-- Segment transport between preprocessor and classifier: JSON float lists likely OOM well before the 600 s cap. Planning may switch to binary float32 segments in S3, keeping backward compatibility during rollout.
 - Exact field names inside `site_similarities`, `projection`, `ood` and the per-window columns, within the decisions above and Phase 2's additive-only schema rule.
 
 </decisions>
@@ -113,7 +131,6 @@ Out of scope: retraining or replacing the model (Phase 12, ML-04/05/07), abstain
 <deferred>
 ## Deferred Ideas
 
-- Retrain on re-embedded data and publish an `interim-real-only` successor (Phase 12).
 - Abstain when windows are OOD (Phase 12, ML-05; Phase 9 may read `ood` for "can't tell").
 - Leave-one-country-out as a secondary evaluation view.
 - Rebuild the inference container with a pinned TensorFlow version (a later phase, before any embedding change).
