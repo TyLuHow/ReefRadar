@@ -344,7 +344,56 @@ Plans:
   3. Every analysis returns similarity to all reference sites (not only top-3), projection coordinates with explained variance, and an out-of-distribution status computed from distance to training data and reported separately from class probabilities.
   4. A leave-one-site-out evaluation harness reports the current model's per-class and per-region metrics with bootstrap confidence intervals, and the report is stored as a versioned artifact for the model card.
 
-**Plans**: TBD
+**Plans**: 17 plans (10 waves; live AWS work serial in 05-11, 05-16, 05-17)
+
+Plans:
+**Wave 1**
+
+- [ ] 05-01-PLAN.md — Binary-safe Lambda packaging (working tree, --ref rollback and drift-check readers)
+- [ ] 05-02-PLAN.md — reef_audio core: scipy legitimacy gate, real-excerpt tracer, wrapper normalisation, scipy-exact polyphase resampler
+- [ ] 05-03-PLAN.md — Contract test fixture moved to sentinel version 99 (Python, unit and e2e)
+- [ ] 05-04-PLAN.md — Leave-one-site-out harness, two-level bootstrap and committed original inputs
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 05-05-PLAN.md — reef_audio decode matrix, header bounds, storage-safe levels, segment transport, spec summary (SPEC_VERSION frozen)
+- [ ] 05-06-PLAN.md — Additive contract schemas (per-window result keys, training spec parity rule, evaluation report, OOD reference) with Zod mirror
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 05-07-PLAN.md — Preprocessor on reef_audio with binary segments and the moto parity matrix
+- [ ] 05-08-PLAN.md — Offline inference client, training re-embedder and excerpt fixture recorder
+- [ ] 05-09-PLAN.md — Per-window classifier: binary segment reader, bundled served model, alignment, stamp guard, additive /visualize
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 05-10-PLAN.md — All-site similarity, legacy top-3, projection and OOD from hash-verified bundled contract data
+- [ ] 05-11-PLAN.md — LIVE: re-embed the 100 training files, drift probe, excerpt embedding fixture
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 05-12-PLAN.md — Successor model interim-real-only-2026.10.1, OOD calibration, S3 archive mode
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 05-13-PLAN.md — Evaluation report (JSON + Markdown) for both models; withdraw the random-split accuracy page
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
+- [ ] 05-14-PLAN.md — Contract v2 bundle on disk (reef_audio spec, successor model, report, OOD) with checker links and CI
+
+**Wave 8** *(blocked on Wave 7 completion)*
+
+- [ ] 05-15-PLAN.md — Classifier package wired to v2 (bundled data and model) and the live verifiers
+
+**Wave 9** *(blocked on Wave 8 completion)*
+
+- [ ] 05-16-PLAN.md — LIVE: publish contract v2 (one-way decision checkpoint), archive successor weights
+
+**Wave 10** *(blocked on Wave 9 completion)*
+
+- [ ] 05-17-PLAN.md — LIVE: production rollout (classifier, router, then preprocessor), verification, drift MATCH, DEPLOY-LOG
+
 **UI hint**: no
 
 ### Phase 6: Instrument Shell & Atlas
