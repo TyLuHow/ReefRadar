@@ -1,0 +1,112 @@
+---
+phase: 5
+slug: preprocessing-parity-grouped-evaluation
+# status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
+# audit-milestone §5.5 distinguishes NOT-VALIDATED (draft) from PARTIAL (validated + nyquist_compliant: false) (#2117)
+status: draft
+nyquist_compliant: false
+wave_0_complete: false
+created: 2026-10-12
+---
+
+# Phase 5 — Validation Strategy
+
+> Per-phase validation contract for feedback sampling during execution. Source: 05-RESEARCH.md "Validation Architecture", plus the 05-CONTEXT.md amendments after research (successor-model retrain, wrapper normalization, binary transport, binary-safe packaging).
+
+---
+
+## Test Infrastructure
+
+| Property | Value |
+|----------|-------|
+| **Framework** | pytest 9.1.1 (Python, `-m "not live"` by default; `live` tests opt-in); Vitest 5 for the contract Zod mirror; Playwright only if a web contract test needs it |
+| **Config file** | `pytest.ini` (`testpaths = lambdas scripts/tests`, `pythonpath = scripts lambdas/shared`); `dashboard-next/vitest.config.ts` |
+| **Quick run command** | `py -3.12 -m pytest <touched test file> -x` (for example `lambdas/shared/tests/test_reef_audio.py`) |
+| **Full suite command** | `py -3.12 -m pytest && py -3.12 scripts/build_contract.py --version 1 --check && py -3.12 scripts/build_contract.py --version 2 --check && py -3.12 scripts/check_contract.py --check --additive && py -3.12 scripts/check_contract.py --published-history`, then in `dashboard-next`: `npm test` |
+| **Estimated runtime** | quick file 2 to 30 s (resampler tests use 30 s signals); full pytest about 90 s; LOSO reproduce test about 5 s; web unit suite about 60 s |
+
+---
+
+## Sampling Rate
+
+- **After every task commit:** Run the quick command for the touched module
+- **After every plan wave:** Run the full suite command
+- **Before `/gsd-verify-work`:** Full suite green in CI (python, web, e2e, visual), then the live rollout checks
+- **Max feedback latency:** 30 seconds per task (quick command)
+
+---
+
+## Per-Task Verification Map
+
+Filled by the planner once plan and task IDs exist. Each task's `<automated>` command must come from the requirement map below.
+
+| Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
+|---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
+| (planner fills) | | | | | | | | | ⬜ pending |
+
+### Requirement → test map (from research)
+
+| Req | Behavior | Type | Command |
+|-----|----------|------|---------|
+| ML-01 | decode matrix (PCM 8/16/24/32, float32/64, mono/stereo/multichannel, WAVE_FORMAT_EXTENSIBLE, odd chunk padding, truncated data, bad rates rejected) | unit | `pytest lambdas/shared/tests/test_reef_audio.py -k decode` |
+| ML-01 | polyphase resampler equals scipy float64 within 1e-12 and float32 within 2e-6 at 8/11.025/16/22.05/44.1/48/96 kHz; output length equals scipy's | unit | `-k resample` |
+| ML-01 | anti-alias: 48 kHz 20 kHz tone ≤ -50 dBFS; 96 kHz 24 kHz tone ≤ -60 dBFS | unit | `-k alias` |
+| ML-01 | wrapper normalization: per-window mean 0, peak 0.25, silent window stays zeros with no NaN, dBFS fields finite or null-plus-flag | unit | `-k normalise` |
+| ML-01 | windows = floor(n/160000), trailing partial dropped, byte-deterministic across runs | unit | `-k window` |
+| ML-01 | live preprocessor under moto equals the offline function bit for bit on the 9 excerpts plus generated edge WAVs (generated in `tmp_path`, never under `public/`) | integration | `pytest lambdas/preprocessor/tests/test_parity.py` |
+| ML-01 | recorded embedding fixture: file sha256 and per-window sha256 equal fresh `reef_audio` windows | unit | `pytest lambdas/preprocessor/tests/test_embedding_fixture.py` |
+| ML-01 | fixture regeneration via the live inference Lambda: cosine ≥ 0.99999, max abs ≤ 1e-5 | live | `pytest -m live lambdas/preprocessor/tests/test_embedding_fixture_live.py` |
+| ML-01 | packaging: zips contain `reef_audio.py`; binary members (`embeddings.f32`, `.npz`, OOD artifact) byte-identical to source | unit | `pytest scripts/tests/test_lambda_packaging.py -k binary` |
+| ML-02 | per-window probabilities sum to 1 within 1e-8; recording probabilities are their mean; label argmax; confidence max; `aggregation == 'mean_of_window_probabilities'` | integration (moto, stubbed inference) | `pytest lambdas/classifier/tests/test_handler.py -k window` |
+| ML-02 | inference embedding-count mismatch raises a typed error | integration | `-k alignment` |
+| ML-02 | binary `segments.f32` and legacy JSON segments both accepted; legacy input stamped `uncovered` | integration | `-k segment_format` |
+| ML-02 | RESULT item at 120 windows under 400 KiB; NumPy scalars converted; stamp requires model and `reef_audio.SPEC_VERSION` match | unit/integration | `-k "stamp or item_size"`; `pytest lambdas/shared/tests/test_contract_stamp.py` |
+| ML-02 | router `/visualize` returns new keys only when present; legacy-only items return exactly the legacy key set | integration | `pytest lambdas/router/tests/test_visualize_stamp.py` |
+| ML-08 | `site_similarities` has 48 entries in contract row order, plus 6 location-only sites marked no-embedding; `similar_sites` top-3 keeps the old entry shape | unit | `-k similarity` |
+| ML-08 | projection of each reference vector reproduces the published site x,y within 2e-6; explained variance equals `projection.json` | unit | `-k projection` |
+| ML-06 | OOD distance = 1 - max cosine to reference windows; the threshold is returned with each distance; probabilities identical with and without OOD | unit | `-k ood` |
+| ML-06 | OOD artifact self-check: stored threshold equals the recomputed LOSO 95th percentile; sha256 matches | unit | `pytest scripts/tests/test_build_ood_reference.py` |
+| ML-03 | folds: held-out site never in training; ind_N1 flagged "class absent from the training fold"; seeded determinism; metrics recompute from stored predictions | unit | `pytest scripts/tests/test_loso_eval.py` |
+| ML-03 | bootstrap: seeded repeatability (RandomState), interval brackets the point estimate on separable synthetic data, n_sites < 2 gives "not estimable", undefined-replicate fraction reported | unit | `-k bootstrap` |
+| ML-03 | committed report validates against `evaluation-report.schema.json`; input sha256s match committed inputs; old split accuracy marked invalid; report covers both the original and the successor model | unit | `-k report` |
+| ML-03 | committed report regenerates from committed inputs within tolerance | unit (slow) | `-k reproduces` |
+| ML-03/ML-06 | successor model: retrained with the exact recipe and seed on the re-embedded rows; weights sha256 recorded; serves only with `reef_audio` | unit | `pytest scripts/tests/test_train_successor.py` |
+| contract | v2 builds and checks, additive, parity corpus current, published history intact, fixture sentinel version not colliding | script | `build_contract.py --version 2 --check`; `check_contract.py --check --additive`; `--published-history` |
+| contract | Zod mirror parity for the extended `analysis-result` and new schemas; `published.ts` mirrors PUBLISHED.json | unit (web) | `cd dashboard-next && npm test -- contract-schema-parity contract-published` |
+
+---
+
+## Wave 0 Requirements
+
+- [ ] Binary-safe packaging fix (`scripts/lambda_packaging.py`, `scripts/deploy-lambdas.py`) before any binary member is added
+- [ ] `lambdas/shared/tests/test_reef_audio.py`: ML-01 decode, resample, normalise, window
+- [ ] `lambdas/shared/tests/test_reef_reference.py`: bundled data loading and hash check
+- [ ] `lambdas/preprocessor/tests/` (new directory): handler, parity, embedding fixture
+- [ ] `lambdas/classifier/tests/` additions: per-window, alignment, formats, similarity, projection, OOD, item size
+- [ ] `scripts/tests/test_loso_eval.py`, `test_build_ood_reference.py`, `test_build_contract_v2.py`, `test_train_successor.py`
+- [ ] Drift probe: old-vs-new embedding cosine on the 100 training files, recorded before any deploy
+- [ ] Embedding fixture (about 54 × 1280 float32 plus window hashes, committed with sha256), produced via the live inference Lambda
+- [ ] `requirements-dev.txt`: `scipy==1.13.1`
+
+---
+
+## Manual-Only Verifications
+
+| Behavior | Requirement | Why Manual | Test Instructions |
+|----------|-------------|------------|-------------------|
+| Re-embedding the 100 training files through `reef_audio` and the live inference Lambda | ML-03, ML-06 | Calls AWS and figshare; costs cents; run once | `py -3.12 scripts/reembed_training.py --confirm` (serial; inference pre-warmed) |
+| Contract v2 publish | ML-02, ML-08 | Writes the public contract bucket; gated on the budget alarm | publisher `--dry-run`, then `--confirm` from a clean tree; then commit PUBLISHED.json and published.ts |
+| Production rollout of the successor model and pipeline | ML-02, ML-06, ML-08 | Changes live production output | `deploy-lambdas.py --dry-run` per function → `--confirm` (classifier and router, then preprocessor) → pre-warm → `verify_live_truth.py` (legacy keys unchanged in shape, new keys and v2 stamp present) → `drift-check.py --function all` MATCH; rollback with `--ref` on any failure; DEPLOY-LOG entry |
+
+---
+
+## Validation Sign-Off
+
+- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
+- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
+- [ ] Wave 0 covers all MISSING references
+- [ ] No watch-mode flags
+- [ ] Feedback latency < 30s
+- [ ] `nyquist_compliant: true` set in frontmatter
+
+**Approval:** pending
