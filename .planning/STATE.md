@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 
 Phase: 4 — Design System & Instrument Primitives
 Plan: 24 of 24 complete. Owner chose keep-atlas (2026-10-05). Code review 2 critical + 38 warning all fixed (04-REVIEW-FIX.md); 12 fixtures baselines refreshed from dispatch 37644716994; CI green on 31d064b (visual 217, e2e 599, unit, pytest 509). Verification 5/5 must-haves, human_needed: 5 device/sign-off items in 04-UAT.md. Next: /gsd-verify-work 4.
-Status: Phase 4 verified in code; awaiting owner UAT (04-UAT.md)
+Status: Phase 4 complete in code; owner device checks deferred (/gsd-verify-work 4). Autonomous run continuing at Phase 5
 Last activity: 2026-10-07 — Phase 4 review fixes merged, CI green
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
@@ -242,6 +242,12 @@ None yet.
 - [Phase 11/12]: GPU vs CPU embedding throughput, Spot pricing and the Perch 2.0 Kaggle handle need re-verification before committing budget; calibration method at 5–10 real sites per class unresolved.
 - [Phase 14/16/17]: If the Data & ML track stalls (budget, credentials), Phase 14 cannot complete, which holds Phases 16 and 17.
 - [Ops]: AWS Lambda account concurrency limit is 10; Service Quotas request 4b8d23edbdcf43d9a9eee46fddc7b589IQUhYJr5 (to 1000) pending. Warm the inference container and run analyses serially until granted (see docs/deploy/DEPLOY-LOG.md).
+
+## Deferred Verification
+
+| Phase | State | Resume |
+|-------|-------|--------|
+| 04 | verification_deferred_human | /gsd-verify-work 4 |
 
 ## Deferred Items
 

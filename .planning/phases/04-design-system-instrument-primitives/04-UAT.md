@@ -1,23 +1,19 @@
 ---
-status: testing
+status: partial
 phase: 04-design-system-instrument-primitives
 source: [04-VERIFICATION.md]
 started: 2026-10-05T00:00:00Z
-updated: 2026-10-05T00:00:00Z
+updated: 2026-10-11T12:00:00Z
 ---
 
 ## Current Test
 
-number: 1
-name: Audible playback on a real device
-expected: |
-  On /dev/fixtures (NEXT_PUBLIC_DEV_FIXTURES=1), Transport play, pause, 5 s step and scrub work by ear; the CompareDeck crossfader moves smoothly between A and B with no click or level jump; the level-matched pair sounds level.
-awaiting: user response
+[testing paused — 5 items outstanding; deferred by owner 2026-10-11, resume with /gsd-verify-work 4]
 
 ## Tests
 
 ### 1. Audible playback on a real device
-expected: Play, pause, step, scrub, crossfade and level match behave correctly by ear (band selection filters no audio yet, by design).
+expected: At http://192.168.0.133:3000/dev/fixtures/transport/ and /compare/ on a device, play, pause, step, scrub, crossfade and level match behave correctly by ear (band selection filters no audio yet, by design).
 result: [pending]
 
 ### 2. Playhead frame pacing on a tablet
