@@ -253,3 +253,68 @@ def test_v1_equality_rule_unchanged(contracts_copy, capsys):
     assert code == 1
     assert "model_version artifact: preprocessing_spec_version differs from manifest" in out
     assert "trained under" not in out
+
+
+# ---------------------------------------------------------------------------
+# Task 3: evaluation report and OOD reference
+# ---------------------------------------------------------------------------
+
+def test_evaluation_report_example_validates():
+    report = _example("evaluation-report")
+    assert _errors(report, "evaluation-report") == []
+    sites = {fold["held_out_site"] for model in report["models"] for fold in model["folds"]}
+    assert len(sites) == 2
+    assert sum(len(model["predictions"]) for model in report["models"]) >= 4
+    assert any(model["served"] for model in report["models"])
+    assert report["invalidated_figures"] and report["caveats"]
+
+
+def test_ood_reference_example_validates():
+    ood = _example("ood-reference")
+    assert _errors(ood, "ood-reference") == []
+    assert len(ood["row_site_ids"]) == ood["embeddings"]["count"] == 3
+    assert ood["embeddings"]["uri"] == "v2/ood_reference.f32"
+    assert "example" in ood["embedding_space_note"]
+
+
+def _first_metric(report):
+    return report["models"][0]["metrics"]["balanced_accuracy"]
+
+
+def test_evaluation_report_rejects_metric_without_ci_status():
+    report = _example("evaluation-report")
+    broken = copy.deepcopy(report)
+    del _first_metric(broken)["ci_status"]
+    errors = _errors(broken, "evaluation-report")
+    assert any("ci_status" in line for line in errors), errors
+    # an unknown ci_status and a defined_fraction outside [0, 1] are rejected too
+    for mutate in (
+        lambda r: _first_metric(r).update(ci_status="probably"),
+        lambda r: _first_metric(r).update(defined_fraction=1.5),
+        lambda r: r.update(method="k_fold"),
+        lambda r: r["bootstrap"].update(levels=1),
+        lambda r: r["generated_by"].update(git_sha="abc123"),
+        lambda r: r.update(caveats=[]),
+        lambda r: r["models"][0].update(embeddings="partly"),
+    ):
+        other = copy.deepcopy(report)
+        mutate(other)
+        assert _errors(other, "evaluation-report"), other
+
+
+def test_ood_reference_rejects_k_not_one():
+    ood = _example("ood-reference")
+    broken = copy.deepcopy(ood)
+    broken["k"] = 3
+    assert any(line.startswith("k:") for line in _errors(broken, "ood-reference"))
+    for mutate in (
+        lambda o: o["embeddings"].update(dim=512),
+        lambda o: o["embeddings"].update(dtype="float64"),
+        lambda o: o["calibration"].update(percentile=90),
+        lambda o: o.update(threshold=-0.1),
+        lambda o: o.update(embedding_space_note=""),
+        lambda o: o["embeddings"].update(uri="https://example.com/x.f32"),
+    ):
+        other = copy.deepcopy(ood)
+        mutate(other)
+        assert _errors(other, "ood-reference"), other
