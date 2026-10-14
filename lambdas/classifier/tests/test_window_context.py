@@ -8,6 +8,7 @@ lambdas/conftest.py. The reference set is the committed contract v1 (repo mode);
 tests that need an OOD reference write a tmp contract bucket beside it.
 """
 
+import hashlib
 import importlib.util
 import json
 from decimal import Decimal
@@ -228,3 +229,235 @@ def test_similarity_unavailable_keeps_classification(classifier_handler, excerpt
     assert item["classification"]["label"] == base["classification"]["label"]
     assert item["classification"]["probabilities"] == base["classification"]["probabilities"]
     assert item["windows"]["probabilities"] == base["windows"]["probabilities"]
+
+
+# --- projection ---------------------------------------------------------------------
+
+import contract_lib  # noqa: E402
+
+write_ood_contract = _lambdas_conftest.write_ood_contract
+PCA_ATOL = 2e-6
+
+
+def _plain(obj):
+    if isinstance(obj, Decimal):
+        return int(obj) if obj == obj.to_integral_value() else float(obj)
+    if isinstance(obj, dict):
+        return {k: _plain(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_plain(v) for v in obj]
+    return obj
+
+
+def test_projection_block_and_reference_round_trip(classifier_handler, excerpt):
+    ref = reef_reference.load_reference_set()
+    projection_doc = json.loads((BUCKET / "v1" / "projection.json").read_text(encoding="utf-8"))
+
+    # Projecting a reference site's own vector reproduces its published coordinates.
+    for i, site_id in enumerate(ref.row_site_ids):
+        block = classifier_handler.build_projection_block(ref.matrix[i:i + 1], ref)
+        published = ref.sites[site_id]["projection"]
+        x, y = block["windows"][0]
+        assert abs(x - published["x"]) <= PCA_ATOL, site_id
+        assert abs(y - published["y"]) <= PCA_ATOL, site_id
+
+    item = _run(classifier_handler, excerpt, "ctx-proj")
+    block = item["projection"]
+    assert block["method"] == "pca"
+    assert int(block["contract_version"]) == 1
+    assert block["basis_uri"] == "v1/projection.json"
+    assert [_f(v) for v in block["explained_variance_ratio"]] == pytest.approx(
+        projection_doc["explained_variance_ratio"], abs=1e-9
+    )
+    assert block["note"] == projection_doc["note"]
+    assert "33.0%" in block["note"]
+
+    E = _window_embeddings(excerpt)
+    mean = np.asarray(projection_doc["mean"], dtype=np.float64)
+    components = np.asarray(projection_doc["components"], dtype=np.float64)
+    expected = (E - mean) @ components.T
+    got = np.array([[_f(v) for v in row] for row in block["windows"]])
+    assert got.shape == (6, 2)
+    assert got == pytest.approx(expected, abs=1e-8)
+    assert [_f(v) for v in block["centroid"]] == pytest.approx(list(expected.mean(axis=0)), abs=1e-8)
+    assert "visualization" not in item
+
+
+# --- acoustic OOD ---------------------------------------------------------------------
+
+
+def _ood_rows(excerpt, extra=97, seed=11):
+    """Training rows holding the first three windows exactly, then deterministic random vectors."""
+    E = np.stack([fake_embedding(w) for w in excerpt.windows])
+    rng = np.random.RandomState(seed)
+    return np.vstack([E[:3], rng.normal(size=(extra, 1280)).astype(np.float32)])
+
+
+def _with_ood(monkeypatch, handler, tmp_path, rows, threshold=0.5):
+    manifest = write_ood_contract(tmp_path, rows, threshold=threshold)
+    handler._reference_set = None
+    handler._ood_reference = None
+    monkeypatch.setattr(reef_reference, "REPO_CONTRACT_MANIFEST", str(manifest))
+    return manifest
+
+
+def test_ood_distance_threshold_and_summary(classifier_handler, excerpt, monkeypatch, tmp_path):
+    rows = _ood_rows(excerpt)
+    _with_ood(monkeypatch, classifier_handler, tmp_path, rows, threshold=0.5)
+    item = _run(classifier_handler, excerpt, "ctx-ood")
+    ood = item["ood"]
+
+    assert ood["metric"] == "cosine_distance_to_nearest_training_window"
+    assert int(ood["k"]) == 1
+    assert _f(ood["threshold"]) == 0.5
+    assert ood["reference_version"] == "ood-test-nn1-cosine"
+
+    assert ood["reference_sha256"] == hashlib.sha256(np.ascontiguousarray(rows, dtype="<f4").tobytes()).hexdigest()
+
+    E = _window_embeddings(excerpt)
+    cos = _cosines(E, rows.astype(np.float64))
+    expected = np.maximum(0.0, 1.0 - cos.max(axis=1))
+    distance = [_f(v) for v in ood["windows"]["distance"]]
+    assert distance == pytest.approx(list(expected), abs=1e-8)
+    assert ood["windows"]["status"] == ["inside"] * 3 + ["outside"] * 3
+    assert ood["windows"]["status"] == ["outside" if d > 0.5 else "inside" for d in distance]
+    assert int(ood["summary"]["windows_outside"]) == 3
+    assert int(ood["summary"]["windows_total"]) == 6
+    assert ood["summary"]["statement"] == "3 of 6 windows are outside the training data"
+    assert "never changes or withholds" in ood["note"]
+    assert "100 training windows" in ood["note"]
+
+
+def test_ood_status_is_outside_only_when_distance_exceeds_the_threshold(classifier_handler):
+    rng = np.random.RandomState(5)
+    rows = rng.normal(size=(10, 1280)).astype(np.float32)
+    windows = rng.normal(size=(4, 1280)).astype(np.float32)
+    probe = classifier_handler.build_ood_block(
+        windows, reef_reference.OodReference("v", 0.5, "cosine_distance", 1, rows, "0" * 64, ["s"] * 10)
+    )
+    distances = probe["windows"]["distance"]
+    # A threshold equal to a window's own distance leaves that window inside (strictly greater is outside).
+    block = classifier_handler.build_ood_block(
+        windows, reef_reference.OodReference("v", distances[2], "cosine_distance", 1, rows, "0" * 64, ["s"] * 10)
+    )
+    assert block["windows"]["status"][2] == "inside"
+    assert block["summary"]["windows_total"] == 4
+    assert block["summary"]["windows_outside"] == block["windows"]["status"].count("outside")
+
+
+def test_ood_unavailable_probabilities_identical(classifier_handler, excerpt, monkeypatch, tmp_path, capsys):
+    # Without an OOD artifact (contract v1) the result simply omits the ood block ...
+    without = _run(classifier_handler, excerpt, "ctx-no-ood")
+    assert "ood" not in without
+    out = capsys.readouterr().out
+    assert '"ContextUnavailable": 1' in out and '"Block": "ood"' in out
+
+    # ... and with it present, every probability and the similar sites are identical (D-12).
+    _with_ood(monkeypatch, classifier_handler, tmp_path, _ood_rows(excerpt))
+    with_ood = _run(classifier_handler, excerpt, "ctx-with-ood")
+    assert "ood" in with_ood
+    assert with_ood["classification"]["label"] == without["classification"]["label"]
+    assert with_ood["classification"]["confidence"] == without["classification"]["confidence"]
+    assert with_ood["classification"]["probabilities"] == without["classification"]["probabilities"]
+    assert with_ood["windows"]["probabilities"] == without["windows"]["probabilities"]
+    assert with_ood["windows"]["label"] == without["windows"]["label"]
+    assert with_ood["similar_sites"] == without["similar_sites"]
+
+
+def test_ood_reference_tampering_omits_the_block_and_keeps_the_analysis(
+    classifier_handler, excerpt, monkeypatch, tmp_path
+):
+    manifest = _with_ood(monkeypatch, classifier_handler, tmp_path, _ood_rows(excerpt))
+    matrix = manifest.parent.parent / "v2" / "ood_reference.f32"
+    raw = bytearray(matrix.read_bytes())
+    raw[7] ^= 0x01
+    matrix.write_bytes(bytes(raw))
+    item = _run(classifier_handler, excerpt, "ctx-ood-bad")
+    assert "ood" not in item
+    assert item["classification"]["probabilities"]
+    assert item["site_similarities"]
+
+
+# --- item size and schema ---------------------------------------------------------------
+
+
+def _dynamo_number_size(value):
+    d = Decimal(value)
+    if d == 0:
+        return 1
+    digits = len(d.normalize().as_tuple().digits)
+    return (digits + 1) // 2 + 1 + (1 if d < 0 else 0)
+
+
+def dynamodb_value_size(value):
+    """DynamoDB's documented item-size rules, as an estimate in bytes.
+
+    Strings are their UTF-8 length; a number is about one byte per two significant digits
+    plus one (and one more when negative); null and boolean are one byte; a list or map is
+    three bytes plus one byte per element, plus the elements (a map's attribute names count).
+    """
+    if value is None or isinstance(value, bool):
+        return 1
+    if isinstance(value, str):
+        return len(value.encode("utf-8"))
+    if isinstance(value, (int, float, Decimal)):
+        return _dynamo_number_size(value)
+    if isinstance(value, list):
+        return 3 + sum(1 + dynamodb_value_size(v) for v in value)
+    if isinstance(value, dict):
+        return 3 + sum(1 + len(k.encode("utf-8")) + dynamodb_value_size(v) for k, v in value.items())
+    raise TypeError(type(value))
+
+
+def dynamodb_item_size(item):
+    return sum(len(k.encode("utf-8")) + dynamodb_value_size(v) for k, v in item.items())
+
+
+def test_item_size_120_windows_under_limit(classifier_handler, served_dir):
+    handler = classifier_handler
+    n = 120  # the 600 s cap
+    rng = np.random.RandomState(2)
+    model = reef_reference.load_served_model()
+    ref = reef_reference.load_reference_set()
+    E = rng.normal(size=(n, 1280)).astype(np.float32)
+    P = handler.classify_windows(E, model)
+    sidecar = {"levels": {
+        "peak_dbfs": [-float(v) for v in rng.uniform(1, 40, n)],
+        "rms_dbfs": [-float(v) for v in rng.uniform(10, 60, n)],
+        "silent": [bool(v) for v in rng.uniform(size=n) < 0.05],
+    }}
+    S = handler.window_similarities(E, ref)
+    ood_ref = reef_reference.OodReference(
+        "ood-x", 0.3, "cosine_distance", 1, rng.normal(size=(100, 1280)).astype(np.float32), "a" * 64, ["s"] * 100
+    )
+    classification = handler.aggregate_classification(P, model)
+    item = {
+        "pk": "ANALYSIS#0b5f8f0e-5c0a-4c1e-9d3e-123456789abc", "sk": "RESULT",
+        "upload_id": "0b5f8f0e-5c0a-4c1e-9d3e-123456789abd",
+        "analysis_id": "0b5f8f0e-5c0a-4c1e-9d3e-123456789abc", "status": "complete",
+        "classification": {**classification, "region": {"name": "x" * 60, "caveat": "y" * 400}},
+        "similar_sites": handler.top3_similar_sites(S.mean(axis=0), ref),
+        "contract_version": 2, "dataset_version": "reefradar-reference-2026.10.0",
+        "model_version": "interim-real-only-2026.10.1", "preprocessing_spec_version": reef_audio.SPEC_VERSION,
+        "stamp_status": "stamped",
+        "windows": handler.build_windows_block(
+            P, model, sidecar, similarities=S, nearest_site=[ref.row_site_ids[int(j)] for j in S.argmax(axis=1)]
+        ),
+        "site_similarities": handler.build_site_similarities(S, ref),
+        "projection": handler.build_projection_block(E, ref),
+        "ood": handler.build_ood_block(E, ood_ref),
+        "completed_at": "2026-10-14T12:00:00.000000", "caveats": "c" * 600,
+    }
+    stored = handler.convert_floats(item)
+    size = dynamodb_item_size(stored)
+    print(f"120-window RESULT item size: {size} bytes ({size / 1024:.1f} KiB; limit 400 KiB)")
+    assert size < 400 * 1024
+    assert size < 200 * 1024  # and with real headroom for later blocks
+
+
+def test_full_result_validates_against_schema(classifier_handler, excerpt, monkeypatch, tmp_path):
+    _with_ood(monkeypatch, classifier_handler, tmp_path, _ood_rows(excerpt))
+    item = _run(classifier_handler, excerpt, "ctx-schema")
+    for key in ("windows", "site_similarities", "projection", "ood", "input_audio"):
+        assert key in item
+    contract_lib.validate(_plain(item), "analysis-result")

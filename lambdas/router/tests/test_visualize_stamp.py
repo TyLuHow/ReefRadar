@@ -186,7 +186,7 @@ def test_visualize_new_item_additive_keys_with_ints(stack):
 
     assert set(LEGACY_BODY_KEYS) <= set(body)
     present = [k for k in NEW_KEYS if k in body]
-    assert present == ["windows", "site_similarities", "input_audio"]  # projection, ood are added by 05-10 task 2
+    assert present == ["windows", "site_similarities", "projection", "input_audio"]  # no OOD artifact in contract v1
 
     windows = body["windows"]
     assert windows["count"] == 6 and type(windows["count"]) is int
@@ -208,7 +208,8 @@ def test_visualize_new_item_additive_keys_with_ints(stack):
     assert '"count": 6.0' not in result["body"]
 
     # No S3 key and no per-window embedding ever leaves the API.
-    assert "embeddings" not in result["body"] and "processed/" not in result["body"]
+    assert "embeddings.f32" not in result["body"] and "processed/" not in result["body"]
+    assert "\"embedding\"" not in result["body"] and "\"embeddings\"" not in result["body"]
 
 
 def test_visualize_extra_stored_keys_are_whitelisted(stack):

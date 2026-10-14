@@ -371,3 +371,72 @@ def load_reference_set(manifest_path: Optional[str] = None) -> ReferenceSet:
         contract_version=int(manifest["contract_version"]),
         dataset_version=str(manifest["dataset_version"]),
     )
+
+
+# --- acoustic out-of-distribution reference (plan 05-10) -----------------------------
+#
+# The OOD reference is a sidecar (threshold, calibration, the training windows'
+# embedding sha256) plus the re-embedded training windows as a float32 matrix, both
+# named by the contract manifest. Contract v1 has none, so loading against it raises
+# ReferenceDataError and the classifier omits the ood block (never invents one).
+
+
+@dataclass
+class OodReference:
+    """The training windows an analysis is measured against, and the calibrated threshold."""
+
+    version: str
+    threshold: float
+    metric: str
+    k: int
+    matrix: np.ndarray       # float32 (n, 1280): the re-embedded training windows
+    sha256: str              # sha256 of the matrix bytes (the ood_embeddings artifact)
+    row_site_ids: list       # the training site of each row
+
+
+def load_ood_reference(manifest_path: Optional[str] = None) -> OodReference:
+    """Load and verify the OOD sidecar and its embeddings matrix.
+
+    Both artifacts are checked against the contract manifest's sha256 and byte
+    count, and the sidecar's own embeddings.sha256 must equal the matrix artifact's.
+    Requires metric cosine_distance and k 1. Raises ReferenceDataError otherwise,
+    including when the manifest names no OOD artifact (contract v1).
+    """
+    src = _ArtifactSource(manifest_path)
+    sidecar_entry = src.artifact("ood_reference")
+    sidecar = _json_object("ood_reference", src.read("ood_reference", sidecar_entry))
+
+    if sidecar.get("metric") != "cosine_distance":
+        raise ReferenceDataError(f"OOD metric is {sidecar.get('metric')!r}, expected 'cosine_distance'")
+    if sidecar.get("k") != 1:
+        raise ReferenceDataError(f"OOD k is {sidecar.get('k')!r}, expected 1")
+    threshold = sidecar.get("threshold")
+    if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) or not 0 <= threshold:
+        raise ReferenceDataError("OOD threshold must be a non-negative number")
+    version = sidecar.get("ood_version")
+    if not version:
+        raise ReferenceDataError("OOD sidecar has no ood_version")
+
+    sidecar_emb = sidecar.get("embeddings")
+    if not isinstance(sidecar_emb, dict):
+        raise ReferenceDataError("OOD sidecar has no embeddings block")
+    matrix_entry = src.artifact("ood_embeddings")
+    if sidecar_emb.get("sha256") != matrix_entry["sha256"]:
+        raise ReferenceDataError("OOD sidecar embeddings.sha256 does not match the ood_embeddings artifact")
+    if int(sidecar_emb.get("dim", 0)) != EMBEDDING_DIM:
+        raise ReferenceDataError(f"OOD embeddings dim is {sidecar_emb.get('dim')!r}, expected {EMBEDDING_DIM}")
+    count = int(sidecar_emb.get("count", 0))
+    row_site_ids = sidecar.get("row_site_ids")
+    if count < 1 or not isinstance(row_site_ids, list) or len(row_site_ids) != count:
+        raise ReferenceDataError("OOD row_site_ids does not match the embeddings count")
+    matrix = _float32_matrix("ood_embeddings", src.read("ood_embeddings", matrix_entry), count, EMBEDDING_DIM)
+
+    return OodReference(
+        version=str(version),
+        threshold=float(threshold),
+        metric=sidecar["metric"],
+        k=1,
+        matrix=matrix,
+        sha256=matrix_entry["sha256"],
+        row_site_ids=list(row_site_ids),
+    )

@@ -214,6 +214,10 @@ def handler(event, context):
         similarity = compute_similarity_context(embeddings)
         similar_sites = similarity['similar_sites']
         similar_sites_error = similarity['similar_sites_error']
+        # PCA coordinates and the acoustic OOD status (D-12: neither one alters
+        # or withholds a probability; each block is simply omitted if unavailable).
+        projection = compute_projection_block(embeddings, similarity['reference'])
+        ood = compute_ood_block(embeddings)
 
         # Per-window embeddings for later analysis (n x 1280 little-endian float32).
         s3.put_object(
@@ -251,6 +255,8 @@ def handler(event, context):
                 nearest_site=similarity['nearest_site'],
             ),
             **({'site_similarities': similarity['site_similarities']} if similarity['site_similarities'] else {}),
+            **({'projection': projection} if projection else {}),
+            **({'ood': ood} if ood else {}),
             'input_audio': build_input_audio_block(info['sidecar']),
             'completed_at': datetime.utcnow().isoformat(),
             'caveats': region_result['caveat']
@@ -1145,3 +1151,105 @@ def compute_similarity_context(embeddings):
             'nearest_site': None,
             'reference': None,
         }
+
+
+# --- projection and acoustic OOD (plan 05-10) ------------------------------------------
+#
+# Both blocks are computed after classification, from the same window embeddings E,
+# and never feed back into it (D-12: nothing here scales, adjusts or withholds a
+# probability). A load or compute failure omits the block, prints an EMF line and
+# leaves the analysis otherwise intact.
+
+OOD_NOTE = (
+    'Distance is measured to the 100 training windows, which were embedded with the same '
+    'preprocessing as this recording. It is reported beside the probabilities and never '
+    'changes or withholds them. It cannot detect a mismatch between the classifier and its '
+    'embeddings: a model that no longer fits its embedding space would not show up here.'
+)
+
+_ood_reference = None
+
+
+def get_ood_reference():
+    """The bundled, hash-verified OOD reference (cached after a successful load)."""
+    global _ood_reference
+    if _ood_reference is None:
+        _ood_reference = reef_reference.load_ood_reference()
+        print(
+            f"OOD reference loaded: {_ood_reference.version}, {_ood_reference.matrix.shape[0]} training "
+            f"windows, threshold {_ood_reference.threshold}"
+        )
+    return _ood_reference
+
+
+def build_projection_block(E, ref):
+    """The additive `projection` block: each window's PCA coordinates in the contract's basis.
+
+    coordinates = (window - mean) @ components.T in float64, the same formula the
+    reference sites' published coordinates come from, so a reference site's own
+    vector reproduces them. The centroid is the mean of the window points.
+    """
+    points = (np.atleast_2d(np.asarray(E, dtype=np.float64)) - ref.projection_mean) @ ref.projection_components.T
+    return {
+        'method': 'pca',
+        'contract_version': int(ref.contract_version),
+        'basis_uri': ref.projection_uri,
+        'explained_variance_ratio': [float(v) for v in ref.explained_variance_ratio],
+        'windows': points.tolist(),
+        'centroid': points.mean(axis=0).tolist(),
+        'note': ref.projection_note,
+    }
+
+
+def build_ood_block(E, ood_ref):
+    """The additive `ood` block: distance of each window to its nearest training window.
+
+    distance = 1 - the largest cosine to any training window (k = 1); a window is
+    "outside" exactly when its distance exceeds the calibrated threshold, which is
+    returned with every result so the numbers can be read without a lookup.
+    """
+    cosines = _normalise_rows(E) @ _normalise_rows(ood_ref.matrix).T
+    distance = np.maximum(0.0, 1.0 - cosines.max(axis=1))
+    outside = distance > ood_ref.threshold
+    n = int(distance.shape[0])
+    k = int(outside.sum())
+    return {
+        'metric': 'cosine_distance_to_nearest_training_window',
+        'k': 1,
+        'threshold': float(ood_ref.threshold),
+        'reference_version': ood_ref.version,
+        'reference_sha256': ood_ref.sha256,
+        'windows': {
+            'distance': distance.tolist(),
+            'status': ['outside' if flag else 'inside' for flag in outside],
+        },
+        'summary': {
+            'windows_outside': k,
+            'windows_total': n,
+            'statement': f'{k} of {n} windows are outside the training data',
+        },
+        'note': OOD_NOTE,
+    }
+
+
+def compute_projection_block(E, ref):
+    """build_projection_block, or None (with an EMF line) when it cannot be computed."""
+    if ref is None:
+        _emit_context_unavailable_metric('projection', 'reference set unavailable')
+        return None
+    try:
+        return build_projection_block(E, ref)
+    except Exception as e:
+        print(f"ERROR projection: {type(e).__name__}: {e}")
+        _emit_context_unavailable_metric('projection', f"{type(e).__name__}: {e}")
+        return None
+
+
+def compute_ood_block(E):
+    """build_ood_block against the bundled reference, or None (with an EMF line) when unavailable."""
+    try:
+        return build_ood_block(E, get_ood_reference())
+    except Exception as e:
+        print(f"ERROR ood: {type(e).__name__}: {e}")
+        _emit_context_unavailable_metric('ood', f"{type(e).__name__}: {e}")
+        return None

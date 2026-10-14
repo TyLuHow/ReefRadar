@@ -215,3 +215,49 @@ def put_binary_segments(s3_client, bucket, analysis_id, prepared, tamper=None):
         "segments_format": reef_audio.SEGMENTS_FORMAT,
         "preprocessing_key": side_key,
     }
+
+
+def write_ood_contract(tmp_path, rows, threshold=0.5, version="ood-test-nn1-cosine"):
+    """Write a tmp contract bucket: the committed v1 artifacts plus an OOD sidecar and matrix.
+
+    `rows` is an (n, 1280) array of training-window embeddings. Returns the manifest path
+    (a contract manifest whose artifacts also name ood_reference and ood_embeddings), for
+    reef_reference.load_ood_reference(path) or for monkeypatching REPO_CONTRACT_MANIFEST.
+    """
+    import shutil
+
+    import numpy as np
+
+    dest = _Path(tmp_path) / "ood-bucket"
+    shutil.copytree(_REPO_ROOT / "contracts" / "bucket", dest)
+    rows = np.ascontiguousarray(rows, dtype="<f4")
+    matrix_bytes = rows.tobytes()
+    matrix_sha = hashlib.sha256(matrix_bytes).hexdigest()
+    sidecar = {
+        "schema_version": 1,
+        "ood_version": version,
+        "metric": "cosine_distance",
+        "k": 1,
+        "threshold": threshold,
+        "embeddings": {
+            "uri": "v2/ood_reference.f32", "sha256": matrix_sha, "dtype": "float32-le",
+            "dim": 1280, "count": int(rows.shape[0]),
+        },
+        "row_site_ids": ["train_site"] * int(rows.shape[0]),
+    }
+    sidecar_bytes = _json.dumps(sidecar).encode("utf-8")
+    (dest / "v2").mkdir()
+    (dest / "v2" / "ood_reference.f32").write_bytes(matrix_bytes)
+    (dest / "v2" / "ood_reference.json").write_bytes(sidecar_bytes)
+    manifest_path = dest / "contract" / "v1.json"
+    manifest = _json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["artifacts"]["ood_reference"] = {
+        "uri": "v2/ood_reference.json", "sha256": hashlib.sha256(sidecar_bytes).hexdigest(),
+        "bytes": len(sidecar_bytes), "content_type": "application/json",
+    }
+    manifest["artifacts"]["ood_embeddings"] = {
+        "uri": "v2/ood_reference.f32", "sha256": matrix_sha, "bytes": len(matrix_bytes),
+        "content_type": "application/octet-stream",
+    }
+    manifest_path.write_text(_json.dumps(manifest), encoding="utf-8")
+    return manifest_path

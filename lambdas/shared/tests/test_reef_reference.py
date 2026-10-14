@@ -219,3 +219,86 @@ def test_reference_set_byte_count_checked(tmp_path):
 def test_reference_set_missing_manifest_is_reference_data_error(tmp_path):
     with pytest.raises(rr.ReferenceDataError):
         rr.load_reference_set(str(tmp_path / "none.json"))
+
+
+# --- OOD reference (plan 05-10 task 2) ---------------------------------------------------
+
+write_ood_contract = _lambdas_conftest.write_ood_contract
+
+
+def _ood_rows(n=20, seed=3):
+    return np.random.RandomState(seed).normal(size=(n, 1280)).astype(np.float32)
+
+
+def test_ood_reference_loads_a_valid_manifest(tmp_path):
+    rows = _ood_rows()
+    manifest = write_ood_contract(tmp_path, rows, threshold=0.42)
+    ood = rr.load_ood_reference(str(manifest))
+    assert ood.metric == "cosine_distance" and ood.k == 1
+    assert ood.threshold == pytest.approx(0.42)
+    assert ood.matrix.shape == (20, 1280) and ood.matrix.dtype == np.float32
+    assert np.array_equal(ood.matrix, rows)
+    assert ood.sha256 == hashlib.sha256(rows.tobytes()).hexdigest()
+    assert ood.version == "ood-test-nn1-cosine"
+    assert len(ood.row_site_ids) == 20
+
+
+def test_ood_reference_rejects_v1_manifest_and_tampering(tmp_path):
+    # The committed v1 manifest names no OOD artifact.
+    with pytest.raises(rr.ReferenceDataError, match="ood_reference"):
+        rr.load_ood_reference()
+
+    # A flipped byte in the matrix or in the sidecar fails the manifest's sha256 check.
+    for filename in ("ood_reference.f32", "ood_reference.json"):
+        sub = tmp_path / filename.replace(".", "_")
+        manifest = write_ood_contract(sub, _ood_rows())
+        target = manifest.parent.parent / "v2" / filename
+        raw = bytearray(target.read_bytes())
+        raw[len(raw) // 2] ^= 0x01
+        target.write_bytes(bytes(raw))
+        with pytest.raises(rr.ReferenceDataError, match="sha256"):
+            rr.load_ood_reference(str(manifest))
+
+
+def test_ood_reference_sidecar_must_name_the_matrix_it_ships_with(tmp_path):
+    manifest = write_ood_contract(tmp_path, _ood_rows())
+    sidecar_path = manifest.parent.parent / "v2" / "ood_reference.json"
+    sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    sidecar["embeddings"]["sha256"] = "0" * 64
+    raw = json.dumps(sidecar).encode("utf-8")
+    sidecar_path.write_bytes(raw)
+    doc = json.loads(manifest.read_text(encoding="utf-8"))
+    doc["artifacts"]["ood_reference"]["sha256"] = hashlib.sha256(raw).hexdigest()
+    doc["artifacts"]["ood_reference"]["bytes"] = len(raw)
+    manifest.write_text(json.dumps(doc), encoding="utf-8")
+    with pytest.raises(rr.ReferenceDataError, match="embeddings.sha256"):
+        rr.load_ood_reference(str(manifest))
+
+
+@pytest.mark.parametrize("field,value", [("metric", "euclidean"), ("k", 2), ("threshold", -0.1)])
+def test_ood_reference_requires_cosine_distance_k1_and_a_threshold(tmp_path, field, value):
+    manifest = write_ood_contract(tmp_path, _ood_rows())
+    sidecar_path = manifest.parent.parent / "v2" / "ood_reference.json"
+    sidecar = json.loads(sidecar_path.read_text(encoding="utf-8"))
+    sidecar[field] = value
+    raw = json.dumps(sidecar).encode("utf-8")
+    sidecar_path.write_bytes(raw)
+    doc = json.loads(manifest.read_text(encoding="utf-8"))
+    doc["artifacts"]["ood_reference"]["sha256"] = hashlib.sha256(raw).hexdigest()
+    doc["artifacts"]["ood_reference"]["bytes"] = len(raw)
+    manifest.write_text(json.dumps(doc), encoding="utf-8")
+    with pytest.raises(rr.ReferenceDataError):
+        rr.load_ood_reference(str(manifest))
+
+
+def test_ood_reference_bundled_mode(tmp_path, monkeypatch):
+    manifest = write_ood_contract(tmp_path / "src", _ood_rows())
+    package = tmp_path / "package"
+    package.mkdir()
+    shutil.copy(manifest, package / rr.CONTRACT_MANIFEST)
+    bucket = manifest.parent.parent
+    shutil.copy(bucket / "v2" / "ood_reference.json", package / rr.BUNDLED_ARTIFACT_FILES["ood_reference"])
+    shutil.copy(bucket / "v2" / "ood_reference.f32", package / rr.BUNDLED_ARTIFACT_FILES["ood_embeddings"])
+    monkeypatch.setattr(rr, "_MODULE_DIR", str(package))
+    monkeypatch.setattr(rr, "REPO_CONTRACT_MANIFEST", str(tmp_path / "nowhere" / "v1.json"))
+    assert rr.load_ood_reference().matrix.shape == (20, 1280)
