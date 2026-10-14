@@ -186,7 +186,7 @@ def test_visualize_new_item_additive_keys_with_ints(stack):
 
     assert set(LEGACY_BODY_KEYS) <= set(body)
     present = [k for k in NEW_KEYS if k in body]
-    assert present == ["windows", "site_similarities", "projection", "input_audio"]  # no OOD artifact in contract v1
+    assert present == ["windows", "site_similarities", "projection", "ood", "input_audio"]  # contract v2 has the OOD artifact
 
     windows = body["windows"]
     assert windows["count"] == 6 and type(windows["count"]) is int
