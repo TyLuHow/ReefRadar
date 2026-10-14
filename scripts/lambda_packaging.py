@@ -14,6 +14,10 @@ compression) so repeated builds from the same source are byte-identical
 on any platform; manifest_from_zip()/compare_manifests() additionally
 let drift-check compare an *already-deployed* archive (built by whatever
 tool produced it) against a fresh local build by content hash alone.
+
+Whether a member is binary (no line-ending rewrite) is decided by suffix in
+one helper, normalize_member_bytes, shared by every reader: the working
+tree, `git show` (--ref rollback) and drift-check.
 """
 
 from __future__ import annotations
@@ -89,16 +93,34 @@ def _default_reader(repo_root: pathlib.Path, source: str) -> bytes:
         data = path.read_bytes()
     except OSError as e:
         raise SpecError(f"Could not read member source {path}: {e}") from e
+    return normalize_member_bytes(source, data)
+
+
+# Members with these suffixes are binary assets and are packaged byte for
+# byte. Phase 5 bundles contract embeddings (.f32), OOD reference rows (.f32)
+# and model weights (.npz) into the classifier zip (05-CONTEXT "Reference
+# similarity is pinned"); a stray CR LF pair in such a file must never be
+# rewritten.
+BINARY_SUFFIXES = (".f32", ".npz", ".bin")
+
+
+def normalize_member_bytes(source: str, data: bytes) -> bytes:
+    """The one rule every reader (working tree, `git show`, drift-check)
+    applies to member bytes: binary suffixes pass through unchanged, all
+    other members are text and get CRLF -> LF normalisation."""
+    if source.lower().endswith(BINARY_SUFFIXES):
+        return data
     return normalize_text_bytes(data)
 
 
 def normalize_text_bytes(data: bytes) -> bytes:
-    """Normalize CRLF -> LF.
+    """Normalize CRLF -> LF for text members.
 
-    Every member these specs ever reference is a text/source file
-    (handler.py, region_detection.py, inference.py, Dockerfile,
-    requirements.txt, buildspec.yml), never a binary asset, so this is
-    always safe. Without it, build_package's output would depend on the
+    Text members (handler.py, region_detection.py, inference.py,
+    Dockerfile, requirements.txt, buildspec.yml, JSON) are normalised;
+    members whose suffix is in BINARY_SUFFIXES are passed through
+    byte-for-byte by normalize_member_bytes and never reach this
+    function. Without normalisation, build_package's output would depend on the
     local checkout's line-ending style: a Windows working tree with
     core.autocrlf=true checks files out with CRLF, while the git blob
     itself -- what a fresh Linux clone or `git show <ref>:<path>` both
