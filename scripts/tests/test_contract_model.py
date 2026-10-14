@@ -3,7 +3,7 @@ Phase 2 (CONTRACT-01/04): the honest ModelVersion, PreprocessingSpec and version
 stamp artifacts of contract v1.
 
 The preprocessing spec is compared with constants parsed straight out of
-lambdas/preprocessor/handler.py, so the spec cannot drift from the code it
+lambdas/shared/reef_audio.py (the module the preprocessor delegates to), so the spec cannot drift from the code it
 describes. The model artifact is compared with the committed model config, the
 model card and the committed weights bytes. No accuracy figure may appear.
 """
@@ -20,7 +20,7 @@ import contract_lib
 REPO_ROOT = contract_lib.REPO_ROOT
 BUNDLE = contract_lib.BUCKET_DIR / "v1"
 MODEL_DIR = REPO_ROOT / "models" / "interim-real-only"
-HANDLER = REPO_ROOT / "lambdas" / "preprocessor" / "handler.py"
+REEF_AUDIO = REPO_ROOT / "lambdas" / "shared" / "reef_audio.py"
 CLASSIFIER = REPO_ROOT / "lambdas" / "classifier" / "handler.py"
 MODEL_CARD = REPO_ROOT / "dashboard-next" / "src" / "data" / "model-card.json"
 LOCK = REPO_ROOT / "docs" / "model" / "deployed-model.lock.json"
@@ -136,17 +136,32 @@ def test_predecessor_is_the_retired_synthetic_trained_model(model):
     assert "restored_mid" in model["predecessor"]["retired_reason"]
 
 
+# The frozen v1 spec recorded the constants the preprocessor handler then held under
+# these names. Plan 05-07 moved all preprocessing into reef_audio, which keeps the
+# same values under the names below; the keys of the returned dict stay the v1 names
+# so every assertion in this module is unchanged.
+_V1_NAME_TO_REEF_AUDIO = {
+    "TARGET_SAMPLE_RATE": "TARGET_SAMPLE_RATE",
+    "SEGMENT_DURATION": "WINDOW_S",
+    "SEGMENT_SAMPLES": "WINDOW_SAMPLES",
+    "MIN_AUDIO_DURATION": "MIN_DURATION_S",
+    "MAX_AUDIO_DURATION": "MAX_DURATION_S",
+}
+
+
 def _parse_handler_constants():
-    source = HANDLER.read_text(encoding="utf-8")
+    """Constants of the live preprocessing, read from reef_audio's source text.
+
+    The handler no longer holds them (it delegates to reef_audio), so the spec is
+    compared with the module that now owns them.
+    """
+    source = REEF_AUDIO.read_text(encoding="utf-8")
     found = {}
-    for name in (
-        "TARGET_SAMPLE_RATE", "SEGMENT_DURATION", "SEGMENT_SAMPLES",
-        "MIN_AUDIO_DURATION", "MAX_AUDIO_DURATION",
-    ):
+    for v1_name, name in _V1_NAME_TO_REEF_AUDIO.items():
         match = re.search(rf"^{name}\s*=\s*([0-9.]+)", source, re.MULTILINE)
         assert match, name
         number = float(match.group(1))
-        found[name] = int(number) if number.is_integer() and "." not in match.group(1) else number
+        found[v1_name] = int(number) if number.is_integer() and "." not in match.group(1) else number
     return found
 
 
