@@ -1,12 +1,15 @@
 """
 Health classifier - uses SurfPerch embeddings to classify reef health.
 
+Plan 05-09: every 5 s window is embedded and classified individually; the
+recording's probabilities are the mean of the per-window probability vectors.
+A mean-pooled embedding is never classified.
+
 Uses the SurfPerch inference Lambda (container-based) for real ML embeddings.
 NEVER falls back to synthetic embeddings - fails with clear error instead.
 """
 
 import hashlib
-import io
 import json
 import boto3
 import os
@@ -17,6 +20,8 @@ import uuid
 import time
 from datetime import datetime
 from decimal import Decimal
+import reef_audio
+import reef_reference
 from region_detection import detect_region, adjust_classification, DEFAULT_TRAINING_SITES
 from site_provenance import load_provenance, apply_label_provenance
 from contract_stamp import load_stamp, stamp_for_model, STAMP_KEYS
@@ -33,8 +38,24 @@ STORED_FLOAT_DECIMALS = 9
 
 
 def convert_floats(obj):
-    """Convert floats to Decimal for DynamoDB compatibility."""
+    """Convert a value tree to DynamoDB-safe Python types.
+
+    NumPy scalars and arrays become Python values first; floats become Decimal
+    rounded to STORED_FLOAT_DECIMALS. NaN and infinity raise ValueError rather
+    than being written (DynamoDB rejects them, and a stored non-finite number
+    would be a silent defect).
+    """
+    if isinstance(obj, np.ndarray):
+        return convert_floats(obj.tolist())
+    if isinstance(obj, np.bool_):
+        return bool(obj)
+    if isinstance(obj, np.integer):
+        return int(obj)
+    if isinstance(obj, np.floating):
+        obj = float(obj)
     if isinstance(obj, float):
+        if obj != obj or obj in (float('inf'), float('-inf')):
+            raise ValueError(f"refusing to store a non-finite number: {obj}")
         return Decimal(str(round(obj, STORED_FLOAT_DECIMALS)))
     elif isinstance(obj, dict):
         return {k: convert_floats(v) for k, v in obj.items()}
@@ -50,18 +71,12 @@ INFERENCE_FUNCTION = os.environ.get('INFERENCE_FUNCTION', 'reefradar-2477-infere
 
 CATEGORIES = ['healthy', 'degraded', 'restored_early', 'restored_mid']
 
-MODEL_WEIGHTS_KEY = 'models/reef_classifier_weights.npz'
-MODEL_CONFIG_KEY = 'models/model_config.json'
-# How often a warm container re-checks the S3 ETags of the model objects, so a
-# model publish or rollback is picked up without waiting for a recycle.
-MODEL_REFRESH_SECONDS = 60
-REQUIRED_WEIGHT_KEYS = ('w1', 'b1', 'w2', 'b2', 'w3', 'b3')
+# The preprocessing the deployed (pre-05) preprocessor wrote as JSON segments. The
+# served model was trained on reef_audio windows, so these are refused (below).
+LEGACY_PREPROCESSING_SPEC_VERSION = 'preproc-2026.10.0-as-deployed'
 
 # Caches for warm Lambda invocations
-_model_weights = None
-_model_config = None
-_model_etags = None
-_model_checked_at = 0.0
+_served_model = None
 _reference_embeddings = None
 _label_provenance = None
 _contract_stamp = None
@@ -88,6 +103,21 @@ class _InferenceCallError(Exception):
     def __init__(self, message, error_type='INFERENCE_FAILED'):
         super().__init__(message)
         self.error_type = error_type
+
+
+class PreprocessingSpecMismatch(Exception):
+    """The windows were prepared under a different preprocessing spec than the served model was trained on."""
+    def __init__(self, windows_spec, training_spec):
+        super().__init__(
+            f"windows were prepared under {windows_spec!r} but the served model was trained "
+            f"under {training_spec!r}"
+        )
+        self.windows_spec = windows_spec
+        self.training_spec = training_spec
+
+
+class SegmentIntegrityError(Exception):
+    """The segments object does not match its sidecar (length, hash or count), or the sidecar is malformed."""
 
 
 def classify_inference_exception(e):
@@ -121,8 +151,6 @@ def handler(event, context):
     """Classify audio segments."""
     upload_id = event['upload_id']
     analysis_id = event['analysis_id']
-    segments_key = event['segments_key']
-    num_segments = event['num_segments']
     latitude = event.get('latitude')
     longitude = event.get('longitude')
 
@@ -143,37 +171,54 @@ def handler(event, context):
                 'body': json.dumps({'analysis_id': analysis_id, 'status': 'duplicate_delivery_ignored'})
             }
 
-        # Load segments
-        response = s3.get_object(Bucket=AUDIO_BUCKET, Key=segments_key)
-        segments_data = json.loads(response['Body'].read().decode())
-        segments = segments_data['segments']
-        sample_rate = segments_data.get('sample_rate', 32000)
+        # The served model is bundled with this code (never read from S3), so
+        # the probabilities and the training-site list come from one model.
+        served = get_served_model()
 
-        # Get real embeddings from inference Lambda - NO SYNTHETIC FALLBACK
-        embeddings = invoke_inference_with_retry(
-            segments=segments,
-            sample_rate=sample_rate,
+        # Describe the segments and verify the sidecar before any inference.
+        info = read_segment_info(event)
+
+        # Train/serve parity (05-CONTEXT amendment): the served model was trained
+        # on reef_audio windows. Windows prepared any other way -- including the
+        # legacy JSON segments an in-flight analysis may still carry between the
+        # classifier and preprocessor deploys -- are refused, never classified.
+        if info['spec_version'] != served.training_spec_version:
+            raise PreprocessingSpecMismatch(info['spec_version'], served.training_spec_version)
+
+        # Real embeddings from the inference Lambda, one per window - NO SYNTHETIC FALLBACK
+        embeddings = embed_windows(
+            read_segment_batches(event, info),
             analysis_id=analysis_id,
-            request_id=request_id
+            request_id=request_id,
+            total_windows=info['num_windows'],
         )
+        if embeddings.shape[0] != info['num_windows']:
+            raise InferenceError(
+                f"expected {info['num_windows']} embeddings, got {embeddings.shape[0]}",
+                error_type='EMBEDDING_MISMATCH', request_id=request_id,
+            )
 
-        embeddings = np.array(embeddings)
-        mean_embedding = embeddings.mean(axis=0)
-
-        # Load the model ONCE per invocation so the probabilities and the
-        # training-site list always come from the same model version.
-        model = load_classifier_model()
-        classification = classify_embedding(mean_embedding, model=model)
+        # Each window is classified on its own; the recording is the mean of the
+        # per-window probability vectors. A mean embedding is never classified.
+        window_probs = classify_windows(embeddings, served)
+        classification = aggregate_classification(window_probs, served)
 
         # Apply geographic region detection (D-12: no confidence/probability
         # scaling -- region is reported honestly, separately, from the
         # classifier's actual (audited) training sites).
-        _, model_config = model
-        training_sites = model_config.get('training_sites') or DEFAULT_TRAINING_SITES
+        training_sites = served.config.get('training_sites') or DEFAULT_TRAINING_SITES
         region_result = detect_region(latitude, longitude, training_sites=training_sites)
         classification = adjust_classification(classification, region_result)
 
-        similar_sites, similar_sites_error = find_similar_sites_with_status(mean_embedding)
+        similar_sites, similar_sites_error = find_similar_sites_with_status(embeddings)
+
+        # Per-window embeddings for later analysis (n x 1280 little-endian float32).
+        s3.put_object(
+            Bucket=AUDIO_BUCKET,
+            Key=f'processed/{analysis_id}/embeddings.f32',
+            Body=np.ascontiguousarray(embeddings, dtype='<f4').tobytes(),
+            ContentType='application/octet-stream',
+        )
 
         # Store results - synthetic is ALWAYS false now
         result_item = {
@@ -186,17 +231,19 @@ def handler(event, context):
             'similar_sites': similar_sites,
             **({'similar_sites_error': similar_sites_error} if similar_sites_error else {}),
             # CONTRACT-04: the versions this result was produced with.
-            **result_version_stamp(model_config.get('version')),
+            **result_version_stamp(served.version, info['spec_version']),
             'embedding_summary': {
-                'dimension': int(len(mean_embedding)),
-                'num_segments': num_segments,
-                'aggregation': 'mean',
+                'dimension': int(embeddings.shape[1]),
+                'num_segments': int(info['num_windows']),
+                'aggregation': 'mean_of_window_probabilities',
                 'synthetic': False,
                 'embedding_model': 'surfperch',
                 'embedding_version': '1.0',
                 'classifier_model': 'trained_mlp',
                 'classifier_version': classification.get('model_version', '1.0')
             },
+            'windows': build_windows_block(window_probs, served, info['sidecar']),
+            'input_audio': build_input_audio_block(info['sidecar']),
             'completed_at': datetime.utcnow().isoformat(),
             'caveats': region_result['caveat']
         }
@@ -252,6 +299,28 @@ def handler(event, context):
             'retry_count': e.retry_count,
             'request_id': e.request_id or request_id,
             'suggestion': get_error_suggestion(e.error_type),
+        })
+
+    except PreprocessingSpecMismatch as e:
+        # Retryable by the user: starting the analysis again goes through the
+        # updated preprocessor. Nothing is classified under a mismatched spec.
+        print(f"ERROR analysis {analysis_id}: PREPROCESSING_SPEC_MISMATCH: {e}")
+        return _record_failure(table, analysis_id, upload_id, {
+            'error_code': 'PREPROCESSING_SPEC_MISMATCH',
+            'error': str(e),
+            'stage': 'classification',
+            'request_id': request_id,
+            'suggestion': get_error_suggestion('PREPROCESSING_SPEC_MISMATCH'),
+        })
+
+    except SegmentIntegrityError as e:
+        print(f"ERROR analysis {analysis_id}: SEGMENTS_INTEGRITY: {e}")
+        return _record_failure(table, analysis_id, upload_id, {
+            'error_code': 'SEGMENTS_INTEGRITY',
+            'error': str(e),
+            'stage': 'classification',
+            'request_id': request_id,
+            'suggestion': get_error_suggestion('SEGMENTS_INTEGRITY'),
         })
 
     except Exception as e:
@@ -329,79 +398,197 @@ def _record_failure(table, analysis_id, upload_id, fields):
     }
 
 
-def invoke_inference_with_retry(segments, sample_rate, analysis_id, request_id):
+def _reject_non_finite_json(name):
+    raise SegmentIntegrityError(f"non-finite number {name} in segments")
+
+
+def read_segment_info(event):
+    """Describe the analysis's segments and verify them against their sidecar.
+
+    Returns a dict with `format` ('f32le' or 'json'), `spec_version` (the
+    preprocessing spec the windows were prepared under), `num_windows` and, for
+    binary segments, the parsed `sidecar`. Binary segments are checked here for
+    the event's window count and the object's byte length; the sha256 is
+    verified incrementally while the windows are read (read_segment_batches).
+    A segments object without `segments_format` is the legacy JSON written by
+    the pre-05 preprocessor: it is parsed and identified so it can be refused.
+
+    Raises SegmentIntegrityError for any inconsistency.
     """
-    Invoke inference Lambda with retry logic and S3-based payload.
+    fmt = event.get('segments_format')
+    if fmt is None:
+        return _read_legacy_segments(event)
+    if fmt != reef_audio.SEGMENTS_FORMAT:
+        raise SegmentIntegrityError(f"unsupported segments_format {fmt!r}")
 
-    Uses S3 to pass audio data (avoids Lambda's 6MB payload limit).
-    Implements exponential backoff for transient failures.
+    sidecar_key = event.get('preprocessing_key')
+    if not sidecar_key:
+        raise SegmentIntegrityError("the event has no preprocessing_key for binary segments")
+    raw = s3.get_object(Bucket=AUDIO_BUCKET, Key=sidecar_key)['Body'].read()
+    try:
+        sidecar = reef_audio.parse_sidecar(raw)
+    except reef_audio.SidecarError as e:
+        raise SegmentIntegrityError(f"preprocessing sidecar is invalid: {e}") from e
 
-    Returns:
-        List of 1280-dim embeddings
+    if event.get('num_segments') != sidecar['num_windows']:
+        raise SegmentIntegrityError(
+            f"event reports {event.get('num_segments')!r} windows but the sidecar describes "
+            f"{sidecar['num_windows']}"
+        )
+    length = s3.head_object(Bucket=AUDIO_BUCKET, Key=event['segments_key'])['ContentLength']
+    if length != sidecar['segments_bytes']:
+        raise SegmentIntegrityError(
+            f"segments object is {length} bytes but the sidecar describes {sidecar['segments_bytes']}"
+        )
+    return {
+        'format': fmt,
+        'spec_version': sidecar['spec_version'],
+        'num_windows': sidecar['num_windows'],
+        'sidecar': sidecar,
+    }
 
-    Raises:
-        InferenceError: If inference fails after all retries
+
+def _read_legacy_segments(event):
+    """Parse the legacy JSON segments ({"segments": [[160000 floats], ...], "sample_rate": 32000})."""
+    body = s3.get_object(Bucket=AUDIO_BUCKET, Key=event['segments_key'])['Body'].read()
+    try:
+        data = json.loads(body.decode(), parse_constant=_reject_non_finite_json)
+        segments = data['segments']
+    except SegmentIntegrityError:
+        raise
+    except (ValueError, KeyError, TypeError, UnicodeDecodeError) as e:
+        raise SegmentIntegrityError(f"legacy segments object is not readable: {e}") from e
+    if not isinstance(segments, list) or any(
+        not isinstance(row, list) or len(row) != reef_audio.WINDOW_SAMPLES for row in segments
+    ):
+        raise SegmentIntegrityError(
+            f"legacy segments must be a list of {reef_audio.WINDOW_SAMPLES}-sample windows"
+        )
+    return {
+        'format': 'json',
+        'spec_version': LEGACY_PREPROCESSING_SPEC_VERSION,
+        'num_windows': len(segments),
+        'segments': segments,
+    }
+
+
+def read_segment_batches(event, info=None):
+    """Yield (start_index, float32 array of at most BATCH_SIZE windows).
+
+    Binary segments are read with ranged GETs, one batch at a time, so a
+    600 s recording (120 windows, 77 MB) never sits in memory whole. Each
+    range must return exactly the bytes asked for, and after the last batch
+    the running sha256 must equal the sidecar's segments_sha256; otherwise
+    SegmentIntegrityError is raised and no RESULT is written.
     """
-    all_embeddings = []
-    num_batches = (len(segments) + BATCH_SIZE - 1) // BATCH_SIZE
+    if info is None:
+        info = read_segment_info(event)
+    n = info['num_windows']
 
-    print(f"Processing {len(segments)} segments in {num_batches} batches")
+    if info['format'] == 'json':
+        windows = np.asarray(info['segments'], dtype=np.float32)
+        for start in range(0, n, BATCH_SIZE):
+            yield start, windows[start:start + BATCH_SIZE]
+        return
 
-    for batch_idx in range(num_batches):
-        start_idx = batch_idx * BATCH_SIZE
-        end_idx = min(start_idx + BATCH_SIZE, len(segments))
-        batch_segments = segments[start_idx:end_idx]
+    per_window = reef_audio.SEGMENT_BYTES_PER_WINDOW
+    digest = hashlib.sha256()
+    for start in range(0, n, BATCH_SIZE):
+        count = min(BATCH_SIZE, n - start)
+        first, last = start * per_window, (start + count) * per_window - 1
+        body = s3.get_object(
+            Bucket=AUDIO_BUCKET, Key=event['segments_key'], Range=f'bytes={first}-{last}'
+        )['Body'].read()
+        if len(body) != count * per_window:
+            raise SegmentIntegrityError(
+                f"windows {start}-{start + count - 1}: read {len(body)} bytes, expected {count * per_window}"
+            )
+        digest.update(body)
+        yield start, reef_audio.decode_segments(body)
 
-        # Store batch in S3 to avoid payload limits
+    if digest.hexdigest() != info['sidecar']['segments_sha256']:
+        raise SegmentIntegrityError("segments sha256 does not match the preprocessing sidecar")
+
+
+def embed_windows(batches, analysis_id, request_id, total_windows=None):
+    """Embed every window batch via the inference Lambda -> float32 (n, EMBEDDING_DIM).
+
+    Each batch is staged in S3 (avoids Lambda's 6 MB payload limit) and sent
+    through invoke_inference_batch, which retries transient failures and checks
+    that the embeddings line up with the windows (count, length, finite).
+    """
+    total_batches = (total_windows + BATCH_SIZE - 1) // BATCH_SIZE if total_windows else None
+    print(f"Embedding {total_windows} windows in {total_batches} batches")
+    parts = []
+    for batch_idx, (_, batch) in enumerate(batches):
         batch_key = f'temp/embedding_batches/{analysis_id}_batch{batch_idx}_{uuid.uuid4().hex[:8]}.json'
-        batch_data = {
-            'segments': batch_segments,
-            'sample_rate': sample_rate
-        }
-
         s3.put_object(
             Bucket=EMBEDDINGS_BUCKET,
             Key=batch_key,
-            Body=json.dumps(batch_data),
+            Body=json.dumps({'segments': batch.tolist(), 'sample_rate': reef_audio.TARGET_SAMPLE_RATE}),
             ContentType='application/json'
         )
-
-        # Invoke inference with retries
-        batch_embeddings = invoke_inference_batch(
-            s3_bucket=EMBEDDINGS_BUCKET,
-            s3_key=batch_key,
-            batch_idx=batch_idx,
-            total_batches=num_batches,
-            request_id=request_id
-        )
-
-        all_embeddings.extend(batch_embeddings)
-
-        # Clean up temp S3 object
         try:
-            s3.delete_object(Bucket=EMBEDDINGS_BUCKET, Key=batch_key)
-        except Exception:
-            pass  # Best effort cleanup
+            parts.append(invoke_inference_batch(
+                s3_bucket=EMBEDDINGS_BUCKET,
+                s3_key=batch_key,
+                batch_idx=batch_idx,
+                total_batches=total_batches or batch_idx + 1,
+                request_id=request_id,
+                expected_count=int(batch.shape[0]),
+            ))
+        finally:
+            try:
+                s3.delete_object(Bucket=EMBEDDINGS_BUCKET, Key=batch_key)
+            except Exception:
+                pass  # Best effort cleanup
 
-    if not all_embeddings:
+    if not parts:
         raise InferenceError(
             "No embeddings generated - inference returned empty results",
             error_type='NO_EMBEDDINGS',
             request_id=request_id
         )
+    return np.concatenate(parts, axis=0)
 
-    return all_embeddings
+
+def _check_embeddings(embeddings, expected_count, attempt, request_id):
+    """Return a float32 (n, EMBEDDING_DIM) array or raise InferenceError(EMBEDDING_MISMATCH).
+
+    05-RESEARCH Pitfall 5: a response with the wrong number of embeddings would
+    silently shift every later window onto the wrong embedding. Count, row
+    length and finiteness are all checked; this is not retried.
+    """
+    def mismatch(message):
+        return InferenceError(
+            f"Inference response does not match the windows sent: {message}",
+            error_type='EMBEDDING_MISMATCH', retry_count=attempt + 1, request_id=request_id,
+        )
+
+    if expected_count is not None and len(embeddings) != expected_count:
+        raise mismatch(f"{len(embeddings)} embeddings for {expected_count} windows")
+    for i, row in enumerate(embeddings):
+        if not isinstance(row, (list, tuple)) or len(row) != reef_audio.EMBEDDING_DIM:
+            raise mismatch(f"embedding {i} does not have {reef_audio.EMBEDDING_DIM} values")
+    try:
+        arr = np.asarray(embeddings, dtype=np.float32)
+    except (TypeError, ValueError):
+        raise mismatch("embeddings contain non-numeric values")
+    if not np.isfinite(arr).all():
+        raise mismatch("embeddings contain NaN or infinity")
+    return arr
 
 
-def invoke_inference_batch(s3_bucket, s3_key, batch_idx, total_batches, request_id):
+def invoke_inference_batch(s3_bucket, s3_key, batch_idx, total_batches, request_id, expected_count=None):
     """
     Invoke inference Lambda for a single batch with retry logic.
 
     Returns:
-        List of embeddings for this batch
+        float32 (n, EMBEDDING_DIM) array of embeddings for this batch
 
     Raises:
-        InferenceError: If batch fails after all retries
+        InferenceError: If batch fails after all retries, or the embeddings do
+            not line up with the windows sent (EMBEDDING_MISMATCH, not retried)
     """
     last_error = None
     last_error_type = 'INFERENCE_FAILED'
@@ -445,7 +632,7 @@ def invoke_inference_batch(s3_bucket, s3_key, batch_idx, total_batches, request_
 
                 if embeddings:
                     print(f"Batch {batch_idx + 1}: received {len(embeddings)} embeddings")
-                    return embeddings
+                    return _check_embeddings(embeddings, expected_count, attempt, request_id)
                 else:
                     raise _InferenceCallError("Inference returned empty embeddings")
 
@@ -524,7 +711,19 @@ def get_error_suggestion(error_type):
         'INVALID_REQUEST': 'The audio format may be incompatible. Ensure you are uploading valid WAV audio.',
         'NO_EMBEDDINGS': 'The ML model could not process the audio. Try a different recording.',
         'INFERENCE_FAILED': 'ML inference failed. Please retry. If problem persists, contact support.',
-        'CLASSIFICATION_FAILED': 'Classification step failed. Please retry.'
+        'CLASSIFICATION_FAILED': 'Classification step failed. Please retry.',
+        'PREPROCESSING_SPEC_MISMATCH': (
+            'This recording was prepared by an earlier version of the analysis pipeline during '
+            'an update. Please start the analysis again.'
+        ),
+        'SEGMENTS_INTEGRITY': (
+            'The prepared audio could not be verified (it did not match its checksum or length). '
+            'Please start the analysis again.'
+        ),
+        'EMBEDDING_MISMATCH': (
+            'The ML model returned results that do not line up with the audio windows, so no '
+            'result was produced. Please retry.'
+        ),
     }
     return suggestions.get(error_type, 'An error occurred. Please retry later.')
 
@@ -532,109 +731,123 @@ def get_error_suggestion(error_type):
 def validate_model(weights, config):
     """Raise ValueError unless weights and config describe one consistent model.
 
-    Guards the core "probabilities sum to 100%" truth: with a 4-class softmax
-    and a 3-class label map, classify_embedding would emit a subset of the
-    distribution (sum < 1). Accepts any class count K as long as the weight
-    shapes, the label map and (when declared) `num_classes` all agree, so both
-    the interim 3-class and the archived 4-class models load.
+    Kept for callers and tests that hold a (weights, config) pair; the logic
+    lives in reef_reference.validate_model_arrays.
     """
-    missing = [k for k in REQUIRED_WEIGHT_KEYS if k not in weights]
-    if missing:
-        raise ValueError(f"model weights missing arrays: {missing}")
-
-    idx_to_label = config.get('idx_to_label')
-    if not isinstance(idx_to_label, dict) or not idx_to_label:
-        raise ValueError("model config has no idx_to_label mapping")
-    try:
-        indices = sorted(int(k) for k in idx_to_label)
-    except (TypeError, ValueError):
-        raise ValueError("model config idx_to_label keys must be integer strings")
-
-    num_out = int(weights['w3'].shape[1])
-    if indices != list(range(num_out)):
-        raise ValueError(
-            f"model config idx_to_label covers classes {indices} but weights have {num_out} outputs"
-        )
-    if int(weights['b3'].shape[0]) != num_out:
-        raise ValueError("model weights b3/w3 output sizes disagree")
-    declared = config.get('num_classes')
-    if declared is not None and int(declared) != num_out:
-        raise ValueError(f"model config num_classes={declared} but weights have {num_out} outputs")
-    input_dim = config.get('input_dim')
-    if input_dim is not None and int(input_dim) != int(weights['w1'].shape[0]):
-        raise ValueError("model config input_dim does not match weights")
-    if len(set(idx_to_label.values())) != len(idx_to_label):
-        raise ValueError("model config idx_to_label has duplicate labels")
+    reef_reference.validate_model_arrays(weights, config)
 
 
-def _head_etags():
-    """(weights_etag, config_etag) from S3, or None if unavailable."""
-    try:
-        w = s3.head_object(Bucket=EMBEDDINGS_BUCKET, Key=MODEL_WEIGHTS_KEY)['ETag']
-        c = s3.head_object(Bucket=EMBEDDINGS_BUCKET, Key=MODEL_CONFIG_KEY)['ETag']
-        return (w, c)
-    except Exception:
-        return None
+def get_served_model():
+    """The bundled served model (weights verified against their config's sha256).
 
-
-def load_classifier_model():
-    """Load trained classifier weights from S3 -> (weights, config).
-
-    Validated at load time (see validate_model) and, when the config declares a
-    `weights_sha256`, checked against the downloaded weights so a half-published
-    model (new weights with old config or vice versa) is rejected rather than
-    served. Cached in memory for warm invocations, but the S3 ETags of both
-    objects are re-checked every MODEL_REFRESH_SECONDS so a publish or rollback
-    is picked up by warm containers. Nothing is cached on /tmp.
+    Cached for warm invocations; only a successful load is cached. The model
+    ships inside the zip with this code (D-03 drift-checked), so a model change
+    is a deploy, and rollback is `deploy-lambdas.py --ref`. It is never read
+    from the S3 models/ keys.
     """
-    global _model_weights, _model_config, _model_etags, _model_checked_at
-
-    now = time.time()
-    if _model_weights is not None and _model_config is not None:
-        if now - _model_checked_at < MODEL_REFRESH_SECONDS:
-            return _model_weights, _model_config
-        _model_checked_at = now
-        etags = _head_etags()
-        if etags is None or etags == _model_etags:
-            return _model_weights, _model_config
-        print("Model objects changed in S3; reloading")
-
-    print("Downloading model from S3")
-    try:
-        etags_before = _head_etags()
-        weights_bytes = s3.get_object(Bucket=EMBEDDINGS_BUCKET, Key=MODEL_WEIGHTS_KEY)['Body'].read()
-        config = json.loads(
-            s3.get_object(Bucket=EMBEDDINGS_BUCKET, Key=MODEL_CONFIG_KEY)['Body'].read().decode()
+    global _served_model
+    if _served_model is None:
+        _served_model = reef_reference.load_served_model()
+        print(
+            f"Served model loaded: version={_served_model.version}, "
+            f"trained under {_served_model.training_spec_version}"
         )
+    return _served_model
 
-        expected_sha = config.get('weights_sha256')
-        if expected_sha and hashlib.sha256(weights_bytes).hexdigest() != expected_sha:
-            raise ValueError("weights sha256 does not match model config (half-published model?)")
 
-        with np.load(io.BytesIO(weights_bytes)) as npz:
-            weights = {k: npz[k] for k in npz.files}
-        validate_model(weights, config)
+def class_names(model):
+    """Class names in output-column order (idx_to_label is validated to cover 0..K-1)."""
+    return [model.idx_to_label[str(i)] for i in range(len(model.idx_to_label))]
 
-        _model_weights, _model_config = weights, config
-        _model_etags = etags_before
-        _model_checked_at = now
-        print(f"Model loaded: version={config.get('version')}, accuracy={config.get('test_accuracy')}")
-        return _model_weights, _model_config
 
-    except Exception as e:
-        print(f"Failed to load trained model: {e}")
-        raise Exception(f"Trained classifier model not available: {e}")
+def classify_windows(E, model):
+    """Per-window class probabilities -> float64 (n, K); each row is a softmax and sums to 1.
+
+    The same forward pass as classify_embedding (1280 -> 256 -> 64 -> K, ReLU),
+    batched over the windows. Probabilities are the model's raw output (D-12).
+    """
+    w = model.weights
+    x = np.asarray(E, dtype=np.float32)
+    x = np.maximum(0, x @ w['w1'] + w['b1'])
+    x = np.maximum(0, x @ w['w2'] + w['b2'])
+    logits = (x @ w['w3'] + w['b3']).astype(np.float64)
+    exp_logits = np.exp(logits - logits.max(axis=1, keepdims=True))
+    return exp_logits / exp_logits.sum(axis=1, keepdims=True)
+
+
+def aggregate_classification(P, model):
+    """Recording-level classification from per-window probabilities (n, K).
+
+    probabilities = column means of the per-window vectors (still a
+    distribution: the mean of rows that sum to 1 sums to 1); label = their
+    argmax; confidence = their max. The shape is the legacy
+    {label, confidence, probabilities, model_version}.
+    """
+    classes = class_names(model)
+    means = np.asarray(P, dtype=np.float64).mean(axis=0)
+    pred_idx = int(np.argmax(means))
+    probabilities = {cls: float(means[k]) for k, cls in enumerate(classes)}
+
+    total = sum(probabilities.values())
+    if abs(total - 1.0) > 1e-6:
+        raise ValueError(f"classifier probabilities sum to {total}, expected 1")
+
+    return {
+        'label': classes[pred_idx],
+        'confidence': float(means[pred_idx]),
+        'probabilities': probabilities,
+        'model_version': model.config.get('version', 'unknown'),
+    }
+
+
+def build_windows_block(P, model, sidecar):
+    """The additive `windows` block: column-wise per-window data (contract analysis-result $defs/windows)."""
+    classes = class_names(model)
+    P = np.asarray(P, dtype=np.float64)
+    n = int(P.shape[0])
+    levels = sidecar['levels']
+    return {
+        'count': n,
+        'window_s': float(reef_audio.WINDOW_S),
+        'index': list(range(n)),
+        'start_s': [float(i * reef_audio.WINDOW_S) for i in range(n)],
+        'classes': classes,
+        'probabilities': {cls: P[:, k].tolist() for k, cls in enumerate(classes)},
+        'label': [classes[int(i)] for i in P.argmax(axis=1)],
+        'peak_dbfs': [float(v) for v in levels['peak_dbfs']],
+        'rms_dbfs': [float(v) for v in levels['rms_dbfs']],
+        'silent': [bool(v) for v in levels['silent']],
+    }
+
+
+def build_input_audio_block(sidecar):
+    """The additive `input_audio` block: what the upload was and which spec prepared it."""
+    source = sidecar['input']
+    return {
+        'sample_rate_hz': int(source['sample_rate_hz']),
+        'channels': int(source['channels']),
+        'bits_per_sample': int(source['bits_per_sample']),
+        'encoding': source['encoding'],
+        'duration_s': float(source['duration_s']),
+        'windows': int(sidecar['num_windows']),
+        'dropped_tail_s': float(sidecar['dropped_tail_s']),
+        'preprocessing_spec_version': sidecar['spec_version'],
+    }
 
 
 def classify_embedding(embedding, model=None):
     """
-    Classify embedding using trained MLP classifier.
+    Classify ONE embedding vector with the served MLP (single-vector reference path).
 
-    Uses pure NumPy inference with pre-trained weights.
-    Returns label, confidence, and probability distribution. `model` may be a
-    (weights, config) tuple already loaded for this invocation.
+    Production classifies windows with classify_windows; this keeps the
+    original independent single-vector forward pass as the cross-check the
+    tests compare it against. `model` may be a (weights, config) tuple.
     """
-    weights, config = model if model is not None else load_classifier_model()
+    if model is None:
+        served = get_served_model()
+        weights, config = served.weights, served.config
+    else:
+        weights, config = model
 
     x = np.array(embedding, dtype=np.float32)
 
@@ -794,8 +1007,12 @@ def _emit_stamp_metric(status, model_version):
         pass  # observability must never fail an analysis
 
 
-def result_version_stamp(loaded_model_version):
+def result_version_stamp(loaded_model_version, windows_spec_version=None):
     """CONTRACT-04: the four version keys plus `stamp_status` for a new RESULT item.
+
+    `windows_spec_version` is the preprocessing spec the windows were prepared
+    under (from the sidecar); a result is stamped only when the loaded model,
+    reef_audio.SPEC_VERSION and the windows' spec all match the bundled stamp.
 
     `stamp_status` (CR-01) tells a post-contract result apart from a legacy one:
       - 'stamped':     the loaded model is the one the bundled stamp covers
@@ -810,7 +1027,9 @@ def result_version_stamp(loaded_model_version):
     Legacy results (written before stamping) carry none of these keys.
     """
     try:
-        stamp = stamp_for_model(loaded_model_version, get_contract_stamp())
+        stamp = stamp_for_model(
+            loaded_model_version, get_contract_stamp(), windows_spec_version=windows_spec_version
+        )
     except Exception as e:
         print(f"ERROR could not load the bundled contract stamp: {type(e).__name__}: {e}")
         _emit_stamp_metric(STAMP_STATUS_LOAD_FAILED, loaded_model_version)
@@ -830,6 +1049,10 @@ def result_version_stamp(loaded_model_version):
 def find_similar_sites_with_status(embedding, top_k=3):
     """Find most similar reference sites using cosine similarity.
 
+    `embedding` is the (n_windows, 1280) window matrix (a single 1-D vector is
+    accepted as one window). A reference site's score is the mean of the
+    per-window cosine similarities; the windows are never pooled first.
+
     Returns (similar_sites, error_note). `error_note` is None when the lookup
     worked; otherwise a short, user-presentable reason why the list is empty
     ("similarity unavailable") so an empty list is never ambiguous between
@@ -848,6 +1071,8 @@ def find_similar_sites_with_status(embedding, top_k=3):
         print(f"ERROR similar sites: reference load failed: {type(e).__name__}: {e}")
         return [], 'Reference embeddings could not be loaded, so similar-site comparison is unavailable.'
 
+    windows = np.atleast_2d(np.asarray(embedding, dtype=np.float64))
+    dim = windows.shape[1]
     prov = get_label_provenance()
     similarities = []
     skipped_dim = 0
@@ -855,10 +1080,10 @@ def find_similar_sites_with_status(embedding, top_k=3):
 
     for ref in reference_data:
         ref_embedding = np.array(_site_embedding(ref) or [])
-        if len(ref_embedding) != len(embedding):
+        if len(ref_embedding) != dim:
             skipped_dim += 1
             continue
-        sim = cosine_similarity(embedding, ref_embedding)
+        sim = float(np.mean([cosine_similarity(w, ref_embedding) for w in windows]))
         # Use 'status' field directly if available (new format), else map from site_type
         status = ref.get('status') or status_map.get(ref.get('site_type', 'U'), 'unknown')
         try:
@@ -878,11 +1103,11 @@ def find_similar_sites_with_status(embedding, top_k=3):
 
     if skipped_dim:
         print(f"WARN similar sites: {skipped_dim}/{len(reference_data)} reference sites from {source_key} "
-              f"have no {len(embedding)}-dim embedding and were skipped")
+              f"have no {dim}-dim embedding and were skipped")
 
     if not similarities:
         return [], (
-            f'No reference site has a comparable {len(embedding)}-dimensional embedding '
+            f'No reference site has a comparable {dim}-dimensional embedding '
             f'({skipped_dim} of {len(reference_data)} reference sites skipped), '
             'so similar-site comparison is unavailable.'
         )

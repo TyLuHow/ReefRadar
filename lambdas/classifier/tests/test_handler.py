@@ -339,7 +339,9 @@ def test_window_aggregation_label_and_confidence(classifier_handler, served_dir)
     P = np.array([[0.7, 0.2, 0.1], [0.1, 0.2, 0.7], [0.2, 0.5, 0.3]])
     out = classifier_handler.aggregate_classification(P, model)
     means = P.mean(axis=0)
-    assert out["label"] == "healthy"
+    # Column means are [0.333, 0.300, 0.367]: the label is the argmax of the MEAN
+    # (window 0 alone would say degraded, window 2 alone healthy).
+    assert out["label"] == "restored_early"
     assert out["confidence"] == pytest.approx(means.max())
     assert out["probabilities"] == {
         "degraded": pytest.approx(means[0]), "healthy": pytest.approx(means[1]),

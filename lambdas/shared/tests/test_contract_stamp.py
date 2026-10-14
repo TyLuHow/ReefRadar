@@ -12,6 +12,7 @@ import pytest
 
 import contract_lib
 import contract_stamp as cs
+import reef_audio
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent.parent
 REPO_STAMP_PATH = REPO_ROOT / "contracts" / "bucket" / "v1" / "stamp.json"
@@ -65,27 +66,70 @@ def test_load_stamp_explicit_path(tmp_path):
     assert cs.load_stamp(str(p)) == {"contract_version": 2}
 
 
+# A stamp the running code covers: same model, and the preprocessing spec this
+# code (reef_audio.SPEC_VERSION) actually runs. The committed v1 stamp names the
+# as-deployed spec, so it no longer covers any new result (05-09; 05-15 bundles v2).
+
+
+@pytest.fixture
+def covered_stamp():
+    return {
+        "contract_version": 2,
+        "dataset_version": "reefradar-reference-2026.10.0",
+        "model_version": "interim-real-only-test",
+        "preprocessing_spec_version": reef_audio.SPEC_VERSION,
+    }
+
+
 # --- stamp_for_model (tracer: copies values, sets model_version) ---------------
 
 
-def test_stamp_for_model_copies_the_stamp_values(repo_stamp):
-    out = cs.stamp_for_model(repo_stamp["model_version"], repo_stamp)
-    assert out == repo_stamp
+def test_stamp_for_model_copies_the_stamp_values(covered_stamp):
+    out = cs.stamp_for_model(covered_stamp["model_version"], covered_stamp)
+    assert out == covered_stamp
     assert set(out) == set(cs.STAMP_KEYS)
 
 
-def test_stamp_for_model_returns_a_new_dict(repo_stamp):
-    out = cs.stamp_for_model(repo_stamp["model_version"], repo_stamp)
+def test_stamp_for_model_returns_a_new_dict(covered_stamp):
+    out = cs.stamp_for_model(covered_stamp["model_version"], covered_stamp)
     out["dataset_version"] = "mutated"
-    assert repo_stamp["dataset_version"] != "mutated"
+    assert covered_stamp["dataset_version"] != "mutated"
 
 
 # --- staleness guard (T-02-05-01) ----------------------------------------------
 
 
-def test_matching_model_gets_the_bundled_values(repo_stamp):
-    out = cs.stamp_for_model("interim-real-only", repo_stamp)
-    assert out == repo_stamp
+def test_matching_model_gets_the_bundled_values(covered_stamp):
+    out = cs.stamp_for_model("interim-real-only-test", covered_stamp)
+    assert out == covered_stamp
+
+
+def test_stamp_for_model_requires_reef_audio_spec(repo_stamp):
+    """The committed v1 stamp names preproc-2026.10.0-as-deployed, not the spec this code runs."""
+    assert repo_stamp["preprocessing_spec_version"] != reef_audio.SPEC_VERSION
+    out = cs.stamp_for_model(repo_stamp["model_version"], repo_stamp)
+    assert out == {
+        "contract_version": None,
+        "dataset_version": None,
+        "model_version": repo_stamp["model_version"],
+        "preprocessing_spec_version": None,
+    }
+
+
+@pytest.mark.parametrize("windows_spec", ["preproc-2026.10.0-as-deployed", "preproc-other"])
+def test_stamp_for_model_windows_spec_mismatch(covered_stamp, windows_spec):
+    out = cs.stamp_for_model(covered_stamp["model_version"], covered_stamp, windows_spec_version=windows_spec)
+    assert out["contract_version"] is None
+    assert out["dataset_version"] is None
+    assert out["preprocessing_spec_version"] is None
+    assert out["model_version"] == covered_stamp["model_version"]
+
+
+def test_stamp_for_model_windows_spec_match_is_covered(covered_stamp):
+    out = cs.stamp_for_model(
+        covered_stamp["model_version"], covered_stamp, windows_spec_version=reef_audio.SPEC_VERSION
+    )
+    assert out == covered_stamp
 
 
 def test_other_model_keeps_its_own_version_and_nulls_the_rest(repo_stamp):
