@@ -21,6 +21,27 @@ class DecimalEncoder(json.JSONEncoder):
             return float(obj)
         return super().default(obj)
 
+# RESULT-item keys added in Phase 5 (per-window analysis), copied into the
+# /visualize body only when present.
+NEW_RESULT_KEYS = ('windows', 'site_similarities', 'projection', 'ood', 'input_audio')
+
+
+def _plain_numbers(obj):
+    """DynamoDB Decimals -> int when integral, float otherwise, recursing through dicts and lists.
+
+    DecimalEncoder emits float for every Decimal, which would serialise a window
+    count or index as 6.0; the additive blocks use this instead so integral
+    values (count, index, windows_outside, rank, sample_rate_hz) stay JSON integers.
+    """
+    if isinstance(obj, Decimal):
+        return int(obj) if obj == obj.to_integral_value() else float(obj)
+    if isinstance(obj, dict):
+        return {k: _plain_numbers(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_plain_numbers(v) for v in obj]
+    return obj
+
+
 s3 = boto3.client('s3')
 dynamodb = boto3.resource('dynamodb')
 lambda_client = boto3.client('lambda')
@@ -509,7 +530,7 @@ def handle_visualize(analysis_id):
         # numbers are Decimal and DecimalEncoder emits float, so cast
         # contract_version to int or it would serialise as 1.0.
         contract_version = item.get('contract_version')
-        return response(200, {
+        body = {
             'analysis_id': analysis_id,
             'status': 'complete',
             'contract_version': int(contract_version) if contract_version is not None else None,
@@ -523,7 +544,14 @@ def handle_visualize(analysis_id):
             'visualization': item.get('visualization', {}),
             'embedding_summary': item.get('embedding_summary', {}),
             'caveats': item.get('caveats', '')
-        })
+        }
+        # Phase 5 additive keys: present only when the stored item has them, so a
+        # legacy item's response keeps exactly the keys above. An explicit
+        # whitelist -- S3 keys and per-window embeddings are never returned.
+        for key in NEW_RESULT_KEYS:
+            if key in item:
+                body[key] = _plain_numbers(item[key])
+        return response(200, body)
 
     except Exception as e:
         return response(500, {'error': {'code': 'VISUALIZE_FAILED', 'message': str(e)}})

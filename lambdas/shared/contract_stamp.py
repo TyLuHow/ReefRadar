@@ -6,7 +6,8 @@ contract_version, dataset_version, model_version and preprocessing_spec_version
 (see contracts/schema/analysis-result.schema.json). The values come from a
 small JSON file committed at contracts/bucket/v1/stamp.json and bundled into
 the classifier deployment package as contract_stamp.json -- never fetched at
-runtime. Stdlib only, so it runs unchanged in the Lambda zip.
+runtime. Imports only the standard library and reef_audio (for SPEC_VERSION);
+both ship flat in the classifier zip, so it runs unchanged there.
 """
 
 from __future__ import annotations
@@ -14,6 +15,8 @@ from __future__ import annotations
 import json
 import os
 from typing import Any, Optional
+
+from reef_audio import SPEC_VERSION
 
 _MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -52,20 +55,33 @@ def load_stamp(path: Optional[str] = None) -> dict:
         return json.load(f)
 
 
-def stamp_for_model(loaded_model_version: Optional[str], stamp: dict) -> dict:
+def stamp_for_model(
+    loaded_model_version: Optional[str],
+    stamp: dict,
+    windows_spec_version: Optional[str] = None,
+) -> dict:
     """Return the four-key stamp for a result produced by `loaded_model_version`.
 
     Staleness guard (T-02-05-01): model_version is always the running model's
     own version (the truth from the loaded config). contract_version,
-    dataset_version and preprocessing_spec_version describe the model the
-    bundled stamp was written for, so they are copied only when the loaded
-    model IS that model; otherwise they are null -- an honest "not covered by
-    a published contract" rather than a stale claim. A model without a version
-    is never covered.
+    dataset_version and preprocessing_spec_version describe what the bundled
+    stamp was written for, so they are copied only when ALL of these hold:
+
+      - the loaded model IS the stamp's model,
+      - this code's reef_audio.SPEC_VERSION equals the stamp's
+        preprocessing_spec_version (05-CONTEXT: stamp_for_model requires the
+        preprocessing the code runs to be the one the stamp names), and
+      - when `windows_spec_version` is given, the windows were prepared under
+        that same spec.
+
+    Otherwise they are null -- an honest "not covered by a published contract"
+    rather than a stale claim. A model without a version is never covered.
     """
     covered = (
         loaded_model_version is not None
         and loaded_model_version == stamp.get("model_version")
+        and SPEC_VERSION == stamp.get("preprocessing_spec_version")
+        and (windows_spec_version is None or windows_spec_version == SPEC_VERSION)
     )
     out: dict[str, Any] = {
         "contract_version": stamp.get("contract_version") if covered else None,

@@ -101,14 +101,20 @@ def test_forward_pass_matches_deployed_classifier():
         "version": "interim-real-only",
     }
 
-    classifier._model_weights = weights
-    classifier._model_config = config
+    # Plan 05-09: the model is passed explicitly (the classifier no longer
+    # hot-loads from S3) and the batched per-window pass is checked as well.
+    import reef_reference
+    served = reef_reference.ServedModel(
+        weights=weights, config=config, version=config["version"],
+        training_spec_version="test", idx_to_label=config["idx_to_label"],
+    )
 
     rng = np.random.default_rng(123)
     for _ in range(20):
         embedding = rng.normal(size=1280).astype(np.float32)
 
-        result = classifier.classify_embedding(embedding.tolist())
+        result = classifier.classify_embedding(embedding.tolist(), model=(weights, config))
+        window_probs = classifier.classify_windows(embedding.reshape(1, -1), served)[0]
         trainer_probs = trainer.predict_proba(embedding.reshape(1, -1), weights)[0]
 
         for idx_str, label in config["idx_to_label"].items():
@@ -117,10 +123,7 @@ def test_forward_pass_matches_deployed_classifier():
             assert abs(actual - expected) < 1e-6, (
                 f"{label}: handler={actual} trainer={expected}"
             )
-
-    # Reset module-level cache so this test doesn't leak into others.
-    classifier._model_weights = None
-    classifier._model_config = None
+            assert abs(float(window_probs[int(idx_str)]) - expected) < 1e-6
 
 
 def test_same_seed_produces_byte_identical_npz(tmp_path):
