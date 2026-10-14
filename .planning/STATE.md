@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: Phase 5 executing — waves 1-4 merged (11/17). Wave 4: all-site similarity/projection/OOD blocks; LIVE re-embed of 100 training files (drift mean cosine 0.207, median 0.213; 40 serial inference calls, temp objects cleaned) and a 54-window excerpt embedding fixture reproduced exactly. Next wave 5 (05-12 successor model + OOD calibration).
+Plan: Phase 5 executing — waves 1-5 merged (12/17). Successor model interim-real-only-2026.10.1 (weights sha256 cdc169fa…ce80; exact recipe, seed 42, re-embedded rows); OOD threshold 0.3519 (LOSO p95 NN cosine distance); create-only archive mode. Next wave 6 (05-13 evaluation report).
 Status: Phase 4 complete in code; owner device checks deferred (/gsd-verify-work 4). Autonomous run continuing at Phase 5
-Last activity: 2026-10-14 — Phase 5 wave 4 merged
+Last activity: 2026-10-14 — Phase 5 wave 5 merged
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
