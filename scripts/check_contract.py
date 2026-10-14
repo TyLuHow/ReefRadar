@@ -12,7 +12,9 @@ Phase 2 (CONTRACT-01): integrity and schema check of every committed contract bu
     parsed value (so a CRLF checkout or a hand edit is caught);
   - sites.json items validate against site.schema.json; the model, preprocessing
     spec, projection and stamp validate against their schemas; the stamp equals the
-    version fields of the manifest; the coverage counts equal counts recomputed from
+    version fields of the manifest; the model was trained under the spec the contract serves
+    (training.preprocessing_spec_version when it records one, else its top-level spec version
+    equals the manifest's); the coverage counts equal counts recomputed from
     sites.json; each schema copy equals its contracts/schema source;
   - embeddings.f32 is exactly rows x dim x 4 bytes with row_site_ids equal to the sorted
     acoustic_reference ids, and the committed projection.json equals a PCA recomputed from
@@ -30,6 +32,8 @@ Phase 2 (CONTRACT-01): integrity and schema check of every committed contract bu
     manifest_sha256 equals the sha256 of the manifest bytes they name;
   - every contracts/fixtures/invalid/*.json case ({schema, instance, reason}) is rejected
     by the schema it names;
+  - every contracts/fixtures/examples/<schema>[-<variant>].json is canonical JSON and valid against
+    the schema its name starts with (a representative instance in the parity corpus too);
   - contracts/fixtures/parity-corpus.json equals a fresh regeneration (see --write-corpus);
   - when contracts/PUBLISHED.json lists a version, that version's manifest bytes still hash
     to the recorded manifest_sha256 ("published version N modified" otherwise).
@@ -248,7 +252,20 @@ def _semantic_problems(
     if isinstance(model, dict):
         if model.get("model_version") != manifest.get("model_version"):
             problems.append("model_version artifact: model_version differs from manifest")
-        if model.get("preprocessing_spec_version") != manifest.get("preprocessing_spec_version"):
+        # 05-CONTEXT Q8 amendment: a model must have been trained under the preprocessing spec the
+        # contract serves; pairing it with any other spec is the train/serve mismatch the Core Value
+        # forbids. A model that records its training spec (training.preprocessing_spec_version) is
+        # held to that. A model that does not (v1) keeps the original rule: its top-level
+        # preprocessing_spec_version must equal the manifest's.
+        training = model.get("training") if isinstance(model.get("training"), dict) else {}
+        trained_under = training.get("preprocessing_spec_version")
+        if trained_under is not None:
+            if trained_under != manifest.get("preprocessing_spec_version"):
+                problems.append(
+                    f"model_version artifact: trained under {trained_under} but the contract serves "
+                    f"{manifest.get('preprocessing_spec_version')}"
+                )
+        elif model.get("preprocessing_spec_version") != manifest.get("preprocessing_spec_version"):
             problems.append("model_version artifact: preprocessing_spec_version differs from manifest")
     spec = loaded.get("preprocessing_spec")
     if isinstance(spec, dict) and spec.get("spec_version") != manifest.get("preprocessing_spec_version"):
@@ -462,6 +479,39 @@ def fixture_problems(contracts_dir: pathlib.Path) -> list[str]:
             continue
         if not errors:
             problems.append(f"{rel}: the instance is valid against {case['schema']} but must be rejected")
+    return problems
+
+
+def _example_schema_stem(path: pathlib.Path, schema_dir: pathlib.Path) -> str | None:
+    """The schema an example file is for: its longest `-`-separated name prefix that is a schema stem."""
+    parts = path.stem.split("-")
+    for end in range(len(parts), 0, -1):
+        stem = "-".join(parts[:end])
+        if contract_lib.schema_path(stem, schema_dir).is_file():
+            return stem
+    return None
+
+
+def _example_files(contracts_dir: pathlib.Path) -> list[pathlib.Path]:
+    return sorted((contracts_dir / "fixtures" / "examples").glob("*.json"))
+
+
+def example_problems(contracts_dir: pathlib.Path) -> list[str]:
+    """Each contracts/fixtures/examples/*.json must be canonical and valid against its schema."""
+    schema_dir = contracts_dir / "schema"
+    problems: list[str] = []
+    for path in _example_files(contracts_dir):
+        rel = path.relative_to(contracts_dir).as_posix()
+        raw = path.read_bytes()
+        file_problems = _json_file_problems(rel, raw)
+        problems += file_problems
+        if file_problems:
+            continue
+        stem = _example_schema_stem(path, schema_dir)
+        if stem is None:
+            problems.append(f"{rel}: the file name does not start with the name of a schema in contracts/schema")
+            continue
+        problems += _schema_problems(rel, json.loads(raw.decode("utf-8")), stem, schema_dir)
     return problems
 
 
@@ -785,6 +835,12 @@ def _corpus_instances(contracts_dir: pathlib.Path) -> list[tuple[str, str, str, 
         ("projection", "artifact/projection-truncated", "representative",
          _truncated_projection(_read_json(bucket / latest["artifacts"]["projection"]["uri"])))
     )
+    # Phase 5: full-shape examples (per-window result, evaluation report, OOD reference). Each is
+    # a representative instance, so the corpus also holds its mechanical mutants for Zod to reject.
+    for path in _example_files(contracts_dir):
+        stem = _example_schema_stem(path, contracts_dir / "schema")
+        if stem is not None:
+            items.append((stem, f"example/{path.stem}", "representative", _read_json(path)))
     return items
 
 
@@ -858,6 +914,7 @@ def check(contracts_dir: pathlib.Path) -> list[str]:
         version = manifest_path.stem[1:]
         problems += check_manifest(manifest_path, contracts_dir, copies_must_match=version not in published)
     problems += fixture_problems(contracts_dir)
+    problems += example_problems(contracts_dir)
     problems += published_problems(contracts_dir)
     problems += corpus_problems(contracts_dir)
     return problems

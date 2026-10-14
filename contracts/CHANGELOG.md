@@ -24,3 +24,17 @@ Schema version 1. Frozen from committed inputs only; rebuilt byte for byte by
 - Fixtures (test-only, not part of the contract): a manifest with `has_diel` true at the
   sentinel version 99 (`FIXTURE_CONTRACT_VERSION`, so a real v2 can be published later),
   `latest-v1.json`, `latest-v99.json`, curated invalid cases and a schema parity corpus.
+
+## Schema growth for contract v2 (Phase 5, plan 05-06; unpublished until 05-16)
+
+Additive only; the published v1 bundle and its frozen schema copies are untouched.
+
+- `analysis-result`: optional `stamp_status`, `windows`, `site_similarities`, `projection`, `ood`,
+  `input_audio`. The four stamp keys remain the only required keys.
+- `model-version`: optional `training.preprocessing_spec_version`, `training.embedding_source`,
+  `served_from`. `check_contract.py` requires a recorded training spec to equal the spec the contract serves.
+- `preprocessing-spec`: optional resampling filter fields, `known_gaps[].evidence/closed_by`, `model_pin`,
+  `supported_input`, `levels`.
+- New schemas: `evaluation-report`, `ood-reference`.
+- `fixtures/examples/`: schema examples (illustrative values, never real results) checked by `--check`
+  and added, with mutants, to the parity corpus.

@@ -1,0 +1,344 @@
+{
+  "bootstrap": {
+    "B": 1000,
+    "interval": "percentile_95",
+    "levels": 2,
+    "min_sites_for_interval": 2,
+    "numpy_version": "1.26.4",
+    "rng": "numpy.random.RandomState",
+    "seed": 20261012
+  },
+  "caveats": [
+    "Schema example with illustrative values; it describes no real evaluation."
+  ],
+  "drift_probe": {
+    "cosine": {
+      "max": 0.4,
+      "mean": 0.25,
+      "median": 0.24,
+      "min": 0.1
+    },
+    "note": "Schema example: cosine between the same window embedded through the old and new paths.",
+    "pairs": 4
+  },
+  "generated_by": {
+    "git_sha": "abababababababababababababababababababab",
+    "script": "scripts/evaluate_loso.py"
+  },
+  "inputs": [
+    {
+      "name": "training_windows",
+      "path": "example/training_windows.json",
+      "rows": 4,
+      "sha256": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+    }
+  ],
+  "invalidated_figures": [
+    {
+      "figure": "example accuracy",
+      "reason": "Schema example: a figure from a random per-window split, not from held-out sites.",
+      "source": "example/README.md",
+      "value": "99%"
+    }
+  ],
+  "method": "leave_one_site_out",
+  "models": [
+    {
+      "baselines": {
+        "training_majority": {
+          "ci_high": null,
+          "ci_low": null,
+          "ci_status": "undefined",
+          "defined_fraction": null,
+          "n_sites": 0,
+          "n_windows": 0,
+          "value": null
+        },
+        "uniform_random": {
+          "ci_high": null,
+          "ci_low": null,
+          "ci_status": "undefined",
+          "defined_fraction": null,
+          "n_sites": 0,
+          "n_windows": 0,
+          "value": null
+        }
+      },
+      "embeddings": "original",
+      "folds": [
+        {
+          "correct": null,
+          "country": "Exampleland",
+          "evaluable": false,
+          "held_out_site": "ex_a",
+          "n_test": 2,
+          "predicted_distribution": {
+            "degraded": 2
+          },
+          "reason": "the held-out site's class does not occur in any training site",
+          "train_classes": [
+            "degraded"
+          ],
+          "train_sites": [
+            "ex_b"
+          ],
+          "true_class": "healthy"
+        },
+        {
+          "correct": null,
+          "country": "Exampleland",
+          "evaluable": false,
+          "held_out_site": "ex_b",
+          "n_test": 2,
+          "predicted_distribution": {
+            "healthy": 2
+          },
+          "reason": "the held-out site's class does not occur in any training site",
+          "train_classes": [
+            "healthy"
+          ],
+          "train_sites": [
+            "ex_a"
+          ],
+          "true_class": "degraded"
+        }
+      ],
+      "metrics": {
+        "balanced_accuracy": {
+          "ci_high": null,
+          "ci_low": null,
+          "ci_status": "undefined",
+          "defined_fraction": null,
+          "n_sites": 0,
+          "n_windows": 0,
+          "value": null
+        },
+        "per_class": {
+          "degraded": {
+            "ci_high": null,
+            "ci_low": null,
+            "ci_status": "undefined",
+            "defined_fraction": null,
+            "n_sites": 0,
+            "n_windows": 0,
+            "value": null
+          },
+          "healthy": {
+            "ci_high": null,
+            "ci_low": null,
+            "ci_status": "undefined",
+            "defined_fraction": null,
+            "n_sites": 0,
+            "n_windows": 0,
+            "value": null
+          }
+        },
+        "per_region": {
+          "Exampleland": {
+            "ci_high": null,
+            "ci_low": null,
+            "ci_status": "undefined",
+            "defined_fraction": null,
+            "n_sites": 0,
+            "n_windows": 0,
+            "value": null
+          }
+        }
+      },
+      "model_version": "example-original",
+      "predictions": [
+        {
+          "file_id": "ex_a_0001",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 1.0
+          },
+          "site_id": "ex_a",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ex_a_0002",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 1.0
+          },
+          "site_id": "ex_a",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ex_b_0001",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "healthy": 1.0
+          },
+          "site_id": "ex_b",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ex_b_0002",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "healthy": 1.0
+          },
+          "site_id": "ex_b",
+          "true_label": "degraded"
+        }
+      ],
+      "preprocessing_spec_version": "preproc-2026.10.0-as-deployed",
+      "served": false
+    },
+    {
+      "baselines": {
+        "training_majority": {
+          "ci_high": null,
+          "ci_low": null,
+          "ci_status": "undefined",
+          "defined_fraction": null,
+          "n_sites": 0,
+          "n_windows": 0,
+          "value": null
+        },
+        "uniform_random": {
+          "ci_high": null,
+          "ci_low": null,
+          "ci_status": "undefined",
+          "defined_fraction": null,
+          "n_sites": 0,
+          "n_windows": 0,
+          "value": null
+        }
+      },
+      "embeddings": "reembedded",
+      "folds": [
+        {
+          "correct": null,
+          "country": "Exampleland",
+          "evaluable": false,
+          "held_out_site": "ex_a",
+          "n_test": 2,
+          "predicted_distribution": {
+            "degraded": 2
+          },
+          "reason": "the held-out site's class does not occur in any training site",
+          "train_classes": [
+            "degraded"
+          ],
+          "train_sites": [
+            "ex_b"
+          ],
+          "true_class": "healthy"
+        },
+        {
+          "correct": null,
+          "country": "Exampleland",
+          "evaluable": false,
+          "held_out_site": "ex_b",
+          "n_test": 2,
+          "predicted_distribution": {
+            "healthy": 2
+          },
+          "reason": "the held-out site's class does not occur in any training site",
+          "train_classes": [
+            "healthy"
+          ],
+          "train_sites": [
+            "ex_a"
+          ],
+          "true_class": "degraded"
+        }
+      ],
+      "metrics": {
+        "balanced_accuracy": {
+          "ci_high": null,
+          "ci_low": null,
+          "ci_status": "undefined",
+          "defined_fraction": null,
+          "n_sites": 0,
+          "n_windows": 0,
+          "value": null
+        },
+        "per_class": {
+          "degraded": {
+            "ci_high": null,
+            "ci_low": null,
+            "ci_status": "undefined",
+            "defined_fraction": null,
+            "n_sites": 0,
+            "n_windows": 0,
+            "value": null
+          },
+          "healthy": {
+            "ci_high": null,
+            "ci_low": null,
+            "ci_status": "undefined",
+            "defined_fraction": null,
+            "n_sites": 0,
+            "n_windows": 0,
+            "value": null
+          }
+        },
+        "per_region": {
+          "Exampleland": {
+            "ci_high": null,
+            "ci_low": null,
+            "ci_status": "undefined",
+            "defined_fraction": null,
+            "n_sites": 0,
+            "n_windows": 0,
+            "value": null
+          }
+        }
+      },
+      "model_version": "example-successor",
+      "predictions": [
+        {
+          "file_id": "ex_a_0001",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 1.0
+          },
+          "site_id": "ex_a",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ex_a_0002",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 1.0
+          },
+          "site_id": "ex_a",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ex_b_0001",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "healthy": 1.0
+          },
+          "site_id": "ex_b",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ex_b_0002",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "healthy": 1.0
+          },
+          "site_id": "ex_b",
+          "true_label": "degraded"
+        }
+      ],
+      "preprocessing_spec_version": "preproc-example-2",
+      "served": true
+    }
+  ],
+  "report_version": "example-1",
+  "schema_version": 1,
+  "served_model_version": "example-successor",
+  "trainer": {
+    "git_sha": "abababababababababababababababababababab",
+    "recipe_note": "Schema example: the recipe the real report records, described in one sentence.",
+    "script": "scripts/train_interim_real_only.py",
+    "seed": 42
+  }
+}

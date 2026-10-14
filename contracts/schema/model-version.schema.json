@@ -106,6 +106,11 @@
     "schema_version": {
       "const": 1
     },
+    "served_from": {
+      "description": "Where the served weights live (for example an s3:// prefix), when it differs from weights_location.",
+      "minLength": 1,
+      "type": "string"
+    },
     "training": {
       "properties": {
         "countries": {
@@ -114,6 +119,16 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "embedding_source": {
+          "description": "Which embeddings the model was fitted on (for example the original deployed-path embeddings or the re-embedded windows).",
+          "minLength": 1,
+          "type": "string"
+        },
+        "preprocessing_spec_version": {
+          "description": "The preprocessing spec the model was trained under. Optional: when present, check_contract.py requires it to equal the spec the contract serves, so a model is never paired with preprocessing it was not trained under.",
+          "pattern": "^[a-z0-9][a-z0-9.+-]*$",
+          "type": "string"
         },
         "rows": {
           "minimum": 0,

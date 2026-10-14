@@ -46,7 +46,9 @@ const VERDICT_SCHEMAS: Record<string, z.ZodType> = {
   'analysis-result': schema.AnalysisResultStamp,
   'contract-manifest': schema.ContractManifest,
   'contract-pointer': schema.ContractPointer,
+  'evaluation-report': schema.EvaluationReport,
   'model-version': schema.ModelVersion,
+  'ood-reference': schema.OodReference,
   'preprocessing-spec': schema.PreprocessingSpec,
   projection: schema.Projection,
   site: schema.ContractSite,
@@ -78,6 +80,43 @@ describe('Zod mirror verdict parity with Python jsonschema', () => {
       }
     }
     expect(disagreements, `${disagreements.length} disagreement(s):\n${disagreements.join('\n')}`).toEqual([]);
+  });
+});
+
+describe('Zod mirror agrees with Python on the nested result rejections (05-06)', () => {
+  const full = (): Json => readJson(CONTRACTS, 'fixtures', 'examples', 'analysis-result-full.json');
+
+  const REJECTIONS: Array<[string, (doc: Json) => void]> = [
+    ['probability above one', (d) => { d.windows.probabilities.healthy[0] = 1.5; }],
+    ['similarity with no embedding', (d) => {
+      const entry = d.site_similarities.sites.find((s: Json) => s.has_embedding === false);
+      entry.similarity = 0.5;
+    }],
+    ['rank with no embedding', (d) => {
+      const entry = d.site_similarities.sites.find((s: Json) => s.has_embedding === false);
+      entry.rank = 3;
+    }],
+    ['ood status neither inside nor outside', (d) => { d.ood.windows.status[0] = 'maybe'; }],
+    ['ood k not 1', (d) => { d.ood.k = 5; }],
+    ['stamp_status maybe', (d) => { d.stamp_status = 'maybe'; }],
+    ['projection method not pca', (d) => { d.projection.method = 'tsne'; }],
+  ];
+
+  it('accepts the full example and a stamp-only result', () => {
+    expect(schema.AnalysisResultStamp.safeParse(full()).success).toBe(true);
+    const stampOnly = readJson(CONTRACTS, 'bucket', 'v1', 'stamp.json');
+    expect(schema.AnalysisResultStamp.safeParse(stampOnly).success).toBe(true);
+  });
+
+  it('keeps unknown keys on a full result (loose objects)', () => {
+    const parsed = schema.AnalysisResultStamp.parse({ ...full(), future_key: { a: 1 } }) as Json;
+    expect(parsed.future_key).toEqual({ a: 1 });
+  });
+
+  it.each(REJECTIONS)('rejects: %s', (_name, mutate) => {
+    const doc = full();
+    mutate(doc);
+    expect(schema.AnalysisResultStamp.safeParse(doc).success).toBe(false);
   });
 });
 
@@ -140,9 +179,39 @@ const PAIRS: Pair[] = [
   { name: 'preprocessing resampling', base: schema.ResamplingBase, file: 'preprocessing-spec', json: (r) => r.properties.resampling },
   { name: 'preprocessing serving', base: schema.ServingBase, file: 'preprocessing-spec', json: (r) => r.properties.serving },
   { name: 'preprocessing known gap', base: schema.KnownGapBase, file: 'preprocessing-spec', json: (r) => r.properties.known_gaps.items },
+  { name: 'preprocessing model pin', base: schema.ModelPinBase, file: 'preprocessing-spec', json: (r) => r.$defs.model_pin },
+  { name: 'preprocessing model pin file', base: schema.ModelPinFileBase, file: 'preprocessing-spec', json: (r) => r.$defs.model_pin_file },
   { name: 'projection', base: schema.ProjectionBase, file: 'projection', json: (r) => r },
   { name: 'projection coordinate', base: schema.ProjectionCoordinateBase, file: 'projection', json: (r) => r.properties.coordinates.items },
   { name: 'analysis result stamp', base: schema.AnalysisResultStampBase, file: 'analysis-result', json: (r) => r },
+  { name: 'result windows', base: schema.ResultWindowsBase, file: 'analysis-result', json: (r) => r.$defs.windows },
+  { name: 'result site similarities', base: schema.SiteSimilaritiesBase, file: 'analysis-result', json: (r) => r.$defs.site_similarities },
+  { name: 'result site similarity', base: schema.SiteSimilarityBase, file: 'analysis-result', json: (r) => r.$defs.site_similarity },
+  { name: 'result projection', base: schema.ResultProjectionBase, file: 'analysis-result', json: (r) => r.$defs.result_projection },
+  { name: 'result ood', base: schema.OodBase, file: 'analysis-result', json: (r) => r.$defs.ood },
+  { name: 'result ood windows', base: schema.OodWindowsBase, file: 'analysis-result', json: (r) => r.$defs.ood_windows },
+  { name: 'result ood summary', base: schema.OodSummaryBase, file: 'analysis-result', json: (r) => r.$defs.ood_summary },
+  { name: 'result input audio', base: schema.InputAudioBase, file: 'analysis-result', json: (r) => r.$defs.input_audio },
+  { name: 'evaluation report', base: schema.EvaluationReportBase, file: 'evaluation-report', json: (r) => r },
+  { name: 'evaluation generated_by', base: schema.EvaluationGeneratedByBase, file: 'evaluation-report', json: (r) => r.properties.generated_by },
+  { name: 'evaluation input', base: schema.EvaluationInputBase, file: 'evaluation-report', json: (r) => r.properties.inputs.items },
+  { name: 'evaluation trainer', base: schema.EvaluationTrainerBase, file: 'evaluation-report', json: (r) => r.properties.trainer },
+  { name: 'evaluation bootstrap', base: schema.EvaluationBootstrapBase, file: 'evaluation-report', json: (r) => r.properties.bootstrap },
+  { name: 'evaluation drift probe', base: schema.DriftProbeBase, file: 'evaluation-report', json: (r) => r.properties.drift_probe },
+  { name: 'evaluation drift probe cosine', base: schema.DriftProbeCosineBase, file: 'evaluation-report', json: (r) => r.properties.drift_probe.properties.cosine },
+  { name: 'evaluation invalidated figure', base: schema.InvalidatedFigureBase, file: 'evaluation-report', json: (r) => r.properties.invalidated_figures.items },
+  { name: 'evaluated model', base: schema.EvaluatedModelBase, file: 'evaluation-report', json: (r) => r.$defs.evaluated_model },
+  { name: 'evaluated model metrics', base: schema.EvaluatedModelMetricsBase, file: 'evaluation-report', json: (r) => r.$defs.evaluated_model.properties.metrics },
+  { name: 'evaluated model baselines', base: schema.EvaluatedModelBaselinesBase, file: 'evaluation-report', json: (r) => r.$defs.evaluated_model.properties.baselines },
+  { name: 'evaluation fold', base: schema.EvaluationFoldBase, file: 'evaluation-report', json: (r) => r.$defs.fold },
+  { name: 'evaluation prediction', base: schema.EvaluationPredictionBase, file: 'evaluation-report', json: (r) => r.$defs.prediction },
+  { name: 'evaluation metric', base: schema.EvaluationMetricBase, file: 'evaluation-report', json: (r) => r.$defs.metric },
+  { name: 'ood reference', base: schema.OodReferenceBase, file: 'ood-reference', json: (r) => r },
+  { name: 'ood calibration', base: schema.OodCalibrationBase, file: 'ood-reference', json: (r) => r.properties.calibration },
+  { name: 'ood calibration site', base: schema.OodCalibrationSiteBase, file: 'ood-reference', json: (r) => r.properties.calibration.properties.per_site.items },
+  { name: 'ood embeddings', base: schema.OodEmbeddingsBase, file: 'ood-reference', json: (r) => r.properties.embeddings },
+  { name: 'ood embedding_model', base: schema.EmbeddingModelBase, file: 'ood-reference', json: (r) => r.properties.embedding_model },
+  { name: 'ood source input', base: schema.OodSourceInputBase, file: 'ood-reference', json: (r) => r.properties.source_inputs.items },
 ];
 
 describe('Zod mirror structural parity with the JSON Schemas', () => {

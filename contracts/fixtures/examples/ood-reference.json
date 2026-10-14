@@ -1,0 +1,53 @@
+{
+  "calibration": {
+    "method": "leave_one_site_out_nearest_neighbour",
+    "per_site": [
+      {
+        "max": 0.2,
+        "n": 1,
+        "p50": 0.2,
+        "p95": 0.2,
+        "site_id": "ex_a"
+      },
+      {
+        "max": 0.35,
+        "n": 2,
+        "p50": 0.25,
+        "p95": 0.34,
+        "site_id": "ex_b"
+      }
+    ],
+    "percentile": 95,
+    "pooled_n": 3
+  },
+  "embedding_model": {
+    "dimension": 1280,
+    "name": "surfperch",
+    "version": "1.0"
+  },
+  "embedding_space_note": "Schema example: these windows would live in the re-embedded space; this file describes no real bytes.",
+  "embeddings": {
+    "count": 3,
+    "dim": 1280,
+    "dtype": "float32-le",
+    "sha256": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+    "uri": "v2/ood_reference.f32"
+  },
+  "k": 1,
+  "metric": "cosine_distance",
+  "ood_version": "ood-example-1",
+  "preprocessing_spec_version": "preproc-example-2",
+  "row_site_ids": [
+    "ex_a",
+    "ex_b",
+    "ex_b"
+  ],
+  "schema_version": 1,
+  "source_inputs": [
+    {
+      "path": "example/training_windows.json",
+      "sha256": "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd"
+    }
+  ],
+  "threshold": 0.35
+}

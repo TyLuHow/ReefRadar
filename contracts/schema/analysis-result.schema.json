@@ -1,4 +1,399 @@
 {
+  "$defs": {
+    "input_audio": {
+      "properties": {
+        "bits_per_sample": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "channels": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "dropped_tail_s": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "duration_s": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "encoding": {
+          "enum": [
+            "pcm",
+            "float"
+          ]
+        },
+        "preprocessing_spec_version": {
+          "pattern": "^[a-z0-9][a-z0-9.+-]*$",
+          "type": "string"
+        },
+        "sample_rate_hz": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "windows": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sample_rate_hz",
+        "channels",
+        "bits_per_sample",
+        "encoding",
+        "duration_s",
+        "windows",
+        "dropped_tail_s",
+        "preprocessing_spec_version"
+      ],
+      "type": "object"
+    },
+    "ood": {
+      "properties": {
+        "k": {
+          "const": 1
+        },
+        "metric": {
+          "const": "cosine_distance_to_nearest_training_window"
+        },
+        "note": {
+          "type": "string"
+        },
+        "reference_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "reference_version": {
+          "pattern": "^[a-z0-9][a-z0-9.+-]*$",
+          "type": "string"
+        },
+        "summary": {
+          "$ref": "#/$defs/ood_summary"
+        },
+        "threshold": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "windows": {
+          "$ref": "#/$defs/ood_windows"
+        }
+      },
+      "required": [
+        "metric",
+        "k",
+        "threshold",
+        "reference_version",
+        "reference_sha256",
+        "windows",
+        "summary",
+        "note"
+      ],
+      "type": "object"
+    },
+    "ood_summary": {
+      "properties": {
+        "statement": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "windows_outside": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "windows_total": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "windows_outside",
+        "windows_total",
+        "statement"
+      ],
+      "type": "object"
+    },
+    "ood_windows": {
+      "properties": {
+        "distance": {
+          "items": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "status": {
+          "items": {
+            "enum": [
+              "inside",
+              "outside"
+            ]
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "distance",
+        "status"
+      ],
+      "type": "object"
+    },
+    "result_projection": {
+      "properties": {
+        "basis_uri": {
+          "pattern": "^v[0-9]+/[A-Za-z0-9_./-]+$",
+          "type": "string"
+        },
+        "centroid": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array"
+        },
+        "contract_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "explained_variance_ratio": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "method": {
+          "const": "pca"
+        },
+        "note": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "windows": {
+          "items": {
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 2,
+            "minItems": 2,
+            "type": "array"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "method",
+        "contract_version",
+        "explained_variance_ratio",
+        "windows",
+        "centroid",
+        "note"
+      ],
+      "type": "object"
+    },
+    "site_similarities": {
+      "properties": {
+        "aggregation": {
+          "const": "mean_of_window_cosines"
+        },
+        "contract_version": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "dataset_version": {
+          "pattern": "^[a-z0-9][a-z0-9.+-]*$",
+          "type": "string"
+        },
+        "metric": {
+          "const": "cosine"
+        },
+        "note": {
+          "type": "string"
+        },
+        "site_order": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "sites": {
+          "items": {
+            "$ref": "#/$defs/site_similarity"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "metric",
+        "aggregation",
+        "contract_version",
+        "dataset_version",
+        "site_order",
+        "sites"
+      ],
+      "type": "object"
+    },
+    "site_similarity": {
+      "allOf": [
+        {
+          "description": "A location-only site has no embedding, so it has no similarity and no rank.",
+          "if": {
+            "properties": {
+              "has_embedding": {
+                "const": false
+              }
+            },
+            "required": [
+              "has_embedding"
+            ]
+          },
+          "then": {
+            "properties": {
+              "rank": {
+                "type": "null"
+              },
+              "similarity": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "has_embedding": {
+          "type": "boolean"
+        },
+        "rank": {
+          "minimum": 1,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "similarity": {
+          "maximum": 1,
+          "minimum": -1,
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "site_id": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "site_id",
+        "has_embedding",
+        "similarity",
+        "rank"
+      ],
+      "type": "object"
+    },
+    "windows": {
+      "description": "Per-window classifier output. Every array has one entry per window (count); probabilities has one column per class.",
+      "properties": {
+        "classes": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "count": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "index": {
+          "items": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "label": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "nearest_site": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "peak_dbfs": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "probabilities": {
+          "additionalProperties": {
+            "items": {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "type": "object"
+        },
+        "rms_dbfs": {
+          "items": {
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "silent": {
+          "items": {
+            "type": "boolean"
+          },
+          "type": "array"
+        },
+        "similarities": {
+          "description": "One row per window; columns follow site_similarities.site_order.",
+          "items": {
+            "items": {
+              "maximum": 1,
+              "minimum": -1,
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "start_s": {
+          "items": {
+            "minimum": 0,
+            "type": "number"
+          },
+          "type": "array"
+        },
+        "window_s": {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "count",
+        "window_s",
+        "index",
+        "start_s",
+        "classes",
+        "probabilities",
+        "label",
+        "peak_dbfs",
+        "rms_dbfs",
+        "silent"
+      ],
+      "type": "object"
+    }
+  },
   "$id": "urn:reefradar:contract:analysis-result",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "allOf": [
@@ -26,7 +421,7 @@
       }
     }
   ],
-  "description": "The version-stamp block carried by every new analysis result. All four keys are required. contract_version null means 'pre-contract' (a result produced before any contract existed or not covered by a published contract); the UI shows that, never an invented version. The per-window result shape is defined by later phases and is not part of this schema.",
+  "description": "The version-stamp block carried by every new analysis result. The four stamp keys are required. contract_version null means 'pre-contract' (a result produced before any contract existed or not covered by a published contract); the UI shows that, never an invented version. From contract v2 the per-window result keys (stamp_status, windows, site_similarities, projection, ood, input_audio) are defined here additively: all optional, so legacy and stamp-only results stay valid.",
   "properties": {
     "contract_version": {
       "minimum": 1,
@@ -42,6 +437,9 @@
         "null"
       ]
     },
+    "input_audio": {
+      "$ref": "#/$defs/input_audio"
+    },
     "model_version": {
       "pattern": "^[a-z0-9][a-z0-9.+-]*$",
       "type": [
@@ -49,12 +447,31 @@
         "null"
       ]
     },
+    "ood": {
+      "$ref": "#/$defs/ood"
+    },
     "preprocessing_spec_version": {
       "pattern": "^[a-z0-9][a-z0-9.+-]*$",
       "type": [
         "string",
         "null"
       ]
+    },
+    "projection": {
+      "$ref": "#/$defs/result_projection"
+    },
+    "site_similarities": {
+      "$ref": "#/$defs/site_similarities"
+    },
+    "stamp_status": {
+      "enum": [
+        "stamped",
+        "uncovered",
+        "load_failed"
+      ]
+    },
+    "windows": {
+      "$ref": "#/$defs/windows"
     }
   },
   "required": [

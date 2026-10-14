@@ -43,10 +43,15 @@ def committed_tree(monkeypatch):
 
 @pytest.fixture
 def contracts(tmp_path):
-    """A private copy of contracts/bucket and contracts/schema, so tests may edit it freely."""
+    """A private copy of contracts/bucket and the schemas v1 was frozen with, so tests may edit it freely.
+
+    These tests re-publish v1 as if it were unpublished, and an unpublished bundle's schema copies
+    must equal contracts/schema. The live schemas have grown additively since v1 was frozen (Phase 5),
+    so the schema directory here is v1's own frozen copy, not the grown source.
+    """
     root = tmp_path / "contracts"
     shutil.copytree(REPO_ROOT / "contracts" / "bucket", root / "bucket")
-    shutil.copytree(REPO_ROOT / "contracts" / "schema", root / "schema")
+    shutil.copytree(REPO_ROOT / "contracts" / "bucket" / "v1" / "schema", root / "schema")
     return root
 
 
