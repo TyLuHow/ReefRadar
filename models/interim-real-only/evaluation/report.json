@@ -30,7 +30,7 @@
     "pairs": 100
   },
   "generated_by": {
-    "git_sha": "297ed1d2ba4cd0b0df58ff1990498ae65bf48e94",
+    "git_sha": "936a9f5701a5f8ae28bd7bc7cdf8d98571dbd4b6",
     "script": "scripts/evaluate_loso.py"
   },
   "inputs": [
