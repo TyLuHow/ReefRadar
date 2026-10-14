@@ -232,6 +232,9 @@ export const ModelTrainingBase = z.looseObject({
   synthetic_data: z.literal(false),
   synthetic_rows_excluded: nonNegativeInt,
   seed: z.number().int(),
+  // 05-06: the spec the model was trained under; the checker holds it equal to the served spec.
+  preprocessing_spec_version: versionString.optional(),
+  embedding_source: nonEmpty.optional(),
 });
 
 export const ModelPredecessorBase = z.looseObject({
@@ -255,6 +258,7 @@ export const ModelVersionBase = z.looseObject({
   weights_sha256: sha256,
   weights_location: z.string().regex(/^s3:\/\/[a-z0-9.-]+\/\S+$/),
   predecessor: ModelPredecessorBase,
+  served_from: nonEmpty.optional(),
 });
 export const ModelVersion = ModelVersionBase;
 
@@ -263,6 +267,10 @@ export const ModelVersion = ModelVersionBase;
 export const ResamplingBase = z.looseObject({
   method: nonEmpty,
   anti_alias_filter: z.boolean(),
+  kaiser_beta: z.number().optional(),
+  half_length_factor: z.number().int().optional(),
+  cutoff: z.string().optional(),
+  reference_implementation: z.string().optional(),
 });
 
 export const KnownGapBase = z.looseObject({
@@ -271,6 +279,19 @@ export const KnownGapBase = z.looseObject({
   owner_phase: nonEmpty,
   status: nonEmpty,
   reference: nonEmpty,
+  evidence: z.array(nonEmpty).optional(),
+  closed_by: nonEmpty.optional(),
+});
+
+export const ModelPinFileBase = z.looseObject({
+  path: nonEmpty,
+  bytes: nonNegativeInt,
+  sha256,
+});
+
+export const ModelPinBase = z.looseObject({
+  kaggle_handle: nonEmpty,
+  files: z.array(ModelPinFileBase),
 });
 
 export const ServingBase = z.looseObject({ window_pooling: nonEmpty });
@@ -293,6 +314,9 @@ export const PreprocessingSpecBase = z.looseObject({
   serving: ServingBase,
   known_gaps: z.array(KnownGapBase).min(1),
   source: nonEmpty,
+  model_pin: ModelPinBase.optional(),
+  supported_input: z.record(z.string(), z.unknown()).optional(),
+  levels: nonEmpty.optional(),
 });
 export const PreprocessingSpec = PreprocessingSpecBase.superRefine((value, ctx) => {
   if (Object.keys(value.amplitude_scaling).length < 1) {

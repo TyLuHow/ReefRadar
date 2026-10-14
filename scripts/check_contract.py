@@ -12,7 +12,9 @@ Phase 2 (CONTRACT-01): integrity and schema check of every committed contract bu
     parsed value (so a CRLF checkout or a hand edit is caught);
   - sites.json items validate against site.schema.json; the model, preprocessing
     spec, projection and stamp validate against their schemas; the stamp equals the
-    version fields of the manifest; the coverage counts equal counts recomputed from
+    version fields of the manifest; the model was trained under the spec the contract serves
+    (training.preprocessing_spec_version when it records one, else its top-level spec version
+    equals the manifest's); the coverage counts equal counts recomputed from
     sites.json; each schema copy equals its contracts/schema source;
   - embeddings.f32 is exactly rows x dim x 4 bytes with row_site_ids equal to the sorted
     acoustic_reference ids, and the committed projection.json equals a PCA recomputed from
@@ -250,7 +252,20 @@ def _semantic_problems(
     if isinstance(model, dict):
         if model.get("model_version") != manifest.get("model_version"):
             problems.append("model_version artifact: model_version differs from manifest")
-        if model.get("preprocessing_spec_version") != manifest.get("preprocessing_spec_version"):
+        # 05-CONTEXT Q8 amendment: a model must have been trained under the preprocessing spec the
+        # contract serves; pairing it with any other spec is the train/serve mismatch the Core Value
+        # forbids. A model that records its training spec (training.preprocessing_spec_version) is
+        # held to that. A model that does not (v1) keeps the original rule: its top-level
+        # preprocessing_spec_version must equal the manifest's.
+        training = model.get("training") if isinstance(model.get("training"), dict) else {}
+        trained_under = training.get("preprocessing_spec_version")
+        if trained_under is not None:
+            if trained_under != manifest.get("preprocessing_spec_version"):
+                problems.append(
+                    f"model_version artifact: trained under {trained_under} but the contract serves "
+                    f"{manifest.get('preprocessing_spec_version')}"
+                )
+        elif model.get("preprocessing_spec_version") != manifest.get("preprocessing_spec_version"):
             problems.append("model_version artifact: preprocessing_spec_version differs from manifest")
     spec = loaded.get("preprocessing_spec")
     if isinstance(spec, dict) and spec.get("spec_version") != manifest.get("preprocessing_spec_version"):

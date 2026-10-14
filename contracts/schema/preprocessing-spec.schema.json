@@ -1,4 +1,48 @@
 {
+  "$defs": {
+    "model_pin": {
+      "description": "The pinned embedding model: its Kaggle handle and the hash of every SavedModel file.",
+      "properties": {
+        "files": {
+          "items": {
+            "$ref": "#/$defs/model_pin_file"
+          },
+          "type": "array"
+        },
+        "kaggle_handle": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "kaggle_handle",
+        "files"
+      ],
+      "type": "object"
+    },
+    "model_pin_file": {
+      "properties": {
+        "bytes": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "path": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "bytes",
+        "sha256"
+      ],
+      "type": "object"
+    }
+  },
   "$id": "urn:reefradar:contract:preprocessing-spec",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "description": "What the production audio pipeline does to an upload before embedding, exactly as deployed, with the known train/serve gaps listed rather than claimed fixed.",
@@ -40,6 +84,17 @@
     "known_gaps": {
       "items": {
         "properties": {
+          "closed_by": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "type": "array"
+          },
           "id": {
             "minLength": 1,
             "type": "string"
@@ -73,6 +128,10 @@
       "minItems": 1,
       "type": "array"
     },
+    "levels": {
+      "minLength": 1,
+      "type": "string"
+    },
     "max_duration_s": {
       "minimum": 0,
       "type": "number"
@@ -81,13 +140,28 @@
       "minimum": 0,
       "type": "number"
     },
+    "model_pin": {
+      "$ref": "#/$defs/model_pin"
+    },
     "resampling": {
       "properties": {
         "anti_alias_filter": {
           "type": "boolean"
         },
+        "cutoff": {
+          "type": "string"
+        },
+        "half_length_factor": {
+          "type": "integer"
+        },
+        "kaiser_beta": {
+          "type": "number"
+        },
         "method": {
           "minLength": 1,
+          "type": "string"
+        },
+        "reference_implementation": {
           "type": "string"
         }
       },
@@ -127,6 +201,9 @@
     "status": {
       "minLength": 1,
       "type": "string"
+    },
+    "supported_input": {
+      "type": "object"
     },
     "trailing_partial_window": {
       "minLength": 1,
