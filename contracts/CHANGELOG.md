@@ -21,5 +21,6 @@ Schema version 1. Frozen from committed inputs only; rebuilt byte for byte by
 - `contract/v1.json`: manifest with coverage flags (all false), artifact hashes and sizes.
 - Schemas: site, contract-manifest, contract-pointer, model-version, preprocessing-spec,
   projection, analysis-result (version stamp).
-- Fixtures (test-only, not part of the contract): a v2 manifest with `has_diel` true,
-  `latest-v1.json`, `latest-v2.json`, curated invalid cases and a schema parity corpus.
+- Fixtures (test-only, not part of the contract): a manifest with `has_diel` true at the
+  sentinel version 99 (`FIXTURE_CONTRACT_VERSION`, so a real v2 can be published later),
+  `latest-v1.json`, `latest-v99.json`, curated invalid cases and a schema parity corpus.

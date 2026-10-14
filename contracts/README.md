@@ -20,8 +20,8 @@ contracts/
     v1/stamp.json               the version stamp the classifier writes onto every result
     v1/schema/*.schema.json     byte-for-byte copies of contracts/schema/* at publish time
   fixtures/                     test-only; never published
-    bucket/contract/v2.json     v1 manifest with fixture true and exactly one flipped flag (has_diel)
-    latest-v1.json, latest-v2.json   pointers the UI tests flip between
+    bucket/contract/v99.json    v1 manifest with fixture true and exactly one flipped flag (has_diel)
+    latest-v1.json, latest-v99.json  pointers the UI tests flip between
     invalid/*.json              curated schema violations: {schema, instance, reason}
     parity-corpus.json          the Python schema verdict for every instance and generated mutant
     legacy-site-coordinates.json     the frozen pre-contract coordinate table (adapter parity tests)
@@ -30,7 +30,10 @@ contracts/
 ```
 
 A fixture manifest reuses the v1 artifact uris, so a fixture is one small file, not a copy
-of the data. A manifest marked `"fixture": true` anywhere under `contracts/bucket/` fails
+of the data. The fixture manifest is the test-only version 99 (`FIXTURE_CONTRACT_VERSION` in
+`scripts/contract_lib.py`, mirrored in `dashboard-next/tests/shared/contract-fixture-version.ts`),
+a sentinel that can never be a real published version: a real v2 is published in Phase 5, and
+`check_contract.py` fails if a fixture's version equals a manifest under `contracts/bucket/`. A manifest marked `"fixture": true` anywhere under `contracts/bucket/` fails
 the checker, and the publisher refuses to upload one.
 
 ## Schema policy
@@ -61,7 +64,8 @@ the checker, and the publisher refuses to upload one.
 ## Commands
 
 ```bash
-# Rebuild v1 in memory and compare with the committed files (also checks the fixtures)
+# Compare the committed files with a fresh build (a published version is frozen, so only its
+# fixtures are compared, against a derivation from the committed v1 bytes)
 py -3.12 scripts/build_contract.py --version 1 --check
 
 # Verify every bundle, fixture, pointer, the corpus, the immutability guard and additivity
@@ -76,7 +80,8 @@ py -3.12 scripts/check_contract.py --published-base-ref origin/main
 # Regenerate the schema parity corpus after a schema or instance change
 py -3.12 scripts/check_contract.py --write-corpus
 
-# Write the offline fixtures (flipped-flag manifest v2, pointers, invalid cases)
+# Write the offline fixtures (flipped-flag manifest v99, pointers, invalid cases); they are
+# derived from the committed v1 bytes and never rebuild v1 from source
 py -3.12 scripts/build_contract.py --version 1 --fixtures
 ```
 

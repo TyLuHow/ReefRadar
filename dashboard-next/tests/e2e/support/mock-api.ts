@@ -1,6 +1,7 @@
 import { Page, Route } from '@playwright/test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { FIXTURE_MANIFEST_PATH } from '../../shared/contract-fixture-version';
 
 /**
  * API mock helper (01-08, D-22).
@@ -64,8 +65,8 @@ function contractFile(contractPath: string, latest: number): string | null {
   let file: string;
   if (contractPath === 'contract/latest.json') {
     file = path.join(CONTRACT_FIXTURES_DIR, `latest-v${latest}.json`);
-  } else if (contractPath === 'contract/v2.json') {
-    file = path.join(CONTRACT_FIXTURES_DIR, 'bucket', 'contract', 'v2.json');
+  } else if (contractPath === FIXTURE_MANIFEST_PATH) {
+    file = path.join(CONTRACT_FIXTURES_DIR, 'bucket', 'contract', path.basename(FIXTURE_MANIFEST_PATH));
   } else {
     file = path.join(CONTRACT_BUCKET_DIR, ...contractPath.split('/'));
   }
@@ -76,14 +77,16 @@ function contractFile(contractPath: string, latest: number): string | null {
 
 /**
  * Serve the data contract from disk, exactly as CloudFront would: latest.json
- * from the chosen pointer fixture, v2.json from the flipped-flag fixture,
- * everything else from contracts/bucket. An absent key answers 403 (what the
+ * from the chosen pointer fixture, the fixture manifest (contract/v99.json,
+ * FIXTURE_MANIFEST_PATH) from the flipped-flag fixture,
+ * everything else from contracts/bucket (a real v2 is served from the
+ * bucket like v1). An absent key answers 403 (what the
  * production bucket answers). Responses carry access-control-allow-origin "*"
  * and the production Cache-Control (latest 60 s, everything else immutable).
  * Contract fixtures are never imported from src/ or public/.
  *
  * mockApi() installs this for every spec; a spec that needs another version
- * calls mockContract(page, { latest: 2 }) afterwards (the later route wins).
+ * calls mockContract(page, { latest: FIXTURE_CONTRACT_VERSION }) afterwards (the later route wins).
  */
 export async function mockContract(page: Page, options: { latest?: number } = {}): Promise<ContractMockController> {
   let latest = options.latest ?? 1;
