@@ -246,7 +246,8 @@ def write_ood_contract(tmp_path, rows, threshold=0.5, version="ood-test-nn1-cosi
         "row_site_ids": ["train_site"] * int(rows.shape[0]),
     }
     sidecar_bytes = _json.dumps(sidecar).encode("utf-8")
-    (dest / "v2").mkdir()
+    # the real v2 bundle exists since 05-14; this tmp copy overwrites its OOD files
+    (dest / "v2").mkdir(exist_ok=True)
     (dest / "v2" / "ood_reference.f32").write_bytes(matrix_bytes)
     (dest / "v2" / "ood_reference.json").write_bytes(sidecar_bytes)
     manifest_path = dest / "contract" / "v1.json"

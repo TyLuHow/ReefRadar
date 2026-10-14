@@ -49,7 +49,15 @@ Usage:
     py -3.12 scripts/build_contract.py --version 1            # rebuild, reuses the committed frozen_at
     py -3.12 scripts/build_contract.py --version 1 --fixtures # write the offline UI-test fixtures
     py -3.12 scripts/build_contract.py --version 1 --check    # exit 1 if any committed file differs
+    py -3.12 scripts/build_contract.py --version 2 --frozen-at 2026-10-14T18:00:00Z   # Phase 5 bundle
+    py -3.12 scripts/build_contract.py --version 2 --check
     py -3.12 scripts/build_contract.py --freeze-legacy-coordinates   # one-time
+
+Contract v2 (Phase 5, 05-14) is built by a separate recipe (build_bundle_v2). It reuses v1's
+sites.json, embeddings.f32 and projection.json by uri (same dataset_version, same bytes) and adds
+the preprocessing spec read from lambdas/shared/reef_audio.py, the successor model, the grouped
+evaluation report, the OOD reference and its rows. It never parses handler source and never
+writes a v1 file.
     py -3.12 scripts/build_contract.py --format-schemas              # canonicalise contracts/schema/*
 """
 
@@ -70,6 +78,7 @@ sys.path.insert(0, str(REPO_ROOT / "lambdas" / "shared"))
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 import contract_lib  # noqa: E402
+import reef_audio  # noqa: E402
 import site_provenance as sp  # noqa: E402
 from contract_lib import ContractError  # noqa: E402
 
@@ -824,6 +833,417 @@ def build_stamp(version: int, model: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Contract v2 (Phase 5, 05-14)
+# ---------------------------------------------------------------------------
+
+V2_VERSION = 2
+# v2 describes the same reference dataset as v1: its sites, embeddings and projection are reused by uri.
+V2_DATASET_VERSION = DATASET_VERSION
+V2_REUSED_VERSION = 1
+V2_REUSED_ARTIFACTS = ("sites", "embeddings", "projection")
+
+SUCCESSOR_MODEL_DIR = REPO_ROOT / "models" / "interim-real-only-2026.10.1"
+EVALUATION_DIR = MODEL_DIR / "evaluation"
+EVALUATION_REPORT_PATH = EVALUATION_DIR / "report.json"
+OOD_ROWS_PATH = EVALUATION_DIR / "inputs" / "reembedded.f32"
+OOD_SIDECAR_PATH = SUCCESSOR_MODEL_DIR / "ood_reference.json"
+
+# Where the archived successor weights will live once plan 05-16 archives them (create-only,
+# next to but never over the live predecessor keys).
+ARCHIVE_WEIGHTS_LOCATION = (
+    "s3://reefradar-2477-embeddings/models/archive/interim-real-only-2026.10.1/reef_classifier_weights.npz"
+)
+SERVED_FROM = (
+    "bundled in the classifier Lambda package as served_model_weights.npz and served_model_config.json "
+    "(from models/interim-real-only-2026.10.1/); the live models/ keys in the embeddings bucket hold the "
+    "predecessor and are not read by this model"
+)
+
+# File sizes of the pinned SurfPerch SavedModel (05-RESEARCH Q3, measured on the downloaded files);
+# the sha256 values come from reef_audio.SAVED_MODEL_SHA256.
+SAVED_MODEL_FILE_BYTES = {
+    "saved_model.pb": 3859615,
+    "variables/variables.data-00000-of-00001": 97026563,
+    "variables/variables.index": 8491,
+}
+
+CLOSURE_WORDING = "serving and offline share one pipeline"
+V2_TEST_EVIDENCE = {
+    "parity": (
+        "lambdas/preprocessor/tests/test_parity.py::test_parity_live_handler_equals_offline: the live "
+        "preprocessor handler and the offline library produce identical 5 s window bytes for the same recording"
+    ),
+    "scipy": (
+        "lambdas/shared/tests/test_reef_audio.py::test_resample_matches_scipy_float64 and "
+        "test_window_excerpts_match_scipy_oracle: the resampler agrees with scipy.signal.resample_poly"
+    ),
+    "alias": (
+        "lambdas/shared/tests/test_reef_audio.py::test_alias_48k_20k_tone_suppressed and "
+        "test_alias_96k_24k_tone_suppressed: a tone above the output Nyquist limit is suppressed instead of aliasing"
+    ),
+    "normalise": (
+        "lambdas/shared/tests/test_reef_audio.py::test_normalise_peak_and_mean and "
+        "test_decode_scaling_identical_across_channel_counts: one normalisation and one scaling for every upload"
+    ),
+    "window": (
+        "per-window classification: lambdas/classifier/tests/test_handler.py::test_window_probabilities_and_recording_mean "
+        "and test_window_no_mean_pooled_embedding_is_classified show each window is classified on its own and "
+        "a mean embedding is never classified"
+    ),
+    "reembedded": (
+        "models/interim-real-only/evaluation/inputs/reembedded.json: the 100 training windows were re-embedded "
+        "through reef_audio, and the successor model was trained on those vectors"
+    ),
+}
+
+
+def _read_lf_json(path: pathlib.Path):
+    """(parsed value, LF bytes) of a committed text JSON input that must already be canonical."""
+    raw = contract_lib.read_text_input_bytes(path)
+    parsed = json.loads(raw.decode("utf-8"))
+    if contract_lib.canonical_json_bytes(parsed) != raw:
+        raise ContractError(f"{_repo_rel(path)} is not canonical JSON; it cannot be published byte for byte")
+    return parsed, raw
+
+
+def _fmt(value: float) -> str:
+    return f"{value:.4f}"
+
+
+def _served_report_model(report: dict) -> dict:
+    served = [m for m in report["models"] if m.get("served")]
+    if len(served) != 1 or served[0]["model_version"] != report["served_model_version"]:
+        raise ContractError("the evaluation report must mark exactly one model as served")
+    return served[0]
+
+
+def _chance_sentence(metric: dict) -> str:
+    low, high = metric["ci_low"], metric["ci_high"]
+    if low is None or high is None:
+        return "its interval could not be estimated"
+    if low <= 0.5 <= high:
+        return (
+            "the interval contains chance level (0.5 for the two classes that can be scored, 0.3333 for three), "
+            "so the result cannot be told apart from chance and is not evidence that the model recognises "
+            "reef health at a new site"
+        )
+    if high < 0.5:
+        return "the whole interval lies below chance level (0.5 for the two classes that can be scored)"
+    return "the interval lies above chance level (0.5 for the two classes that can be scored)"
+
+
+def build_model_version_v2(report: dict, report_sha256: str) -> dict:
+    """ModelVersion for the successor model, with its evaluation filled from the LOSO report."""
+    config_lf = contract_lib.read_text_input_bytes(SUCCESSOR_MODEL_DIR / "model_config.json")
+    config = json.loads(config_lf.decode("utf-8"))
+    weights = (SUCCESSOR_MODEL_DIR / "reef_classifier_weights.npz").read_bytes()  # binary: as-is
+    weights_sha = contract_lib.sha256_hex(weights)
+    if weights_sha != config["weights_sha256"]:
+        raise ContractError("successor weights do not hash to the config's weights_sha256")
+    if config["version"] != report["served_model_version"]:
+        raise ContractError("the evaluation report's served model is not the successor model")
+    if config.get("synthetic_rows_excluded") != 0:
+        raise ContractError("model config reports excluded synthetic rows; review before publishing")
+    if config.get("preprocessing_spec_version") != reef_audio.SPEC_VERSION:
+        raise ContractError("the successor was not trained under reef_audio.SPEC_VERSION")
+    served = _served_report_model(report)
+    others = [m for m in report["models"] if not m.get("served")]
+    metric = served["metrics"]["balanced_accuracy"]
+    note = (
+        f"Leave-one-site-out evaluation on the sites that can be scored ({metric['n_sites']} sites, "
+        f"{metric['n_windows']} windows): balanced accuracy {_fmt(metric['value'])} with a 95% interval of "
+        f"{_fmt(metric['ci_low'])} to {_fmt(metric['ci_high'])}; {_chance_sentence(metric)}. "
+    )
+    if others:
+        other = others[0]["metrics"]["balanced_accuracy"]
+        note += (
+            f"The predecessor scored {_fmt(other['value'])} ({_fmt(other['ci_low'])} to {_fmt(other['ci_high'])}) "
+            "in its own embedding space; the two numbers are not an improvement claim. "
+        )
+    note += (
+        "The earlier random-split figures are withdrawn: windows of the same site fell in both train and test. "
+        "This is an interim model; the real retrain is Phase 12."
+    )
+    num_classes = config["num_classes"]
+    return {
+        "schema_version": 1,
+        "model_version": config["version"],
+        "architecture": {
+            "input_dim": config["input_dim"],
+            "hidden_dims": config["hidden_dims"],
+            "num_classes": num_classes,
+        },
+        "classes": [config["idx_to_label"][str(i)] for i in range(num_classes)],
+        "embedding_model": {
+            "name": reef_audio.EMBEDDING_MODEL_NAME,
+            "version": reef_audio.EMBEDDING_MODEL_VERSION,
+            "dimension": config["input_dim"],
+        },
+        "preprocessing_spec_version": reef_audio.SPEC_VERSION,
+        "training": {
+            "rows": config["training_samples"],
+            "sites": [site["site_id"] for site in config["training_sites"]],
+            "countries": config["training_countries"],
+            "synthetic_data": False,
+            "synthetic_rows_excluded": config["synthetic_rows_excluded"],
+            "seed": config["seed"],
+            "embedding_source": (
+                "the 100 training windows (the first 5 s window of each training file) re-embedded through "
+                "reef_audio (" + reef_audio.SPEC_VERSION + ") by the deployed SurfPerch container "
+                "(models/interim-real-only/evaluation/inputs/reembedded.f32)"
+            ),
+            "preprocessing_spec_version": reef_audio.SPEC_VERSION,
+        },
+        "evaluation": {
+            "method": report["method"],
+            "report_uri": f"v{V2_VERSION}/evaluation_report.json",
+            "report_sha256": report_sha256,
+            "report_version": report["report_version"],
+            "served_model_balanced_accuracy": metric,
+        },
+        "evaluation_note": note,
+        "config_sha256": contract_lib.sha256_hex(config_lf),
+        "weights_sha256": weights_sha,
+        "weights_location": ARCHIVE_WEIGHTS_LOCATION,
+        "served_from": SERVED_FROM,
+        "predecessor": {
+            "model_version": config["predecessor"]["model_version"],
+            "retired_reason": config["predecessor"]["reason"],
+        },
+    }
+
+
+def build_preprocessing_spec_v2(report: dict) -> dict:
+    """The reef_audio spec: read from the library, never from handler source."""
+    summary = reef_audio.spec_summary()
+    served = _served_report_model(report)["metrics"]["balanced_accuracy"]
+
+    def gap(gap_id, summary_text, owner, status, evidence, closed_by=None) -> dict:
+        entry = {
+            "id": gap_id,
+            "summary": summary_text,
+            "owner_phase": owner,
+            "status": status,
+            "reference": DATA_MODEL_REFERENCE,
+            "evidence": evidence,
+        }
+        if closed_by is not None:
+            entry["closed_by"] = closed_by
+        return entry
+
+    closed_by = f"Phase 5: lambdas/shared/reef_audio.py ({reef_audio.SPEC_VERSION})"
+    embedding = summary["embedding_model"]
+    known_gaps = [
+        gap(
+            "F8a",
+            "Training audio, reference-site audio and live uploads now go through one normalisation "
+            "(per 5 s window: subtract the window mean, scale to a peak of 0.25) and one scaling. Closed in "
+            f"this sense only: {CLOSURE_WORDING}, and the successor model was trained on windows from that pipeline.",
+            "Phase 5",
+            "closed",
+            [V2_TEST_EVIDENCE["parity"], V2_TEST_EVIDENCE["normalise"], V2_TEST_EVIDENCE["reembedded"]],
+            closed_by,
+        ),
+        gap(
+            "F8b",
+            "The classifier was trained on single 5 s windows and now classifies single windows; the "
+            "recording's result is the mean of the window probabilities, not the class of a mean embedding. "
+            f"Closed in this sense only: {CLOSURE_WORDING}.",
+            "Phase 5",
+            "closed",
+            [V2_TEST_EVIDENCE["window"], V2_TEST_EVIDENCE["reembedded"]],
+            "Phase 5: lambdas/classifier/handler.py (per-window classification, mean of window probabilities)",
+        ),
+        gap(
+            "F8c",
+            "Resampling is a polyphase Kaiser windowed-sinc low-pass filter (beta 5.0) that agrees with scipy, "
+            "not linear interpolation. It gives about 54 dB of stopband attenuation, flat to about 13.4 kHz "
+            "and stopped from about 18.6 kHz when downsampling to 32 kHz; content between 17 and 18.6 kHz is only "
+            f"partly attenuated, so this is not perfect anti-aliasing. Closed in this sense only: {CLOSURE_WORDING}.",
+            "Phase 5",
+            "closed",
+            [V2_TEST_EVIDENCE["scipy"], V2_TEST_EVIDENCE["alias"], V2_TEST_EVIDENCE["parity"]],
+            "Phase 5: lambdas/shared/reef_audio.py (polyphase_kaiser_windowed_sinc resampler)",
+        ),
+        gap(
+            "F8d",
+            "Reference vectors were built differently per dataset (5-window means, about 30-file means, or "
+            "10 random windows, with and without normalisation). v2 reuses the v1 reference embeddings "
+            "unchanged, so site similarity still compares reef_audio windows with reference vectors built by "
+            "the earlier methods.",
+            "Phase 11",
+            "open",
+            [
+                "contracts/bucket/v1/embeddings.f32 is reused by uri, unchanged",
+                "re-embedding the reference sites through reef_audio is Phase 11",
+            ],
+        ),
+        gap(
+            "F8-model-evidence",
+            "The served model is an interim 3-class MLP fitted to 100 windows from 5 sites in Indonesia and "
+            f"Kenya. Its leave-one-site-out balanced accuracy is {_fmt(served['value'])} "
+            f"({_fmt(served['ci_low'])} to {_fmt(served['ci_high'])}, {served['n_sites']} sites); the result "
+            "cannot be told apart from chance and the model is not shown to generalise to new sites.",
+            "Phase 12",
+            "open",
+            [
+                f"v{V2_VERSION}/evaluation_report.json (report {report['report_version']})",
+                "the real-data retrain and model selection are Phase 12",
+            ],
+        ),
+        gap(
+            "F8-inference-container",
+            "The inference container was not rebuilt: tensorflow-cpu is unpinned (>=2.18.0) and the code "
+            f"downloads the 4-component handle {embedding['kaggle_handle'].rsplit('/', 1)[0]}, not the pinned "
+            f"{embedding['kaggle_handle']}. The SavedModel file hashes below record what was embedded against, "
+            "but a rebuild could resolve different packages.",
+            "Phase 11",
+            "open",
+            [
+                "infrastructure/lambda_container/requirements.txt: tensorflow-cpu>=2.18.0",
+                "infrastructure/lambda_container/inference.py: MODEL_HANDLE google/surfperch/tensorFlow2/1",
+            ],
+        ),
+    ]
+    return {
+        "schema_version": 1,
+        "spec_version": summary["spec_version"],
+        "status": "as-deployed",
+        "sample_rate_hz": summary["sample_rate_hz"],
+        "window_s": summary["window_s"],
+        "window_samples": summary["window_samples"],
+        "hop_s": summary["hop_s"],
+        "min_duration_s": summary["min_duration_s"],
+        "max_duration_s": summary["max_duration_s"],
+        "trailing_partial_window": summary["trailing_partial_window"],
+        "channel_mix": summary["channel_mix"],
+        "supported_input": summary["supported_input"],
+        "amplitude_scaling": summary["amplitude_scaling"],
+        "resampling": summary["resampling"],
+        "levels": summary["levels"],
+        "embedding_model": {
+            "name": embedding["name"],
+            "version": embedding["version"],
+            "dimension": embedding["dimension"],
+        },
+        "model_pin": {
+            "kaggle_handle": embedding["kaggle_handle"],
+            "files": [
+                {
+                    "path": path,
+                    "bytes": SAVED_MODEL_FILE_BYTES[path],
+                    "sha256": embedding["saved_model_sha256"][path],
+                }
+                for path in sorted(embedding["saved_model_sha256"])
+            ],
+        },
+        "serving": {
+            "window_pooling": (
+                "each 5 s window is classified on its own; the recording's result is the mean of the "
+                "window probabilities (a mean embedding is never classified)"
+            ),
+        },
+        "known_gaps": known_gaps,
+        "source": (
+            "lambdas/shared/reef_audio.py (SPEC_VERSION, spec_summary); "
+            "lambdas/classifier/handler.py (per-window classification)"
+        ),
+    }
+
+
+def build_bundle_v2(frozen_at: str, contracts_dir: pathlib.Path) -> dict[str, bytes]:
+    """{path relative to contracts/: bytes} for contract v2; the v1 dataset artifacts are reused by uri."""
+    prefix = f"v{V2_VERSION}"
+    schema_dir = contracts_dir / "schema"
+    base_manifest_path = contracts_dir / "bucket" / "contract" / f"v{V2_REUSED_VERSION}.json"
+    if not base_manifest_path.is_file():
+        raise ContractError(f"{base_manifest_path} is missing; v2 reuses the v1 dataset artifacts")
+    base = json.loads(base_manifest_path.read_bytes().decode("utf-8"))
+    if base["dataset_version"] != V2_DATASET_VERSION:
+        raise ContractError("v1's dataset_version differs from V2_DATASET_VERSION; v2 must not reuse it")
+
+    files: dict[str, bytes] = {}
+    report, report_bytes = _read_lf_json(EVALUATION_REPORT_PATH)
+    ood, ood_bytes = _read_lf_json(OOD_SIDECAR_PATH)
+    ood_rows = OOD_ROWS_PATH.read_bytes()  # binary: never normalised
+    contract_lib.validate(report, "evaluation-report", schema_dir)
+    contract_lib.validate(ood, "ood-reference", schema_dir)
+    if contract_lib.sha256_hex(ood_rows) != ood["embeddings"]["sha256"]:
+        raise ContractError("the OOD rows do not hash to the OOD sidecar's embeddings.sha256")
+    if ood["embeddings"]["uri"] != f"{prefix}/ood_reference.f32":
+        raise ContractError(f"the OOD sidecar names {ood['embeddings']['uri']}, expected {prefix}/ood_reference.f32")
+    if len(ood_rows) != ood["embeddings"]["count"] * ood["embeddings"]["dim"] * 4:
+        raise ContractError("the OOD rows are not count x dim x 4 bytes")
+    if ood["preprocessing_spec_version"] != reef_audio.SPEC_VERSION:
+        raise ContractError("the OOD reference was built under a different preprocessing spec")
+
+    model = build_model_version_v2(report, contract_lib.sha256_hex(report_bytes))
+    spec = build_preprocessing_spec_v2(report)
+    stamp = {
+        "contract_version": V2_VERSION,
+        "dataset_version": V2_DATASET_VERSION,
+        "model_version": model["model_version"],
+        "preprocessing_spec_version": spec["spec_version"],
+    }
+    contract_lib.validate(model, "model-version", schema_dir)
+    contract_lib.validate(spec, "preprocessing-spec", schema_dir)
+    contract_lib.validate(stamp, "analysis-result", schema_dir)
+    model_bytes = contract_lib.canonical_json_bytes(model)
+    spec_bytes = contract_lib.canonical_json_bytes(spec)
+    stamp_bytes = contract_lib.canonical_json_bytes(stamp)
+    files[f"bucket/{prefix}/model_version.json"] = model_bytes
+    files[f"bucket/{prefix}/preprocessing_spec.json"] = spec_bytes
+    files[f"bucket/{prefix}/stamp.json"] = stamp_bytes
+    files[f"bucket/{prefix}/evaluation_report.json"] = report_bytes
+    files[f"bucket/{prefix}/ood_reference.json"] = ood_bytes
+    files[f"bucket/{prefix}/ood_reference.f32"] = ood_rows
+
+    schema_entries = {}
+    for stem, data in _schema_sources(schema_dir).items():
+        uri = f"{prefix}/schema/{stem}{contract_lib.SCHEMA_SUFFIX}"
+        files[f"bucket/{uri}"] = data
+        schema_entries[SCHEMA_STEM_TO_KEY.get(stem, stem.replace("-", "_"))] = artifact_entry(uri, data)
+
+    artifacts = {key: copy.deepcopy(base["artifacts"][key]) for key in V2_REUSED_ARTIFACTS}
+    artifacts.update(
+        {
+            "model_version": artifact_entry(f"{prefix}/model_version.json", model_bytes),
+            "preprocessing_spec": artifact_entry(f"{prefix}/preprocessing_spec.json", spec_bytes),
+            "stamp": artifact_entry(f"{prefix}/stamp.json", stamp_bytes),
+            "evaluation_report": artifact_entry(f"{prefix}/evaluation_report.json", report_bytes),
+            "ood_reference": artifact_entry(f"{prefix}/ood_reference.json", ood_bytes),
+            "ood_embeddings": artifact_entry(
+                f"{prefix}/ood_reference.f32",
+                ood_rows,
+                content_type=BINARY_CONTENT_TYPE,
+                dtype=ood["embeddings"]["dtype"],
+                dim=ood["embeddings"]["dim"],
+                count=ood["embeddings"]["count"],
+            ),
+            "schemas": schema_entries,
+            "aggregates_diel": {"present": False},
+            "aggregates_effort": {"present": False},
+            "detections": {"present": False},
+        }
+    )
+    manifest = {
+        "schema_version": 1,
+        "contract_version": V2_VERSION,
+        "frozen_at": frozen_at,
+        "coverage": copy.deepcopy(base["coverage"]),
+        "artifacts": artifacts,
+        "datasets": copy.deepcopy(base["datasets"]),
+        "sources": copy.deepcopy(base["sources"]),
+        "dataset_version": stamp["dataset_version"],
+        "model_version": stamp["model_version"],
+        "preprocessing_spec_version": stamp["preprocessing_spec_version"],
+    }
+    contract_lib.validate(manifest, "contract-manifest", schema_dir)
+    files[f"bucket/contract/v{V2_VERSION}.json"] = contract_lib.canonical_json_bytes(manifest)
+    return files
+
+
+# ---------------------------------------------------------------------------
 # One-time legacy coordinate freeze
 # ---------------------------------------------------------------------------
 
@@ -982,13 +1402,18 @@ def main(argv=None) -> int:
             to_write = committed_fixture_files()
         else:
             frozen_at = _resolve_frozen_at(version, args.frozen_at, contracts_dir)
-            files = build_bundle(
-                version,
-                frozen_at,
-                contracts_dir,
-                reference_metadata=pathlib.Path(args.reference_metadata) if args.reference_metadata else None,
-                recompute_projection=args.recompute_projection,
-            )
+            if version == V2_VERSION:
+                if bundle_run:
+                    raise ContractError("v2 reuses the v1 embeddings and projection; --reference-metadata and --recompute-projection apply to v1 only")
+                files = build_bundle_v2(frozen_at, contracts_dir)
+            else:
+                files = build_bundle(
+                    version,
+                    frozen_at,
+                    contracts_dir,
+                    reference_metadata=pathlib.Path(args.reference_metadata) if args.reference_metadata else None,
+                    recompute_projection=args.recompute_projection,
+                )
             fixture_files = (
                 build_fixture_files(version, files) if version == base_version else committed_fixture_files()
             )

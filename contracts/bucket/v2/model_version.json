@@ -1,0 +1,66 @@
+{
+  "architecture": {
+    "hidden_dims": [
+      256,
+      64
+    ],
+    "input_dim": 1280,
+    "num_classes": 3
+  },
+  "classes": [
+    "degraded",
+    "healthy",
+    "restored_early"
+  ],
+  "config_sha256": "348b20a2b41b323f354fe4094087b2d81fa98585ac292fe94aee44338f52ffbd",
+  "embedding_model": {
+    "dimension": 1280,
+    "name": "surfperch",
+    "version": "1.0"
+  },
+  "evaluation": {
+    "method": "leave_one_site_out",
+    "report_sha256": "bc0482baf6f56f043c6e9e273b9fbfdf6ad75565278eedaa36187945ba89f20b",
+    "report_uri": "v2/evaluation_report.json",
+    "report_version": "loso-2026.10.1",
+    "served_model_balanced_accuracy": {
+      "ci_high": 0.5833333333333334,
+      "ci_low": 0.3,
+      "ci_status": "estimated",
+      "defined_fraction": 0.8748,
+      "n_sites": 4,
+      "n_windows": 80,
+      "value": 0.4375
+    }
+  },
+  "evaluation_note": "Leave-one-site-out evaluation on the sites that can be scored (4 sites, 80 windows): balanced accuracy 0.4375 with a 95% interval of 0.3000 to 0.5833; the interval contains chance level (0.5 for the two classes that can be scored, 0.3333 for three), so the result cannot be told apart from chance and is not evidence that the model recognises reef health at a new site. The predecessor scored 0.0625 (0.0000 to 0.1750) in its own embedding space; the two numbers are not an improvement claim. The earlier random-split figures are withdrawn: windows of the same site fell in both train and test. This is an interim model; the real retrain is Phase 12.",
+  "model_version": "interim-real-only-2026.10.1",
+  "predecessor": {
+    "model_version": "interim-real-only",
+    "retired_reason": "The predecessor was trained on embeddings from the earlier pipeline (whole file peak-normalised to 1.0, linear interpolation). This successor re-runs the same recipe and seed on the same 100 files re-embedded through reef_audio, so the model that serves reef_audio windows was trained on reef_audio windows."
+  },
+  "preprocessing_spec_version": "preproc-2026.10.1-reef-audio",
+  "schema_version": 1,
+  "served_from": "bundled in the classifier Lambda package as served_model_weights.npz and served_model_config.json (from models/interim-real-only-2026.10.1/); the live models/ keys in the embeddings bucket hold the predecessor and are not read by this model",
+  "training": {
+    "countries": [
+      "Indonesia",
+      "Kenya"
+    ],
+    "embedding_source": "the 100 training windows (the first 5 s window of each training file) re-embedded through reef_audio (preproc-2026.10.1-reef-audio) by the deployed SurfPerch container (models/interim-real-only/evaluation/inputs/reembedded.f32)",
+    "preprocessing_spec_version": "preproc-2026.10.1-reef-audio",
+    "rows": 100,
+    "seed": 42,
+    "sites": [
+      "ind_D2",
+      "ind_D3",
+      "ind_H4",
+      "ind_N1",
+      "ken_H1"
+    ],
+    "synthetic_data": false,
+    "synthetic_rows_excluded": 0
+  },
+  "weights_location": "s3://reefradar-2477-embeddings/models/archive/interim-real-only-2026.10.1/reef_classifier_weights.npz",
+  "weights_sha256": "cdc169fab304d8c0f20e8f88eb2bbb6d520813c2ea1de64ed5d072f3a934ce80"
+}

@@ -93,7 +93,7 @@ def test_fixture_manifest_reuses_v1_artifact_uris_that_exist_in_the_bucket():
 
 
 def test_fixtures_live_only_under_contracts_fixtures():
-    assert sorted(p.name for p in (BUCKET / "contract").iterdir()) == ["v1.json"]
+    assert sorted(p.name for p in (BUCKET / "contract").iterdir()) == ["v1.json", "v2.json"]
     for path in (BUCKET / "contract").glob("v*.json"):
         assert _load(path).get("fixture") is not True
 
@@ -411,6 +411,11 @@ def test_ci_python_job_runs_the_builder_and_the_checker():
     assert ci.count("check_contract.py --check --additive") == 1
     assert ci.count("build_contract.py --version 1 --check") == 1
     assert ci.index("run: pytest") < ci.index("build_contract.py --version 1 --check")
+    # 05-14: v2 is rebuild-checked right after v1 (once v2 is published the check skips the rebuild
+    # comparison, as it does for v1, and check_contract.py guards its bytes instead)
+    assert ci.count("build_contract.py --version 2 --check") == 1
+    assert ci.index("build_contract.py --version 1 --check") < ci.index("build_contract.py --version 2 --check")
+    assert ci.index("build_contract.py --version 2 --check") < ci.index("check_contract.py --check --additive")
 
 
 def test_check_citations_treats_f32_as_binary():
@@ -425,21 +430,25 @@ def test_contract_docs_exist_and_state_the_projection_caveat():
                    "--set-latest", "33", "fixtures", "additive"):
         assert needle in readme, needle
     assert "v1" in changelog and "unpublished" in changelog.lower()
+    # 05-14: the v2 entry and what it reuses
+    assert "v2" in changelog and "preproc-2026.10.1-reef-audio" in changelog
+    assert "build_contract.py --version 2" in readme and "99" in readme
 
 
 # ---------------------------------------------------------------------------
 # A published version is frozen while the schemas may still grow
 # ---------------------------------------------------------------------------
 
-def _publish_v1(contracts_dir):
-    digest = contract_lib.sha256_hex((contracts_dir / "bucket" / "contract" / "v1.json").read_bytes())
-    (contracts_dir / "PUBLISHED.json").write_bytes(
-        contract_lib.canonical_json_bytes({"1": {"manifest_sha256": digest}})
-    )
+def _publish_all(contracts_dir):
+    """Record every committed bucket manifest (v1, and v2 once built) as published."""
+    record = {}
+    for path in sorted((contracts_dir / "bucket" / "contract").glob("v*.json")):
+        record[path.stem[1:]] = {"manifest_sha256": contract_lib.sha256_hex(path.read_bytes())}
+    (contracts_dir / "PUBLISHED.json").write_bytes(contract_lib.canonical_json_bytes(record))
 
 
 def test_a_published_version_tolerates_an_additive_schema_change(contracts_copy, monkeypatch):
-    _publish_v1(contracts_copy)
+    _publish_all(contracts_copy)
 
     def mutate(schema):
         schema["properties"]["brand_new_optional"] = {"type": "string"}

@@ -1,0 +1,183 @@
+{
+  "$id": "urn:reefradar:contract:ood-reference",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "The sidecar that defines 'outside the training data' for the out-of-distribution flag: the re-embedded training windows (a float32 matrix published beside it), the cosine-distance threshold calibrated by leaving each training site out in turn, and the embedding space the windows live in. The flag reports distance to the nearest training window; it never changes a class probability.",
+  "properties": {
+    "calibration": {
+      "properties": {
+        "method": {
+          "const": "leave_one_site_out_nearest_neighbour"
+        },
+        "per_site": {
+          "items": {
+            "properties": {
+              "max": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "n": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "p50": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "p95": {
+                "minimum": 0,
+                "type": "number"
+              },
+              "site_id": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "site_id",
+              "n",
+              "p50",
+              "p95",
+              "max"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "percentile": {
+          "const": 95
+        },
+        "pooled_n": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "method",
+        "percentile",
+        "pooled_n",
+        "per_site"
+      ],
+      "type": "object"
+    },
+    "embedding_model": {
+      "properties": {
+        "dimension": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "name": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "version": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version",
+        "dimension"
+      ],
+      "type": "object"
+    },
+    "embedding_space_note": {
+      "minLength": 1,
+      "type": "string"
+    },
+    "embeddings": {
+      "properties": {
+        "count": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "dim": {
+          "const": 1280
+        },
+        "dtype": {
+          "const": "float32-le"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "uri": {
+          "pattern": "^(contract|v[0-9]+)/(?!.*\\.\\.)[A-Za-z0-9_./-]+$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "sha256",
+        "dtype",
+        "dim",
+        "count"
+      ],
+      "type": "object"
+    },
+    "k": {
+      "const": 1
+    },
+    "metric": {
+      "const": "cosine_distance"
+    },
+    "ood_version": {
+      "pattern": "^[a-z0-9][a-z0-9.+-]*$",
+      "type": "string"
+    },
+    "preprocessing_spec_version": {
+      "pattern": "^[a-z0-9][a-z0-9.+-]*$",
+      "type": "string"
+    },
+    "row_site_ids": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "source_inputs": {
+      "items": {
+        "properties": {
+          "path": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "sha256"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "threshold": {
+      "minimum": 0,
+      "type": "number"
+    }
+  },
+  "required": [
+    "schema_version",
+    "ood_version",
+    "metric",
+    "k",
+    "threshold",
+    "calibration",
+    "embeddings",
+    "row_site_ids",
+    "preprocessing_spec_version",
+    "embedding_model",
+    "embedding_space_note",
+    "source_inputs"
+  ],
+  "title": "OodReference",
+  "type": "object"
+}

@@ -38,3 +38,27 @@ Additive only; the published v1 bundle and its frozen schema copies are untouche
 - New schemas: `evaluation-report`, `ood-reference`.
 - `fixtures/examples/`: schema examples (illustrative values, never real results) checked by `--check`
   and added, with mutants, to the parity corpus.
+
+## Contract v2 (Phase 5, plan 05-14; built on disk, unpublished until plan 05-16)
+
+Schema version 1 (no schema change in this plan). Built by `scripts/build_contract.py --version 2`
+and rebuilt byte for byte by `--version 2 --check`. The published v1 bundle is untouched.
+
+- Reuses v1's `sites.json`, `embeddings.f32` and `projection.json` by uri (`v1/...`, same sha256 and
+  bytes); `dataset_version` stays `reefradar-reference-2026.10.0`. The v1 reference embeddings still
+  come from the earlier pipeline (F8d, Phase 11).
+- `preprocessing_spec.json`: spec `preproc-2026.10.1-reef-audio`, read from `lambdas/shared/reef_audio.py`
+  (polyphase Kaiser resampler, per-window normalisation, 5 s windows, the pinned SurfPerch SavedModel file
+  hashes). F8a, F8b and F8c are closed with evidence, worded "serving and offline share one pipeline".
+  F8d, the served model's evidence (Phase 12) and the unrebuilt inference container stay open.
+- `model_version.json`: `interim-real-only-2026.10.1`, trained under the v2 spec on the 100 re-embedded
+  windows, with `evaluation` filled from the leave-one-site-out report and a plain note that its
+  interval cannot be told apart from chance.
+- `evaluation_report.json`: the grouped evaluation report `loso-2026.10.1` (both models, per-window
+  predictions, bootstrap settings, withdrawn figures). `ood_reference.json` and `ood_reference.f32`: the
+  OOD sidecar and its 100 training-window rows.
+- `stamp.json`: contract 2, the unchanged dataset, the successor model and the new spec.
+- Manifest keys added: `artifacts.evaluation_report`, `artifacts.ood_reference`, `artifacts.ood_embeddings`.
+- Checker: `check_contract.py` validates the report and the OOD reference against their schemas and
+  cross-checks their links to the model, the spec and the OOD rows.
+- The test fixture stays at the sentinel version 99, so a real v2 can sit beside it.

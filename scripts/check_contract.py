@@ -21,7 +21,13 @@ Phase 2 (CONTRACT-01): integrity and schema check of every committed contract bu
     those float32 rows (components 1e-8, coordinates 2e-6, explained variance 1e-6), so a
     different numpy build cannot break the check, while an edited number does;
   - every site's embedding_row and projection equal the row and projection coordinates
-    published for it.
+    published for it;
+  - a bundle that carries an evaluation report and an OOD reference (contract v2) is held to
+    _v2_link_problems: the evaluation_report and ood_reference validate against their schemas,
+    the OOD rows are count x dim x 4 bytes and hash to the sidecar's embeddings.sha256 (which is the
+    ood_embeddings artifact's sha256), the sidecar was built under the manifest's preprocessing spec,
+    model_version.evaluation names the evaluation_report artifact by uri and sha256 and quotes the
+    served model's balanced accuracy from it, and the report evaluated the manifest's model.
 
 `--check` also verifies the offline fixtures and the immutability guard:
 
@@ -235,6 +241,8 @@ def _semantic_problems(
         ("preprocessing_spec", "preprocessing-spec"),
         ("projection", "projection"),
         ("stamp", "analysis-result"),
+        ("evaluation_report", "evaluation-report"),
+        ("ood_reference", "ood-reference"),
     ):
         if label in loaded:
             problems += _schema_problems(f"{label} artifact", loaded[label], stem, schema_dir)
@@ -270,6 +278,93 @@ def _semantic_problems(
     spec = loaded.get("preprocessing_spec")
     if isinstance(spec, dict) and spec.get("spec_version") != manifest.get("preprocessing_spec_version"):
         problems.append("preprocessing_spec artifact: spec_version differs from manifest preprocessing_spec_version")
+    problems += _v2_link_problems(manifest, artifacts, loaded)
+    return problems
+
+
+def _v2_link_problems(manifest: dict, artifacts: dict, loaded: dict) -> list[str]:
+    """Cross-artifact links of a bundle that carries an evaluation report and an OOD reference (v2).
+
+    Each rule only fires when the artifacts it relates are present, so a manifest without them
+    (v1, the fixtures) is checked exactly as before:
+      - the OOD rows are count x dim x 4 bytes and hash to the sidecar's embeddings.sha256, which
+        equals the ood_embeddings artifact's sha256 (same uri, same count);
+      - the OOD sidecar was built under the preprocessing spec the manifest serves;
+      - model_version.evaluation names the evaluation_report artifact (uri and sha256) and quotes
+        the served model's balanced accuracy from it;
+      - the report evaluated the model the manifest serves.
+    """
+    problems: list[str] = []
+    ood = loaded.get("ood_reference")
+    rows = loaded.get("ood_embeddings")
+    rows_entry = artifacts.get("ood_embeddings") if isinstance(artifacts.get("ood_embeddings"), dict) else None
+    if isinstance(ood, dict) and isinstance(ood.get("embeddings"), dict):
+        embeddings = ood["embeddings"]
+        if isinstance(rows, bytes) and isinstance(embeddings.get("count"), int) and isinstance(embeddings.get("dim"), int):
+            expected = embeddings["count"] * embeddings["dim"] * 4
+            if len(rows) != expected:
+                problems.append(
+                    f"ood_reference.f32: {len(rows)} bytes != {embeddings['count']} rows x {embeddings['dim']} x 4 = {expected}"
+                )
+        if isinstance(rows, bytes) and contract_lib.sha256_hex(rows) != embeddings.get("sha256"):
+            problems.append("ood_reference.json: embeddings.sha256 differs from the sha256 of the OOD rows")
+        if rows_entry is None:
+            problems.append("ood_reference.json: the manifest has no ood_embeddings artifact for its rows")
+        else:
+            if embeddings.get("sha256") != rows_entry.get("sha256"):
+                problems.append(
+                    "ood_reference.json: embeddings.sha256 differs from the ood_embeddings artifact sha256"
+                )
+            if embeddings.get("uri") != rows_entry.get("uri"):
+                problems.append(
+                    f"ood_reference.json: embeddings.uri {embeddings.get('uri')!r} is not the ood_embeddings uri "
+                    f"{rows_entry.get('uri')!r}"
+                )
+            if rows_entry.get("count") is not None and rows_entry.get("count") != embeddings.get("count"):
+                problems.append("ood_reference.json: embeddings.count differs from the ood_embeddings artifact count")
+        row_ids = ood.get("row_site_ids")
+        if isinstance(row_ids, list) and isinstance(embeddings.get("count"), int) and len(row_ids) != embeddings["count"]:
+            problems.append(
+                f"ood_reference.json: {len(row_ids)} row_site_ids != embeddings.count {embeddings['count']}"
+            )
+        if ood.get("preprocessing_spec_version") != manifest.get("preprocessing_spec_version"):
+            problems.append(
+                f"ood_reference.preprocessing_spec_version {ood.get('preprocessing_spec_version')!r} differs from "
+                f"the manifest's {manifest.get('preprocessing_spec_version')!r}"
+            )
+
+    model = loaded.get("model_version")
+    report = loaded.get("evaluation_report")
+    report_entry = artifacts.get("evaluation_report") if isinstance(artifacts.get("evaluation_report"), dict) else None
+    evaluation = model.get("evaluation") if isinstance(model, dict) else None
+    if isinstance(evaluation, dict):
+        if report_entry is None:
+            problems.append("model_version.evaluation names a report but the manifest has no evaluation_report artifact")
+        else:
+            if evaluation.get("report_sha256") != report_entry.get("sha256"):
+                problems.append(
+                    "model_version.evaluation.report_sha256 differs from the evaluation_report artifact sha256"
+                )
+            if evaluation.get("report_uri") != report_entry.get("uri"):
+                problems.append(
+                    f"model_version.evaluation.report_uri {evaluation.get('report_uri')!r} is not the "
+                    f"evaluation_report uri {report_entry.get('uri')!r}"
+                )
+        if isinstance(report, dict):
+            if evaluation.get("report_version") != report.get("report_version"):
+                problems.append("model_version.evaluation.report_version differs from the evaluation report")
+            served = [m for m in report.get("models", []) if isinstance(m, dict) and m.get("served") is True]
+            quoted = evaluation.get("served_model_balanced_accuracy")
+            if len(served) == 1 and quoted != served[0].get("metrics", {}).get("balanced_accuracy"):
+                problems.append(
+                    "model_version.evaluation.served_model_balanced_accuracy differs from the served model's "
+                    "balanced accuracy in the evaluation report"
+                )
+    if isinstance(report, dict) and report.get("served_model_version") != manifest.get("model_version"):
+        problems.append(
+            f"evaluation_report.served_model_version {report.get('served_model_version')!r} differs from the "
+            f"manifest's model_version {manifest.get('model_version')!r}"
+        )
     return problems
 
 
@@ -831,6 +926,17 @@ def _corpus_instances(contracts_dir: pathlib.Path) -> list[tuple[str, str, str, 
         ("stamp", "analysis-result"),
     ):
         items.append((stem, f"artifact/{artifact}", "representative", _read_json(bucket / latest["artifacts"][artifact]["uri"])))
+    # Phase 5 (05-14): the latest bundle's OOD reference is a representative instance (its mutants
+    # are small). The real evaluation report (about 80 KB with per-window predictions) is kept as a
+    # valid-only entry: its mutants would add megabytes, and examples/evaluation-report.json already
+    # supplies the representative instance and mutants for that schema.
+    for artifact, stem, tag in (
+        ("ood_reference", "ood-reference", "representative"),
+        ("evaluation_report", "evaluation-report", "artifact"),
+    ):
+        entry = latest["artifacts"].get(artifact)
+        if isinstance(entry, dict) and entry.get("present") is not False:
+            items.append((stem, f"artifact/{artifact}", tag, _read_json(bucket / entry["uri"])))
     items.append(
         ("projection", "artifact/projection-truncated", "representative",
          _truncated_projection(_read_json(bucket / latest["artifacts"]["projection"]["uri"])))
