@@ -3,14 +3,16 @@ import * as path from 'node:path';
 import { vi } from 'vitest';
 import { DEFAULT_CONTRACT_BASE_URL } from '@/features/contract/config';
 import { useContractVersionStore, type ContractPin } from '@/features/contract/version';
+import { FIXTURE_MANIFEST_PATH } from '../../shared/contract-fixture-version';
 
 /**
  * Offline fetch harness for the contract module (02-07).
  *
  * Stubs globalThis.fetch with a function that serves the contract from the
  * committed files, exactly as the CDN would: contract/latest.json from
- * contracts/fixtures/latest-v<N>.json, contract/v2.json from
- * contracts/fixtures/bucket/contract/v2.json, everything else from
+ * contracts/fixtures/latest-v<N>.json, the fixture manifest
+ * (contract/v99.json, FIXTURE_MANIFEST_PATH) from
+ * contracts/fixtures/bucket/contract/, everything else from
  * contracts/bucket. A missing file answers 403 (what the production bucket
  * answers for an absent key). Any request outside the contract base URL is
  * recorded and refused, so a unit test can never reach a real host.
@@ -41,8 +43,8 @@ function readFixtureFile(contractPath: string, latest: number): Buffer | null {
   let file: string;
   if (contractPath === 'contract/latest.json') {
     file = path.join(FIXTURES_DIR, `latest-v${latest}.json`);
-  } else if (contractPath === 'contract/v2.json') {
-    file = path.join(FIXTURES_DIR, 'bucket', 'contract', 'v2.json');
+  } else if (contractPath === FIXTURE_MANIFEST_PATH) {
+    file = path.join(FIXTURES_DIR, 'bucket', 'contract', path.basename(FIXTURE_MANIFEST_PATH));
   } else {
     file = path.join(BUCKET_DIR, ...contractPath.split('/'));
   }

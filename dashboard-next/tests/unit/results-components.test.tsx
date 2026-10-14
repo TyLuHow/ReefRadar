@@ -14,6 +14,7 @@ import type { AnalysisResult, RegionInfo } from '@/types';
 import threeClassNoCoords from '../fixtures/api/visualize-3class-no-coords.json';
 import threeClassInRegion from '../fixtures/api/visualize-3class-in-region.json';
 import threeClassStamped from '../fixtures/api/visualize-3class-stamped.json';
+import { FIXTURE_CONTRACT_VERSION } from '../shared/contract-fixture-version';
 
 const noCoordsResult = threeClassNoCoords as unknown as AnalysisResult;
 const inRegionResult = threeClassInRegion as unknown as AnalysisResult;
@@ -269,7 +270,7 @@ describe('contract stamp line (CONTRACT-04)', () => {
   let client: QueryClient;
 
   beforeEach(() => {
-    handle = installContractFetch({ latest: 2 });
+    handle = installContractFetch({ latest: FIXTURE_CONTRACT_VERSION });
     client = new QueryClient();
     resetContractStore();
     setContractPin();
@@ -330,7 +331,7 @@ describe('contract stamp line (CONTRACT-04)', () => {
     expect(text).not.toMatch(/pre-contract/);
   });
 
-  it('resolves exactly v1 while latest is v2 and shows the three stamped versions', async () => {
+  it('resolves exactly v1 while the fixture is latest and shows the three stamped versions', async () => {
     render(withClient(<ContractStampLine {...stamp} />));
     await waitFor(() => expect(screen.getByTestId('contract-stamp').textContent).not.toMatch(/resolving/));
     const text = screen.getByTestId('contract-stamp').textContent ?? '';

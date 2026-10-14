@@ -4,11 +4,12 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import { act, render, waitFor } from '@testing-library/react';
 import { useCoverage, useReferenceSites } from '@/features/contract';
 import { installContractFetch, resetContractStore, setContractPin, type ContractFetchHandle } from './support/contract-fetch';
+import { FIXTURE_CONTRACT_VERSION, FIXTURE_MANIFEST_PATH } from '../shared/contract-fixture-version';
 
 /**
  * 02-08 (CONTRACT-03): a flipped latest.json is picked up by the same mounted
  * component, in the same QueryClient, within one 60 s refetch, with no remount.
- * The committed v2 fixture flips has_diel and reuses v1's sites bytes.
+ * The committed fixture manifest (version 99) flips has_diel and reuses v1's sites bytes.
  */
 
 interface Observation {
@@ -34,7 +35,7 @@ describe('latest.json flip without a reload', () => {
     vi.useRealTimers();
   });
 
-  it('shows has_diel false on v1, then true on v2 after the 60 s pointer refetch, in one mounted tree', async () => {
+  it('shows has_diel false on v1, then true on the fixture version after the 60 s pointer refetch, in one mounted tree', async () => {
     const observed: Observation[] = [];
     let mounts = 0;
     const seenClients = new Set<QueryClient>();
@@ -54,15 +55,15 @@ describe('latest.json flip without a reload', () => {
     await waitFor(() => expect(view.container.querySelector('output')?.getAttribute('data-diel')).toBe('false'));
     expect(view.container.querySelector('output')?.getAttribute('data-version')).toBe('1');
 
-    handle.setLatest(2);
+    handle.setLatest(FIXTURE_CONTRACT_VERSION);
     await act(async () => {
       await vi.advanceTimersByTimeAsync(60_000);
     });
     await waitFor(() => expect(view.container.querySelector('output')?.getAttribute('data-diel')).toBe('true'));
-    expect(view.container.querySelector('output')?.getAttribute('data-version')).toBe('2');
+    expect(view.container.querySelector('output')?.getAttribute('data-version')).toBe(String(FIXTURE_CONTRACT_VERSION));
 
     expect(handle.requests.filter((p) => p === 'contract/latest.json').length).toBeGreaterThanOrEqual(2);
-    expect(handle.requests).toContain('contract/v2.json');
+    expect(handle.requests).toContain(FIXTURE_MANIFEST_PATH);
     expect(mounts, 'the probe must not have been remounted').toBe(1);
     expect(seenClients.size, 'one QueryClient throughout').toBe(1);
 
@@ -80,7 +81,7 @@ describe('latest.json flip without a reload', () => {
     const view = render(createElement(QueryClientProvider, { client }, createElement(Probe)));
     await waitFor(() => expect(view.container.querySelector('output')?.getAttribute('data-diel')).toBe('false'));
 
-    handle.setLatest(2);
+    handle.setLatest(FIXTURE_CONTRACT_VERSION);
     await act(async () => {
       await vi.advanceTimersByTimeAsync(120_000);
     });

@@ -21,6 +21,7 @@ import { useLegacySitesResponse } from '@/features/contract/legacy';
 import { useContract, useReferenceSites } from '@/features/contract/hooks';
 import type { ContractManifest } from '@/features/contract/schema';
 import { installContractFetch, resetContractStore, setContractPin, type ContractFetchHandle } from './support/contract-fetch';
+import { FIXTURE_CONTRACT_VERSION, FIXTURE_MANIFEST_PATH } from '../shared/contract-fixture-version';
 
 const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
 
@@ -137,14 +138,14 @@ describe('contract client', () => {
   });
 
   it('a manifest whose contract_version differs from the requested version raises ContractIntegrityError', async () => {
-    handle.mutate('contract/v2.json', (bytes) => {
+    handle.mutate(FIXTURE_MANIFEST_PATH, (bytes) => {
       const manifest = JSON.parse(new TextDecoder().decode(bytes)) as { contract_version: number };
       manifest.contract_version = 1;
       return JSON.stringify(manifest);
     });
-    const error = await loadManifest(2, null).catch((e: unknown) => e);
+    const error = await loadManifest(FIXTURE_CONTRACT_VERSION, null).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ContractIntegrityError);
-    expect((error as ContractIntegrityError).version).toBe(2);
+    expect((error as ContractIntegrityError).version).toBe(FIXTURE_CONTRACT_VERSION);
   });
 
   it('a pointer whose manifest_uri disagrees with its contract_version is rejected', async () => {
@@ -231,10 +232,10 @@ describe('contract hooks', () => {
   });
 
   it('a pinned version never requests the pointer', async () => {
-    const { result } = renderHook(() => useContract(2), { wrapper: wrapperFor(client) });
-    await waitFor(() => expect(result.current.data?.contract_version).toBe(2));
-    expect(handle.requests).toEqual(['contract/v2.json']);
-    expect(result.current.version).toBe(2);
+    const { result } = renderHook(() => useContract(FIXTURE_CONTRACT_VERSION), { wrapper: wrapperFor(client) });
+    await waitFor(() => expect(result.current.data?.contract_version).toBe(FIXTURE_CONTRACT_VERSION));
+    expect(handle.requests).toEqual([FIXTURE_MANIFEST_PATH]);
+    expect(result.current.version).toBe(FIXTURE_CONTRACT_VERSION);
   });
 
   it('a missing contract surfaces as a typed error, not as empty data', async () => {
