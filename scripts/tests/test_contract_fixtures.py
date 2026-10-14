@@ -411,6 +411,11 @@ def test_ci_python_job_runs_the_builder_and_the_checker():
     assert ci.count("check_contract.py --check --additive") == 1
     assert ci.count("build_contract.py --version 1 --check") == 1
     assert ci.index("run: pytest") < ci.index("build_contract.py --version 1 --check")
+    # 05-14: v2 is rebuild-checked right after v1 (once v2 is published the check skips the rebuild
+    # comparison, as it does for v1, and check_contract.py guards its bytes instead)
+    assert ci.count("build_contract.py --version 2 --check") == 1
+    assert ci.index("build_contract.py --version 1 --check") < ci.index("build_contract.py --version 2 --check")
+    assert ci.index("build_contract.py --version 2 --check") < ci.index("check_contract.py --check --additive")
 
 
 def test_check_citations_treats_f32_as_binary():
@@ -425,6 +430,9 @@ def test_contract_docs_exist_and_state_the_projection_caveat():
                    "--set-latest", "33", "fixtures", "additive"):
         assert needle in readme, needle
     assert "v1" in changelog and "unpublished" in changelog.lower()
+    # 05-14: the v2 entry and what it reuses
+    assert "v2" in changelog and "preproc-2026.10.1-reef-audio" in changelog
+    assert "build_contract.py --version 2" in readme and "99" in readme
 
 
 # ---------------------------------------------------------------------------

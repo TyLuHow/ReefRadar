@@ -19,6 +19,14 @@ contracts/
     v1/preprocessing_spec.json  what production does to audio today, with the open known gaps
     v1/stamp.json               the version stamp the classifier writes onto every result
     v1/schema/*.schema.json     byte-for-byte copies of contracts/schema/* at publish time
+    contract/v2.json            manifest of version 2 (Phase 5; unpublished until plan 05-16)
+    v2/model_version.json       the successor model, with its leave-one-site-out evaluation block
+    v2/preprocessing_spec.json  the reef_audio spec, F8a/b/c closed with evidence, F8d and others open
+    v2/stamp.json               the v2 version stamp (bundled into the classifier by 05-15)
+    v2/evaluation_report.json   the grouped evaluation report (JSON only; the Markdown stays in models/)
+    v2/ood_reference.json       the OOD sidecar (k=1 cosine distance, leave-one-site-out p95 threshold)
+    v2/ood_reference.f32        the 100 x 1280 training-window rows the OOD distance is measured against
+    v2/schema/*.schema.json     copies of contracts/schema/* when v2 was built
   fixtures/                     test-only; never published
     bucket/contract/v99.json    v1 manifest with fixture true and exactly one flipped flag (has_diel)
     latest-v1.json, latest-v99.json  pointers the UI tests flip between
@@ -28,6 +36,14 @@ contracts/
   PUBLISHED.json                written by the publisher: version -> manifest sha256 (immutability guard)
   CHANGELOG.md
 ```
+
+Contract v2 does not copy the reference dataset either: its `sites`, `embeddings` and `projection`
+entries are the v1 entries (uris `v1/sites.json`, `v1/embeddings.f32`, `v1/projection.json`, identical
+sha256 and bytes, `dataset_version` unchanged). It adds the successor model, the preprocessing spec read from
+`lambdas/shared/reef_audio.py`, the stamp, the evaluation report and the OOD reference and its rows
+(manifest keys `evaluation_report`, `ood_reference`, `ood_embeddings`). Its spec says "serving and
+offline share one pipeline" where it closes F8a, F8b and F8c; it does not claim the model generalises, and
+F8d (reference vectors built by earlier methods) stays open.
 
 A fixture manifest reuses the v1 artifact uris, so a fixture is one small file, not a copy
 of the data. The fixture manifest is the test-only version 99 (`FIXTURE_CONTRACT_VERSION` in
@@ -68,6 +84,11 @@ the checker, and the publisher refuses to upload one.
 # fixtures are compared, against a derivation from the committed v1 bytes)
 py -3.12 scripts/build_contract.py --version 1 --check
 
+# Build contract v2 on disk (first build needs --frozen-at; later runs reuse the committed one),
+# then compare the committed files with a fresh build. Neither command calls AWS.
+py -3.12 scripts/build_contract.py --version 2 --frozen-at 2026-10-14T16:07:00Z
+py -3.12 scripts/build_contract.py --version 2 --check
+
 # Verify every bundle, fixture, pointer, the corpus, the immutability guard and additivity
 py -3.12 scripts/check_contract.py --check --additive
 
@@ -85,7 +106,8 @@ py -3.12 scripts/check_contract.py --write-corpus
 py -3.12 scripts/build_contract.py --version 1 --fixtures
 ```
 
-CI runs the first two on every push. `embeddings.f32` was built once from the reference
+CI runs the build checks (v1, then v2) and the verification on every push. Once v2 is published the
+v2 check skips the rebuild comparison, as v1's does, and `check_contract.py` guards its bytes instead. `embeddings.f32` was built once from the reference
 metadata object in the embeddings bucket (embedding values only; its sha256 is pinned in
 `scripts/contract_lib.py`):
 
@@ -139,5 +161,6 @@ pointer or manifest, and parses it with the hand-mirrored Zod schemas. A hash mi
   header (44; the data has 48). The contract counts from the records. Cleaning the backend
   header is a Phase 17 task.
 - Coverage flags (`has_diel`, `has_detections`, `has_pre_post_event`, `has_effort`) are all
-  false in v1: those artifacts are present as `{"present": false}`. The fixture v2 flips
-  one flag so the UI can be tested against "data arrived" without a rebuild.
+  false in v1 and v2: those artifacts are present as `{"present": false}`. The test fixture
+  (version 99, `FIXTURE_CONTRACT_VERSION`) flips one flag so the UI can be tested against "data
+  arrived" without a rebuild; it is derived from the committed v1 bytes and a real v2 coexists with it.

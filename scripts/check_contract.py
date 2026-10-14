@@ -926,6 +926,17 @@ def _corpus_instances(contracts_dir: pathlib.Path) -> list[tuple[str, str, str, 
         ("stamp", "analysis-result"),
     ):
         items.append((stem, f"artifact/{artifact}", "representative", _read_json(bucket / latest["artifacts"][artifact]["uri"])))
+    # Phase 5 (05-14): the latest bundle's OOD reference is a representative instance (its mutants
+    # are small). The real evaluation report (about 80 KB with per-window predictions) is kept as a
+    # valid-only entry: its mutants would add megabytes, and examples/evaluation-report.json already
+    # supplies the representative instance and mutants for that schema.
+    for artifact, stem, tag in (
+        ("ood_reference", "ood-reference", "representative"),
+        ("evaluation_report", "evaluation-report", "artifact"),
+    ):
+        entry = latest["artifacts"].get(artifact)
+        if isinstance(entry, dict) and entry.get("present") is not False:
+            items.append((stem, f"artifact/{artifact}", tag, _read_json(bucket / entry["uri"])))
     items.append(
         ("projection", "artifact/projection-truncated", "representative",
          _truncated_projection(_read_json(bucket / latest["artifacts"]["projection"]["uri"])))

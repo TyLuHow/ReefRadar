@@ -97,6 +97,7 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: pytest
       - run: python scripts/build_contract.py --version 1 --check
+      - run: python scripts/build_contract.py --version 2 --check
       - run: python scripts/check_contract.py --check --additive
       # A commit cannot rewrite or drop a published version together with its own
       # PUBLISHED.json entry: every revision of PUBLISHED.json ever committed must
