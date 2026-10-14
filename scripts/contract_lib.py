@@ -37,6 +37,14 @@ FIXTURES_DIR = CONTRACTS_DIR / "fixtures"
 
 SCHEMA_SUFFIX = ".schema.json"
 
+# The flipped-flag test fixture manifest is a test-only manifest. Its version is a sentinel
+# that can never be a real published contract version, so a real v2 (Phase 5) can be built,
+# checked and published without colliding with any test fixture (05-CONTEXT Q8 amendment).
+# The TypeScript mirror is dashboard-next/tests/shared/contract-fixture-version.ts.
+# Fixtures are derived from the committed (frozen) bytes of FIXTURE_BASE_VERSION.
+FIXTURE_CONTRACT_VERSION = 99
+FIXTURE_BASE_VERSION = 1
+
 # The one upstream object the reference embeddings are taken from (read-only, embeddings
 # only: its statuses, DOIs and citations are stale and are never copied). The sha256 was
 # verified against the live object when contract v1 was built.

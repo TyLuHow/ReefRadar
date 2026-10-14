@@ -149,7 +149,7 @@
       "uri": "v1/stamp.json"
     }
   },
-  "contract_version": 2,
+  "contract_version": 99,
   "coverage": {
     "countries": 7,
     "has_detections": false,
