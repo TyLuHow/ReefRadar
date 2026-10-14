@@ -322,16 +322,203 @@ def test_check_analysis_stamp_flags_each_violation():
 
 def test_load_stamp_reads_committed_stamp_json():
     stamp = verify_live_truth.load_stamp(verify_live_truth.DEFAULT_STAMP)
-    assert stamp["contract_version"] == 1 and isinstance(stamp["contract_version"], int)
+    assert stamp["contract_version"] == 2 and isinstance(stamp["contract_version"], int)
     assert set(stamp) >= {"dataset_version", "model_version", "preprocessing_spec_version"}
 
 
 def test_main_stamp_option_default_and_override(tmp_path):
     args = verify_live_truth.build_parser().parse_args([])
     assert args.stamp == verify_live_truth.DEFAULT_STAMP
-    assert verify_live_truth.DEFAULT_STAMP.as_posix().endswith("contracts/bucket/v1/stamp.json")
+    assert verify_live_truth.DEFAULT_STAMP.as_posix().endswith("contracts/bucket/v2/stamp.json")
     custom = tmp_path / "stamp.json"
     assert verify_live_truth.build_parser().parse_args(["--stamp", str(custom)]).stamp == custom
+
+
+# --- contract v2 results (plan 05-15) ---------------------------------------------------
+
+V2_STAMP = {
+    "contract_version": 2,
+    "dataset_version": "reefradar-reference-2026.10.0",
+    "model_version": "interim-real-only-2026.10.1",
+    "preprocessing_spec_version": "preproc-2026.10.1-reef-audio",
+}
+V2_MODEL = {"model_version": "interim-real-only-2026.10.1", "classes": ["degraded", "healthy", "restored_early"]}
+V2_WINDOWS = 6
+
+
+def _v2_expected():
+    return verify_live_truth.build_v2_expectations(V2_STAMP, V2_WINDOWS)
+
+
+def _good_v2_body(with_coords=True):
+    """A body a correct v2 classifier would store, built from the published artifacts."""
+    expected = _v2_expected()
+    classes = V2_MODEL["classes"]
+    rng = np.random.default_rng(7)
+    raw = rng.random((V2_WINDOWS, len(classes))) + 0.1
+    rows = raw / raw.sum(axis=1, keepdims=True)
+    per_window = {c: [round(float(v), 9) for v in rows[:, i]] for i, c in enumerate(classes)}
+    means = {c: round(float(rows[:, i].mean()), 9) for i, c in enumerate(classes)}
+    embedded_ids = expected["row_site_ids"]
+    ranks = {sid: i + 1 for i, sid in enumerate(rng.permutation(embedded_ids))}
+    site_ids = list(embedded_ids) + [f"loc_{i}" for i in range(expected["site_count"] - len(embedded_ids))]
+    sites = [
+        {"site_id": sid, "has_embedding": sid in ranks, **({"rank": ranks[sid], "similarity": 0.5} if sid in ranks else {})}
+        for sid in site_ids
+    ]
+    top = sorted((s for s in sites if s["has_embedding"]), key=lambda s: s["rank"])[:3]
+    body = _good_analysis(with_coords)
+    body.update(V2_STAMP)
+    body.update({
+        "stamp_status": "stamped",
+        "embedding_summary": {"aggregation": "mean_of_window_probabilities", "dimension": 1280},
+        "windows": {"count": V2_WINDOWS, "probabilities": per_window},
+        "site_similarities": {"site_order": list(embedded_ids), "sites": sites},
+        "similar_sites": [
+            {k: ("x" if k != "site_id" else s["site_id"]) for k in verify_live_truth.LEGACY_SIMILAR_SITE_KEYS}
+            for s in top
+        ],
+        "projection": {"explained_variance_ratio": list(expected["projection_variance"])},
+        "ood": {
+            "threshold": expected["ood_threshold"],
+            "reference_sha256": expected["ood_reference_sha256"],
+            "windows": {"distance": [0.1] * V2_WINDOWS, "status": ["inside"] * V2_WINDOWS},
+            "summary": {"statement": "0 of 6 windows are outside.", "windows_outside": 0, "windows_total": 6},
+        },
+        "input_audio": {"preprocessing_spec_version": V2_STAMP["preprocessing_spec_version"]},
+    })
+    body["classification"] = {
+        "label": "healthy",
+        "confidence": max(means.values()),
+        "probabilities": means,
+        "model_version": V2_MODEL["model_version"],
+        "region": {"coordinates_provided": with_coords, "in_training_region": with_coords},
+    }
+    body["visualization"] = {}
+    return body
+
+
+def _v2_failures(body, with_coords=True):
+    return verify_live_truth.check_analysis(
+        body, V2_MODEL, with_coords, expected_stamp=V2_STAMP, expected_v2=_v2_expected()
+    )
+
+
+def test_default_stamp_is_v2():
+    assert verify_live_truth.DEFAULT_STAMP.as_posix().endswith("contracts/bucket/v2/stamp.json")
+    assert verify_live_truth.DEFAULT_MODEL_VERSION.as_posix().endswith("contracts/bucket/v2/model_version.json")
+    assert verify_live_truth.load_stamp(verify_live_truth.DEFAULT_STAMP) == V2_STAMP
+    args = verify_live_truth.build_parser().parse_args([])
+    assert args.model_version == verify_live_truth.DEFAULT_MODEL_VERSION
+
+
+def test_v2_expectations_come_from_the_published_artifacts():
+    expected = _v2_expected()
+    assert expected["window_count"] == 6
+    assert len(expected["row_site_ids"]) == expected["embedded_count"] == 48
+    assert expected["site_count"] == 54
+    assert expected["projection_variance"] == pytest.approx([0.18310361, 0.14682953])
+    assert len(expected["ood_reference_sha256"]) == 64
+
+
+def test_expected_window_count_is_computed_from_the_excerpt():
+    excerpt = verify_live_truth.REPO_ROOT / "dashboard-next" / "public" / "audio" / "marrs" / "ind_H1_20220830_120000.wav"
+    assert verify_live_truth.expected_window_count(excerpt.read_bytes()) == V2_WINDOWS
+
+
+def test_check_analysis_v2_passes_good_body():
+    assert _v2_failures(_good_v2_body()) == []
+    assert _v2_failures(_good_v2_body(False), with_coords=False) == []
+
+
+@pytest.mark.parametrize(
+    "mutate, fragment",
+    [
+        (lambda b: b.update(stamp_status="uncovered"), "stamp_status"),
+        (lambda b: b.update(contract_version=1), "contract_version"),
+        (lambda b: b["classification"].update(extra=1), "classification keys"),
+        (lambda b: b["classification"].pop("confidence"), "classification keys"),
+        (lambda b: b["windows"].update(count=5), "windows.count"),
+        (lambda b: b["windows"]["probabilities"]["healthy"].__setitem__(0, 0.9), "do not sum to 1"),
+        (lambda b: b["windows"]["probabilities"].pop("degraded"), "windows.probabilities classes"),
+        (lambda b: b["windows"]["probabilities"]["degraded"].pop(), "values per class"),
+        (lambda b: b["classification"]["probabilities"].update(healthy=0.5), "mean of the window"),
+        (lambda b: b["embedding_summary"].update(aggregation="mean_embedding"), "aggregation"),
+        (lambda b: b["site_similarities"]["sites"].pop(), "sites, expected 54"),
+        (lambda b: b["site_similarities"]["sites"][0].update(has_embedding=False), "with embeddings"),
+        (lambda b: b["site_similarities"]["site_order"].reverse(), "site_order"),
+        (lambda b: b["similar_sites"].pop(), "similar_sites has"),
+        (lambda b: b["similar_sites"][0].pop("country"), "legacy keys"),
+        (lambda b: b["similar_sites"][0].update(site_id="ind_H1"), "ranked 1-3"),
+        (lambda b: b["projection"].update(explained_variance_ratio=[0.5, 0.4]), "explained_variance_ratio"),
+        (lambda b: b["ood"].update(threshold=0.9), "ood.threshold"),
+        (lambda b: b["ood"].update(reference_sha256="0" * 64), "reference_sha256"),
+        (lambda b: b["ood"]["windows"]["distance"].pop(), "ood.windows.distance"),
+        (lambda b: b["ood"]["windows"]["status"].append("inside"), "ood.windows.status"),
+        (lambda b: b["input_audio"].update(preprocessing_spec_version="preproc-2026.10.0-as-deployed"), "input_audio"),
+        (lambda b: b.update(visualization={"points": [1]}), "visualization"),
+    ],
+)
+def test_check_analysis_v2_flags_each_violation(mutate, fragment):
+    body = _good_v2_body()
+    mutate(body)
+    failures = _v2_failures(body)
+    assert any(fragment in f for f in failures), failures
+    # exactly one visualization message even though two checks look for it
+    assert sum("visualization" in f for f in failures) <= 1
+
+
+def test_check_analysis_v2_requires_expectations_for_a_v2_stamp():
+    out = verify_live_truth.check_analysis(_good_v2_body(), V2_MODEL, True, expected_stamp=V2_STAMP)
+    assert any("no v2 expectations" in f for f in out)
+
+
+def test_check_analysis_v1_stamp_unchanged():
+    # A v1 stamp runs only the v1 checks: no v2 field is required of a v1 result.
+    assert verify_live_truth.check_analysis(_stamped_analysis(), MODEL_CARD, True, expected_stamp=STAMP) == []
+
+
+def _stub_main(monkeypatch, body_for):
+    """Run main() with the network stubbed: /sites and /samples pass, analyses come from body_for."""
+    monkeypatch.setattr(verify_live_truth, "_get_json", lambda session, url, timeout: {"samples": [], "sites": []})
+    monkeypatch.setattr(verify_live_truth, "check_sites", lambda body: [])
+    monkeypatch.setattr(verify_live_truth, "check_samples_listing", lambda body, manifest: [])
+    seen = []
+
+    def fake_run_analysis(session, api, wav, name, coords, timeout_s, **kw):
+        seen.append(coords)
+        return "an-1", body_for(coords is not None)
+
+    monkeypatch.setattr(verify_live_truth, "run_analysis", fake_run_analysis)
+    return seen
+
+
+def test_main_checks_both_analyses_against_v2_with_a_computed_window_count(monkeypatch, capsys):
+    seen = _stub_main(monkeypatch, _good_v2_body)
+    assert verify_live_truth.main(["--no-analysis"], session=object()) == 0  # offline checks only
+    assert verify_live_truth.main([], session=object()) == 0
+    assert len(seen) == 2 and seen[0] is not None and seen[1] is None
+    out = capsys.readouterr().out
+    assert "FAIL" not in out
+
+
+def test_main_fails_when_the_live_window_count_differs_from_the_excerpt(monkeypatch, capsys):
+    def short_body(with_coords):
+        body = _good_v2_body(with_coords)
+        body["windows"]["count"] = 5
+        return body
+
+    _stub_main(monkeypatch, short_body)
+    assert verify_live_truth.main([], session=object()) == 1
+    assert "windows.count" in capsys.readouterr().out
+
+
+def test_analysis_summary_reports_id_windows_ood_and_stamp_status():
+    summary = verify_live_truth.analysis_summary(_good_v2_body(), "an-1")
+    assert summary["analysis_id"] == "an-1"
+    assert summary["windows_count"] == V2_WINDOWS
+    assert summary["stamp_status"] == "stamped"
+    assert summary["ood_statement"] == "0 of 6 windows are outside."
 
 
 def test_check_sites():
