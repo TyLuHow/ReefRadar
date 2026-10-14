@@ -9,3 +9,7 @@ numpy==1.26.4
 requests
 # Phase 2 contract validation (JSON Schema draft 2020-12); owner standing approval 2026-10-01
 jsonschema==4.26.0
+# Phase 5 (05-02): test-only resampler oracle for lambdas/shared/reef_audio.py. 1.13.1 is the last
+# release compatible with numpy==1.26.4. Owner-approved (05-CONTEXT amendment, DRIVING-QUESTIONS.md
+# standing approvals 2026-10-01; checkpoint approved 2026-10-13). Never bundled into a Lambda.
+scipy==1.13.1
