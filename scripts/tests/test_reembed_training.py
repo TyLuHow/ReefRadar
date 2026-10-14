@@ -225,3 +225,148 @@ def test_reembed_help_lists_flags(capsys):
     out = capsys.readouterr().out
     for flag in ("--confirm", "--limit", "--dry-run"):
         assert flag in out
+
+
+# ---------------------------------------------------------------------------
+# record_embedding_fixture.py (Task 2)
+# ---------------------------------------------------------------------------
+
+import record_embedding_fixture as rf  # noqa: E402
+
+REAL_EXCERPTS = REPO_ROOT / "dashboard-next" / "public" / "audio" / "marrs"
+
+
+def _synthetic_excerpts(tmp_path, n_files=2, seconds=10):
+    d = tmp_path / "excerpts"
+    d.mkdir()
+    for i in range(n_files):
+        (d / f"site{i}_20230101_120000.wav").write_bytes(_wav_bytes(seconds=seconds, seed=20 + i))
+    return d
+
+
+class PerturbedClient(StubClient):
+    def embed(self, windows):
+        out = super().embed(windows)
+        out[1, 5] += 1e-3
+        return out
+
+
+def _fixture_args(excerpts, out_dir, *extra):
+    return ["--excerpts-dir", str(excerpts), "--out-dir", str(out_dir), *extra]
+
+
+def _snapshot(directory):
+    return {p.name: p.read_bytes() for p in pathlib.Path(directory).iterdir()}
+
+
+def test_fixture_record_with_stub_client(tmp_path, monkeypatch):
+    client = StubClient()
+    monkeypatch.setattr(rf, "make_client", lambda profile: client)
+    out = tmp_path / "fx"
+    assert rf.main(_fixture_args(REAL_EXCERPTS, out, "--confirm")) == 0
+
+    raw = (out / "excerpt_embeddings.f32").read_bytes()
+    assert len(raw) == 54 * 1280 * 4
+    doc = json.loads((out / "excerpt_embeddings.json").read_text(encoding="utf-8"))
+    assert doc["count"] == 54 and doc["dim"] == 1280 and doc["dtype"] == "float32-le"
+    assert doc["embeddings_sha256"] == hashlib.sha256(raw).hexdigest()
+    assert doc["spec_version"] == reef_audio.SPEC_VERSION
+    assert doc["tolerance"] == {"cosine_min": 0.99999, "max_abs": 1e-5}
+    assert doc["inference"]["batch_size"] == 10 and "recorded_at" in doc
+    assert len(doc["excerpts"]) == 9
+    paths = [e["path"] for e in doc["excerpts"]]
+    assert paths == sorted(paths)
+
+    row = 0
+    for e in doc["excerpts"]:
+        data = (REAL_EXCERPTS / e["path"]).read_bytes()
+        assert e["sha256"] == hashlib.sha256(data).hexdigest()
+        prepared = reef_audio.audio_to_windows(data)
+        assert len(e["windows"]) == len(prepared.windows) == 6
+        for w in e["windows"]:
+            assert w["row"] == row
+            expected = hashlib.sha256(
+                np.ascontiguousarray(prepared.windows[w["index"]], dtype="<f4").tobytes()
+            ).hexdigest()
+            assert w["window_sha256"] == expected
+            row += 1
+    assert row == 54
+    assert client.warmed == 1 and client.embed_calls == [54]
+
+
+def test_fixture_check_passes_and_fails_on_perturbation(tmp_path, monkeypatch, capsys):
+    excerpts = _synthetic_excerpts(tmp_path)
+    out = tmp_path / "fx"
+    monkeypatch.setattr(rf, "make_client", lambda profile: StubClient())
+    assert rf.main(_fixture_args(excerpts, out, "--confirm")) == 0
+    before = _snapshot(out)
+
+    assert rf.main(_fixture_args(excerpts, out, "--check", "--confirm")) == 0
+    assert _snapshot(out) == before  # check never writes
+
+    monkeypatch.setattr(rf, "make_client", lambda profile: PerturbedClient())
+    capsys.readouterr()
+    assert rf.main(_fixture_args(excerpts, out, "--check", "--confirm")) == 1
+    captured = capsys.readouterr()
+    text = captured.out + captured.err
+    assert "min cosine" in text and "max abs" in text
+    assert _snapshot(out) == before
+
+
+def test_fixture_check_refuses_changed_windows(tmp_path, monkeypatch):
+    excerpts = _synthetic_excerpts(tmp_path)
+    out = tmp_path / "fx"
+    monkeypatch.setattr(rf, "make_client", lambda profile: StubClient())
+    assert rf.main(_fixture_args(excerpts, out, "--confirm")) == 0
+
+    def boom(profile):
+        raise AssertionError("inference must not be reached when the inputs changed")
+
+    monkeypatch.setattr(rf, "make_client", boom)
+
+    # 1. an excerpt file changed
+    victim = sorted(excerpts.glob("*.wav"))[0]
+    original = victim.read_bytes()
+    victim.write_bytes(_wav_bytes(seconds=10, seed=99))
+    assert rf.main(_fixture_args(excerpts, out, "--check", "--confirm")) == 1
+    victim.write_bytes(original)
+    assert rf.main(_fixture_args(excerpts, out, "--check")) == 0  # restored: offline check passes
+
+    # 2. a recorded window hash edited in the fixture json
+    path = out / "excerpt_embeddings.json"
+    good = path.read_text(encoding="utf-8")
+    doc = json.loads(good)
+    doc["excerpts"][0]["windows"][0]["window_sha256"] = "0" * 64
+    path.write_text(json.dumps(doc), encoding="utf-8")
+    assert rf.main(_fixture_args(excerpts, out, "--check", "--confirm")) == 1
+    path.write_text(good, encoding="utf-8")
+
+    # 3. an excerpt added to the directory
+    (excerpts / "extra_20230101_120000.wav").write_bytes(_wav_bytes(seconds=10, seed=5))
+    assert rf.main(_fixture_args(excerpts, out, "--check", "--confirm")) == 1
+
+
+def test_fixture_requires_confirm_for_aws(tmp_path, monkeypatch, capsys):
+    excerpts = _synthetic_excerpts(tmp_path)
+    out = tmp_path / "fx"
+
+    def boom(profile):
+        raise AssertionError("client factory must not be called without --confirm")
+
+    monkeypatch.setattr(rf, "make_client", boom)
+    assert rf.main(_fixture_args(excerpts, out)) == 0
+    assert not out.exists() or not any(out.iterdir())
+    assert "--confirm" in capsys.readouterr().out
+
+    monkeypatch.setattr(rf, "make_client", lambda profile: StubClient())
+    assert rf.main(_fixture_args(excerpts, out, "--confirm")) == 0
+    monkeypatch.setattr(rf, "make_client", boom)
+    assert rf.main(_fixture_args(excerpts, out, "--check")) == 0  # offline hash check only
+
+
+def test_fixture_help_lists_flags(capsys):
+    with pytest.raises(SystemExit) as exc:
+        rf.main(["--help"])
+    assert exc.value.code == 0
+    out = capsys.readouterr().out
+    assert "--check" in out and "--confirm" in out
