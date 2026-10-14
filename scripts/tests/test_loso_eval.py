@@ -230,6 +230,172 @@ def test_bootstrap_baselines_shape(loso):
     assert point["balanced_accuracy"]["value"] < base["uniform_random"]["balanced_accuracy"]["value"]
 
 
+import contract_lib  # noqa: E402
+import subprocess  # noqa: E402
+
+REPORT_PATH = REPO_ROOT / "models" / "interim-real-only" / "evaluation" / "report.json"
+ORIGINAL_V = "interim-real-only"
+SERVED_V = "interim-real-only-2026.10.1"
+
+
+@pytest.fixture(scope="module")
+def report():
+    return json.loads(REPORT_PATH.read_text(encoding="utf-8"))
+
+
+def _model(report, version):
+    return next(m for m in report["models"] if m["model_version"] == version)
+
+
+def _git_out(*args):
+    try:
+        return subprocess.run(["git", *args], cwd=str(REPO_ROOT), capture_output=True,
+                              text=True, check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+# --------------------------------------------------------------------------
+# evaluation report (plan 05-13): `-k report` and `-k reproduces`
+# --------------------------------------------------------------------------
+
+def test_report_validates_against_schema(report):
+    contract_lib.validate(report, "evaluation-report")
+    assert report["report_version"] == "loso-2026.10.1"
+    assert report["method"] == "leave_one_site_out"
+    assert report["served_model_version"] == SERVED_V
+    assert report["schema_version"] == 1
+    # the canonical bytes on disk are exactly what the writer would produce
+    assert REPORT_PATH.read_bytes() == contract_lib.canonical_json_bytes(report)
+
+
+def test_report_inputs_pinned(report):
+    by_name = {i["name"]: i for i in report["inputs"]}
+    assert set(by_name) == {"rows", "original_embeddings", "reembedded_rows",
+                            "reembedded_embeddings", "training_file"}
+    for name, rel in [("rows", "rows.json"), ("reembedded_rows", "reembedded.json")]:
+        assert by_name[name]["sha256"] == ev._text_sha256(INPUTS / rel)
+        assert by_name[name]["path"].endswith(rel)
+    for name, rel in [("original_embeddings", "original.f32"), ("reembedded_embeddings", "reembedded.f32")]:
+        assert by_name[name]["sha256"] == _sha(INPUTS / rel)
+        assert by_name[name]["path"].endswith(rel)
+    assert by_name["training_file"]["sha256"] == EXPECTED_SOURCE_SHA
+    assert all(i["rows"] == 100 for i in report["inputs"])
+
+    assert report["trainer"]["script"] == "scripts/train_interim_real_only.py"
+    assert report["trainer"]["seed"] == 42
+    sha = report["trainer"]["git_sha"]
+    if _git_out("rev-parse", "--is-shallow-repository") == "false":
+        assert _git_out("cat-file", "-t", sha) == "commit"
+        assert _git_out("log", "-1", "--format=%H", "--", "scripts/train_interim_real_only.py") == sha
+    b = report["bootstrap"]
+    assert (b["B"], b["levels"], b["seed"], b["rng"]) == (10000, 2, 20261011, "numpy.random.RandomState")
+    assert b["interval"] == "percentile_95" and b["min_sites_for_interval"] == 2
+    assert b["numpy_version"]
+
+
+def test_report_both_models_and_served_flag(report):
+    assert [m["model_version"] for m in report["models"]] == [ORIGINAL_V, SERVED_V]
+    orig, succ = _model(report, ORIGINAL_V), _model(report, SERVED_V)
+    assert (orig["embeddings"], orig["preprocessing_spec_version"], orig["served"]) == (
+        "original", "preproc-2026.10.0-as-deployed", False)
+    assert (succ["embeddings"], succ["preprocessing_spec_version"], succ["served"]) == (
+        "reembedded", "preproc-2026.10.1-reef-audio", True)
+    assert sum(1 for m in report["models"] if m["served"]) == 1
+    for m in report["models"]:
+        assert len(m["folds"]) == 5 and len(m["predictions"]) == 100
+        assert set(m["metrics"]["per_class"]) == {"degraded", "healthy"}
+        assert set(m["metrics"]["per_region"]) == {"Indonesia", "Kenya"}
+        assert m["metrics"]["balanced_accuracy"]["n_sites"] == 4
+        assert set(m["baselines"]) == {"training_majority", "uniform_random"}
+        for metric in [*m["metrics"]["per_class"].values(), *m["metrics"]["per_region"].values(),
+                       m["metrics"]["balanced_accuracy"]]:
+            assert metric["n_sites"] >= 1 and metric["n_windows"] >= 1
+            assert "defined_fraction" in metric and "ci_status" in metric
+    assert report["drift_probe"]["pairs"] == 100
+    cos = report["drift_probe"]["cosine"]
+    assert cos["min"] <= cos["median"] <= cos["max"] and cos["min"] <= cos["mean"] <= cos["max"]
+
+
+def test_report_not_evaluable_and_not_estimable(report):
+    for m in report["models"]:
+        n1 = next(f for f in m["folds"] if f["held_out_site"] == "ind_N1")
+        assert n1["evaluable"] is False
+        assert n1["reason"] == NOT_EVALUABLE
+        assert n1["correct"] is None
+        assert "restored_early" not in n1["train_classes"]
+        kenya = m["metrics"]["per_region"]["Kenya"]
+        assert kenya["ci_status"] == "not_estimable_1_site"
+        assert kenya["ci_low"] is None and kenya["ci_high"] is None
+        assert kenya["n_sites"] == 1
+        assert m["metrics"]["per_region"]["Indonesia"]["ci_status"] == "estimated"
+
+
+def test_report_invalidated_figures(report):
+    figs = {f["figure"]: f for f in report["invalidated_figures"]}
+    assert set(figs) == {"split_accuracy", "overall_accuracy"}
+    assert "1.0" in figs["split_accuracy"]["value"]
+    assert "models/interim-real-only/model_config.json" in figs["split_accuracy"]["source"]
+    assert "90.0%" in figs["overall_accuracy"]["value"]
+    assert "docs/MODEL_EVALUATION.md" in figs["overall_accuracy"]["source"]
+    assert all(f["reason"] for f in figs.values())
+    assert any("35 distinct" in c for c in report["caveats"])
+    assert any("confounded" in c for c in report["caveats"])
+    assert any("earlier training pipeline" in c for c in report["caveats"])
+
+
+def test_report_reproduces_metrics_from_predictions(report):
+    """Every stored metric and interval is recomputed exactly from the stored predictions."""
+    b = report["bootstrap"]
+    for m in report["models"]:
+        folds, preds = m["folds"], m["predictions"]
+        boot = ev.two_level_bootstrap(preds, folds, B=b["B"], seed=b["seed"])["metrics"]
+        point = ev.metrics_from_predictions(preds, folds)
+        for c, stored in m["metrics"]["per_class"].items():
+            assert stored == ev._schema_metric(boot["per_class"][c])
+            assert stored["value"] == point["per_class"][c]["value"]
+        for g, stored in m["metrics"]["per_region"].items():
+            assert stored == ev._schema_metric(boot["per_region"][g])
+            assert stored["value"] == point["per_region"][g]["value"]
+        assert m["metrics"]["balanced_accuracy"] == ev._schema_metric(boot["balanced_accuracy"])
+        assert m["metrics"]["balanced_accuracy"]["value"] == point["balanced_accuracy"]["value"]
+        base = ev.baselines(folds, preds)
+        for name in ("training_majority", "uniform_random"):
+            assert m["baselines"][name] == ev._baseline_metric(base[name]["balanced_accuracy"])
+        # stored per-fold correct counts agree with the stored predictions
+        for f in folds:
+            if f["evaluable"]:
+                ps = [p for p in preds if p["site_id"] == f["held_out_site"]]
+                assert f["correct"] == sum(p["predicted_label"] == p["true_label"] for p in ps)
+    X_orig, _ = ev.load_inputs(EMB_PATH, ROWS_PATH)
+    X_re, _ = ev.load_reembedded(INPUTS)
+    assert ev.drift_probe(X_orig, X_re, report["drift_probe"]["note"]) == report["drift_probe"]
+
+
+def test_report_reproduces_refit_within_tolerance(report):
+    """Refitting every fold from the committed inputs reproduces the stored predictions.
+
+    Labels must match except on rows whose stored top-two probability margin is
+    below 1e-3; probabilities must agree within 1e-3.
+    """
+    X_orig, rows = ev.load_inputs(EMB_PATH, ROWS_PATH)
+    X_re, _ = ev.load_reembedded(INPUTS)
+    for version, X in ((ORIGINAL_V, X_orig), (SERVED_V, X_re)):
+        stored = _model(report, version)
+        folds, preds = ev.run_loso(X, rows, seed=report["trainer"]["seed"])
+        assert folds == stored["folds"]
+        assert len(preds) == len(stored["predictions"])
+        for new, old in zip(preds, stored["predictions"]):
+            assert (new["file_id"], new["site_id"], new["true_label"]) == (
+                old["file_id"], old["site_id"], old["true_label"])
+            top = sorted(old["probabilities"].values(), reverse=True)
+            margin = top[0] - top[1]
+            if margin >= ev.NEAR_TIE_MARGIN:
+                assert new["predicted_label"] == old["predicted_label"]
+            for k, v in old["probabilities"].items():
+                assert new["probabilities"][k] == pytest.approx(v, abs=1e-3)
+
+
 def test_bootstrap_committed_inputs_full_b(loso):
     _, _, folds, preds = loso
     t0 = time.time()

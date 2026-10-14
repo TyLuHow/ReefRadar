@@ -16,6 +16,10 @@ Subcommands
     run               run the five folds from committed inputs and print the
                       fold table and metrics as JSON lines (``--bootstrap`` adds
                       seeded intervals and baselines)
+    report            run both model families (original and re-embedded rows),
+                      validate against evaluation-report.schema.json and write
+                      the canonical report.json (and, from plan 05-13 task 2,
+                      the rendered REPORT.md)
 
 Honest-reading caveats (carried into the model card by plan 05-13):
 
@@ -42,6 +46,7 @@ import hashlib
 import json
 import os
 import pathlib
+import subprocess
 import sys
 
 import numpy as np
@@ -51,6 +56,7 @@ REPO_ROOT = SCRIPTS_DIR.parent
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
+import contract_lib  # noqa: E402
 import train_interim_real_only as trainer  # noqa: E402
 
 EXPECTED_TRAINING_SHA256 = "e18c133ef1d640014fc77d4083d66f9cafe0773f509c738fe953a4d5e346ca7a"
@@ -73,6 +79,21 @@ CI_ESTIMATED = "estimated"
 CI_NOT_ESTIMABLE_1_SITE = "not_estimable_1_site"
 CI_NOT_ESTIMABLE_UNDEFINED = "not_estimable_undefined"
 RNG_NAME = "numpy.random.RandomState"
+
+# ---- evaluation report (plan 05-13) ----
+REPORT_VERSION = "loso-2026.10.1"
+REPORT_SCHEMA_STEM = "evaluation-report"
+ORIGINAL_MODEL_VERSION = "interim-real-only"
+ORIGINAL_SPEC_VERSION = "preproc-2026.10.0-as-deployed"
+SERVED_MODEL_VERSION = "interim-real-only-2026.10.1"
+SERVED_SPEC_VERSION = "preproc-2026.10.1-reef-audio"
+DEFAULT_INPUTS_DIR = "models/interim-real-only/evaluation/inputs"
+DEFAULT_REPORT_JSON = "models/interim-real-only/evaluation/report.json"
+DEFAULT_REPORT_MD = "models/interim-real-only/evaluation/REPORT.md"
+TRAINER_SCRIPT = "scripts/train_interim_real_only.py"
+GENERATOR_SCRIPT = "scripts/evaluate_loso.py"
+PROBABILITY_DECIMALS = 6
+NEAR_TIE_MARGIN = 1e-3
 
 
 class ExportError(Exception):
@@ -456,6 +477,234 @@ def _metrics_from_outcomes_grouped(outcomes, group_fn):
 
 
 # --------------------------------------------------------------------------
+# Evaluation report (plan 05-13)
+# --------------------------------------------------------------------------
+
+def _text_sha256(path):
+    """sha256 of a committed TEXT file over LF bytes (equals its git blob on any checkout)."""
+    return contract_lib.sha256_hex(contract_lib.read_text_input_bytes(pathlib.Path(path)))
+
+
+def _git(*args):
+    """Run git in the repo root; return stripped stdout, or None when unavailable."""
+    try:
+        out = subprocess.run(
+            ["git", *args], cwd=str(REPO_ROOT), capture_output=True, text=True, check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return out or None
+
+
+def _last_commit_touching(path):
+    return _git("log", "-1", "--format=%H", "--", path)
+
+
+def load_reembedded(inputs_dir):
+    """Load the re-embedded rows (X, rows).
+
+    Embeddings and their pin come from reembedded.json/reembedded.f32; the row
+    metadata (with country) comes from rows.json, after checking both list the
+    same files in the same order.
+    """
+    inputs_dir = pathlib.Path(inputs_dir)
+    X, re_rows = load_inputs(inputs_dir / "reembedded.f32", inputs_dir / "reembedded.json")
+    _X0, rows = load_inputs(inputs_dir / "original.f32", inputs_dir / "rows.json")
+    if len(rows) != len(re_rows):
+        raise ValueError("reembedded.json and rows.json disagree on row count")
+    for a, b in zip(rows, re_rows):
+        if (a["file_id"], a["site_id"], a["label"]) != (b["file_id"], b["site_id"], b["label"]):
+            raise ValueError(f"reembedded.json row {b['row']} does not match rows.json")
+    return X, rows
+
+
+def drift_probe(X_original, X_reembedded, note):
+    """Cosine between each original row and the same file re-embedded."""
+    a = np.asarray(X_original, dtype=np.float64)
+    b = np.asarray(X_reembedded, dtype=np.float64)
+    cos = np.sum(a * b, axis=1) / (np.linalg.norm(a, axis=1) * np.linalg.norm(b, axis=1))
+    return {
+        "pairs": int(cos.shape[0]),
+        "cosine": {
+            "mean": float(np.mean(cos)),
+            "median": float(np.median(cos)),
+            "min": float(np.min(cos)),
+            "max": float(np.max(cos)),
+        },
+        "note": note,
+    }
+
+
+def _schema_metric(metric):
+    out = dict(metric)
+    # The harness says "not_estimable_undefined"; the contract calls it "undefined".
+    if out["ci_status"] == CI_NOT_ESTIMABLE_UNDEFINED:
+        out["ci_status"] = "undefined"
+    return out
+
+
+def _baseline_metric(metric):
+    """A baseline is a point value: no interval, so ci_status is undefined."""
+    return {
+        "value": metric["value"],
+        "ci_low": None,
+        "ci_high": None,
+        "ci_status": "undefined",
+        "n_sites": metric["n_sites"],
+        "n_windows": metric["n_windows"],
+        "defined_fraction": None,
+    }
+
+
+def _stored_prediction(p):
+    return {
+        "file_id": p["file_id"],
+        "site_id": p["site_id"],
+        "true_label": p["true_label"],
+        "predicted_label": p["predicted_label"],
+        "probabilities": {k: round(v, PROBABILITY_DECIMALS) for k, v in sorted(p["probabilities"].items())},
+    }
+
+
+def evaluated_model(version, embeddings, spec_version, served, X, rows, B, bootstrap_seed, seed=DEFAULT_SEED):
+    """One model family's folds, stored predictions, bootstrap metrics and baselines."""
+    folds, predictions = run_loso(X, rows, seed=seed)
+    boot = two_level_bootstrap(predictions, folds, B=B, seed=bootstrap_seed)
+    base = baselines(folds, predictions)
+    bm = boot["metrics"]
+    return {
+        "model_version": version,
+        "embeddings": embeddings,
+        "preprocessing_spec_version": spec_version,
+        "served": served,
+        "folds": folds,
+        "predictions": [_stored_prediction(p) for p in predictions],
+        "metrics": {
+            "per_class": {c: _schema_metric(m) for c, m in sorted(bm["per_class"].items())},
+            "per_region": {g: _schema_metric(m) for g, m in sorted(bm["per_region"].items())},
+            "balanced_accuracy": _schema_metric(bm["balanced_accuracy"]),
+        },
+        "baselines": {
+            "training_majority": _baseline_metric(base["training_majority"]["balanced_accuracy"]),
+            "uniform_random": _baseline_metric(base["uniform_random"]["balanced_accuracy"]),
+        },
+    }
+
+
+REPORT_CAVEATS = [
+    "Only four sites are evaluable, so the bootstrap can draw only 35 distinct multisets of sites and its distribution is lumpy; the percentile interval is indicative only (Cameron, Gelbach and Miller 2008, 'Bootstrap-based improvements for inference with clustered errors', Review of Economics and Statistics, show that cluster inference with few clusters misleads).",
+    "Resampling both sites and windows counts within-site variance twice relative to resampling sites alone (Field and Welsh 2007, 'Bootstrapping clustered data', Journal of the Royal Statistical Society Series B), so these intervals are conservative (too wide), not too narrow. Even so they are wide, and with five sites no interval here supports a claim of good performance.",
+    "Sites are confounded with country, recorder and class: every degraded site is in Indonesia and one of the two healthy sites is in Kenya. A held-out site therefore measures site shift, not reef-health generalisation.",
+    "restored_early has one site (ind_N1); the fold that holds it out has no restored_early in training, so that class has no recall and is excluded from every average. Kenya has one site (ken_H1), so its accuracy has no interval.",
+    "Each fold retrains the interim recipe (train_mlp, seed 42) on all windows of the other four sites with its own 15% validation split; the committed models also used an outer random 15% test split that a site-held-out fold does not replicate. The fold models are not the served weights.",
+    "Each of the 100 rows is one 5 s window (the first) of a distinct 60 s file, 20 windows per site; windows from the same site are strongly correlated, which is why the site, not the window, is the unit of resampling.",
+    "The original model and the reference vectors come from the earlier training pipeline (file peak-normalised to 1.0, linear interpolation); the successor's embeddings come from the reef_audio pipeline served in production. The two models' numbers live in different embedding spaces and are not a measure of improvement.",
+    "The successor exists because of the preprocessing mismatch, not because the model improved: it was trained with the same recipe and seed on the same 100 files re-embedded.",
+    "Both models are interim and have no evidence of generalising to new sites; the real retrain and model selection are Phase 12.",
+]
+
+INVALIDATED_FIGURES = [
+    {
+        "figure": "split_accuracy",
+        "value": "1.0 (100% on the held-out 15% split)",
+        "source": "models/interim-real-only/model_config.json (split_accuracy) and models/interim-real-only-2026.10.1/model_config.json",
+        "reason": "Measured on a random per-window split. Windows from the same site fall in both train and test, so the score reflects site identity leaking across the split and is not an estimate of performance on a new site. The leave-one-site-out result in this report supersedes it.",
+    },
+    {
+        "figure": "overall_accuracy",
+        "value": "90.0% (model version 1.0, generated 2026-02-03)",
+        "source": "docs/MODEL_EVALUATION.md (as generated 2026-02-03)",
+        "reason": "Measured on a random split with a few windows per class and the same site leakage, so it is not an estimate of performance on a new site. It is withdrawn; the leave-one-site-out result in this report supersedes it.",
+    },
+]
+
+
+def build_report(inputs_dir=DEFAULT_INPUTS_DIR, B=DEFAULT_B, bootstrap_seed=DEFAULT_BOOTSTRAP_SEED):
+    """Assemble the schema-valid evaluation report from the committed inputs."""
+    inputs_dir = pathlib.Path(inputs_dir)
+    X_orig, rows = load_inputs(inputs_dir / "original.f32", inputs_dir / "rows.json")
+    X_re, _rows = load_reembedded(inputs_dir)
+
+    successor_cfg_path = REPO_ROOT / "models" / SERVED_MODEL_VERSION / "model_config.json"
+    cfg = json.loads(successor_cfg_path.read_text(encoding="utf-8"))
+    if cfg["version"] != SERVED_MODEL_VERSION or cfg["preprocessing_spec_version"] != SERVED_SPEC_VERSION:
+        raise ValueError("successor model_config.json does not match the served version constants")
+
+    with open(inputs_dir / "reembedded.json", "r", encoding="utf-8") as f:
+        re_doc = json.load(f)
+    rows_doc = json.loads((inputs_dir / "rows.json").read_text(encoding="utf-8"))
+
+    def _rel(name):
+        return f"{DEFAULT_INPUTS_DIR}/{name}"
+
+    inputs = [
+        {"name": "rows", "path": _rel("rows.json"), "sha256": _text_sha256(inputs_dir / "rows.json"),
+         "rows": rows_doc["count"]},
+        {"name": "original_embeddings", "path": _rel("original.f32"),
+         "sha256": _sha256_bytes((inputs_dir / "original.f32").read_bytes()), "rows": rows_doc["count"]},
+        {"name": "reembedded_rows", "path": _rel("reembedded.json"),
+         "sha256": _text_sha256(inputs_dir / "reembedded.json"), "rows": re_doc["count"]},
+        {"name": "reembedded_embeddings", "path": _rel("reembedded.f32"),
+         "sha256": _sha256_bytes((inputs_dir / "reembedded.f32").read_bytes()), "rows": re_doc["count"]},
+        {"name": "training_file", "path": rows_doc["source"]["key"],
+         "sha256": rows_doc["source"]["sha256"], "rows": rows_doc["count"]},
+    ]
+
+    if _git("status", "--porcelain", "--", GENERATOR_SCRIPT, TRAINER_SCRIPT):
+        print("WARNING: generator or trainer script has uncommitted changes; "
+              "the recorded git shas name the last commits, not this working tree", file=sys.stderr)
+
+    original = evaluated_model(ORIGINAL_MODEL_VERSION, "original", ORIGINAL_SPEC_VERSION, False,
+                               X_orig, rows, B, bootstrap_seed)
+    successor = evaluated_model(SERVED_MODEL_VERSION, "reembedded", SERVED_SPEC_VERSION, True,
+                                X_re, rows, B, bootstrap_seed)
+
+    report = {
+        "schema_version": SCHEMA_VERSION,
+        "report_version": REPORT_VERSION,
+        "method": "leave_one_site_out",
+        "generated_by": {
+            "script": GENERATOR_SCRIPT,
+            "git_sha": _last_commit_touching(GENERATOR_SCRIPT) or "0" * 40,
+        },
+        "inputs": inputs,
+        "trainer": {
+            "script": TRAINER_SCRIPT,
+            "git_sha": _last_commit_touching(TRAINER_SCRIPT) or "0" * 40,
+            "seed": DEFAULT_SEED,
+            "recipe_note": (
+                "Each fold runs train_mlp on all windows of the other four sites with its own 15% "
+                "validation split; the committed models also used an outer 15% random test split "
+                "that a site-held-out fold does not replicate."
+            ),
+        },
+        "bootstrap": {
+            "B": B,
+            "levels": 2,
+            "seed": bootstrap_seed,
+            "rng": RNG_NAME,
+            "numpy_version": np.__version__,
+            "interval": "percentile_95",
+            "min_sites_for_interval": MIN_SITES_FOR_INTERVAL,
+        },
+        "models": [original, successor],
+        "served_model_version": SERVED_MODEL_VERSION,
+        "drift_probe": drift_probe(X_orig, X_re, re_doc["drift_probe"]["note"]),
+        "invalidated_figures": INVALIDATED_FIGURES,
+        "caveats": REPORT_CAVEATS,
+    }
+    contract_lib.validate(report, REPORT_SCHEMA_STEM)
+    return report
+
+
+def write_report(report, out_path):
+    contract_lib.validate(report, REPORT_SCHEMA_STEM)
+    out_path = pathlib.Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_bytes(contract_lib.canonical_json_bytes(report))
+
+
+# --------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------
 
@@ -487,6 +736,13 @@ def _cmd_run(args):
     return 0
 
 
+def _cmd_report(args):
+    report = build_report(args.inputs_dir, B=args.B, bootstrap_seed=args.bootstrap_seed)
+    write_report(report, args.out)
+    print(f"Wrote {args.out}")
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -504,6 +760,14 @@ def main(argv=None):
     p_run.add_argument("--B", type=int, default=DEFAULT_B)
     p_run.add_argument("--bootstrap-seed", type=int, default=DEFAULT_BOOTSTRAP_SEED)
     p_run.set_defaults(func=_cmd_run)
+
+    p_rep = sub.add_parser("report", help="write the schema-valid evaluation report for both model families")
+    p_rep.add_argument("--inputs-dir", default=DEFAULT_INPUTS_DIR)
+    p_rep.add_argument("--out", default=DEFAULT_REPORT_JSON)
+    p_rep.add_argument("--md", default=DEFAULT_REPORT_MD)
+    p_rep.add_argument("--B", type=int, default=DEFAULT_B)
+    p_rep.add_argument("--bootstrap-seed", type=int, default=DEFAULT_BOOTSTRAP_SEED)
+    p_rep.set_defaults(func=_cmd_report)
 
     args = parser.parse_args(argv)
     return args.func(args)
