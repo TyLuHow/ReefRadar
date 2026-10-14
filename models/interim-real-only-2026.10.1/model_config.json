@@ -1,0 +1,93 @@
+{
+  "version": "interim-real-only-2026.10.1",
+  "created": "2026-10-14T15:20:22.407784+00:00",
+  "input_dim": 1280,
+  "hidden_dims": [
+    256,
+    64
+  ],
+  "num_classes": 3,
+  "label_to_idx": {
+    "degraded": 0,
+    "healthy": 1,
+    "restored_early": 2
+  },
+  "idx_to_label": {
+    "0": "degraded",
+    "1": "healthy",
+    "2": "restored_early"
+  },
+  "training_samples": 100,
+  "training_sites": [
+    {
+      "site_id": "ind_D2",
+      "country": "Indonesia",
+      "latitude": -4.9401,
+      "longitude": 119.318815,
+      "rows": 20
+    },
+    {
+      "site_id": "ind_D3",
+      "country": "Indonesia",
+      "latitude": -4.930635,
+      "longitude": 119.316119,
+      "rows": 20
+    },
+    {
+      "site_id": "ind_H4",
+      "country": "Indonesia",
+      "latitude": -4.929463,
+      "longitude": 119.316792,
+      "rows": 20
+    },
+    {
+      "site_id": "ind_N1",
+      "country": "Indonesia",
+      "latitude": -4.9310799,
+      "longitude": 119.3159127,
+      "rows": 20
+    },
+    {
+      "site_id": "ken_H1",
+      "country": "Kenya",
+      "latitude": -2.215614,
+      "longitude": 41.013482,
+      "rows": 20
+    }
+  ],
+  "training_countries": [
+    "Indonesia",
+    "Kenya"
+  ],
+  "synthetic_rows_excluded": 0,
+  "source_training_files": [
+    {
+      "key": "training/training_test_20.json",
+      "sha256": "e18c133ef1d640014fc77d4083d66f9cafe0773f509c738fe953a4d5e346ca7a"
+    }
+  ],
+  "split_accuracy": 1.0,
+  "seed": 42,
+  "trainer": "scripts/train_interim_real_only.py (pure NumPy MLP: Glorot init, Adam, mini-batch 32, early stopping, no sklearn/torch)",
+  "evaluation_note": "Accuracy is from a random per-window split; windows from the same site appear in train and test, so it is not an estimate of performance on new sites or regions. This is an interim model with no evidence that it generalises to new sites. The grouped leave-one-site-out evaluation is in models/interim-real-only/evaluation/REPORT.md; the real retrain and model selection are Phase 12.",
+  "preprocessing_spec_version": "preproc-2026.10.1-reef-audio",
+  "weights_sha256": "cdc169fab304d8c0f20e8f88eb2bbb6d520813c2ea1de64ed5d072f3a934ce80",
+  "training_inputs": [
+    {
+      "path": "models/interim-real-only/evaluation/inputs/reembedded.f32",
+      "sha256": "74123a44555181c7fb8cbe3a1340d72dc65df8ad4abdbafe0aedf64a5d5712e2"
+    },
+    {
+      "path": "models/interim-real-only/evaluation/inputs/reembedded.json",
+      "sha256": "d5f75b9d264455548cad7bcf523a7cfab8003837fbea9da127491b77a2eeeb31"
+    },
+    {
+      "path": "models/interim-real-only/evaluation/inputs/rows.json",
+      "sha256": "dc939d955d69a9f0e9d483c6f37a3770666d1cc88e8d8cedcc846f2e34dfb392"
+    }
+  ],
+  "predecessor": {
+    "model_version": "interim-real-only",
+    "reason": "The predecessor was trained on embeddings from the earlier pipeline (whole file peak-normalised to 1.0, linear interpolation). This successor re-runs the same recipe and seed on the same 100 files re-embedded through reef_audio, so the model that serves reef_audio windows was trained on reef_audio windows."
+  }
+}

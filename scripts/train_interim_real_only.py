@@ -36,6 +36,7 @@ import argparse
 import hashlib
 import json
 import os
+import pathlib
 from datetime import datetime, timezone
 
 import numpy as np
@@ -43,6 +44,16 @@ import numpy as np
 DEFAULT_TRAINING = "data/training/training_test_20.json"
 DEFAULT_LOCK = "docs/model/deployed-model.lock.json"
 DEFAULT_OUT = "models/interim-real-only"
+REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+DEFAULT_VERSION = "interim-real-only"
+EMBEDDING_DIM = 1280
+DEFAULT_PREDECESSOR_REASON = (
+    "The predecessor was trained on embeddings from the earlier pipeline (whole "
+    "file peak-normalised to 1.0, linear interpolation). This successor re-runs "
+    "the same recipe and seed on the same 100 files re-embedded through "
+    "reef_audio, so the model that serves reef_audio windows was trained on "
+    "reef_audio windows."
+)
 
 HIDDEN_DIMS = (256, 64)
 ALPHA = 0.001  # L2 penalty, matches sklearn MLPClassifier(alpha=0.001)
@@ -62,6 +73,15 @@ EVALUATION_NOTE = (
     "site appear in train and test, so it is not an estimate of "
     "performance on new sites or regions. Grouped leave-one-site-out "
     "evaluation is Phase 5; retraining on more real data is Phase 12."
+)
+
+SUCCESSOR_EVALUATION_NOTE = (
+    "Accuracy is from a random per-window split; windows from the same "
+    "site appear in train and test, so it is not an estimate of "
+    "performance on new sites or regions. This is an interim model with no "
+    "evidence that it generalises to new sites. The grouped leave-one-site-out "
+    "evaluation is in models/interim-real-only/evaluation/REPORT.md; the real "
+    "retrain and model selection are Phase 12."
 )
 
 
@@ -294,9 +314,10 @@ def train_mlp(X, y, seed=42, hidden_dims=HIDDEN_DIMS, verbose=False):
 
 def build_config(weights, label_to_idx, idx_to_label, training_samples,
                   training_sites, training_countries, synthetic_rows_excluded,
-                  source_training_files, split_accuracy, seed):
-    return {
-        "version": "interim-real-only",
+                  source_training_files, split_accuracy, seed,
+                  version=DEFAULT_VERSION, evaluation_note=EVALUATION_NOTE, extra=None):
+    config = {
+        "version": version,
         "created": datetime.now(timezone.utc).isoformat(),
         "input_dim": int(weights["w1"].shape[0]),
         "hidden_dims": list(HIDDEN_DIMS),
@@ -311,11 +332,51 @@ def build_config(weights, label_to_idx, idx_to_label, training_samples,
         "split_accuracy": split_accuracy,
         "seed": seed,
         "trainer": "scripts/train_interim_real_only.py (pure NumPy MLP: Glorot init, Adam, mini-batch 32, early stopping, no sklearn/torch)",
-        "evaluation_note": EVALUATION_NOTE,
+        "evaluation_note": evaluation_note,
     }
+    if extra:
+        # Successor-mode keys (plan 05-12). The original --training path passes
+        # nothing here, so its config keeps exactly its original keys.
+        config.update(extra)
+    return config
 
 
-def write_training_report(out_dir, config, excluded_counts, by_class, by_site, dropped_classes):
+def _successor_why_lines(config, successor):
+    drift = successor["drift_probe"]["cosine"]
+    predecessor = config["predecessor"]["model_version"]
+    return [
+        f"`{config['version']}` is an **interim** model, the successor of `{predecessor}`. "
+        "It exists because of a preprocessing mismatch, not because the model got better.",
+        "",
+        f"The deployed `{predecessor}` was trained on embeddings from the earlier "
+        "pipeline (whole file peak-normalised to 1.0, linear interpolation; "
+        "scripts/generate_training_embeddings.py). The live pipeline now prepares audio "
+        f"with `reef_audio` (`{config['preprocessing_spec_version']}`: 5 s windows, 32 kHz, "
+        "DC removed, peak-normalised to 0.25, polyphase resampling). Serving the predecessor "
+        "with reef_audio windows would mismatch the space it was trained in. The drift probe "
+        "measured this on the same 100 files (first 5 s window, original training row versus "
+        f"the row re-embedded through reef_audio, {successor['drift_probe']['pairs']} pairs): "
+        f"cosine mean {drift['mean']:.4f}, median {drift['median']:.4f}, "
+        f"min {drift['min']:.4f}, max {drift['max']:.4f}. The two are very different "
+        "representations of the same audio.",
+        "",
+        "So the same recipe (same outer 15% split, `train_mlp`, seed "
+        f"{config['seed']}; no hyperparameter was changed or tuned) was re-run on the same "
+        "100 files re-embedded through reef_audio, in the same row order and with the same "
+        "labels, so the model that serves reef_audio windows was trained on reef_audio windows.",
+        "",
+        "**This model has no evidence of generalising to new sites.** It is trained on 100 "
+        "windows from 5 sites in Indonesia and Kenya. The leave-one-site-out evaluation of the "
+        "same recipe on the original embeddings (plan 05-04) gave a balanced accuracy of 6.25% "
+        "(interval 0.0% to 17.5%) against 33.3% for a uniform guess: the recipe identified "
+        "sites, not reef health. The grouped evaluation on these re-embedded rows is reported "
+        "in models/interim-real-only/evaluation/REPORT.md. The real retrain on more real data, "
+        "with model selection, is Phase 12.",
+    ]
+
+
+def write_training_report(out_dir, config, excluded_counts, by_class, by_site, dropped_classes,
+                          successor=None):
     path = os.path.join(out_dir, "TRAINING-REPORT.md")
     lines = []
     lines.append("# Interim Real-Only Model Training Report")
@@ -326,14 +387,17 @@ def write_training_report(out_dir, config, excluded_counts, by_class, by_site, d
     lines.append("")
     lines.append("## Why this model exists")
     lines.append("")
-    lines.append(
-        "The deployed v2.0 classifier's `restored_mid` class has zero real "
-        "training rows (see docs/model/DEPLOYED-MODEL-AUDIT.md) -- it was "
-        "trained entirely on synthetically generated audio "
-        "(scripts/add_restored_mid_and_retrain.py). Per D-11, no class may "
-        "be served without verifiable real training data, so this interim "
-        "model is retrained on the real rows only."
-    )
+    if successor:
+        lines.extend(_successor_why_lines(config, successor))
+    else:
+        lines.append(
+            "The deployed v2.0 classifier's `restored_mid` class has zero real "
+            "training rows (see docs/model/DEPLOYED-MODEL-AUDIT.md) -- it was "
+            "trained entirely on synthetically generated audio "
+            "(scripts/add_restored_mid_and_retrain.py). Per D-11, no class may "
+            "be served without verifiable real training data, so this interim "
+            "model is retrained on the real rows only."
+        )
     if dropped_classes:
         lines.append("")
         lines.append(f"**Classes dropped:** {', '.join(dropped_classes)} (no real training rows).")
@@ -372,7 +436,7 @@ def write_training_report(out_dir, config, excluded_counts, by_class, by_site, d
     lines.append("")
     lines.append(f"**Split accuracy (held-out 15%):** {config['split_accuracy']:.1%}")
     lines.append("")
-    lines.append(f"**Caveat:** {EVALUATION_NOTE}")
+    lines.append(f"**Caveat:** {config['evaluation_note']}")
     lines.append("")
     lines.append("## Consequence for the UI")
     lines.append("")
@@ -393,18 +457,122 @@ def write_training_report(out_dir, config, excluded_counts, by_class, by_site, d
     for f in config["source_training_files"]:
         lines.append(f"| {f['key']} | {f['sha256']} |")
     lines.append("")
-    with open(path, "w") as out:
+    if successor:
+        lines.append("## Training inputs (pinned)")
+        lines.append("")
+        lines.append("| Path | sha256 |")
+        lines.append("|---|---|")
+        for f in config["training_inputs"]:
+            lines.append(f"| {f['path']} | {f['sha256']} |")
+        lines.append("")
+        lines.append(f"**Weights sha256:** `{config['weights_sha256']}`  ")
+        lines.append(f"**Preprocessing spec:** `{config['preprocessing_spec_version']}`")
+        lines.append("")
+    with open(path, "w", newline="\n") as out:
         out.write("\n".join(lines) + "\n")
     return path
 
 
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--training", nargs="+", default=[DEFAULT_TRAINING])
+def _repo_relative(path):
+    """Repo-relative POSIX path when the file is inside the repo, else as given."""
+    resolved = pathlib.Path(path).resolve()
+    try:
+        return resolved.relative_to(REPO_ROOT).as_posix()
+    except ValueError:
+        return pathlib.Path(path).as_posix()
+
+
+def _text_input_sha256(path):
+    """sha256 of a committed text input as LF bytes (equal to its git blob on any checkout)."""
+    data = pathlib.Path(path).read_bytes().replace(b"\r\n", b"\n")
+    return hashlib.sha256(data).hexdigest()
+
+
+def load_reembedded_inputs(embeddings_f32, rows_json, reembedded_json):
+    """Load the re-embedded rows (plan 05-11) in rows.json order.
+
+    Returns (samples, source, training_inputs, successor_info). Every sample is a
+    dict with file_id, label, site_id, country, row and embedding (a float32
+    vector). Refuses inputs whose pinned hashes or row order disagree, so a
+    successor can only be trained on exactly what 05-11 committed.
+    """
+    with open(rows_json, "r", encoding="utf-8") as f:
+        rows_doc = json.load(f)
+    with open(reembedded_json, "r", encoding="utf-8") as f:
+        reembedded = json.load(f)
+    raw = pathlib.Path(embeddings_f32).read_bytes()
+    f32_sha = hashlib.sha256(raw).hexdigest()
+    if reembedded.get("embeddings_sha256") != f32_sha:
+        raise SystemExit("embeddings f32 sha256 does not match reembedded.json embeddings_sha256")
+    if reembedded.get("source_rows", {}).get("sha256") != _text_input_sha256(rows_json):
+        raise SystemExit("rows.json sha256 does not match reembedded.json source_rows")
+
+    rows = rows_doc["rows"]
+    dim = int(reembedded["dim"])
+    if dim != EMBEDDING_DIM:
+        raise SystemExit(f"expected {EMBEDDING_DIM}-dim embeddings, got {dim}")
+    if len(raw) != len(rows) * dim * 4 or len(rows) != int(reembedded["count"]):
+        raise SystemExit("embeddings f32 size does not match the row count")
+    if [r["file_id"] for r in rows] != [r["file_id"] for r in reembedded["rows"]]:
+        raise SystemExit("rows.json and reembedded.json rows disagree in order")
+
+    matrix = np.frombuffer(raw, dtype="<f4").reshape(len(rows), dim).astype(np.float32)
+    samples = []
+    for r in rows:
+        samples.append({
+            "file_id": r["file_id"], "label": r["label"], "site_id": r["site_id"],
+            "country": r.get("country", "unknown"), "row": r["row"],
+            "embedding": matrix[r["row"]],
+        })
+
+    training_inputs = [
+        {"path": _repo_relative(embeddings_f32), "sha256": f32_sha},
+        {"path": _repo_relative(reembedded_json), "sha256": _text_input_sha256(reembedded_json)},
+        {"path": _repo_relative(rows_json), "sha256": _text_input_sha256(rows_json)},
+    ]
+    successor_info = {"drift_probe": reembedded["drift_probe"]}
+    return samples, rows_doc["source"], training_inputs, successor_info
+
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--training", nargs="+", default=None,
+                        help=f"original recipe input: training JSON file(s) (default {DEFAULT_TRAINING})")
+    parser.add_argument("--embeddings-f32", default=None,
+                        help="successor mode: re-embedded float32-le rows (100 x 1280)")
+    parser.add_argument("--rows-json", default=None,
+                        help="successor mode: rows.json giving the row order and labels")
+    parser.add_argument("--reembedded-json", default=None,
+                        help="successor mode: reembedded.json (default: next to --embeddings-f32)")
+    parser.add_argument("--version", default=DEFAULT_VERSION)
+    parser.add_argument("--preprocessing-spec-version", default=None,
+                        help="successor mode: spec version the embeddings were prepared under")
+    parser.add_argument("--predecessor-version", default=DEFAULT_VERSION)
+    parser.add_argument("--predecessor-reason", default=DEFAULT_PREDECESSOR_REASON)
     parser.add_argument("--lock", default=DEFAULT_LOCK)
     parser.add_argument("--out", default=DEFAULT_OUT)
     parser.add_argument("--seed", type=int, default=42)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+
+    successor_mode = args.embeddings_f32 is not None or args.rows_json is not None
+    if successor_mode:
+        if args.training is not None:
+            parser.error("--training cannot be combined with --embeddings-f32/--rows-json")
+        if args.embeddings_f32 is None or args.rows_json is None:
+            parser.error("--embeddings-f32 and --rows-json must be given together")
+        if not args.preprocessing_spec_version:
+            parser.error("--preprocessing-spec-version is required with --embeddings-f32")
+        if args.reembedded_json is None:
+            args.reembedded_json = str(pathlib.Path(args.embeddings_f32).with_suffix(".json"))
+    else:
+        if args.training is None:
+            args.training = [DEFAULT_TRAINING]
+    args.successor_mode = successor_mode
+    return args
+
+
+def main(argv=None):
+    args = parse_args(argv)
 
     with open(args.lock, "r") as f:
         lock = json.load(f)
@@ -412,7 +580,18 @@ def main():
     interim_classes = set(lock["interim_classes"])
     lock_sites_by_id = {s["site_id"]: s for s in lock.get("training_sites", [])}
 
-    samples = load_training_samples(args.training)
+    if args.successor_mode:
+        samples, source, training_inputs, successor_info = load_reembedded_inputs(
+            args.embeddings_f32, args.rows_json, args.reembedded_json)
+        source_training_files = [source]
+    else:
+        samples = load_training_samples(args.training)
+        training_inputs, successor_info = None, None
+        source_training_files = []
+        for path in args.training:
+            key = "training/" + os.path.basename(path)
+            source_training_files.append({"key": key, "sha256": file_sha256(path)})
+
     real_samples, excluded_counts = filter_real_rows(samples)
     real_samples = [s for s in real_samples if s["label"] in interim_classes]
 
@@ -441,15 +620,17 @@ def main():
 
     by_class = {}
     by_site = {}
+    site_country = {}
     for s in real_samples:
         by_class[s["label"]] = by_class.get(s["label"], 0) + 1
         by_site[s["site_id"]] = by_site.get(s["site_id"], 0) + 1
+        site_country.setdefault(s["site_id"], s.get("country", "unknown"))
 
     training_sites = []
     countries = set()
     for site_id, rows in sorted(by_site.items()):
         lock_site = lock_sites_by_id.get(site_id, {})
-        country = lock_site.get("country", "unknown")
+        country = lock_site.get("country", site_country[site_id] if args.successor_mode else "unknown")
         countries.add(country)
         training_sites.append({
             "site_id": site_id,
@@ -459,10 +640,27 @@ def main():
             "rows": rows,
         })
 
-    source_training_files = []
-    for path in args.training:
-        key = "training/" + os.path.basename(path)
-        source_training_files.append({"key": key, "sha256": file_sha256(path)})
+    os.makedirs(args.out, exist_ok=True)
+    weights_path = os.path.join(args.out, "reef_classifier_weights.npz")
+    np.savez(weights_path, **{k: v.astype(np.float32) for k, v in weights.items()})
+
+    config_kwargs = {}
+    if args.successor_mode:
+        config_kwargs = {
+            "version": args.version,
+            "evaluation_note": SUCCESSOR_EVALUATION_NOTE,
+            "extra": {
+                "preprocessing_spec_version": args.preprocessing_spec_version,
+                "weights_sha256": file_sha256(weights_path),
+                "training_inputs": training_inputs,
+                "predecessor": {
+                    "model_version": args.predecessor_version,
+                    "reason": args.predecessor_reason,
+                },
+            },
+        }
+    elif args.version != DEFAULT_VERSION:
+        config_kwargs = {"version": args.version}
 
     config = build_config(
         weights=weights,
@@ -475,19 +673,17 @@ def main():
         source_training_files=source_training_files,
         split_accuracy=split_accuracy,
         seed=args.seed,
+        **config_kwargs,
     )
 
-    os.makedirs(args.out, exist_ok=True)
-    weights_path = os.path.join(args.out, "reef_classifier_weights.npz")
-    np.savez(weights_path, **{k: v.astype(np.float32) for k, v in weights.items()})
-
     config_path = os.path.join(args.out, "model_config.json")
-    with open(config_path, "w") as f:
+    with open(config_path, "w", newline="\n") as f:
         json.dump(config, f, indent=2)
 
-    report_path = write_training_report(args.out, config, excluded_counts, by_class, by_site, dropped_classes)
+    report_path = write_training_report(args.out, config, excluded_counts, by_class, by_site,
+                                        dropped_classes, successor=successor_info)
 
-    print(f"Trained {config['num_classes']}-class interim-real-only model on {config['training_samples']} real rows")
+    print(f"Trained {config['num_classes']}-class {config['version']} model on {config['training_samples']} real rows")
     print(f"Split accuracy (leakage caveat applies): {split_accuracy:.1%}")
     print(f"Wrote {weights_path}")
     print(f"Wrote {config_path}")
