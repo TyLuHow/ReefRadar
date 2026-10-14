@@ -2,3 +2,10 @@ contracts/**/*.json text eol=lf
 contracts/**/*.f32 binary
 # Fixtures screenshot baselines (04-24) live in Git LFS; legacy visual baselines stay in plain git.
 dashboard-next/tests/e2e/fixtures.spec.ts-snapshots/*.png filter=lfs diff=lfs merge=lfs -text
+# Phase 5: binary float32 payloads and pinned JSON must not be touched by eol conversion.
+models/**/*.f32 binary
+models/**/*.npz binary
+lambdas/**/fixtures/*.f32 binary
+models/interim-real-only/evaluation/**/*.json text eol=lf
+models/interim-real-only-2026.10.1/*.json text eol=lf
+lambdas/**/fixtures/*.json text eol=lf
