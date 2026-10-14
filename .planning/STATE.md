@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: Phase 5 executing — waves 1-2 merged (6/17: packaging, reef_audio core + decode/transport, fixture sentinel v99, LOSO harness, additive v2 schemas). Next wave 3 (05-07 preprocessor, 05-08 inference client/reembed tooling, 05-09 per-window classifier).
+Plan: Phase 5 executing — waves 1-3 merged (9/17). Wave 3: preprocessor on reef_audio with binary segments (deploy only after the 05-09 classifier), inference client + re-embed/fixture tooling, per-window classifier with bundled served model and additive /visualize. Next wave 4 (05-10 similarity/projection/OOD, 05-11 LIVE re-embed + embedding fixture).
 Status: Phase 4 complete in code; owner device checks deferred (/gsd-verify-work 4). Autonomous run continuing at Phase 5
-Last activity: 2026-10-14 — Phase 5 wave 2 merged
+Last activity: 2026-10-14 — Phase 5 wave 3 merged
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 

@@ -344,7 +344,7 @@ Plans:
   3. Every analysis returns similarity to all reference sites (not only top-3), projection coordinates with explained variance, and an out-of-distribution status computed from distance to training data and reported separately from class probabilities.
   4. A leave-one-site-out evaluation harness reports the current model's per-class and per-region metrics with bootstrap confidence intervals, and the report is stored as a versioned artifact for the model card.
 
-**Plans**: 6/17 plans executed (10 waves; live AWS work serial in 05-11, 05-16, 05-17)
+**Plans**: 9/17 plans executed (10 waves; live AWS work serial in 05-11, 05-16, 05-17)
 
 Plans:
 **Wave 1**
@@ -361,9 +361,9 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 05-07-PLAN.md — Preprocessor on reef_audio with binary segments and the moto parity matrix
-- [ ] 05-08-PLAN.md — Offline inference client, training re-embedder and excerpt fixture recorder
-- [ ] 05-09-PLAN.md — Per-window classifier: binary segment reader, bundled served model, alignment, stamp guard, additive /visualize
+- [x] 05-07-PLAN.md — Preprocessor on reef_audio with binary segments and the moto parity matrix
+- [x] 05-08-PLAN.md — Offline inference client, training re-embedder and excerpt fixture recorder
+- [x] 05-09-PLAN.md — Per-window classifier: binary segment reader, bundled served model, alignment, stamp guard, additive /visualize
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -614,7 +614,7 @@ Numeric order (1 → 17) is a valid order. With parallelization, Data & ML phase
 | 2. Data Contract v1 | 13/13 | Complete    | 2026-10-02 |
 | 3. Platform Upgrade & Stack Consolidation | 15/15 | Complete    | 2026-10-03 |
 | 4. Design System & Instrument Primitives | 24/24 | In Progress|  |
-| 5. Preprocessing Parity & Grouped Evaluation | 6/17 | In Progress|  |
+| 5. Preprocessing Parity & Grouped Evaluation | 9/17 | In Progress|  |
 | 6. Instrument Shell & Atlas | 0/TBD | Not started | - |
 | 7. Listening Bench | 0/TBD | Not started | - |
 | 8. Guarded Upstream Ingestion | 0/TBD | Not started | - |
