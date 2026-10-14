@@ -1,0 +1,2656 @@
+{
+  "bootstrap": {
+    "B": 10000,
+    "interval": "percentile_95",
+    "levels": 2,
+    "min_sites_for_interval": 2,
+    "numpy_version": "1.26.4",
+    "rng": "numpy.random.RandomState",
+    "seed": 20261011
+  },
+  "caveats": [
+    "Only four sites are evaluable, so the bootstrap can draw only 35 distinct multisets of sites and its distribution is lumpy; the percentile interval is indicative only (Cameron, Gelbach and Miller 2008, 'Bootstrap-based improvements for inference with clustered errors', Review of Economics and Statistics, show that cluster inference with few clusters misleads).",
+    "Resampling both sites and windows counts within-site variance twice relative to resampling sites alone (Field and Welsh 2007, 'Bootstrapping clustered data', Journal of the Royal Statistical Society Series B), so these intervals are conservative (too wide), not too narrow. Even so they are wide, and with five sites no interval here supports a claim of good performance.",
+    "Sites are confounded with country, recorder and class: every degraded site is in Indonesia and one of the two healthy sites is in Kenya. A held-out site therefore measures site shift, not reef-health generalisation.",
+    "restored_early has one site (ind_N1); the fold that holds it out has no restored_early in training, so that class has no recall and is excluded from every average. Kenya has one site (ken_H1), so its accuracy has no interval.",
+    "Each fold retrains the interim recipe (train_mlp, seed 42) on all windows of the other four sites with its own 15% validation split; the committed models also used an outer random 15% test split that a site-held-out fold does not replicate. The fold models are not the served weights.",
+    "Each of the 100 rows is one 5 s window (the first) of a distinct 60 s file, 20 windows per site; windows from the same site are strongly correlated, which is why the site, not the window, is the unit of resampling.",
+    "The original model and the reference vectors come from the earlier training pipeline (file peak-normalised to 1.0, linear interpolation); the successor's embeddings come from the reef_audio pipeline served in production. The two models' numbers live in different embedding spaces and are not a measure of improvement.",
+    "The successor exists because of the preprocessing mismatch, not because the model improved: it was trained with the same recipe and seed on the same 100 files re-embedded.",
+    "Both models are interim and have no evidence of generalising to new sites; the real retrain and model selection are Phase 12."
+  ],
+  "drift_probe": {
+    "cosine": {
+      "max": 0.4961162859857602,
+      "mean": 0.20655995579942985,
+      "median": 0.2125349349002335,
+      "min": -0.08610598241921925
+    },
+    "note": "cosine between each original training row and the same file's first window re-embedded through reef_audio",
+    "pairs": 100
+  },
+  "generated_by": {
+    "git_sha": "936a9f5701a5f8ae28bd7bc7cdf8d98571dbd4b6",
+    "script": "scripts/evaluate_loso.py"
+  },
+  "inputs": [
+    {
+      "name": "rows",
+      "path": "models/interim-real-only/evaluation/inputs/rows.json",
+      "rows": 100,
+      "sha256": "dc939d955d69a9f0e9d483c6f37a3770666d1cc88e8d8cedcc846f2e34dfb392"
+    },
+    {
+      "name": "original_embeddings",
+      "path": "models/interim-real-only/evaluation/inputs/original.f32",
+      "rows": 100,
+      "sha256": "72b71b70e3732c125f0d144c3e3de101c5a80eed840a7b253e3a11cfed45ea0f"
+    },
+    {
+      "name": "reembedded_rows",
+      "path": "models/interim-real-only/evaluation/inputs/reembedded.json",
+      "rows": 100,
+      "sha256": "d5f75b9d264455548cad7bcf523a7cfab8003837fbea9da127491b77a2eeeb31"
+    },
+    {
+      "name": "reembedded_embeddings",
+      "path": "models/interim-real-only/evaluation/inputs/reembedded.f32",
+      "rows": 100,
+      "sha256": "74123a44555181c7fb8cbe3a1340d72dc65df8ad4abdbafe0aedf64a5d5712e2"
+    },
+    {
+      "name": "training_file",
+      "path": "training/training_test_20.json",
+      "rows": 100,
+      "sha256": "e18c133ef1d640014fc77d4083d66f9cafe0773f509c738fe953a4d5e346ca7a"
+    }
+  ],
+  "invalidated_figures": [
+    {
+      "figure": "split_accuracy",
+      "reason": "Measured on a random per-window split. Windows from the same site fall in both train and test, so the score reflects site identity leaking across the split and is not an estimate of performance on a new site. The leave-one-site-out result in this report supersedes it.",
+      "source": "models/interim-real-only/model_config.json (split_accuracy) and models/interim-real-only-2026.10.1/model_config.json",
+      "value": "1.0 (100% on the held-out 15% split)"
+    },
+    {
+      "figure": "overall_accuracy",
+      "reason": "Measured on a random split with a few windows per class and the same site leakage, so it is not an estimate of performance on a new site. It is withdrawn; the leave-one-site-out result in this report supersedes it.",
+      "source": "docs/MODEL_EVALUATION.md (as generated 2026-02-03)",
+      "value": "90.0% (model version 1.0, generated 2026-02-03)"
+    }
+  ],
+  "method": "leave_one_site_out",
+  "models": [
+    {
+      "baselines": {
+        "training_majority": {
+          "ci_high": null,
+          "ci_low": null,
+          "ci_status": "undefined",
+          "defined_fraction": null,
+          "n_sites": 4,
+          "n_windows": 80,
+          "value": 0.0
+        },
+        "uniform_random": {
+          "ci_high": null,
+          "ci_low": null,
+          "ci_status": "undefined",
+          "defined_fraction": null,
+          "n_sites": 4,
+          "n_windows": 80,
+          "value": 0.33333333333333337
+        }
+      },
+      "embeddings": "original",
+      "folds": [
+        {
+          "correct": 1,
+          "country": "Indonesia",
+          "evaluable": true,
+          "held_out_site": "ind_D2",
+          "n_test": 20,
+          "predicted_distribution": {
+            "degraded": 1,
+            "healthy": 18,
+            "restored_early": 1
+          },
+          "reason": null,
+          "train_classes": [
+            "degraded",
+            "healthy",
+            "restored_early"
+          ],
+          "train_sites": [
+            "ind_D3",
+            "ind_H4",
+            "ind_N1",
+            "ken_H1"
+          ],
+          "true_class": "degraded"
+        },
+        {
+          "correct": 0,
+          "country": "Indonesia",
+          "evaluable": true,
+          "held_out_site": "ind_D3",
+          "n_test": 20,
+          "predicted_distribution": {
+            "healthy": 1,
+            "restored_early": 19
+          },
+          "reason": null,
+          "train_classes": [
+            "degraded",
+            "healthy",
+            "restored_early"
+          ],
+          "train_sites": [
+            "ind_D2",
+            "ind_H4",
+            "ind_N1",
+            "ken_H1"
+          ],
+          "true_class": "degraded"
+        },
+        {
+          "correct": 0,
+          "country": "Indonesia",
+          "evaluable": true,
+          "held_out_site": "ind_H4",
+          "n_test": 20,
+          "predicted_distribution": {
+            "degraded": 20
+          },
+          "reason": null,
+          "train_classes": [
+            "degraded",
+            "healthy",
+            "restored_early"
+          ],
+          "train_sites": [
+            "ind_D2",
+            "ind_D3",
+            "ind_N1",
+            "ken_H1"
+          ],
+          "true_class": "healthy"
+        },
+        {
+          "correct": null,
+          "country": "Indonesia",
+          "evaluable": false,
+          "held_out_site": "ind_N1",
+          "n_test": 20,
+          "predicted_distribution": {
+            "degraded": 20
+          },
+          "reason": "restored_early not evaluable: class absent from the training fold",
+          "train_classes": [
+            "degraded",
+            "healthy"
+          ],
+          "train_sites": [
+            "ind_D2",
+            "ind_D3",
+            "ind_H4",
+            "ken_H1"
+          ],
+          "true_class": "restored_early"
+        },
+        {
+          "correct": 4,
+          "country": "Kenya",
+          "evaluable": true,
+          "held_out_site": "ken_H1",
+          "n_test": 20,
+          "predicted_distribution": {
+            "degraded": 16,
+            "healthy": 4
+          },
+          "reason": null,
+          "train_classes": [
+            "degraded",
+            "healthy",
+            "restored_early"
+          ],
+          "train_sites": [
+            "ind_D2",
+            "ind_D3",
+            "ind_H4",
+            "ind_N1"
+          ],
+          "true_class": "healthy"
+        }
+      ],
+      "metrics": {
+        "balanced_accuracy": {
+          "ci_high": 0.175,
+          "ci_low": 0.0,
+          "ci_status": "estimated",
+          "defined_fraction": 0.8748,
+          "n_sites": 4,
+          "n_windows": 80,
+          "value": 0.0625
+        },
+        "per_class": {
+          "degraded": {
+            "ci_high": 0.1,
+            "ci_low": 0.0,
+            "ci_status": "estimated",
+            "defined_fraction": 0.934,
+            "n_sites": 2,
+            "n_windows": 40,
+            "value": 0.025
+          },
+          "healthy": {
+            "ci_high": 0.3,
+            "ci_low": 0.0,
+            "ci_status": "estimated",
+            "defined_fraction": 0.9408,
+            "n_sites": 2,
+            "n_windows": 40,
+            "value": 0.1
+          }
+        },
+        "per_region": {
+          "Indonesia": {
+            "ci_high": 0.06666666666666667,
+            "ci_low": 0.0,
+            "ci_status": "estimated",
+            "defined_fraction": 1.0,
+            "n_sites": 3,
+            "n_windows": 60,
+            "value": 0.016666666666666666
+          },
+          "Kenya": {
+            "ci_high": null,
+            "ci_low": null,
+            "ci_status": "not_estimable_1_site",
+            "defined_fraction": 1.0,
+            "n_sites": 1,
+            "n_windows": 20,
+            "value": 0.2
+          }
+        }
+      },
+      "model_version": "interim-real-only",
+      "predictions": [
+        {
+          "file_id": "ind_D2_20220830_124200",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.137098,
+            "healthy": 0.633099,
+            "restored_early": 0.229803
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220830_155400",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.09504,
+            "healthy": 0.859073,
+            "restored_early": 0.045888
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220830_190600",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.1281,
+            "healthy": 0.785736,
+            "restored_early": 0.086164
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220830_222000",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.067515,
+            "healthy": 0.894032,
+            "restored_early": 0.038453
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220831_013200",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.122272,
+            "healthy": 0.839862,
+            "restored_early": 0.037866
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220831_044400",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.168334,
+            "healthy": 0.802586,
+            "restored_early": 0.02908
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220831_075800",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.091071,
+            "healthy": 0.838496,
+            "restored_early": 0.070434
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220831_111000",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.184057,
+            "healthy": 0.445988,
+            "restored_early": 0.369955
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220831_142200",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.050424,
+            "healthy": 0.895238,
+            "restored_early": 0.054338
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220831_173600",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.407552,
+            "healthy": 0.384314,
+            "restored_early": 0.208134
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220831_204800",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.142564,
+            "healthy": 0.757415,
+            "restored_early": 0.100022
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220901_000000",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.089296,
+            "healthy": 0.843266,
+            "restored_early": 0.067438
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220901_031400",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.082304,
+            "healthy": 0.878356,
+            "restored_early": 0.03934
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220901_062600",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.20971,
+            "healthy": 0.678236,
+            "restored_early": 0.112053
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220901_093800",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.402488,
+            "healthy": 0.154034,
+            "restored_early": 0.443478
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220901_125200",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.086157,
+            "healthy": 0.712011,
+            "restored_early": 0.201832
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220901_160400",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.157836,
+            "healthy": 0.769066,
+            "restored_early": 0.073098
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220901_191600",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.071892,
+            "healthy": 0.881746,
+            "restored_early": 0.046362
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220901_223000",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.148496,
+            "healthy": 0.678676,
+            "restored_early": 0.172829
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220902_014200",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.202767,
+            "healthy": 0.654772,
+            "restored_early": 0.142461
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220830_135800",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.083242,
+            "healthy": 0.09148,
+            "restored_early": 0.825278
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220830_170800",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.163827,
+            "healthy": 0.168867,
+            "restored_early": 0.667306
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220830_201800",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.124542,
+            "healthy": 0.139934,
+            "restored_early": 0.735525
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220830_233000",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.145096,
+            "healthy": 0.142647,
+            "restored_early": 0.712257
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220831_024000",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.17282,
+            "healthy": 0.391466,
+            "restored_early": 0.435714
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220831_055200",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.162338,
+            "healthy": 0.203693,
+            "restored_early": 0.63397
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220831_090200",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.065934,
+            "healthy": 0.053808,
+            "restored_early": 0.880258
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220831_121200",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.081383,
+            "healthy": 0.070182,
+            "restored_early": 0.848435
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220831_152400",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.173435,
+            "healthy": 0.169132,
+            "restored_early": 0.657433
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220831_183400",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.108376,
+            "healthy": 0.133845,
+            "restored_early": 0.757779
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220831_214600",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.094693,
+            "healthy": 0.204365,
+            "restored_early": 0.700942
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220901_005600",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.117031,
+            "healthy": 0.209643,
+            "restored_early": 0.673326
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220901_040600",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.136557,
+            "healthy": 0.497408,
+            "restored_early": 0.366035
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220901_071800",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.052258,
+            "healthy": 0.050912,
+            "restored_early": 0.896831
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220901_102800",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.033021,
+            "healthy": 0.072491,
+            "restored_early": 0.894488
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220901_134000",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.095631,
+            "healthy": 0.318975,
+            "restored_early": 0.585394
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220901_165000",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.09746,
+            "healthy": 0.128334,
+            "restored_early": 0.774205
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220901_200000",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.151768,
+            "healthy": 0.120234,
+            "restored_early": 0.727999
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220901_231200",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.174176,
+            "healthy": 0.376743,
+            "restored_early": 0.449082
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220902_022200",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.164173,
+            "healthy": 0.218022,
+            "restored_early": 0.617806
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_H4_20220830_102200",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.495036,
+            "healthy": 0.314912,
+            "restored_early": 0.190052
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220830_155600",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.46476,
+            "healthy": 0.357454,
+            "restored_early": 0.177785
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220830_213600",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.541648,
+            "healthy": 0.33779,
+            "restored_early": 0.120562
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220831_033600",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.474264,
+            "healthy": 0.402035,
+            "restored_early": 0.123701
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220831_093000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.592804,
+            "healthy": 0.239344,
+            "restored_early": 0.167853
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220831_153400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.548223,
+            "healthy": 0.325515,
+            "restored_early": 0.126262
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220831_210800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.614964,
+            "healthy": 0.219084,
+            "restored_early": 0.165953
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220901_024800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.522861,
+            "healthy": 0.364491,
+            "restored_early": 0.112648
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220901_084000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.493246,
+            "healthy": 0.258386,
+            "restored_early": 0.248368
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220901_141400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.532976,
+            "healthy": 0.356663,
+            "restored_early": 0.110361
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220901_195000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.488667,
+            "healthy": 0.424835,
+            "restored_early": 0.086498
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220902_012400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.51085,
+            "healthy": 0.377029,
+            "restored_early": 0.112121
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220902_070000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.485592,
+            "healthy": 0.287211,
+            "restored_early": 0.227197
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220902_123400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.440573,
+            "healthy": 0.331528,
+            "restored_early": 0.227899
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220902_181400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.464575,
+            "healthy": 0.19415,
+            "restored_early": 0.341275
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220903_001000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.540434,
+            "healthy": 0.280885,
+            "restored_early": 0.178681
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220903_055000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.539031,
+            "healthy": 0.206876,
+            "restored_early": 0.254094
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220903_112400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.460467,
+            "healthy": 0.38392,
+            "restored_early": 0.155613
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220903_170000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.486497,
+            "healthy": 0.299306,
+            "restored_early": 0.214197
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220903_223400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.541185,
+            "healthy": 0.297796,
+            "restored_early": 0.161018
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_N1_20220906_124000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.614968,
+            "healthy": 0.385032
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220907_113400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.687648,
+            "healthy": 0.312352
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220908_045800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.715754,
+            "healthy": 0.284246
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220908_143400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.500747,
+            "healthy": 0.499253
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220908_195800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.599739,
+            "healthy": 0.400261
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220908_222000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.639467,
+            "healthy": 0.360533
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220909_011400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.683111,
+            "healthy": 0.316889
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220909_033400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.747819,
+            "healthy": 0.252181
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220909_060800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.702279,
+            "healthy": 0.297721
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220909_120200",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.594642,
+            "healthy": 0.405358
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220909_172800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.600531,
+            "healthy": 0.399469
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220909_202800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.718289,
+            "healthy": 0.281711
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220909_225600",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.691953,
+            "healthy": 0.308047
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220910_014000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.72527,
+            "healthy": 0.27473
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220910_041200",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.680138,
+            "healthy": 0.319862
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220910_113400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.510763,
+            "healthy": 0.489237
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220910_142200",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.569464,
+            "healthy": 0.430536
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220910_205000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.626077,
+            "healthy": 0.373923
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220911_112600",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.623987,
+            "healthy": 0.376013
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220912_011600",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.70931,
+            "healthy": 0.29069
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ken_H1_20230222_130800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.766624,
+            "healthy": 0.220515,
+            "restored_early": 0.012862
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230222_164000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.935277,
+            "healthy": 0.061606,
+            "restored_early": 0.003118
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230222_201200",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.829228,
+            "healthy": 0.15595,
+            "restored_early": 0.014822
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230222_234400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.60639,
+            "healthy": 0.391314,
+            "restored_early": 0.002297
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230223_031600",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.592097,
+            "healthy": 0.374947,
+            "restored_early": 0.032957
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230223_064800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.880938,
+            "healthy": 0.063474,
+            "restored_early": 0.055588
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230223_102000",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.097506,
+            "healthy": 0.871617,
+            "restored_early": 0.030877
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230223_135200",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.182428,
+            "healthy": 0.811523,
+            "restored_early": 0.006048
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230223_172400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.951167,
+            "healthy": 0.038584,
+            "restored_early": 0.010249
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230223_205600",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.622794,
+            "healthy": 0.372199,
+            "restored_early": 0.005008
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230224_002800",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.024161,
+            "healthy": 0.97519,
+            "restored_early": 0.000649
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230224_040000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.566116,
+            "healthy": 0.110399,
+            "restored_early": 0.323485
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230224_073200",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.713814,
+            "healthy": 0.076993,
+            "restored_early": 0.209192
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230224_110400",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.09151,
+            "healthy": 0.907303,
+            "restored_early": 0.001188
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230224_143600",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.87041,
+            "healthy": 0.112123,
+            "restored_early": 0.017467
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230224_180800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.810156,
+            "healthy": 0.172471,
+            "restored_early": 0.017373
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230224_214000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.82793,
+            "healthy": 0.157596,
+            "restored_early": 0.014474
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230225_011200",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.661255,
+            "healthy": 0.337147,
+            "restored_early": 0.001597
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230225_044400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.819217,
+            "healthy": 0.136288,
+            "restored_early": 0.044495
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230225_081600",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.849732,
+            "healthy": 0.134997,
+            "restored_early": 0.015272
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        }
+      ],
+      "preprocessing_spec_version": "preproc-2026.10.0-as-deployed",
+      "served": false
+    },
+    {
+      "baselines": {
+        "training_majority": {
+          "ci_high": null,
+          "ci_low": null,
+          "ci_status": "undefined",
+          "defined_fraction": null,
+          "n_sites": 4,
+          "n_windows": 80,
+          "value": 0.0
+        },
+        "uniform_random": {
+          "ci_high": null,
+          "ci_low": null,
+          "ci_status": "undefined",
+          "defined_fraction": null,
+          "n_sites": 4,
+          "n_windows": 80,
+          "value": 0.33333333333333337
+        }
+      },
+      "embeddings": "reembedded",
+      "folds": [
+        {
+          "correct": 3,
+          "country": "Indonesia",
+          "evaluable": true,
+          "held_out_site": "ind_D2",
+          "n_test": 20,
+          "predicted_distribution": {
+            "degraded": 3,
+            "healthy": 9,
+            "restored_early": 8
+          },
+          "reason": null,
+          "train_classes": [
+            "degraded",
+            "healthy",
+            "restored_early"
+          ],
+          "train_sites": [
+            "ind_D3",
+            "ind_H4",
+            "ind_N1",
+            "ken_H1"
+          ],
+          "true_class": "degraded"
+        },
+        {
+          "correct": 7,
+          "country": "Indonesia",
+          "evaluable": true,
+          "held_out_site": "ind_D3",
+          "n_test": 20,
+          "predicted_distribution": {
+            "degraded": 7,
+            "healthy": 10,
+            "restored_early": 3
+          },
+          "reason": null,
+          "train_classes": [
+            "degraded",
+            "healthy",
+            "restored_early"
+          ],
+          "train_sites": [
+            "ind_D2",
+            "ind_H4",
+            "ind_N1",
+            "ken_H1"
+          ],
+          "true_class": "degraded"
+        },
+        {
+          "correct": 14,
+          "country": "Indonesia",
+          "evaluable": true,
+          "held_out_site": "ind_H4",
+          "n_test": 20,
+          "predicted_distribution": {
+            "degraded": 3,
+            "healthy": 14,
+            "restored_early": 3
+          },
+          "reason": null,
+          "train_classes": [
+            "degraded",
+            "healthy",
+            "restored_early"
+          ],
+          "train_sites": [
+            "ind_D2",
+            "ind_D3",
+            "ind_N1",
+            "ken_H1"
+          ],
+          "true_class": "healthy"
+        },
+        {
+          "correct": null,
+          "country": "Indonesia",
+          "evaluable": false,
+          "held_out_site": "ind_N1",
+          "n_test": 20,
+          "predicted_distribution": {
+            "degraded": 18,
+            "healthy": 2
+          },
+          "reason": "restored_early not evaluable: class absent from the training fold",
+          "train_classes": [
+            "degraded",
+            "healthy"
+          ],
+          "train_sites": [
+            "ind_D2",
+            "ind_D3",
+            "ind_H4",
+            "ken_H1"
+          ],
+          "true_class": "restored_early"
+        },
+        {
+          "correct": 11,
+          "country": "Kenya",
+          "evaluable": true,
+          "held_out_site": "ken_H1",
+          "n_test": 20,
+          "predicted_distribution": {
+            "degraded": 9,
+            "healthy": 11
+          },
+          "reason": null,
+          "train_classes": [
+            "degraded",
+            "healthy",
+            "restored_early"
+          ],
+          "train_sites": [
+            "ind_D2",
+            "ind_D3",
+            "ind_H4",
+            "ind_N1"
+          ],
+          "true_class": "healthy"
+        }
+      ],
+      "metrics": {
+        "balanced_accuracy": {
+          "ci_high": 0.5833333333333334,
+          "ci_low": 0.3,
+          "ci_status": "estimated",
+          "defined_fraction": 0.8748,
+          "n_sites": 4,
+          "n_windows": 80,
+          "value": 0.4375
+        },
+        "per_class": {
+          "degraded": {
+            "ci_high": 0.45,
+            "ci_low": 0.05,
+            "ci_status": "estimated",
+            "defined_fraction": 0.934,
+            "n_sites": 2,
+            "n_windows": 40,
+            "value": 0.25
+          },
+          "healthy": {
+            "ci_high": 0.8,
+            "ci_low": 0.41812500000000014,
+            "ci_status": "estimated",
+            "defined_fraction": 0.9408,
+            "n_sites": 2,
+            "n_windows": 40,
+            "value": 0.625
+          }
+        },
+        "per_region": {
+          "Indonesia": {
+            "ci_high": 0.6833333333333333,
+            "ci_low": 0.15,
+            "ci_status": "estimated",
+            "defined_fraction": 1.0,
+            "n_sites": 3,
+            "n_windows": 60,
+            "value": 0.4
+          },
+          "Kenya": {
+            "ci_high": null,
+            "ci_low": null,
+            "ci_status": "not_estimable_1_site",
+            "defined_fraction": 1.0,
+            "n_sites": 1,
+            "n_windows": 20,
+            "value": 0.55
+          }
+        }
+      },
+      "model_version": "interim-real-only-2026.10.1",
+      "predictions": [
+        {
+          "file_id": "ind_D2_20220830_124200",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.546082,
+            "healthy": 0.277527,
+            "restored_early": 0.176391
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220830_155400",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.261716,
+            "healthy": 0.52393,
+            "restored_early": 0.214354
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220830_190600",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.689658,
+            "healthy": 0.168541,
+            "restored_early": 0.141802
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220830_222000",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.192088,
+            "healthy": 0.132735,
+            "restored_early": 0.675178
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220831_013200",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.441124,
+            "healthy": 0.491919,
+            "restored_early": 0.066956
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220831_044400",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.259445,
+            "healthy": 0.71312,
+            "restored_early": 0.027435
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220831_075800",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.31345,
+            "healthy": 0.55057,
+            "restored_early": 0.135979
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220831_111000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.569373,
+            "healthy": 0.294837,
+            "restored_early": 0.13579
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220831_142200",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.169714,
+            "healthy": 0.744571,
+            "restored_early": 0.085715
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220831_173600",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.147119,
+            "healthy": 0.228772,
+            "restored_early": 0.624109
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220831_204800",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.405893,
+            "healthy": 0.528364,
+            "restored_early": 0.065743
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220901_000000",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.121893,
+            "healthy": 0.042866,
+            "restored_early": 0.83524
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220901_031400",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.18234,
+            "healthy": 0.166758,
+            "restored_early": 0.650902
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220901_062600",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.092257,
+            "healthy": 0.148859,
+            "restored_early": 0.758884
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220901_093800",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.199653,
+            "healthy": 0.196686,
+            "restored_early": 0.60366
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220901_125200",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.118536,
+            "healthy": 0.529822,
+            "restored_early": 0.351642
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220901_160400",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.224676,
+            "healthy": 0.74498,
+            "restored_early": 0.030344
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220901_191600",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.414644,
+            "healthy": 0.464948,
+            "restored_early": 0.120408
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220901_223000",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.276888,
+            "healthy": 0.135999,
+            "restored_early": 0.587113
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D2_20220902_014200",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.0783,
+            "healthy": 0.096805,
+            "restored_early": 0.824894
+          },
+          "site_id": "ind_D2",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220830_135800",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.431224,
+            "healthy": 0.064645,
+            "restored_early": 0.504132
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220830_170800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.705827,
+            "healthy": 0.15417,
+            "restored_early": 0.140004
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220830_201800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.484657,
+            "healthy": 0.385507,
+            "restored_early": 0.129836
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220830_233000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.455241,
+            "healthy": 0.238462,
+            "restored_early": 0.306297
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220831_024000",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.078958,
+            "healthy": 0.907519,
+            "restored_early": 0.013523
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220831_055200",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.109028,
+            "healthy": 0.862771,
+            "restored_early": 0.028201
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220831_090200",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.360488,
+            "healthy": 0.036269,
+            "restored_early": 0.603243
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220831_121200",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.360015,
+            "healthy": 0.515896,
+            "restored_early": 0.124089
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220831_152400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.505191,
+            "healthy": 0.28852,
+            "restored_early": 0.206289
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220831_183400",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.337438,
+            "healthy": 0.585985,
+            "restored_early": 0.076576
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220831_214600",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.239436,
+            "healthy": 0.645889,
+            "restored_early": 0.114675
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220901_005600",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.294899,
+            "healthy": 0.627672,
+            "restored_early": 0.077429
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220901_040600",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.100594,
+            "healthy": 0.852658,
+            "restored_early": 0.046748
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220901_071800",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.420389,
+            "healthy": 0.049606,
+            "restored_early": 0.530005
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220901_102800",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.069995,
+            "healthy": 0.887025,
+            "restored_early": 0.04298
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220901_134000",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.369024,
+            "healthy": 0.563658,
+            "restored_early": 0.067319
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220901_165000",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.183727,
+            "healthy": 0.769528,
+            "restored_early": 0.046744
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220901_200000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.625201,
+            "healthy": 0.285491,
+            "restored_early": 0.089308
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220901_231200",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.547279,
+            "healthy": 0.366764,
+            "restored_early": 0.085957
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_D3_20220902_022200",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.545506,
+            "healthy": 0.30029,
+            "restored_early": 0.154204
+          },
+          "site_id": "ind_D3",
+          "true_label": "degraded"
+        },
+        {
+          "file_id": "ind_H4_20220830_102200",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.363188,
+            "healthy": 0.623967,
+            "restored_early": 0.012845
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220830_155600",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.135934,
+            "healthy": 0.85745,
+            "restored_early": 0.006617
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220830_213600",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.04544,
+            "healthy": 0.810936,
+            "restored_early": 0.143624
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220831_033600",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.082355,
+            "healthy": 0.911737,
+            "restored_early": 0.005908
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220831_093000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.581751,
+            "healthy": 0.397336,
+            "restored_early": 0.020913
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220831_153400",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.39744,
+            "healthy": 0.14023,
+            "restored_early": 0.462329
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220831_210800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.526208,
+            "healthy": 0.454644,
+            "restored_early": 0.019148
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220901_024800",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.081225,
+            "healthy": 0.913567,
+            "restored_early": 0.005208
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220901_084000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.792713,
+            "healthy": 0.170787,
+            "restored_early": 0.0365
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220901_141400",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.036564,
+            "healthy": 0.059444,
+            "restored_early": 0.903992
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220901_195000",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.33037,
+            "healthy": 0.660005,
+            "restored_early": 0.009626
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220902_012400",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.100035,
+            "healthy": 0.882354,
+            "restored_early": 0.017611
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220902_070000",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.342556,
+            "healthy": 0.641531,
+            "restored_early": 0.015913
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220902_123400",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.186371,
+            "healthy": 0.779171,
+            "restored_early": 0.034457
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220902_181400",
+          "predicted_label": "restored_early",
+          "probabilities": {
+            "degraded": 0.088681,
+            "healthy": 0.225731,
+            "restored_early": 0.685588
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220903_001000",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.047553,
+            "healthy": 0.911079,
+            "restored_early": 0.041368
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220903_055000",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.114526,
+            "healthy": 0.579055,
+            "restored_early": 0.306419
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220903_112400",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.331188,
+            "healthy": 0.563856,
+            "restored_early": 0.104956
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220903_170000",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.082632,
+            "healthy": 0.846287,
+            "restored_early": 0.071081
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_H4_20220903_223400",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.358065,
+            "healthy": 0.400009,
+            "restored_early": 0.241925
+          },
+          "site_id": "ind_H4",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ind_N1_20220906_124000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.750471,
+            "healthy": 0.249529
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220907_113400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.570274,
+            "healthy": 0.429726
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220908_045800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.862336,
+            "healthy": 0.137664
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220908_143400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.502418,
+            "healthy": 0.497582
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220908_195800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.803848,
+            "healthy": 0.196152
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220908_222000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.900811,
+            "healthy": 0.099188
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220909_011400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.728495,
+            "healthy": 0.271505
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220909_033400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.776571,
+            "healthy": 0.223429
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220909_060800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.845551,
+            "healthy": 0.154449
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220909_120200",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.551044,
+            "healthy": 0.448956
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220909_172800",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.436521,
+            "healthy": 0.563479
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220909_202800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.822742,
+            "healthy": 0.177259
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220909_225600",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.666437,
+            "healthy": 0.333563
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220910_014000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.891908,
+            "healthy": 0.108092
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220910_041200",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.723908,
+            "healthy": 0.276092
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220910_113400",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.475144,
+            "healthy": 0.524856
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220910_142200",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.538019,
+            "healthy": 0.461981
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220910_205000",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.879506,
+            "healthy": 0.120494
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220911_112600",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.594867,
+            "healthy": 0.405133
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ind_N1_20220912_011600",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.694232,
+            "healthy": 0.305768
+          },
+          "site_id": "ind_N1",
+          "true_label": "restored_early"
+        },
+        {
+          "file_id": "ken_H1_20230222_130800",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.066022,
+            "healthy": 0.931233,
+            "restored_early": 0.002744
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230222_164000",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.172432,
+            "healthy": 0.815624,
+            "restored_early": 0.011944
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230222_201200",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.916351,
+            "healthy": 0.064655,
+            "restored_early": 0.018994
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230222_234400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.857684,
+            "healthy": 0.138639,
+            "restored_early": 0.003677
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230223_031600",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.084413,
+            "healthy": 0.913622,
+            "restored_early": 0.001965
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230223_064800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.935094,
+            "healthy": 0.055239,
+            "restored_early": 0.009668
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230223_102000",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.011854,
+            "healthy": 0.987522,
+            "restored_early": 0.000624
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230223_135200",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.550265,
+            "healthy": 0.124842,
+            "restored_early": 0.324892
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230223_172400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.949089,
+            "healthy": 0.048684,
+            "restored_early": 0.002228
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230223_205600",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.161834,
+            "healthy": 0.83397,
+            "restored_early": 0.004195
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230224_002800",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.010108,
+            "healthy": 0.988138,
+            "restored_early": 0.001754
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230224_040000",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.297537,
+            "healthy": 0.690424,
+            "restored_early": 0.012039
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230224_073200",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.452177,
+            "healthy": 0.539908,
+            "restored_early": 0.007915
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230224_110400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.687863,
+            "healthy": 0.307508,
+            "restored_early": 0.004629
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230224_143600",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.896536,
+            "healthy": 0.092324,
+            "restored_early": 0.01114
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230224_180800",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.737852,
+            "healthy": 0.216896,
+            "restored_early": 0.045252
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230224_214000",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.090857,
+            "healthy": 0.906406,
+            "restored_early": 0.002737
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230225_011200",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.032038,
+            "healthy": 0.96511,
+            "restored_early": 0.002851
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230225_044400",
+          "predicted_label": "degraded",
+          "probabilities": {
+            "degraded": 0.87972,
+            "healthy": 0.109176,
+            "restored_early": 0.011104
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        },
+        {
+          "file_id": "ken_H1_20230225_081600",
+          "predicted_label": "healthy",
+          "probabilities": {
+            "degraded": 0.169671,
+            "healthy": 0.826099,
+            "restored_early": 0.00423
+          },
+          "site_id": "ken_H1",
+          "true_label": "healthy"
+        }
+      ],
+      "preprocessing_spec_version": "preproc-2026.10.1-reef-audio",
+      "served": true
+    }
+  ],
+  "report_version": "loso-2026.10.1",
+  "schema_version": 1,
+  "served_model_version": "interim-real-only-2026.10.1",
+  "trainer": {
+    "git_sha": "ba9ce0137d326e52bfebc6ab449759454e968741",
+    "recipe_note": "Each fold runs train_mlp on all windows of the other four sites with its own 15% validation split; the committed models also used an outer 15% random test split that a site-held-out fold does not replicate.",
+    "script": "scripts/train_interim_real_only.py",
+    "seed": 42
+  }
+}

@@ -7,5 +7,6 @@ models/**/*.f32 binary
 models/**/*.npz binary
 lambdas/**/fixtures/*.f32 binary
 models/interim-real-only/evaluation/**/*.json text eol=lf
+models/interim-real-only/evaluation/REPORT.md text eol=lf
 models/interim-real-only-2026.10.1/*.json text eol=lf
 lambdas/**/fixtures/*.json text eol=lf
