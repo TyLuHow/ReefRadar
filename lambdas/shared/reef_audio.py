@@ -42,7 +42,10 @@ uninitialised memory there).
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
+import re
 import struct
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
@@ -183,14 +186,14 @@ def decode_wav(data: bytes) -> DecodedAudio:
         raise InvalidAudioFormatError("missing data chunk")
 
     format_tag, channels, sample_rate, _byte_rate, block_align, bits = fmt
-    if format_tag != _WAVE_FORMAT_PCM or bits != 16:
+    if format_tag != _WAVE_FORMAT_PCM or bits not in (16, 24):
         raise InvalidAudioFormatError(
             f"unsupported WAV format (format tag {format_tag}, {bits}-bit); "
-            "this decoder reads 16-bit PCM"
+            "this decoder reads 16- and 24-bit PCM"
         )
     if channels < 1:
         raise InvalidAudioFormatError("WAV has no channels")
-    if block_align != channels * 2:
+    if block_align != channels * bits // 8:
         raise InvalidAudioFormatError("inconsistent block alignment in fmt chunk")
     if not (MIN_SAMPLE_RATE <= sample_rate <= MAX_SAMPLE_RATE):
         raise InvalidAudioFormatError(
@@ -198,8 +201,15 @@ def decode_wav(data: bytes) -> DecodedAudio:
         )
 
     frames = data_len // block_align
-    raw = np.frombuffer(data, dtype="<i2", count=frames * channels, offset=data_start)
-    samples = (raw.astype(np.float32) / np.float32(32768.0)).reshape(frames, channels)
+    if bits == 16:
+        raw = np.frombuffer(data, dtype="<i2", count=frames * channels, offset=data_start)
+        samples = (raw.astype(np.float32) / np.float32(32768.0)).reshape(frames, channels)
+    else:
+        b = np.frombuffer(data, dtype=np.uint8, count=frames * channels * 3, offset=data_start)
+        b = b.reshape(-1, 3).astype(np.int32)
+        v = b[:, 0] | (b[:, 1] << 8) | (b[:, 2] << 16)
+        v = (v ^ 0x800000) - 0x800000  # sign-extend 24 -> 32 bits
+        samples = (v.astype(np.float32) / np.float32(8388608.0)).reshape(frames, channels)
     return DecodedAudio(
         samples=samples,
         sample_rate=int(sample_rate),
@@ -394,3 +404,147 @@ def audio_to_windows(data: bytes) -> PreparedAudio:
             "spec_version": SPEC_VERSION,
         },
     )
+
+
+# --- segment transport: segments.f32 + sidecar JSON -----------------------------------
+#
+# The preprocessor writes the normalised windows as one binary object (n x
+# WINDOW_SAMPLES little-endian float32, C order) and a small JSON sidecar. The
+# classifier reads windows with ranged GETs (SEGMENT_BYTES_PER_WINDOW each) and
+# verifies the sidecar; offline scripts use the same helpers.
+
+SEGMENTS_FORMAT = "f32le"
+SIDECAR_SCHEMA_VERSION = 1
+SEGMENT_BYTES_PER_WINDOW = WINDOW_SAMPLES * 4
+
+_SPEC_VERSION_RE = re.compile(r"^[a-z0-9][a-z0-9.+-]*$")
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_SIDECAR_KEYS = (
+    "schema_version",
+    "spec_version",
+    "segments_format",
+    "sample_rate_hz",
+    "window_samples",
+    "window_s",
+    "num_windows",
+    "segments_bytes",
+    "segments_sha256",
+    "levels",
+    "input",
+    "dropped_tail_s",
+)
+
+
+class SidecarError(ValueError):
+    """The segments object or its sidecar is malformed or inconsistent."""
+
+
+def encode_segments(windows: np.ndarray) -> bytes:
+    """Windows (n, WINDOW_SAMPLES) -> little-endian float32 bytes in C order."""
+    arr = np.asarray(windows)
+    if arr.ndim != 2 or arr.shape[1] != WINDOW_SAMPLES:
+        raise SidecarError(f"windows must have shape (n, {WINDOW_SAMPLES}), got {arr.shape}")
+    return np.ascontiguousarray(arr, dtype="<f4").tobytes()
+
+
+def decode_segments(raw: bytes) -> np.ndarray:
+    """Inverse of encode_segments; float32 (n, WINDOW_SAMPLES)."""
+    if len(raw) % SEGMENT_BYTES_PER_WINDOW != 0:
+        raise SidecarError(
+            f"segments length {len(raw)} is not a multiple of {SEGMENT_BYTES_PER_WINDOW} bytes"
+        )
+    arr = np.frombuffer(raw, dtype="<f4").reshape(-1, WINDOW_SAMPLES)
+    return arr.astype(np.float32, copy=True)
+
+
+def build_sidecar(prepared: PreparedAudio, segments_bytes: bytes) -> dict:
+    """The JSON-serialisable sidecar describing `segments_bytes` (all values finite)."""
+    n = int(prepared.windows.shape[0])
+    if len(segments_bytes) != n * SEGMENT_BYTES_PER_WINDOW:
+        raise SidecarError(
+            f"segments length {len(segments_bytes)} does not match {n} windows "
+            f"x {SEGMENT_BYTES_PER_WINDOW} bytes"
+        )
+    return {
+        "schema_version": SIDECAR_SCHEMA_VERSION,
+        "spec_version": SPEC_VERSION,
+        "segments_format": SEGMENTS_FORMAT,
+        "sample_rate_hz": TARGET_SAMPLE_RATE,
+        "window_samples": WINDOW_SAMPLES,
+        "window_s": WINDOW_S,
+        "num_windows": n,
+        "segments_bytes": len(segments_bytes),
+        "segments_sha256": hashlib.sha256(segments_bytes).hexdigest(),
+        "levels": {
+            "peak_dbfs": [float(v) for v in prepared.peak_dbfs],
+            "rms_dbfs": [float(v) for v in prepared.rms_dbfs],
+            "silent": [bool(v) for v in prepared.silent],
+        },
+        "input": dict(prepared.input),
+        "dropped_tail_s": float(prepared.input["dropped_tail_s"]),
+    }
+
+
+def _reject_constant(name: str):
+    raise SidecarError(f"non-finite number {name} in sidecar")
+
+
+def parse_sidecar(raw: bytes) -> dict:
+    """Parse and validate sidecar JSON bytes; raises SidecarError on any violation."""
+    try:
+        sc = json.loads(raw, parse_constant=_reject_constant)
+    except SidecarError:
+        raise
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise SidecarError(f"sidecar is not valid JSON: {exc}") from exc
+    if not isinstance(sc, dict):
+        raise SidecarError("sidecar must be a JSON object")
+    missing = [k for k in _SIDECAR_KEYS if k not in sc]
+    if missing:
+        raise SidecarError(f"sidecar is missing keys: {missing}")
+
+    if sc["schema_version"] != SIDECAR_SCHEMA_VERSION or isinstance(sc["schema_version"], bool):
+        raise SidecarError(f"unsupported sidecar schema_version {sc['schema_version']!r}")
+    spec = sc["spec_version"]
+    if not isinstance(spec, str) or not _SPEC_VERSION_RE.match(spec):
+        raise SidecarError(f"invalid spec_version {spec!r}")
+    if sc["segments_format"] != SEGMENTS_FORMAT:
+        raise SidecarError(f"unsupported segments_format {sc['segments_format']!r}")
+    if sc["window_samples"] != WINDOW_SAMPLES or isinstance(sc["window_samples"], bool):
+        raise SidecarError(f"window_samples must be {WINDOW_SAMPLES}")
+    if sc["sample_rate_hz"] != TARGET_SAMPLE_RATE or isinstance(sc["sample_rate_hz"], bool):
+        raise SidecarError(f"sample_rate_hz must be {TARGET_SAMPLE_RATE}")
+    if sc["window_s"] != WINDOW_S:
+        raise SidecarError(f"window_s must be {WINDOW_S}")
+
+    n = sc["num_windows"]
+    if not isinstance(n, int) or isinstance(n, bool) or n < 0:
+        raise SidecarError("num_windows must be a non-negative integer")
+    size = sc["segments_bytes"]
+    if not isinstance(size, int) or isinstance(size, bool) or size != n * SEGMENT_BYTES_PER_WINDOW:
+        raise SidecarError(
+            f"segments_bytes {size!r} must equal num_windows x {SEGMENT_BYTES_PER_WINDOW}"
+        )
+    sha = sc["segments_sha256"]
+    if not isinstance(sha, str) or not _SHA256_RE.match(sha):
+        raise SidecarError("segments_sha256 must be 64 lowercase hex characters")
+
+    levels = sc["levels"]
+    if not isinstance(levels, dict) or any(k not in levels for k in ("peak_dbfs", "rms_dbfs", "silent")):
+        raise SidecarError("levels must hold peak_dbfs, rms_dbfs and silent")
+    for key in ("peak_dbfs", "rms_dbfs", "silent"):
+        if not isinstance(levels[key], list) or len(levels[key]) != n:
+            raise SidecarError(f"levels.{key} must be a list of length num_windows ({n})")
+    for key in ("peak_dbfs", "rms_dbfs"):
+        for v in levels[key]:
+            if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v < DBFS_FLOOR:
+                raise SidecarError(f"levels.{key} holds an invalid value {v!r}")
+    if any(not isinstance(v, bool) for v in levels["silent"]):
+        raise SidecarError("levels.silent must hold booleans")
+
+    if not isinstance(sc["input"], dict):
+        raise SidecarError("input must be an object")
+    tail = sc["dropped_tail_s"]
+    if isinstance(tail, bool) or not isinstance(tail, (int, float)) or not math.isfinite(tail) or tail < 0:
+        raise SidecarError("dropped_tail_s must be a finite non-negative number")
+    return sc
