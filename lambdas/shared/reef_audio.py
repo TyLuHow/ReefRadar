@@ -54,6 +54,10 @@ import numpy as np
 
 # --- frozen spec ---------------------------------------------------------------
 
+# FROZEN (05-05). Any later change to decode scaling, channel mixing, resampling,
+# framing or normalisation requires a new SPEC_VERSION, re-embedding of every
+# reference and training window, and a new contract version: the re-embedded
+# vectors (05-11) and the successor model (05-12) are tied to these exact window bytes.
 # Hyphens and dots only: the contract version pattern is ^[a-z0-9][a-z0-9.+-]*$.
 SPEC_VERSION = "preproc-2026.10.1-reef-audio"
 
@@ -618,3 +622,83 @@ def parse_sidecar(raw: bytes) -> dict:
     if isinstance(tail, bool) or not isinstance(tail, (int, float)) or not math.isfinite(tail) or tail < 0:
         raise SidecarError("dropped_tail_s must be a finite non-negative number")
     return sc
+
+
+# --- playback copy and the machine-readable spec ------------------------------------------
+
+
+def pcm16_wav_bytes(samples: np.ndarray, sample_rate: int) -> bytes:
+    """Mono 16-bit PCM WAV (44-byte header) for browser playback.
+
+    Values are clipped to [-1.0, 1.0] BEFORE the int16 cast, so an over-range
+    float never wraps (the old playback copy did). The full-scale code is 32767
+    (symmetric: -1.0 and 1.0 map to -32767 and 32767). NaN becomes 0.
+    """
+    x = np.nan_to_num(np.asarray(samples, dtype=np.float64), nan=0.0, posinf=1.0, neginf=-1.0)
+    pcm = np.rint(np.clip(x, -1.0, 1.0) * 32767.0).astype("<i2")
+    payload = pcm.tobytes()
+    rate = int(sample_rate)
+    header = (
+        b"RIFF"
+        + struct.pack("<I", 36 + len(payload))
+        + b"WAVEfmt "
+        + struct.pack("<IHHIIHH", 16, 1, 1, rate, rate * 2, 2, 16)
+        + b"data"
+        + struct.pack("<I", len(payload))
+    )
+    return header + payload
+
+
+def spec_summary() -> dict:
+    """JSON-serialisable description of this spec, for the contract preprocessing_spec."""
+    return {
+        "spec_version": SPEC_VERSION,
+        "sample_rate_hz": TARGET_SAMPLE_RATE,
+        "window_s": WINDOW_S,
+        "window_samples": WINDOW_SAMPLES,
+        "hop_s": HOP_SAMPLES / float(TARGET_SAMPLE_RATE),
+        "min_duration_s": MIN_DURATION_S,
+        "max_duration_s": MAX_DURATION_S,
+        "trailing_partial_window": "dropped",
+        "channel_mix": "mean",
+        "supported_input": {
+            "format_tags": list(SUPPORTED_FORMAT_TAGS),
+            "pcm_bits": list(_PCM_BITS),
+            "float_bits": list(_FLOAT_BITS),
+            "sample_rate_hz_range": [MIN_SAMPLE_RATE, MAX_SAMPLE_RATE],
+            "max_channels": MAX_CHANNELS,
+        },
+        "amplitude_scaling": {
+            "pcm8": "unsigned 8-bit: (value - 128) / 128",
+            "pcm16": "value / 32768",
+            "pcm24": "value / 8388608",
+            "pcm32": "value / 2147483648",
+            "float32": "as stored",
+            "float64": "as stored, cast to float32",
+            "full_scale": "the most negative integer code maps to exactly -1.0 for every bit depth and channel count",
+            "normalisation": {
+                "per_window_dc_removal": True,
+                "target_peak": TARGET_PEAK,
+                "silent_window": "a window that is all zeros after DC removal stays all zeros and is flagged silent",
+                "reference": "perch-hoplite zoo_interface.normalize_audio with taxonomy_model_tf target_peak 0.25, with an explicit silent branch",
+            },
+        },
+        "resampling": {
+            "method": "polyphase_kaiser_windowed_sinc",
+            "anti_alias_filter": True,
+            "kaiser_beta": KAISER_BETA,
+            "half_length_factor": HALF_LEN_FACTOR,
+            "reference_implementation": "scipy.signal.resample_poly 1.13.1 defaults (Kaiser beta 5.0, half-length 10 x max(up, down), zero padding)",
+        },
+        "levels": (
+            "peak and RMS dBFS of each 5 s window after resampling and before DC removal "
+            f"and normalisation, floored at {DBFS_FLOOR}; silent when the DC-removed window is all zeros"
+        ),
+        "embedding_model": {
+            "name": EMBEDDING_MODEL_NAME,
+            "version": EMBEDDING_MODEL_VERSION,
+            "dimension": EMBEDDING_DIM,
+            "kaggle_handle": KAGGLE_MODEL_HANDLE,
+            "saved_model_sha256": dict(SAVED_MODEL_SHA256),
+        },
+    }
