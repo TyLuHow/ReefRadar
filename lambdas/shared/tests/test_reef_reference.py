@@ -138,3 +138,84 @@ def test_validate_model_arrays_rejects_missing_label_map(bundled):
     config = {k: v for k, v in config.items() if k != "idx_to_label"}
     with pytest.raises(ValueError):
         rr.validate_model_arrays(weights, config)
+
+
+# --- contract reference set (plan 05-10) ------------------------------------------
+
+import shutil  # noqa: E402
+
+_BUCKET = Path(__file__).resolve().parents[3] / "contracts" / "bucket"
+_LOCATION_ONLY = ["ken_D3", "irma_eastern_sambo", "sanctsound_fk01", "sanctsound_fk02", "sanctsound_fk03", "sanctsound_fk04"]
+
+
+def _copy_bucket(tmp_path):
+    """A tmp copy of the committed contract bucket; returns (manifest path, manifest dict)."""
+    dest = tmp_path / "bucket"
+    shutil.copytree(_BUCKET, dest)
+    path = dest / "contract" / "v1.json"
+    return path, json.loads(path.read_text(encoding="utf-8"))
+
+
+def test_reference_set_repo_mode_v1():
+    ref = rr.load_reference_set()
+    manifest = json.loads((_BUCKET / "contract" / "v1.json").read_text(encoding="utf-8"))
+    assert ref.row_site_ids == manifest["artifacts"]["embeddings"]["row_site_ids"]
+    assert len(ref.row_site_ids) == 48
+    assert ref.matrix.shape == (48, 1280) and ref.matrix.dtype == np.float32
+    assert ref.location_only_ids == _LOCATION_ONLY
+    assert len(ref.sites) == 54
+    assert ref.contract_version == manifest["contract_version"]
+    assert ref.dataset_version == manifest["dataset_version"]
+    assert ref.projection_mean.shape == (1280,)
+    assert ref.projection_components.shape == (2, 1280)
+    assert len(ref.explained_variance_ratio) == 2
+    assert "33.0%" in ref.projection_note
+    assert ref.projection_uri == "v1/projection.json"
+
+
+def test_reference_set_bundled_mode(tmp_path, monkeypatch):
+    shutil.copy(_BUCKET / "contract" / "v1.json", tmp_path / rr.CONTRACT_MANIFEST)
+    shutil.copy(_BUCKET / "v1" / "embeddings.f32", tmp_path / rr.BUNDLED_ARTIFACT_FILES["embeddings"])
+    shutil.copy(_BUCKET / "v1" / "sites.json", tmp_path / rr.BUNDLED_ARTIFACT_FILES["sites"])
+    shutil.copy(_BUCKET / "v1" / "projection.json", tmp_path / rr.BUNDLED_ARTIFACT_FILES["projection"])
+    monkeypatch.setattr(rr, "_MODULE_DIR", str(tmp_path))
+    # Repo mode is pointed at nowhere: only the bundled files can satisfy the load.
+    monkeypatch.setattr(rr, "REPO_CONTRACT_MANIFEST", str(tmp_path / "nowhere" / "v1.json"))
+    ref = rr.load_reference_set()
+    assert len(ref.row_site_ids) == 48
+    assert ref.matrix.shape == (48, 1280)
+
+    # a flipped byte in a bundled artifact is rejected against the bundled manifest
+    path = tmp_path / rr.BUNDLED_ARTIFACT_FILES["embeddings"]
+    raw = bytearray(path.read_bytes())
+    raw[10] ^= 0xFF
+    path.write_bytes(bytes(raw))
+    with pytest.raises(rr.ReferenceDataError, match="sha256"):
+        rr.load_reference_set()
+
+
+@pytest.mark.parametrize("name,filename", [
+    ("embeddings", "embeddings.f32"), ("sites", "sites.json"), ("projection", "projection.json"),
+])
+def test_reference_set_tampered_artifact_rejected(tmp_path, name, filename):
+    manifest_path, manifest = _copy_bucket(tmp_path)
+    assert rr.load_reference_set(str(manifest_path)).row_site_ids  # the untouched copy loads
+    target = manifest_path.parent.parent / manifest["artifacts"][name]["uri"]
+    raw = bytearray(target.read_bytes())
+    raw[len(raw) // 2] ^= 0x01
+    target.write_bytes(bytes(raw))
+    with pytest.raises(rr.ReferenceDataError, match="sha256"):
+        rr.load_reference_set(str(manifest_path))
+
+
+def test_reference_set_byte_count_checked(tmp_path):
+    manifest_path, manifest = _copy_bucket(tmp_path)
+    manifest["artifacts"]["sites"]["bytes"] += 1
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(rr.ReferenceDataError, match="bytes"):
+        rr.load_reference_set(str(manifest_path))
+
+
+def test_reference_set_missing_manifest_is_reference_data_error(tmp_path):
+    with pytest.raises(rr.ReferenceDataError):
+        rr.load_reference_set(str(tmp_path / "none.json"))
