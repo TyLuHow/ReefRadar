@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: Phase 5 executing — waves 1-5 merged (12/17). Successor model interim-real-only-2026.10.1 (weights sha256 cdc169fa…ce80; exact recipe, seed 42, re-embedded rows); OOD threshold 0.3519 (LOSO p95 NN cosine distance); create-only archive mode. Next wave 6 (05-13 evaluation report).
+Plan: Phase 5 executing — waves 1-6 merged (13/17). LOSO report loso-2026.10.1: original model balanced acc 0.0625 [0, 0.175] (below chance); served successor 0.4375 [0.30, 0.58] (indistinguishable from chance; 4 evaluable sites); docs/MODEL_EVALUATION.md random-split figures withdrawn. Next wave 7 (05-14 contract v2 bundle on disk).
 Status: Phase 4 complete in code; owner device checks deferred (/gsd-verify-work 4). Autonomous run continuing at Phase 5
-Last activity: 2026-10-14 — Phase 5 wave 5 merged
+Last activity: 2026-10-14 — Phase 5 wave 6 merged
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
