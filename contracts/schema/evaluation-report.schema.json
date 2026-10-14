@@ -1,0 +1,479 @@
+{
+  "$defs": {
+    "evaluated_model": {
+      "properties": {
+        "baselines": {
+          "properties": {
+            "training_majority": {
+              "$ref": "#/$defs/metric"
+            },
+            "uniform_random": {
+              "$ref": "#/$defs/metric"
+            }
+          },
+          "required": [
+            "training_majority",
+            "uniform_random"
+          ],
+          "type": "object"
+        },
+        "embeddings": {
+          "enum": [
+            "original",
+            "reembedded"
+          ]
+        },
+        "folds": {
+          "items": {
+            "$ref": "#/$defs/fold"
+          },
+          "type": "array"
+        },
+        "metrics": {
+          "properties": {
+            "balanced_accuracy": {
+              "$ref": "#/$defs/metric"
+            },
+            "per_class": {
+              "additionalProperties": {
+                "$ref": "#/$defs/metric"
+              },
+              "type": "object"
+            },
+            "per_region": {
+              "additionalProperties": {
+                "$ref": "#/$defs/metric"
+              },
+              "type": "object"
+            }
+          },
+          "required": [
+            "per_class",
+            "per_region",
+            "balanced_accuracy"
+          ],
+          "type": "object"
+        },
+        "model_version": {
+          "pattern": "^[a-z0-9][a-z0-9.+-]*$",
+          "type": "string"
+        },
+        "predictions": {
+          "items": {
+            "$ref": "#/$defs/prediction"
+          },
+          "type": "array"
+        },
+        "preprocessing_spec_version": {
+          "pattern": "^[a-z0-9][a-z0-9.+-]*$",
+          "type": "string"
+        },
+        "served": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "model_version",
+        "embeddings",
+        "preprocessing_spec_version",
+        "served",
+        "folds",
+        "predictions",
+        "metrics",
+        "baselines"
+      ],
+      "type": "object"
+    },
+    "fold": {
+      "properties": {
+        "correct": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "country": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "evaluable": {
+          "type": "boolean"
+        },
+        "held_out_site": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "n_test": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "predicted_distribution": {
+          "additionalProperties": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "object"
+        },
+        "reason": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "train_classes": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "train_sites": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "true_class": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "held_out_site",
+        "country",
+        "true_class",
+        "train_sites",
+        "train_classes",
+        "n_test",
+        "evaluable",
+        "reason",
+        "correct",
+        "predicted_distribution"
+      ],
+      "type": "object"
+    },
+    "metric": {
+      "properties": {
+        "ci_high": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "ci_low": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "ci_status": {
+          "enum": [
+            "estimated",
+            "not_estimable_1_site",
+            "undefined"
+          ]
+        },
+        "defined_fraction": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "n_sites": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "n_windows": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "value": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "value",
+        "ci_low",
+        "ci_high",
+        "ci_status",
+        "n_sites",
+        "n_windows",
+        "defined_fraction"
+      ],
+      "type": "object"
+    },
+    "prediction": {
+      "properties": {
+        "file_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "predicted_label": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "probabilities": {
+          "additionalProperties": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "type": "object"
+        },
+        "site_id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "true_label": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "file_id",
+        "site_id",
+        "true_label",
+        "predicted_label",
+        "probabilities"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "urn:reefradar:contract:evaluation-report",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "A grouped (leave-one-site-out) evaluation of the classifier, reported with its method, inputs, per-fold outcomes, confidence intervals where they can be estimated, the baselines it must beat, the figures it invalidates and its caveats. Every metric states how its interval was (or was not) obtained; no figure is a bare accuracy.",
+  "properties": {
+    "bootstrap": {
+      "properties": {
+        "B": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "interval": {
+          "const": "percentile_95"
+        },
+        "levels": {
+          "const": 2
+        },
+        "min_sites_for_interval": {
+          "const": 2
+        },
+        "numpy_version": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "rng": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "seed": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "B",
+        "levels",
+        "seed",
+        "rng",
+        "numpy_version",
+        "interval",
+        "min_sites_for_interval"
+      ],
+      "type": "object"
+    },
+    "caveats": {
+      "items": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "drift_probe": {
+      "properties": {
+        "cosine": {
+          "properties": {
+            "max": {
+              "type": "number"
+            },
+            "mean": {
+              "type": "number"
+            },
+            "median": {
+              "type": "number"
+            },
+            "min": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "mean",
+            "median",
+            "min",
+            "max"
+          ],
+          "type": "object"
+        },
+        "note": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "pairs": {
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "pairs",
+        "cosine",
+        "note"
+      ],
+      "type": "object"
+    },
+    "generated_by": {
+      "properties": {
+        "git_sha": {
+          "pattern": "^[0-9a-f]{40}$",
+          "type": "string"
+        },
+        "script": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "script",
+        "git_sha"
+      ],
+      "type": "object"
+    },
+    "inputs": {
+      "items": {
+        "properties": {
+          "name": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "path": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "rows": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "sha256": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "path",
+          "sha256",
+          "rows"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "invalidated_figures": {
+      "items": {
+        "properties": {
+          "figure": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "reason": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "source": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "figure",
+          "value",
+          "source",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "method": {
+      "const": "leave_one_site_out"
+    },
+    "models": {
+      "items": {
+        "$ref": "#/$defs/evaluated_model"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "report_version": {
+      "pattern": "^[a-z0-9][a-z0-9.+-]*$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "served_model_version": {
+      "pattern": "^[a-z0-9][a-z0-9.+-]*$",
+      "type": "string"
+    },
+    "trainer": {
+      "properties": {
+        "git_sha": {
+          "pattern": "^[0-9a-f]{40}$",
+          "type": "string"
+        },
+        "recipe_note": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "script": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "seed": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "script",
+        "git_sha",
+        "seed",
+        "recipe_note"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "report_version",
+    "method",
+    "generated_by",
+    "inputs",
+    "trainer",
+    "bootstrap",
+    "models",
+    "served_model_version",
+    "drift_probe",
+    "invalidated_figures",
+    "caveats"
+  ],
+  "title": "EvaluationReport",
+  "type": "object"
+}

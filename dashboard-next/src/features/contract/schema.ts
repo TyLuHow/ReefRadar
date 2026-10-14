@@ -470,6 +470,169 @@ export const AnalysisResultStamp = AnalysisResultStampBase.superRefine((stamp, c
   });
 });
 
+// ---- evaluation report (05-06) --------------------------------------------
+
+const gitSha = z.string().regex(/^[0-9a-f]{40}$/);
+const nullableNumber = z.number().nullable();
+
+export const EvaluationGeneratedByBase = z.looseObject({ script: nonEmpty, git_sha: gitSha });
+
+export const EvaluationInputBase = z.looseObject({
+  name: nonEmpty,
+  path: nonEmpty,
+  sha256,
+  rows: nonNegativeInt,
+});
+
+export const EvaluationTrainerBase = z.looseObject({
+  script: nonEmpty,
+  git_sha: gitSha,
+  seed: z.number().int(),
+  recipe_note: nonEmpty,
+});
+
+export const EvaluationBootstrapBase = z.looseObject({
+  B: positiveInt,
+  levels: z.literal(2),
+  seed: z.number().int(),
+  rng: nonEmpty,
+  numpy_version: nonEmpty,
+  interval: z.literal('percentile_95'),
+  min_sites_for_interval: z.literal(2),
+});
+
+export const EvaluationMetricBase = z.looseObject({
+  value: nullableNumber,
+  ci_low: nullableNumber,
+  ci_high: nullableNumber,
+  ci_status: z.enum(['estimated', 'not_estimable_1_site', 'undefined']),
+  n_sites: nonNegativeInt,
+  n_windows: nonNegativeInt,
+  defined_fraction: z.number().min(0).max(1).nullable(),
+});
+
+export const EvaluationFoldBase = z.looseObject({
+  held_out_site: nonEmpty,
+  country: nonEmpty,
+  true_class: nonEmpty,
+  train_sites: z.array(nonEmpty),
+  train_classes: z.array(nonEmpty),
+  n_test: nonNegativeInt,
+  evaluable: z.boolean(),
+  reason: z.string().nullable(),
+  correct: z.number().int().nullable(),
+  predicted_distribution: z.record(z.string(), nonNegativeInt),
+});
+
+export const EvaluationPredictionBase = z.looseObject({
+  file_id: nonEmpty,
+  site_id: nonEmpty,
+  true_label: nonEmpty,
+  predicted_label: nonEmpty,
+  probabilities: z.record(z.string(), probability),
+});
+
+export const EvaluatedModelMetricsBase = z.looseObject({
+  per_class: z.record(z.string(), EvaluationMetricBase),
+  per_region: z.record(z.string(), EvaluationMetricBase),
+  balanced_accuracy: EvaluationMetricBase,
+});
+
+export const EvaluatedModelBaselinesBase = z.looseObject({
+  training_majority: EvaluationMetricBase,
+  uniform_random: EvaluationMetricBase,
+});
+
+export const EvaluatedModelBase = z.looseObject({
+  model_version: versionString,
+  embeddings: z.enum(['original', 'reembedded']),
+  preprocessing_spec_version: versionString,
+  served: z.boolean(),
+  folds: z.array(EvaluationFoldBase),
+  predictions: z.array(EvaluationPredictionBase),
+  metrics: EvaluatedModelMetricsBase,
+  baselines: EvaluatedModelBaselinesBase,
+});
+
+export const DriftProbeCosineBase = z.looseObject({
+  mean: z.number(),
+  median: z.number(),
+  min: z.number(),
+  max: z.number(),
+});
+
+export const DriftProbeBase = z.looseObject({
+  pairs: nonNegativeInt,
+  cosine: DriftProbeCosineBase,
+  note: nonEmpty,
+});
+
+export const InvalidatedFigureBase = z.looseObject({
+  figure: nonEmpty,
+  value: z.string(),
+  source: nonEmpty,
+  reason: nonEmpty,
+});
+
+export const EvaluationReportBase = z.looseObject({
+  schema_version: z.literal(1),
+  report_version: versionString,
+  method: z.literal('leave_one_site_out'),
+  generated_by: EvaluationGeneratedByBase,
+  inputs: z.array(EvaluationInputBase),
+  trainer: EvaluationTrainerBase,
+  bootstrap: EvaluationBootstrapBase,
+  models: z.array(EvaluatedModelBase).min(1),
+  served_model_version: versionString,
+  drift_probe: DriftProbeBase,
+  invalidated_figures: z.array(InvalidatedFigureBase),
+  caveats: z.array(nonEmpty).min(1),
+});
+export const EvaluationReport = EvaluationReportBase;
+
+// ---- OOD reference (05-06) ------------------------------------------------
+
+export const OodCalibrationSiteBase = z.looseObject({
+  site_id: nonEmpty,
+  n: nonNegativeInt,
+  p50: nonNegativeNumber,
+  p95: nonNegativeNumber,
+  max: nonNegativeNumber,
+});
+
+export const OodCalibrationBase = z.looseObject({
+  method: z.literal('leave_one_site_out_nearest_neighbour'),
+  percentile: z.literal(95),
+  pooled_n: nonNegativeInt,
+  per_site: z.array(OodCalibrationSiteBase),
+});
+
+export const OodEmbeddingsBase = z.looseObject({
+  uri: z.string().regex(ARTIFACT_URI_PATTERN),
+  sha256,
+  dtype: z.literal('float32-le'),
+  dim: z.literal(1280),
+  count: positiveInt,
+});
+
+export const OodSourceInputBase = z.looseObject({ path: nonEmpty, sha256 });
+
+export const OodReferenceBase = z.looseObject({
+  schema_version: z.literal(1),
+  ood_version: versionString,
+  metric: z.literal('cosine_distance'),
+  k: z.literal(1),
+  threshold: nonNegativeNumber,
+  calibration: OodCalibrationBase,
+  embeddings: OodEmbeddingsBase,
+  row_site_ids: z.array(nonEmpty),
+  preprocessing_spec_version: versionString,
+  embedding_model: EmbeddingModelBase,
+  embedding_space_note: nonEmpty,
+  source_inputs: z.array(OodSourceInputBase),
+});
+export const OodReference = OodReferenceBase;
+
 // ---- inferred types -------------------------------------------------------
 
 export type ContractPointer = z.infer<typeof ContractPointer>;
@@ -483,3 +646,5 @@ export type ModelVersion = z.infer<typeof ModelVersion>;
 export type PreprocessingSpec = z.infer<typeof PreprocessingSpec>;
 export type Projection = z.infer<typeof Projection>;
 export type AnalysisResultStamp = z.infer<typeof AnalysisResultStamp>;
+export type EvaluationReport = z.infer<typeof EvaluationReport>;
+export type OodReference = z.infer<typeof OodReference>;

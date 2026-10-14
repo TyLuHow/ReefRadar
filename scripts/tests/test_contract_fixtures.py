@@ -237,8 +237,8 @@ def test_the_corpus_covers_every_schema_and_every_mutation_kind():
     corpus = _load(FIXTURES / "parity-corpus.json")
     schemas = {e["schema"] for e in corpus}
     assert schemas == {
-        "analysis-result", "contract-manifest", "contract-pointer", "model-version",
-        "preprocessing-spec", "projection", "site",
+        "analysis-result", "contract-manifest", "contract-pointer", "evaluation-report", "model-version",
+        "ood-reference", "preprocessing-spec", "projection", "site",
     }
     cases = [e["case"] for e in corpus]
     for kind in ("valid:", "mutant:", "curated:"):
