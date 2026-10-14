@@ -17,6 +17,7 @@ import build_contract
 import check_contract
 import contract_lib
 
+FIXTURE_VERSION = contract_lib.FIXTURE_CONTRACT_VERSION
 CONTRACTS = contract_lib.CONTRACTS_DIR
 FIXTURES = contract_lib.FIXTURES_DIR
 BUCKET = contract_lib.BUCKET_DIR
@@ -62,19 +63,26 @@ def _edit_json(path, mutate):
 # Fixture manifests and pointers
 # ---------------------------------------------------------------------------
 
-def test_fixture_v2_differs_from_v1_in_exactly_three_paths():
+def test_fixture_manifest_differs_from_v1_in_exactly_three_paths():
     v1 = _load(BUCKET / "contract" / "v1.json")
-    v2 = _load(FIXTURES / "bucket" / "contract" / "v2.json")
-    assert _diff_paths(v1, v2) == ["contract_version", "coverage.has_diel", "fixture"]
-    assert (v1["contract_version"], v2["contract_version"]) == (1, 2)
-    assert "fixture" not in v1 and v2["fixture"] is True
-    assert (v1["coverage"]["has_diel"], v2["coverage"]["has_diel"]) == (False, True)
+    fx = _load(FIXTURES / "bucket" / "contract" / f"v{FIXTURE_VERSION}.json")
+    assert _diff_paths(v1, fx) == ["contract_version", "coverage.has_diel", "fixture"]
+    assert (v1["contract_version"], fx["contract_version"]) == (1, FIXTURE_VERSION)
+    assert "fixture" not in v1 and fx["fixture"] is True
+    assert (v1["coverage"]["has_diel"], fx["coverage"]["has_diel"]) == (False, True)
 
 
-def test_fixture_v2_reuses_v1_artifact_uris_that_exist_in_the_bucket():
-    v2 = _load(FIXTURES / "bucket" / "contract" / "v2.json")
+def test_fixture_version_is_the_sentinel_and_no_v2_fixture_remains():
+    assert FIXTURE_VERSION == 99
+    assert contract_lib.FIXTURE_BASE_VERSION == 1
+    assert not (FIXTURES / "bucket" / "contract" / "v2.json").exists()
+    assert not (FIXTURES / "latest-v2.json").exists()
+
+
+def test_fixture_manifest_reuses_v1_artifact_uris_that_exist_in_the_bucket():
+    fx = _load(FIXTURES / "bucket" / "contract" / f"v{FIXTURE_VERSION}.json")
     entries = []
-    for entry in v2["artifacts"].values():
+    for entry in fx["artifacts"].values():
         entries += list(entry.values()) if "uri" not in entry and "present" not in entry else [entry]
     uris = [e["uri"] for e in entries if isinstance(e, dict) and "uri" in e]
     assert len(uris) >= 12
@@ -90,23 +98,70 @@ def test_fixtures_live_only_under_contracts_fixtures():
         assert _load(path).get("fixture") is not True
 
 
-@pytest.mark.parametrize("name,version", [("latest-v1.json", 1), ("latest-v2.json", 2)])
+@pytest.mark.parametrize(
+    "name,version", [("latest-v1.json", 1), (f"latest-v{FIXTURE_VERSION}.json", FIXTURE_VERSION)]
+)
 def test_pointers_validate_and_hash_their_manifest(name, version):
     pointer = _load(FIXTURES / name)
     contract_lib.validate(pointer, "contract-pointer")
     assert pointer["contract_version"] == version
     assert pointer["manifest_uri"] == f"contract/v{version}.json"
-    manifest_dir = BUCKET if version == 1 else FIXTURES / "bucket"
+    manifest_dir = BUCKET if version == 1 else FIXTURES / "bucket"  # the fixture is not in the bucket
     data = (manifest_dir / pointer["manifest_uri"]).read_bytes()
     assert pointer["manifest_sha256"] == contract_lib.sha256_hex(data)
 
 
 def test_fixture_manifest_validates_against_the_manifest_schema():
-    contract_lib.validate(_load(FIXTURES / "bucket" / "contract" / "v2.json"), "contract-manifest")
+    contract_lib.validate(
+        _load(FIXTURES / "bucket" / "contract" / f"v{FIXTURE_VERSION}.json"), "contract-manifest"
+    )
 
 
 def test_fixture_files_equal_a_fresh_build():
     assert build_contract.main(["--version", "1", "--check"]) == 0
+
+
+def test_check_compares_fixtures_to_a_derivation_even_when_v1_is_published(contracts_copy, monkeypatch, capsys):
+    monkeypatch.setattr(contract_lib, "CONTRACTS_DIR", contracts_copy)
+    assert "1" in build_contract._published_versions(contracts_copy)
+    assert build_contract.main(["--version", "1", "--check"]) == 0
+    path = contracts_copy / "fixtures" / "invalid" / "site-null-doi-without-note.json"
+    path.write_bytes(path.read_bytes().replace(b"A null DOI", b"A NULL DOI", 1))
+    assert build_contract.main(["--version", "1", "--check"]) == 1
+    assert "differs from a fresh derivation" in capsys.readouterr().out
+
+
+def test_fixture_version_never_collides_with_a_bucket_version(contracts_copy, capsys):
+    shutil.copy(
+        contracts_copy / "fixtures" / "bucket" / "contract" / f"v{FIXTURE_VERSION}.json",
+        contracts_copy / "bucket" / "contract" / f"v{FIXTURE_VERSION}.json",
+    )
+    assert _run(contracts_copy, "--check") == 1
+    assert "collides" in capsys.readouterr().out
+
+
+def test_a_fixture_manifest_at_a_non_sentinel_version_fails(contracts_copy, capsys):
+    fixtures = contracts_copy / "fixtures"
+    (fixtures / "bucket" / "contract" / f"v{FIXTURE_VERSION}.json").rename(
+        fixtures / "bucket" / "contract" / "v7.json"
+    )
+    _edit_json(fixtures / "bucket" / "contract" / "v7.json", lambda m: m.__setitem__("contract_version", 7))
+    assert _run(contracts_copy, "--check") == 1
+    assert "FIXTURE_CONTRACT_VERSION" in capsys.readouterr().out
+
+
+def test_fixtures_derive_from_committed_v1_without_rebuilding(contracts_copy, monkeypatch):
+    def boom(*args, **kwargs):
+        raise AssertionError("--fixtures must not run the v1 source recipe")
+
+    monkeypatch.setattr(build_contract, "build_bundle", boom)
+    monkeypatch.setattr(contract_lib, "CONTRACTS_DIR", contracts_copy)
+    fixture = contracts_copy / "fixtures" / "bucket" / "contract" / f"v{FIXTURE_VERSION}.json"
+    original = fixture.read_bytes()
+    fixture.unlink()
+    assert build_contract.main(["--version", "1", "--fixtures"]) == 0
+    assert fixture.read_bytes() == original
+    assert not (contracts_copy / "fixtures" / "bucket" / "contract" / "v2.json").exists()
 
 
 # ---------------------------------------------------------------------------
@@ -298,15 +353,18 @@ def test_a_different_published_sha256_fails(contracts_copy, capsys):
 
 def test_a_fixture_manifest_placed_in_the_bucket_fails(contracts_copy, capsys):
     shutil.copy(
-        contracts_copy / "fixtures" / "bucket" / "contract" / "v2.json",
-        contracts_copy / "bucket" / "contract" / "v2.json",
+        contracts_copy / "fixtures" / "bucket" / "contract" / f"v{FIXTURE_VERSION}.json",
+        contracts_copy / "bucket" / "contract" / f"v{FIXTURE_VERSION}.json",
     )
     assert _run(contracts_copy, "--check") == 1
     assert "fixture" in capsys.readouterr().out
 
 
 def test_a_fixture_manifest_that_forgets_its_marker_fails(contracts_copy, capsys):
-    _edit_json(contracts_copy / "fixtures" / "bucket" / "contract" / "v2.json", lambda m: m.pop("fixture"))
+    _edit_json(
+        contracts_copy / "fixtures" / "bucket" / "contract" / f"v{FIXTURE_VERSION}.json",
+        lambda m: m.pop("fixture"),
+    )
     assert _run(contracts_copy, "--check") == 1
     assert "must be marked fixture true" in capsys.readouterr().out
 
@@ -323,7 +381,7 @@ def test_a_pointer_with_the_wrong_manifest_hash_fails(contracts_copy, capsys):
     def mutate(pointer):
         pointer["manifest_sha256"] = "f" * 64
 
-    _edit_json(contracts_copy / "fixtures" / "latest-v2.json", mutate)
+    _edit_json(contracts_copy / "fixtures" / f"latest-v{FIXTURE_VERSION}.json", mutate)
     assert _run(contracts_copy, "--check") == 1
     assert "manifest_sha256" in capsys.readouterr().out
 

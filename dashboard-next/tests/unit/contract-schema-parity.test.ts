@@ -9,6 +9,7 @@ import { DEFAULT_CONTRACT_BASE_URL } from '@/features/contract/config';
 import * as schema from '@/features/contract/schema';
 import { useCoverage, useModelVersion } from '@/features/contract/hooks';
 import { installContractFetch, REPO_ROOT, resetContractStore, setContractPin, type ContractFetchHandle } from './support/contract-fetch';
+import { FIXTURE_CONTRACT_VERSION } from '../shared/contract-fixture-version';
 
 /**
  * 02-07: the hand-mirrored Zod schemas must agree with the JSON Schemas.
@@ -215,8 +216,8 @@ describe('model and coverage hooks', () => {
     });
   });
 
-  it('a pinned fixture v2 shows has_diel true and does not request the pointer', async () => {
-    const { result } = renderHook(() => useCoverage(2), { wrapper });
+  it('a pinned fixture manifest shows has_diel true and does not request the pointer', async () => {
+    const { result } = renderHook(() => useCoverage(FIXTURE_CONTRACT_VERSION), { wrapper });
     await waitFor(() => expect(result.current.data).toBeDefined());
     expect(result.current.data?.has_diel).toBe(true);
     expect(handle.requests).not.toContain('contract/latest.json');

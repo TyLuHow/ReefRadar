@@ -2,6 +2,7 @@ import { test, expect, type Route } from '@playwright/test';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { mockApi, mockContract, expectNoUnhandledApiCalls } from './support/mock-api';
+import { FIXTURE_CONTRACT_VERSION, FIXTURE_MANIFEST_PATH } from '../shared/contract-fixture-version';
 
 test.afterEach(({ page }) => {
   expectNoUnhandledApiCalls(page);
@@ -201,7 +202,7 @@ test.describe('contract stamp on results (CONTRACT-04)', () => {
       'GET /visualize/*': 'visualize-3class-stamped.json',
     });
     // mockApi installs its own contract route; the later route (this one) wins.
-    const contract = await mockContract(page, { latest: 2 });
+    const contract = await mockContract(page, { latest: FIXTURE_CONTRACT_VERSION });
 
     await page.goto('/dashboard/analyze');
     await page.setInputFiles('input[type="file"]', AUDIO_FIXTURE);
@@ -214,8 +215,8 @@ test.describe('contract stamp on results (CONTRACT-04)', () => {
     await expect(line).toContainText('preproc-2026.10.0-as-deployed');
     await expect(line).not.toContainText(/differs|not found|pre-contract/);
     expect(contract.requests).toContain('contract/v1.json');
-    // The rest of the page follows latest (v2); the result line still resolved exactly v1.
-    expect(contract.requests).toContain('contract/v2.json');
+    // The rest of the page follows latest (the fixture version); the result line still resolved exactly v1.
+    expect(contract.requests).toContain(FIXTURE_MANIFEST_PATH);
   });
 
   test('/experience shows the same stamped contract version', async ({ page }) => {
@@ -225,7 +226,7 @@ test.describe('contract stamp on results (CONTRACT-04)', () => {
       'GET /status/*': sequencedStatusHandler(),
       'GET /visualize/*': 'visualize-3class-stamped.json',
     });
-    await mockContract(page, { latest: 2 });
+    await mockContract(page, { latest: FIXTURE_CONTRACT_VERSION });
 
     await page.goto('/experience');
     await page.setInputFiles('input[type="file"]', AUDIO_FIXTURE);

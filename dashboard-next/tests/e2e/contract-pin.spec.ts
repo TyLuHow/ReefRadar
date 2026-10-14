@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { mockApi, mockContract, expectNoUnhandledApiCalls } from './support/mock-api';
+import { FIXTURE_CONTRACT_VERSION, FIXTURE_MANIFEST_PATH } from '../shared/contract-fixture-version';
 
 /** The contract version alert; Next's own route announcer is also role=alert, so it is excluded. */
 const versionAlert = (page: Page) => page.locator('[role="alert"]:not(#__next-route-announcer__)');
@@ -11,12 +12,12 @@ test.afterEach(({ page }) => {
 /**
  * 02-08 (CONTRACT-04): ?cv=N resolves exactly contract vN, never latest.json, and a
  * missing or malformed version is shown to the visitor instead of being replaced by
- * the latest contract. The pointer fixture says v2 is latest throughout.
+ * the latest contract. The pointer fixture says the fixture version (99) is latest throughout.
  */
 test.describe('?cv pins a contract version', () => {
-  test('/dashboard/?cv=1 while v2 is latest resolves v1 and never requests latest.json', async ({ page }) => {
+  test('/dashboard/?cv=1 while the fixture is latest resolves v1 and never requests latest.json', async ({ page }) => {
     await mockApi(page);
-    const contract = await mockContract(page, { latest: 2 });
+    const contract = await mockContract(page, { latest: FIXTURE_CONTRACT_VERSION });
 
     await page.goto('/dashboard/?cv=1', { waitUntil: 'load' });
 
@@ -28,7 +29,7 @@ test.describe('?cv pins a contract version', () => {
 
     expect(contract.requests).not.toContain('contract/latest.json');
     expect(contract.requests).toContain('contract/v1.json');
-    expect(contract.requests).not.toContain('contract/v2.json');
+    expect(contract.requests).not.toContain(FIXTURE_MANIFEST_PATH);
   });
 
   test('?cv=N equal to the current latest is still pinned and issues no latest.json request', async ({ page }) => {
@@ -44,14 +45,14 @@ test.describe('?cv pins a contract version', () => {
 
   test('?cv=9 (not published) shows a visible not-found alert and does not fall back to latest', async ({ page }) => {
     await mockApi(page);
-    const contract = await mockContract(page, { latest: 2 });
+    const contract = await mockContract(page, { latest: FIXTURE_CONTRACT_VERSION });
 
     await page.goto('/dashboard/?cv=9', { waitUntil: 'load' });
 
     await expect(versionAlert(page)).toContainText('contract version 9 was not found', { timeout: 15000 });
     await expect(page.locator('html')).not.toHaveAttribute('data-contract-version', /.+/);
     expect(contract.requests).not.toContain('contract/latest.json');
-    expect(contract.requests).not.toContain('contract/v2.json');
+    expect(contract.requests).not.toContain(FIXTURE_MANIFEST_PATH);
   });
 
   for (const [label, raw] of [
@@ -62,7 +63,7 @@ test.describe('?cv pins a contract version', () => {
   ] as const) {
     test(`?cv=${label} shows a visible invalid alert and requests no contract`, async ({ page }) => {
       await mockApi(page);
-      const contract = await mockContract(page, { latest: 2 });
+      const contract = await mockContract(page, { latest: FIXTURE_CONTRACT_VERSION });
 
       await page.goto(`/dashboard/?cv=${encodeURIComponent(raw)}`, { waitUntil: 'load' });
 
@@ -71,14 +72,14 @@ test.describe('?cv pins a contract version', () => {
     });
   }
 
-  test('/dashboard/ without cv follows latest (v2) and is not pinned', async ({ page }) => {
+  test('/dashboard/ without cv follows latest (the fixture version) and is not pinned', async ({ page }) => {
     await mockApi(page);
-    await mockContract(page, { latest: 2 });
+    await mockContract(page, { latest: FIXTURE_CONTRACT_VERSION });
 
     await page.goto('/dashboard/', { waitUntil: 'load' });
 
     const html = page.locator('html');
-    await expect(html).toHaveAttribute('data-contract-version', '2', { timeout: 15000 });
+    await expect(html).toHaveAttribute('data-contract-version', String(FIXTURE_CONTRACT_VERSION), { timeout: 15000 });
     await expect(html).toHaveAttribute('data-contract-pinned', 'false');
     await expect(versionAlert(page)).toHaveCount(0);
   });

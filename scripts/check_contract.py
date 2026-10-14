@@ -364,6 +364,17 @@ def _fixture_manifests(contracts_dir: pathlib.Path) -> list[pathlib.Path]:
     return sorted((contracts_dir / "fixtures" / "bucket" / "contract").glob("v*.json"))
 
 
+def _bucket_manifest_versions(contracts_dir: pathlib.Path) -> set:
+    """contract_version of every real manifest under bucket/contract (unreadable ones are skipped)."""
+    versions = set()
+    for path in sorted((contracts_dir / "bucket" / "contract").glob("v*.json")):
+        try:
+            versions.add(_read_json(path).get("contract_version"))
+        except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+            continue
+    return versions
+
+
 def fixture_problems(contracts_dir: pathlib.Path) -> list[str]:
     """Placement, pointer, manifest and invalid-case checks for contracts/fixtures."""
     fixtures = contracts_dir / "fixtures"
@@ -384,8 +395,24 @@ def fixture_problems(contracts_dir: pathlib.Path) -> list[str]:
     if not manifests:
         problems.append("contracts/fixtures/bucket/contract: no fixture manifest (v*.json) found")
     published = published_versions(contracts_dir)
+    real_versions = _bucket_manifest_versions(contracts_dir)
     for path in manifests:
         problems += check_manifest(path, contracts_dir, fixture=True, copies_must_match=not published)
+        rel = path.relative_to(contracts_dir).as_posix()
+        try:
+            version = _read_json(path).get("contract_version")
+        except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+            continue  # check_manifest already reported the unreadable file
+        if version in real_versions:
+            problems.append(
+                f"{rel}: fixture contract_version {version} collides with the real bucket manifest "
+                f"contracts/bucket/contract/v{version}.json; a fixture must never shadow a published contract"
+            )
+        if version != contract_lib.FIXTURE_CONTRACT_VERSION:
+            problems.append(
+                f"{rel}: fixture contract_version {version} must be "
+                f"contract_lib.FIXTURE_CONTRACT_VERSION ({contract_lib.FIXTURE_CONTRACT_VERSION})"
+            )
 
     pointers = sorted(fixtures.glob("latest-v*.json"))
     if not pointers:

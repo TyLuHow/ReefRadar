@@ -16,8 +16,11 @@ can be rebuilt and diffed in CI:
   contracts/bucket/v<N>/projection.json          2-D PCA of those rows, with its explained variance
 
 Test fixtures (--fixtures, never published; the publisher refuses fixture manifests):
-  contracts/fixtures/bucket/contract/v<N+1>.json   v<N> manifest + fixture true + one flipped flag
-  contracts/fixtures/latest-v<N>.json, latest-v<N+1>.json   pointers with the manifests' sha256
+  contracts/fixtures/bucket/contract/v99.json      v1 manifest + fixture true + one flipped flag
+                                                   (contract_lib.FIXTURE_CONTRACT_VERSION, a sentinel
+                                                   that can never be a real contract version)
+  contracts/fixtures/latest-v1.json, latest-v99.json   pointers with the manifests' sha256
+  (fixtures derive from the committed v1 bytes, never from a rebuild of v1)
   contracts/fixtures/invalid/*.json                curated schema-invariant violations
 
 Provenance rules (never relaxed):
@@ -585,16 +588,40 @@ def build_invalid_cases(sites: list[dict], manifest: dict, stamp: dict, pointer:
     return cases
 
 
-def build_fixture_files(version: int, files: dict[str, bytes]) -> dict[str, bytes]:
-    """Fixture files (paths relative to contracts/) derived from the built bundle of `version`.
+def committed_bundle_files(contracts_dir: pathlib.Path, version: int) -> dict[str, bytes]:
+    """The committed bucket files the fixture builder needs, read as bytes (no rebuild).
 
-    v<N+1> reuses every v<N> artifact uri (immutable bytes are addressed by path), so a
-    fixture adds one small manifest, not another copy of the data.
+    Fixtures derive from the frozen bytes of a published version, so later changes to the
+    preprocessor or classifier source cannot break fixture regeneration.
     """
+    names = (
+        f"bucket/contract/v{version}.json",
+        f"bucket/v{version}/sites.json",
+        f"bucket/v{version}/stamp.json",
+    )
+    files: dict[str, bytes] = {}
+    for rel in names:
+        path = contracts_dir / rel
+        if not path.is_file():
+            raise ContractError(f"{rel}: committed v{version} file is missing; fixtures derive from it")
+        files[rel] = path.read_bytes()
+    return files
+
+
+def build_fixture_files(version: int, files: dict[str, bytes]) -> dict[str, bytes]:
+    """Fixture files (paths relative to contracts/) derived from the bundle files of `version`.
+
+    The flipped manifest is contract_lib.FIXTURE_CONTRACT_VERSION and reuses every v<N>
+    artifact uri (immutable bytes are addressed by path), so a fixture adds one small
+    manifest, not another copy of the data.
+    """
+    fixture_version = contract_lib.FIXTURE_CONTRACT_VERSION
+    if fixture_version == version:
+        raise ContractError(f"the fixture version {fixture_version} must differ from the base v{version}")
     base_bytes = files[f"bucket/contract/v{version}.json"]
     base = json.loads(base_bytes.decode("utf-8"))
     flipped = copy.deepcopy(base)
-    flipped["contract_version"] = version + 1
+    flipped["contract_version"] = fixture_version
     flipped["fixture"] = True
     if flipped["coverage"][FIXTURE_FLIPPED_FLAG] is not False:
         raise ContractError(f"v{version} already has coverage.{FIXTURE_FLIPPED_FLAG} true; nothing to flip")
@@ -610,9 +637,11 @@ def build_fixture_files(version: int, files: dict[str, bytes]) -> dict[str, byte
 
     base_pointer = pointer(version, base_bytes)
     out = {
-        f"fixtures/bucket/contract/v{version + 1}.json": flipped_bytes,
+        f"fixtures/bucket/contract/v{fixture_version}.json": flipped_bytes,
         f"fixtures/latest-v{version}.json": contract_lib.canonical_json_bytes(base_pointer),
-        f"fixtures/latest-v{version + 1}.json": contract_lib.canonical_json_bytes(pointer(version + 1, flipped_bytes)),
+        f"fixtures/latest-v{fixture_version}.json": contract_lib.canonical_json_bytes(
+            pointer(fixture_version, flipped_bytes)
+        ),
     }
     sites = json.loads(files[f"bucket/v{version}/sites.json"].decode("utf-8"))["sites"]
     stamp = json.loads(files[f"bucket/v{version}/stamp.json"].decode("utf-8"))
@@ -896,7 +925,7 @@ def main(argv=None) -> int:
     parser.add_argument(
         "--fixtures",
         action="store_true",
-        help="also write the offline test fixtures (flipped-flag manifest, pointers, invalid cases)",
+        help="write the offline test fixtures (flipped-flag manifest, pointers, invalid cases) from the committed v1 bytes",
     )
     parser.add_argument("--format-schemas", action="store_true")
     args = parser.parse_args(argv)
@@ -912,44 +941,67 @@ def main(argv=None) -> int:
             parser.error("--version N (N >= 1) is required")
 
         version = args.version
+        base_version = contract_lib.FIXTURE_BASE_VERSION
+        bundle_run = bool(args.reference_metadata or args.recompute_projection)
+
+        def committed_fixture_files() -> dict[str, bytes]:
+            return build_fixture_files(base_version, committed_bundle_files(contracts_dir, base_version))
+
+        def differences(expected: dict[str, bytes], what: str) -> list[str]:
+            found = []
+            for rel, data in sorted(expected.items()):
+                path = contracts_dir / rel
+                if not path.exists():
+                    found.append(f"{rel}: missing")
+                elif path.read_bytes() != data:
+                    found.append(f"{rel}: differs from {what}")
+            return found
+
         if args.check and str(version) in _published_versions(contracts_dir):
             # A published version is frozen: its schema copies keep the schemas of the day while
             # contracts/schema may since have grown (additively). A rebuild would legitimately
             # differ, so immutability is enforced by check_contract.py (manifest sha256 vs
-            # PUBLISHED.json) and the structural --additive check instead.
+            # PUBLISHED.json) and the structural --additive check instead. The fixtures are not
+            # frozen: they must still equal a derivation from the committed base bytes.
             print(
                 f"OK: v{version} is published; skipping the rebuild comparison "
                 "(check_contract.py guards its bytes against contracts/PUBLISHED.json)"
             )
-            return 0
-        frozen_at = _resolve_frozen_at(version, args.frozen_at, contracts_dir)
-        files = build_bundle(
-            version,
-            frozen_at,
-            contracts_dir,
-            reference_metadata=pathlib.Path(args.reference_metadata) if args.reference_metadata else None,
-            recompute_projection=args.recompute_projection,
-        )
-
-        fixture_files = build_fixture_files(version, files)
-        if args.check:
-            problems = []
-            for rel, data in sorted({**files, **fixture_files}.items()):
-                path = contracts_dir / rel
-                if not path.exists():
-                    problems.append(f"{rel}: missing")
-                elif path.read_bytes() != data:
-                    problems.append(f"{rel}: differs from a fresh build")
+            fixture_files = committed_fixture_files()
+            problems = differences(fixture_files, "a fresh derivation of the committed fixture base bytes")
             for line in problems:
                 print(f"FAIL {line}")
             if problems:
                 return 1
-            print(f"OK: contract v{version} ({len(files)} files) and {len(fixture_files)} fixture files match a fresh build")
+            print(f"OK: {len(fixture_files)} fixture files match a derivation of the committed v{base_version} bytes")
             return 0
 
-        if args.fixtures and not args.reference_metadata and not args.recompute_projection:
-            to_write = fixture_files  # fixtures only: never touches a (possibly published) bundle
+        if args.fixtures and not args.check and not bundle_run:
+            # Fixtures only: derived from the committed base bytes, never the v1 source recipe,
+            # and never touching a (possibly published) bundle.
+            to_write = committed_fixture_files()
         else:
+            frozen_at = _resolve_frozen_at(version, args.frozen_at, contracts_dir)
+            files = build_bundle(
+                version,
+                frozen_at,
+                contracts_dir,
+                reference_metadata=pathlib.Path(args.reference_metadata) if args.reference_metadata else None,
+                recompute_projection=args.recompute_projection,
+            )
+            fixture_files = (
+                build_fixture_files(version, files) if version == base_version else committed_fixture_files()
+            )
+            if args.check:
+                problems = differences({**files, **fixture_files}, "a fresh build")
+                for line in problems:
+                    print(f"FAIL {line}")
+                if problems:
+                    return 1
+                print(
+                    f"OK: contract v{version} ({len(files)} files) and {len(fixture_files)} fixture files match a fresh build"
+                )
+                return 0
             if str(version) in _published_versions(contracts_dir):
                 raise ContractError(
                     f"v{version} is listed in contracts/PUBLISHED.json; published versions are immutable"

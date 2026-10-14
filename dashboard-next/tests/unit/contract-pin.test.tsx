@@ -6,6 +6,7 @@ import { parseContractVersionParam, useContractVersionStore } from '@/features/c
 import { ContractVersionSync } from '@/features/contract/ContractVersionSync';
 import { useContract, ContractNotFoundError, ContractVersionParamError } from '@/features/contract';
 import { installContractFetch, resetContractStore, setContractPin, type ContractFetchHandle } from './support/contract-fetch';
+import { FIXTURE_CONTRACT_VERSION, FIXTURE_MANIFEST_PATH } from '../shared/contract-fixture-version';
 
 // ContractVersionSync reads the URL through useSearchParams; the test supplies the query string.
 let currentSearch = '';
@@ -46,7 +47,7 @@ describe('contract hooks resolve the URL pin', () => {
   let handle: ContractFetchHandle;
   let client: QueryClient;
   beforeEach(() => {
-    handle = installContractFetch({ latest: 2 });
+    handle = installContractFetch({ latest: FIXTURE_CONTRACT_VERSION });
     client = new QueryClient();
     resetContractStore();
     currentSearch = '';
@@ -65,7 +66,7 @@ describe('contract hooks resolve the URL pin', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('pinned 1 while latest is 2 returns manifest v1 and never requests latest.json', async () => {
+  it('pinned 1 while the fixture is latest returns manifest v1 and never requests latest.json', async () => {
     setContractPin({ kind: 'pinned', version: 1 });
     const { result } = renderHook(() => useContract(), { wrapper: wrapperFor(client) });
     await waitFor(() => expect(result.current.data?.contract_version).toBe(1));
@@ -103,12 +104,12 @@ describe('contract hooks resolve the URL pin', () => {
   it('an unpinned store follows latest.json', async () => {
     setContractPin({ kind: 'unpinned' });
     const { result } = renderHook(() => useContract(), { wrapper: wrapperFor(client) });
-    await waitFor(() => expect(result.current.data?.contract_version).toBe(2));
-    expect(handle.requests).toEqual(['contract/latest.json', 'contract/v2.json']);
+    await waitFor(() => expect(result.current.data?.contract_version).toBe(FIXTURE_CONTRACT_VERSION));
+    expect(handle.requests).toEqual(['contract/latest.json', FIXTURE_MANIFEST_PATH]);
   });
 
   it('an explicit version argument wins over the pin and over an unresolved store', async () => {
-    setContractPin({ kind: 'pinned', version: 2 });
+    setContractPin({ kind: 'pinned', version: FIXTURE_CONTRACT_VERSION });
     const { result } = renderHook(() => useContract(1), { wrapper: wrapperFor(client) });
     await waitFor(() => expect(result.current.data?.contract_version).toBe(1));
     expect(handle.requests).toEqual(['contract/v1.json']);
@@ -124,7 +125,7 @@ describe('ContractVersionSync', () => {
   let handle: ContractFetchHandle;
   let client: QueryClient;
   beforeEach(() => {
-    handle = installContractFetch({ latest: 2 });
+    handle = installContractFetch({ latest: FIXTURE_CONTRACT_VERSION });
     client = new QueryClient();
     resetContractStore();
     delete document.documentElement.dataset.contractVersion;
@@ -139,7 +140,7 @@ describe('ContractVersionSync', () => {
 
   const mount = () => render(createElement(QueryClientProvider, { client }, createElement(ContractVersionSync)));
 
-  it('?cv=1 while latest is 2: marks the document pinned to v1 and makes no latest.json request', async () => {
+  it('?cv=1 while the fixture is latest: marks the document pinned to v1 and makes no latest.json request', async () => {
     currentSearch = 'cv=1';
     mount();
     await waitFor(() => expect(document.documentElement.dataset.contractVersion).toBe('1'));
@@ -149,10 +150,10 @@ describe('ContractVersionSync', () => {
     expect(useContractVersionStore.getState().resolved).toBe(true);
   });
 
-  it('no cv: follows latest (v2) and is not pinned', async () => {
+  it('no cv: follows latest (the fixture version) and is not pinned', async () => {
     currentSearch = '';
     mount();
-    await waitFor(() => expect(document.documentElement.dataset.contractVersion).toBe('2'));
+    await waitFor(() => expect(document.documentElement.dataset.contractVersion).toBe(String(FIXTURE_CONTRACT_VERSION)));
     expect(document.documentElement.dataset.contractPinned).toBe('false');
     expect(screen.queryByRole('alert')).toBeNull();
   });
