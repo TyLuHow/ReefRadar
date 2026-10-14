@@ -15,10 +15,13 @@ dashboard-next/public. The real MARRS excerpts are read-only inputs.
 from __future__ import annotations
 
 import ast
+import hashlib
 import io
+import json
 import math
 import pathlib
 import re
+import struct
 import sys
 import tracemalloc
 import wave
@@ -351,3 +354,161 @@ def test_design_kaiser_filter_matches_scipy_firwin_design():
     assert h.sum() == pytest.approx(up, abs=1e-12)  # DC gain equals up
     ref = scipy_signal.firwin(41, 1.0 / 2, window=("kaiser", 5.0))
     assert np.max(np.abs(h - ref * up)) <= 1e-12
+
+
+# --- 05-05: hand-built WAVs, so any header field (including hostile ones) can be set ---
+
+_PCM_SUBFORMAT_TAIL = b"\x00\x00\x00\x00\x10\x00\x80\x00\x00\xaa\x00\x38\x9b\x71"
+
+
+def build_wav(
+    payload: bytes,
+    *,
+    tag: int = 1,
+    channels: int = 1,
+    rate: int = 32000,
+    bits: int = 16,
+    block_align: int | None = None,
+    extensible: bool = False,
+    pre_chunks: bytes = b"",
+    data_size: int | None = None,
+    include_fmt: bool = True,
+    include_data: bool = True,
+) -> bytes:
+    """Hand-built RIFF/WAVE. For extensible files `tag` is the SubFormat tag."""
+    if block_align is None:
+        block_align = channels * bits // 8
+    if extensible:
+        fmt_body = struct.pack("<HHIIHH", 0xFFFE, channels, rate, rate * block_align, block_align, bits)
+        fmt_body += struct.pack("<HHI", 22, bits, 0)  # cbSize, valid bits, channel mask
+        fmt_body += struct.pack("<H", tag) + _PCM_SUBFORMAT_TAIL
+    else:
+        fmt_body = struct.pack("<HHIIHH", tag, channels, rate, rate * block_align, block_align, bits)
+    body = b"WAVE"
+    if include_fmt:
+        body += b"fmt " + struct.pack("<I", len(fmt_body)) + fmt_body
+    body += pre_chunks
+    if include_data:
+        declared = len(payload) if data_size is None else data_size
+        body += b"data" + struct.pack("<I", declared) + payload
+        if len(payload) & 1 and data_size is None:
+            body += b"\x00"
+    return b"RIFF" + struct.pack("<I", len(body)) + body
+
+
+def pcm24_bytes(values) -> bytes:
+    """int values in [-2**23, 2**23) -> little-endian 3-byte samples."""
+    v = np.asarray(values, dtype=np.int64) & 0xFFFFFF
+    out = np.empty((v.size, 3), dtype=np.uint8)
+    out[:, 0] = v & 0xFF
+    out[:, 1] = (v >> 8) & 0xFF
+    out[:, 2] = (v >> 16) & 0xFF
+    return out.tobytes()
+
+
+def stereo_24bit_48k_12s() -> bytes:
+    n = 12 * 48000
+    t = np.arange(n) / 48000.0
+    inter = np.empty(2 * n)
+    inter[0::2] = np.round(0.4 * np.sin(2 * np.pi * 440.0 * t) * 8388607)
+    inter[1::2] = np.round(0.2 * np.sin(2 * np.pi * 1320.0 * t) * 8388607)
+    return build_wav(pcm24_bytes(inter), channels=2, rate=48000, bits=24)
+
+
+# --- 05-05 Task 1: transport (segments + sidecar), built on a 24-bit stereo upload ---
+
+
+def test_window_transport_round_trip_stereo_48k_24bit():
+    data = stereo_24bit_48k_12s()
+    decoded = ra.decode_wav(data)
+    assert decoded.samples.shape == (12 * 48000, 2)
+    assert decoded.samples.dtype == np.float32
+    assert decoded.bits_per_sample == 24
+
+    # full-scale mapping of the 24-bit extremes
+    extreme = ra.decode_wav(
+        build_wav(pcm24_bytes([-8388608, 0, 8388607, 0]), channels=2, rate=48000, bits=24)
+    )
+    assert extreme.samples[0, 0] == -1.0
+    assert extreme.samples[1, 0] == pytest.approx(8388607 / 8388608)
+
+    prepared = ra.audio_to_windows(data)
+    assert prepared.windows.shape == (2, 160000)
+    assert prepared.input["bits_per_sample"] == 24 and prepared.input["channels"] == 2
+
+    seg = ra.encode_segments(prepared.windows)
+    assert isinstance(seg, bytes)
+    assert len(seg) == 2 * 160000 * 4 == 2 * ra.SEGMENT_BYTES_PER_WINDOW
+    assert seg == np.ascontiguousarray(prepared.windows).astype("<f4").tobytes()
+    back = ra.decode_segments(seg)
+    assert back.shape == (2, 160000) and back.dtype == np.float32
+    assert np.array_equal(back, prepared.windows)
+
+    sidecar = ra.build_sidecar(prepared, seg)
+    raw = json.dumps(sidecar, allow_nan=False).encode("utf-8")
+    assert ra.parse_sidecar(raw) == sidecar
+    assert sidecar["segments_sha256"] == hashlib.sha256(seg).hexdigest()
+    assert sidecar["spec_version"] == ra.SPEC_VERSION
+    assert sidecar["segments_format"] == ra.SEGMENTS_FORMAT == "f32le"
+    assert sidecar["schema_version"] == ra.SIDECAR_SCHEMA_VERSION == 1
+    assert sidecar["num_windows"] == 2 and sidecar["segments_bytes"] == len(seg)
+    assert sidecar["window_samples"] == 160000 and sidecar["sample_rate_hz"] == 32000
+    assert sidecar["levels"]["peak_dbfs"] == prepared.peak_dbfs
+    assert sidecar["input"] == prepared.input
+    assert sidecar["dropped_tail_s"] == prepared.input["dropped_tail_s"]
+
+
+def test_window_transport_decode_segments_rejects_ragged_length():
+    with pytest.raises(ra.SidecarError):
+        ra.decode_segments(b"\x00" * (ra.SEGMENT_BYTES_PER_WINDOW + 4))
+
+
+def _good_sidecar():
+    prepared = ra.audio_to_windows(make_wav_bytes(np.zeros(160000, dtype=np.int16), 32000))
+    return ra.build_sidecar(prepared, ra.encode_segments(prepared.windows))
+
+
+def _with(key, value):
+    def apply(sc):
+        sc = json.loads(json.dumps(sc))
+        sc[key] = value
+        return sc
+
+    return apply
+
+
+MALFORMED = {
+    "schema_version": _with("schema_version", 2),
+    "format": _with("segments_format", "f64le"),
+    "window_samples": _with("window_samples", 80000),
+    "segments_bytes_vs_windows": _with("segments_bytes", 640004),
+    "bad_spec_version": _with("spec_version", "Preproc_2026"),
+    "bad_sha": _with("segments_sha256", "abc"),
+    "levels_length": _with(
+        "levels", {"peak_dbfs": [], "rms_dbfs": [-120.0], "silent": [True]}
+    ),
+    "missing_key": lambda sc: {k: v for k, v in sc.items() if k != "input"},
+}
+
+
+@pytest.mark.parametrize("name", sorted(MALFORMED))
+def test_window_sidecar_rejects_malformed(name):
+    bad = MALFORMED[name](_good_sidecar())
+    with pytest.raises(ra.SidecarError):
+        ra.parse_sidecar(json.dumps(bad).encode("utf-8"))
+
+
+def test_window_sidecar_rejects_non_json_and_non_finite():
+    with pytest.raises(ra.SidecarError):
+        ra.parse_sidecar(b"not json")
+    with pytest.raises(ra.SidecarError):
+        ra.parse_sidecar(b"[1, 2]")
+    text = json.dumps(_good_sidecar()).replace("-120.0", "NaN", 1)
+    with pytest.raises(ra.SidecarError):
+        ra.parse_sidecar(text.encode("utf-8"))
+
+
+def test_window_sidecar_build_checks_segment_length():
+    prepared = ra.audio_to_windows(make_wav_bytes(np.zeros(160000, dtype=np.int16), 32000))
+    with pytest.raises(ra.SidecarError):
+        ra.build_sidecar(prepared, b"\x00" * 100)
