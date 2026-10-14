@@ -325,15 +325,106 @@ export const ProjectionBase = z.looseObject({
 // Array lengths are verified by scripts/check_contract.py, not by the JSON Schema, so not here either.
 export const Projection = ProjectionBase;
 
-// ---- analysis result version stamp ----------------------------------------
+// ---- analysis result version stamp and per-window keys ---------------------
+
+const nonNegativeNumber = z.number().min(0);
+const cosine = z.number().min(-1).max(1);
+const probability = z.number().min(0).max(1);
+const numberPair = z.array(z.number()).length(2);
+
+/** Per-window classifier output; every array has one entry per window, probabilities one column per class. */
+export const ResultWindowsBase = z.looseObject({
+  count: positiveInt,
+  window_s: z.number().gt(0),
+  index: z.array(nonNegativeInt),
+  start_s: z.array(nonNegativeNumber),
+  classes: z.array(nonEmpty).min(1),
+  probabilities: z.record(z.string(), z.array(probability)),
+  label: z.array(z.string()),
+  peak_dbfs: z.array(z.number()),
+  rms_dbfs: z.array(z.number()),
+  silent: z.array(z.boolean()),
+  nearest_site: z.array(z.string()).optional(),
+  similarities: z.array(z.array(cosine)).optional(),
+});
+
+export const SiteSimilarityBase = z.looseObject({
+  site_id: nonEmpty,
+  has_embedding: z.boolean(),
+  similarity: cosine.nullable(),
+  rank: positiveInt.nullable(),
+});
+
+export const SiteSimilaritiesBase = z.looseObject({
+  metric: z.literal('cosine'),
+  aggregation: z.literal('mean_of_window_cosines'),
+  contract_version: positiveInt,
+  dataset_version: versionString,
+  site_order: z.array(nonEmpty),
+  sites: z.array(SiteSimilarityBase),
+  note: z.string().optional(),
+});
+
+export const ResultProjectionBase = z.looseObject({
+  method: z.literal('pca'),
+  contract_version: positiveInt,
+  explained_variance_ratio: z.array(z.number()),
+  windows: z.array(numberPair),
+  centroid: numberPair,
+  note: nonEmpty,
+  basis_uri: z.string().regex(/^v[0-9]+\/[A-Za-z0-9_./-]+$/).optional(),
+});
+
+export const OodWindowsBase = z.looseObject({
+  distance: z.array(nonNegativeNumber),
+  status: z.array(z.enum(['inside', 'outside'])),
+});
+
+export const OodSummaryBase = z.looseObject({
+  windows_outside: nonNegativeInt,
+  windows_total: positiveInt,
+  statement: nonEmpty,
+});
+
+export const OodBase = z.looseObject({
+  metric: z.literal('cosine_distance_to_nearest_training_window'),
+  k: z.literal(1),
+  threshold: nonNegativeNumber,
+  reference_version: versionString,
+  reference_sha256: sha256,
+  windows: OodWindowsBase,
+  summary: OodSummaryBase,
+  note: z.string(),
+});
+
+export const InputAudioBase = z.looseObject({
+  sample_rate_hz: positiveInt,
+  channels: positiveInt,
+  bits_per_sample: positiveInt,
+  encoding: z.enum(['pcm', 'float']),
+  duration_s: nonNegativeNumber,
+  windows: positiveInt,
+  dropped_tail_s: nonNegativeNumber,
+  preprocessing_spec_version: versionString,
+});
 
 export const AnalysisResultStampBase = z.looseObject({
   contract_version: positiveInt.nullable(),
   dataset_version: versionString.nullable(),
   model_version: versionString.nullable(),
   preprocessing_spec_version: versionString.nullable(),
+  // From contract v2 (05-06): all optional, so legacy and stamp-only results stay valid.
+  stamp_status: z.enum(['stamped', 'uncovered', 'load_failed']).optional(),
+  windows: ResultWindowsBase.optional(),
+  site_similarities: SiteSimilaritiesBase.optional(),
+  projection: ResultProjectionBase.optional(),
+  ood: OodBase.optional(),
+  input_audio: InputAudioBase.optional(),
 });
-/** A pre-contract result (null contract_version) carries no dataset or preprocessing-spec version. */
+/**
+ * A pre-contract result (null contract_version) carries no dataset or preprocessing-spec version.
+ * A site without an embedding has no similarity and no rank (the JSON Schema's if/then on site_similarity).
+ */
 export const AnalysisResultStamp = AnalysisResultStampBase.superRefine((stamp, ctx) => {
   if (stamp.contract_version === null) {
     if (stamp.dataset_version !== null) {
@@ -343,6 +434,16 @@ export const AnalysisResultStamp = AnalysisResultStampBase.superRefine((stamp, c
       ctx.addIssue({ code: 'custom', message: 'a pre-contract result has no preprocessing_spec_version', path: ['preprocessing_spec_version'] });
     }
   }
+  stamp.site_similarities?.sites.forEach((site, index) => {
+    if (site.has_embedding === false) {
+      if (site.similarity !== null) {
+        ctx.addIssue({ code: 'custom', message: 'a site without an embedding has no similarity', path: ['site_similarities', 'sites', index, 'similarity'] });
+      }
+      if (site.rank !== null) {
+        ctx.addIssue({ code: 'custom', message: 'a site without an embedding has no rank', path: ['site_similarities', 'sites', index, 'rank'] });
+      }
+    }
+  });
 });
 
 // ---- inferred types -------------------------------------------------------

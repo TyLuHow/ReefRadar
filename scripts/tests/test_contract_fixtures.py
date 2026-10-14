@@ -328,11 +328,16 @@ def test_additive_fails_when_a_committed_bundle_stops_validating(contracts_copy,
 # PUBLISHED.json immutability and fixture placement
 # ---------------------------------------------------------------------------
 
-def test_without_a_published_record_the_check_passes(contracts_copy):
+def test_without_a_published_record_the_check_passes(contracts_copy, capsys):
     # v1 is now published, so the committed tree carries PUBLISHED.json; this test is about its absence.
+    # Without it v1 is an unpublished bundle, whose schema copies must equal contracts/schema. The
+    # schemas have since grown additively (Phase 5), so the only findings are those frozen copies.
     (contracts_copy / "PUBLISHED.json").unlink(missing_ok=True)
     assert not (contracts_copy / "PUBLISHED.json").exists()
-    assert _run(contracts_copy, "--check") == 0
+    code = _run(contracts_copy, "--check")
+    lines = [line for line in capsys.readouterr().out.splitlines() if line.startswith("FAIL")]
+    assert all("schema copy differs from schema/" in line for line in lines), lines
+    assert code == (1 if lines else 0)
 
 
 def test_a_matching_published_record_passes(contracts_copy):

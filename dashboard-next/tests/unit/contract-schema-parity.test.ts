@@ -81,6 +81,43 @@ describe('Zod mirror verdict parity with Python jsonschema', () => {
   });
 });
 
+describe('Zod mirror agrees with Python on the nested result rejections (05-06)', () => {
+  const full = (): Json => readJson(CONTRACTS, 'fixtures', 'examples', 'analysis-result-full.json');
+
+  const REJECTIONS: Array<[string, (doc: Json) => void]> = [
+    ['probability above one', (d) => { d.windows.probabilities.healthy[0] = 1.5; }],
+    ['similarity with no embedding', (d) => {
+      const entry = d.site_similarities.sites.find((s: Json) => s.has_embedding === false);
+      entry.similarity = 0.5;
+    }],
+    ['rank with no embedding', (d) => {
+      const entry = d.site_similarities.sites.find((s: Json) => s.has_embedding === false);
+      entry.rank = 3;
+    }],
+    ['ood status neither inside nor outside', (d) => { d.ood.windows.status[0] = 'maybe'; }],
+    ['ood k not 1', (d) => { d.ood.k = 5; }],
+    ['stamp_status maybe', (d) => { d.stamp_status = 'maybe'; }],
+    ['projection method not pca', (d) => { d.projection.method = 'tsne'; }],
+  ];
+
+  it('accepts the full example and a stamp-only result', () => {
+    expect(schema.AnalysisResultStamp.safeParse(full()).success).toBe(true);
+    const stampOnly = readJson(CONTRACTS, 'bucket', 'v1', 'stamp.json');
+    expect(schema.AnalysisResultStamp.safeParse(stampOnly).success).toBe(true);
+  });
+
+  it('keeps unknown keys on a full result (loose objects)', () => {
+    const parsed = schema.AnalysisResultStamp.parse({ ...full(), future_key: { a: 1 } }) as Json;
+    expect(parsed.future_key).toEqual({ a: 1 });
+  });
+
+  it.each(REJECTIONS)('rejects: %s', (_name, mutate) => {
+    const doc = full();
+    mutate(doc);
+    expect(schema.AnalysisResultStamp.safeParse(doc).success).toBe(false);
+  });
+});
+
 // ---- structural parity ----------------------------------------------------
 
 interface ObjectNode {
@@ -143,6 +180,14 @@ const PAIRS: Pair[] = [
   { name: 'projection', base: schema.ProjectionBase, file: 'projection', json: (r) => r },
   { name: 'projection coordinate', base: schema.ProjectionCoordinateBase, file: 'projection', json: (r) => r.properties.coordinates.items },
   { name: 'analysis result stamp', base: schema.AnalysisResultStampBase, file: 'analysis-result', json: (r) => r },
+  { name: 'result windows', base: schema.ResultWindowsBase, file: 'analysis-result', json: (r) => r.$defs.windows },
+  { name: 'result site similarities', base: schema.SiteSimilaritiesBase, file: 'analysis-result', json: (r) => r.$defs.site_similarities },
+  { name: 'result site similarity', base: schema.SiteSimilarityBase, file: 'analysis-result', json: (r) => r.$defs.site_similarity },
+  { name: 'result projection', base: schema.ResultProjectionBase, file: 'analysis-result', json: (r) => r.$defs.result_projection },
+  { name: 'result ood', base: schema.OodBase, file: 'analysis-result', json: (r) => r.$defs.ood },
+  { name: 'result ood windows', base: schema.OodWindowsBase, file: 'analysis-result', json: (r) => r.$defs.ood_windows },
+  { name: 'result ood summary', base: schema.OodSummaryBase, file: 'analysis-result', json: (r) => r.$defs.ood_summary },
+  { name: 'result input audio', base: schema.InputAudioBase, file: 'analysis-result', json: (r) => r.$defs.input_audio },
 ];
 
 describe('Zod mirror structural parity with the JSON Schemas', () => {
