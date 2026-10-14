@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: Phase 5 planned (17 plans, 10 waves; plan check passed). Phase 4 device checks deferred (/gsd-verify-work 4). Next: execute Phase 5 (worktrees on).
+Plan: Phase 5 executing — wave 1 merged (05-01 binary-safe packaging, 05-02 reef_audio core, 05-03 fixture sentinel v99, 05-04 LOSO harness: original model balanced accuracy 6.25% [0, 0.175] on unseen sites). Next wave 2 (05-05, 05-06).
 Status: Phase 4 complete in code; owner device checks deferred (/gsd-verify-work 4). Autonomous run continuing at Phase 5
-Last activity: 2026-10-12 — Phase 5 context, research (retrain interim for train/serve parity), pattern map, 17 plans, plan check passed
+Last activity: 2026-10-13 — Phase 5 wave 1 merged
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 

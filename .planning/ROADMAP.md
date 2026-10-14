@@ -344,15 +344,15 @@ Plans:
   3. Every analysis returns similarity to all reference sites (not only top-3), projection coordinates with explained variance, and an out-of-distribution status computed from distance to training data and reported separately from class probabilities.
   4. A leave-one-site-out evaluation harness reports the current model's per-class and per-region metrics with bootstrap confidence intervals, and the report is stored as a versioned artifact for the model card.
 
-**Plans**: 17 plans (10 waves; live AWS work serial in 05-11, 05-16, 05-17)
+**Plans**: 4/17 plans executed (10 waves; live AWS work serial in 05-11, 05-16, 05-17)
 
 Plans:
 **Wave 1**
 
-- [ ] 05-01-PLAN.md — Binary-safe Lambda packaging (working tree, --ref rollback and drift-check readers)
-- [ ] 05-02-PLAN.md — reef_audio core: scipy legitimacy gate, real-excerpt tracer, wrapper normalisation, scipy-exact polyphase resampler
-- [ ] 05-03-PLAN.md — Contract test fixture moved to sentinel version 99 (Python, unit and e2e)
-- [ ] 05-04-PLAN.md — Leave-one-site-out harness, two-level bootstrap and committed original inputs
+- [x] 05-01-PLAN.md — Binary-safe Lambda packaging (working tree, --ref rollback and drift-check readers)
+- [x] 05-02-PLAN.md — reef_audio core: scipy legitimacy gate, real-excerpt tracer, wrapper normalisation, scipy-exact polyphase resampler
+- [x] 05-03-PLAN.md — Contract test fixture moved to sentinel version 99 (Python, unit and e2e)
+- [x] 05-04-PLAN.md — Leave-one-site-out harness, two-level bootstrap and committed original inputs
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -614,7 +614,7 @@ Numeric order (1 → 17) is a valid order. With parallelization, Data & ML phase
 | 2. Data Contract v1 | 13/13 | Complete    | 2026-10-02 |
 | 3. Platform Upgrade & Stack Consolidation | 15/15 | Complete    | 2026-10-03 |
 | 4. Design System & Instrument Primitives | 24/24 | In Progress|  |
-| 5. Preprocessing Parity & Grouped Evaluation | 0/TBD | Not started | - |
+| 5. Preprocessing Parity & Grouped Evaluation | 4/17 | In Progress|  |
 | 6. Instrument Shell & Atlas | 0/TBD | Not started | - |
 | 7. Listening Bench | 0/TBD | Not started | - |
 | 8. Guarded Upstream Ingestion | 0/TBD | Not started | - |
