@@ -27,6 +27,17 @@ models/reef_classifier_weights.npz. This script:
               Warm classifier containers pick the change up within
               MODEL_REFRESH_SECONDS (they re-check the objects' ETags).
 
+  --archive-version DIR
+              archive a model version directory (model_config.json and
+              reef_classifier_weights.npz, under models/) to
+              models/archive/<version>/ with create-only puts (IfNoneMatch "*").
+              The version is read from the config. Nothing under the live
+              models/ keys is ever written, so the deployed classifier is not
+              affected. A re-run with identical bytes reports exists_identical;
+              an existing object with different bytes aborts. The config is
+              uploaded as its LF bytes (the git blob). --dry-run prints the two
+              target keys and sha256 values without any AWS call.
+
 Never prints presigned URLs or credentials; boto3 only, no shell.
 
 Usage:
@@ -40,6 +51,7 @@ import argparse
 import hashlib
 import json
 import pathlib
+import re
 import sys
 from datetime import datetime, timezone
 
@@ -48,6 +60,10 @@ DEFAULT_BUCKET = "reefradar-2477-embeddings"
 CONFIG_KEY = "models/model_config.json"
 WEIGHTS_KEY = "models/reef_classifier_weights.npz"
 ARCHIVE_ROOT = "models/archive/"
+MODELS_ROOT = REPO_ROOT / "models"
+VERSION_PATTERN = re.compile(r"^[a-z0-9][a-z0-9.+-]*$")
+ACTION_CREATED = "created"
+ACTION_EXISTS_IDENTICAL = "exists_identical"
 
 ACTION_ARCHIVE_AND_PUBLISH = "archive_and_publish"
 ACTION_ALREADY_PUBLISHED = "already_published"
@@ -143,6 +159,94 @@ def rollback_model(s3, bucket, prefix, expected: dict) -> list[dict]:
     return publish_artifacts(s3, bucket, sources)
 
 
+def archive_version_keys(version: str) -> dict:
+    """The two archive keys for a model version (never the live models/ keys)."""
+    if not VERSION_PATTERN.match(version):
+        raise PublishError(f"model version {version!r} does not match {VERSION_PATTERN.pattern}")
+    prefix = f"{ARCHIVE_ROOT}{version}/"
+    return {"config": f"{prefix}model_config.json", "weights": f"{prefix}reef_classifier_weights.npz"}
+
+
+def load_version_dir(directory) -> dict:
+    """Read a model version directory under models/ and return the archive plan.
+
+    The config is taken as LF bytes (equal to its git blob on any checkout), the
+    weights as-is. Refuses a directory outside models/, a version that is not a
+    safe key segment, and weights that do not hash to the config's weights_sha256.
+    """
+    src = pathlib.Path(directory).resolve()
+    root = pathlib.Path(MODELS_ROOT).resolve()
+    if src == root or root not in src.parents:
+        raise PublishError(f"--archive-version directory must be inside {root} (got {src})")
+    try:
+        config = (src / "model_config.json").read_bytes().replace(b"\r\n", b"\n")
+        weights = (src / "reef_classifier_weights.npz").read_bytes()
+    except OSError as exc:
+        raise PublishError(f"could not read the model files in {src}: {exc.strerror or exc}") from exc
+    try:
+        version = json.loads(config.decode("utf-8")).get("version")
+        weights_sha = json.loads(config.decode("utf-8")).get("weights_sha256")
+    except (ValueError, AttributeError) as exc:
+        raise PublishError("model_config.json is not a JSON object") from exc
+    if not isinstance(version, str):
+        raise PublishError("model_config.json has no string version")
+    keys = archive_version_keys(version)
+    if weights_sha is not None and weights_sha != sha256_hex(weights):
+        raise PublishError("the weights sha256 does not match the config's weights_sha256")
+    return {
+        "version": version,
+        "objects": [
+            {"name": "config", "key": keys["config"], "body": config, "sha256": sha256_hex(config),
+             "content_type": "application/json"},
+            {"name": "weights", "key": keys["weights"], "body": weights, "sha256": sha256_hex(weights),
+             "content_type": "application/octet-stream"},
+        ],
+    }
+
+
+def _error_code(exc) -> str:
+    return getattr(exc, "response", {}).get("Error", {}).get("Code", "")
+
+
+def put_create_only(s3, bucket, obj) -> str:
+    """Create one archive object; never overwrite. Returns created or exists_identical."""
+    from botocore.exceptions import ClientError
+
+    try:
+        s3.put_object(
+            Bucket=bucket,
+            Key=obj["key"],
+            Body=obj["body"],
+            ContentType=obj["content_type"],
+            Metadata={"sha256": obj["sha256"]},
+            IfNoneMatch="*",
+        )
+        action = ACTION_CREATED
+    except ClientError as exc:
+        # 412: the key already exists; 409: another writer is putting it right now.
+        # The byte comparison below decides; any other error propagates.
+        if _error_code(exc) not in ("PreconditionFailed", "412", "ConditionalRequestConflict", "409"):
+            raise
+        existing = _get_bytes(s3, bucket, obj["key"])
+        if sha256_hex(existing) != obj["sha256"]:
+            raise PublishError(f"{obj['key']} exists with different content; archived versions are immutable") from None
+        action = ACTION_EXISTS_IDENTICAL
+    verify_hash(f"archived {obj['key']}", _get_bytes(s3, bucket, obj["key"]), obj["sha256"])
+    return action
+
+
+def archive_model_version(s3, bucket, plan) -> list[dict]:
+    live = {CONFIG_KEY, WEIGHTS_KEY}
+    results = []
+    for obj in plan["objects"]:
+        if obj["key"] in live or not obj["key"].startswith(f"{ARCHIVE_ROOT}{plan['version']}/"):
+            raise PublishError(f"refusing to write {obj['key']}: not under {ARCHIVE_ROOT}{plan['version']}/")
+        action = put_create_only(s3, bucket, obj)
+        results.append({"key": obj["key"], "sha256": obj["sha256"], "bytes": len(obj["body"]),
+                        "action": action, "verified": True})
+    return results
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("--dry-run", action="store_true")
@@ -155,6 +259,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--rollback", metavar="ARCHIVE_PREFIX", default=None,
         help="Restore the audited model from this archive prefix (e.g. models/archive/2.0-20261001/)",
+    )
+    p.add_argument(
+        "--archive-version", metavar="DIR", type=pathlib.Path, default=None,
+        help="Archive this model version directory under models/archive/<version>/ (create-only; "
+             "never touches the live models/ keys)",
     )
     p.add_argument("--date", default=None, help="YYYYMMDD stamp for the archive prefix (default: today, UTC)")
     return p
@@ -172,6 +281,22 @@ def main(argv=None, s3_client=None) -> int:
     date_stamp = args.date or datetime.now(timezone.utc).strftime("%Y%m%d")
 
     try:
+        if args.archive_version is not None:
+            if args.rollback is not None:
+                raise PublishError("--archive-version cannot be combined with --rollback")
+            plan = load_version_dir(args.archive_version)
+            print(f"plan: archive version {plan['version']} to s3://{args.bucket}/{ARCHIVE_ROOT}{plan['version']}/ (create-only)")
+            for obj in plan["objects"]:
+                print(f"  {obj['key']}  bytes={len(obj['body'])}  sha256={obj['sha256']}")
+            if not write:
+                print("[dry-run] no S3 write made" if args.dry_run else "[no --confirm] no S3 write made")
+                return 0
+            s3 = s3_client if s3_client is not None else _s3_client(args.profile, args.region)
+            results = archive_model_version(s3, args.bucket, plan)
+            print(json.dumps({"action": "archive_model_version", "bucket": args.bucket,
+                              "version": plan["version"], "archived": results}))
+            return 0
+
         lock = json.loads(args.lock.read_text(encoding="utf-8"))
         if not lock.get("interim_required"):
             print("interim model not required by the audit; nothing to publish")
