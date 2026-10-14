@@ -186,7 +186,7 @@ def test_visualize_new_item_additive_keys_with_ints(stack):
 
     assert set(LEGACY_BODY_KEYS) <= set(body)
     present = [k for k in NEW_KEYS if k in body]
-    assert present == ["windows", "input_audio"]  # site_similarities, projection, ood arrive in later plans
+    assert present == ["windows", "site_similarities", "input_audio"]  # projection, ood are added by 05-10 task 2
 
     windows = body["windows"]
     assert windows["count"] == 6 and type(windows["count"]) is int
@@ -195,6 +195,11 @@ def test_visualize_new_item_additive_keys_with_ints(stack):
     assert windows["classes"] == ["degraded", "healthy", "restored_early"]
     assert len(windows["probabilities"]["healthy"]) == 6
     assert any(type(p) is float for p in windows["probabilities"]["healthy"])
+    sites = body["site_similarities"]["sites"]
+    assert len(sites) == 54
+    assert all(type(s["rank"]) is int for s in sites[:48])
+    assert all(s["rank"] is None and s["similarity"] is None for s in sites[48:])
+    assert len(windows["similarities"]) == 6 and len(windows["similarities"][0]) == 48
     assert body["input_audio"]["sample_rate_hz"] == 16000
     assert type(body["input_audio"]["sample_rate_hz"]) is int
     # Raw JSON text, not just parsed values: an integral count must not print as 6.0.

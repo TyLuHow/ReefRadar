@@ -5,7 +5,7 @@ Exercises handler.handler() against moto-mocked S3/DynamoDB. Segments are real
 reef_audio windows from a 30 s MARRS excerpt written as segments.f32 plus the
 sidecar, the served model is a tmp bundled model (served_model_config.json and
 served_model_weights.npz, reef_reference._MODULE_DIR monkeypatched), reference
-embeddings come from the S3 fixture, and the inference Lambda is replaced by
+reference data is the committed contract v1 (repo mode), and the inference Lambda is replaced by
 FakeInferenceLambda (the only thing moto cannot fake, since it calls a
 *different* Lambda function). Confirms, end to end:
 
@@ -24,6 +24,7 @@ bundles the shared members the handler imports.
 import importlib.util
 import io
 import json
+import shutil
 import zipfile
 from decimal import Decimal
 from pathlib import Path
@@ -79,28 +80,6 @@ def excerpt():
 def _setup_s3_fixtures(s3):
     s3.create_bucket(Bucket=AUDIO_BUCKET)
     s3.create_bucket(Bucket=EMBEDDINGS_BUCKET)
-
-    rng = np.random.RandomState(7)
-    reference_sites = [
-        {
-            "site_id": "ind_H4",
-            "country": "Indonesia",
-            "status": "healthy",
-            "mean_embedding": rng.normal(size=EMBEDDING_DIM).tolist(),
-        },
-        {
-            "site_id": "borabora_tourist",
-            "country": "French Polynesia",
-            "status": "degraded",
-            "mean_embedding": rng.normal(size=EMBEDDING_DIM).tolist(),
-        },
-    ]
-    s3.put_object(
-        Bucket=EMBEDDINGS_BUCKET,
-        Key="reference/metadata.json",
-        Body=json.dumps({"sites": reference_sites}),
-        ContentType="application/json",
-    )
 
 
 def _setup_dynamodb_fixture(dynamodb_client):
@@ -442,27 +421,18 @@ def test_handler_no_visualization_and_similar_sites_carry_label_provenance(class
     assert "visualization" not in item
     assert not hasattr(classifier_handler, "generate_visualization")
 
-    # D-17: every similar_sites entry states who assigned its label.
-    by_site = {s["site_id"]: s for s in item["similar_sites"]}
-    marrs_site = by_site["ind_H4"]
-    assert marrs_site["status"] == "healthy"
-    assert marrs_site["label_source"] == "marrs"
-    assert marrs_site["label_source_name"].startswith("MARRS")
-    tourist_site = by_site["borabora_tourist"]
-    assert tourist_site["status"] == "unknown"
-    assert tourist_site["label_source"] == "coralsoundexplorer"
-    assert tourist_site["label_original"] == "tourist"
-    assert len(item["similar_sites"]) <= 3
-
-
-def test_similar_sites_use_the_mean_of_window_cosines(classifier_handler, excerpt):
-    classifier_handler.handler(_event(excerpt, analysis_id="analysis-cos"), context=None)
-    item = _get_result_item(classifier_handler, "analysis-cos")
-    E = np.stack([fake_embedding(w) for w in excerpt.windows]).astype(np.float64)
-    ref = np.random.RandomState(7).normal(size=EMBEDDING_DIM)  # ind_H4 is the first reference row
-    cos = (E @ ref) / (np.linalg.norm(E, axis=1) * np.linalg.norm(ref))
-    got = {s["site_id"]: _to_float(s["similarity"]) for s in item["similar_sites"]}
-    assert got["ind_H4"] == pytest.approx(cos.mean(), abs=1e-8)
+    # D-17: every similar_sites entry states who assigned its label, from the contract sites.
+    contract_sites = json.loads(
+        (_REPO_ROOT / "contracts" / "bucket" / "v1" / "sites.json").read_text(encoding="utf-8")
+    )["sites"]
+    by_id = {s["site_id"]: s for s in contract_sites}
+    assert len(item["similar_sites"]) == 3
+    for entry in item["similar_sites"]:
+        site = by_id[entry["site_id"]]
+        assert entry["label_source"] == site["dataset_id"]
+        assert entry["label_source_name"] == site["label_source_name"]
+        assert entry["label_original"] == site["label_original"]
+        assert entry["status"] == site["status"]
 
 
 # --- Packaging: classifier.json bundles the shared members -------------------
@@ -763,62 +733,48 @@ def test_late_failure_never_contradicts_stored_result(classifier_handler):
 # --- WR-05: similar-site lookup is honest about failure ----------------------
 
 
-def test_similar_sites_reports_reason_when_no_comparable_embeddings(classifier_handler):
+def test_similar_sites_reports_reason_when_reference_cannot_load(classifier_handler, monkeypatch, tmp_path):
+    monkeypatch.setattr(reef_reference, "REPO_CONTRACT_MANIFEST", str(tmp_path / "missing" / "v1.json"))
+    out = classifier_handler.compute_similarity_context(np.ones((2, EMBEDDING_DIM)))
+    assert out["similar_sites"] == []
+    assert "could not be loaded" in out["similar_sites_error"]
+    assert out["site_similarities"] is None
+
+
+def test_similar_sites_reports_reason_when_reference_is_tampered(classifier_handler, monkeypatch, tmp_path):
+    bucket = tmp_path / "bucket"
+    shutil.copytree(_REPO_ROOT / "contracts" / "bucket", bucket)
+    target = bucket / "v1" / "embeddings.f32"
+    raw = bytearray(target.read_bytes())
+    raw[100] ^= 0x01
+    target.write_bytes(bytes(raw))
+    monkeypatch.setattr(reef_reference, "REPO_CONTRACT_MANIFEST", str(bucket / "contract" / "v1.json"))
+    out = classifier_handler.compute_similarity_context(np.ones((2, EMBEDDING_DIM)))
+    assert out["similar_sites"] == []
+    assert "unavailable" in out["similar_sites_error"]
+
+
+def test_similar_sites_compare_every_window_without_pooling(classifier_handler):
+    out = classifier_handler.compute_similarity_context(np.ones((3, EMBEDDING_DIM)))
+    assert out["similar_sites_error"] is None
+    assert len(out["similar_sites"]) == 3
+    assert out["window_similarities"].shape == (3, 48)
+
+
+def test_handler_does_not_read_reference_data_from_s3(classifier_handler, excerpt):
+    # The classifier bucket holds no reference objects at all; the analysis still gets its context.
     s3 = boto3.client("s3", region_name="us-east-1")
-    s3.put_object(
-        Bucket=EMBEDDINGS_BUCKET,
-        Key="reference/metadata.json",
-        Body=json.dumps({"sites": [{"site_id": "ind_H4", "country": "Indonesia", "status": "healthy",
-                                    "mean_embedding": [0.1] * 64}]}),
-    )
-    sites, note = classifier_handler.find_similar_sites_with_status(np.ones(EMBEDDING_DIM))
-    assert sites == []
-    assert "unavailable" in note
-
-
-def test_similar_sites_reports_reason_when_reference_cannot_load(classifier_handler):
-    s3 = boto3.client("s3", region_name="us-east-1")
-    s3.delete_object(Bucket=EMBEDDINGS_BUCKET, Key="reference/metadata.json")
-    sites, note = classifier_handler.find_similar_sites_with_status(np.ones(EMBEDDING_DIM))
-    assert sites == []
-    assert "could not be loaded" in note
-
-
-def test_similar_sites_reads_published_embedding_key(classifier_handler):
-    # The live reference objects store vectors under `embedding` (not `mean_embedding`).
-    s3 = boto3.client("s3", region_name="us-east-1")
-    rng = np.random.RandomState(3)
-    s3.put_object(
-        Bucket=EMBEDDINGS_BUCKET,
-        Key="reference/metadata_v6.json",
-        Body=json.dumps({"sites": [{"site_id": "ind_H4", "country": "Indonesia", "status": "healthy",
-                                    "has_embedding": True,
-                                    "embedding": rng.normal(size=EMBEDDING_DIM).tolist()}]}),
-    )
-    sites, note = classifier_handler.find_similar_sites_with_status(np.ones(EMBEDDING_DIM))
-    assert note is None
-    assert [s["site_id"] for s in sites] == ["ind_H4"]
-
-
-def test_reference_lookup_prefers_router_key_order(classifier_handler):
-    s3 = boto3.client("s3", region_name="us-east-1")
-    rng = np.random.RandomState(1)
-    s3.put_object(
-        Bucket=EMBEDDINGS_BUCKET,
-        Key="reference/metadata_v6.json",
-        Body=json.dumps({"sites": [{"site_id": "ken_H1", "country": "Kenya", "status": "healthy",
-                                    "mean_embedding": rng.normal(size=EMBEDDING_DIM).tolist()}]}),
-    )
-    sites, key = classifier_handler.load_reference_sites()
-    assert key == "reference/metadata_v6.json"
-    assert [s["site_id"] for s in sites] == ["ken_H1"]
-
-
-def test_handler_stores_similar_sites_error_note(classifier_handler, excerpt):
-    s3 = boto3.client("s3", region_name="us-east-1")
-    s3.delete_object(Bucket=EMBEDDINGS_BUCKET, Key="reference/metadata.json")
+    assert "Contents" not in s3.list_objects_v2(Bucket=EMBEDDINGS_BUCKET, Prefix="reference/")
     assert classifier_handler.handler(_event(excerpt, analysis_id="analysis-s1"), context=None)["statusCode"] == 200
     item = _get_result_item(classifier_handler, "analysis-s1")
+    assert len(item["similar_sites"]) == 3
+    assert "similar_sites_error" not in item
+
+
+def test_handler_stores_similar_sites_error_note(classifier_handler, excerpt, monkeypatch, tmp_path):
+    monkeypatch.setattr(reef_reference, "REPO_CONTRACT_MANIFEST", str(tmp_path / "missing" / "v1.json"))
+    assert classifier_handler.handler(_event(excerpt, analysis_id="analysis-s2"), context=None)["statusCode"] == 200
+    item = _get_result_item(classifier_handler, "analysis-s2")
     assert item["similar_sites"] == []
     assert "unavailable" in item["similar_sites_error"]
 
