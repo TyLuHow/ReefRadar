@@ -88,7 +88,6 @@ SAVED_MODEL_SHA256 = {
     "variables/variables.index": "4720752f8deaf6694347ef09f024b8b2614495ee8390a5bc17421de581cb580f",
 }
 
-_WAVE_FORMAT_PCM = 1
 
 
 # --- errors --------------------------------------------------------------------
@@ -147,13 +146,63 @@ class PreparedAudio:
     #              frames, duration_s, dropped_tail_s, spec_version
 
 
-# --- WAV decode (PCM16 path; the full matrix and header bounds arrive in 05-05) --
+# --- WAV decode ------------------------------------------------------------------------
+#
+# decode_wav is the parser of untrusted upload bytes. Every header field is
+# bounded BEFORE the payload is converted or a filter is designed (T-05-05-01):
+# format tag, bits, channels, block align, sample rate and duration.
+
+MAX_CHANNELS = 8
+SUPPORTED_FORMAT_TAGS = (1, 3, 0xFFFE)  # PCM, IEEE float, WAVE_FORMAT_EXTENSIBLE
+_WAVE_FORMAT_PCM = 1
+_WAVE_FORMAT_FLOAT = 3
+_WAVE_FORMAT_EXTENSIBLE = 0xFFFE
+_PCM_BITS = (8, 16, 24, 32)
+_FLOAT_BITS = (32, 64)
+
+
+def _convert_payload(
+    data: bytes, offset: int, frames: int, channels: int, bits: int, is_float: bool
+) -> np.ndarray:
+    """Convert `frames` interleaved frames to float32 (frames, channels), full scale = 1.0.
+
+    Integer PCM is divided by 2**(bits-1) (8-bit is unsigned, centred on 128), so
+    the most negative value is exactly -1.0 for every depth. Float is stored as is.
+    """
+    count = frames * channels
+    if is_float:
+        dtype = "<f4" if bits == 32 else "<f8"
+        raw = np.frombuffer(data, dtype=dtype, count=count, offset=offset)
+        with np.errstate(over="ignore", invalid="ignore"):
+            samples = raw.astype(np.float32)
+    elif bits == 8:
+        raw = np.frombuffer(data, dtype=np.uint8, count=count, offset=offset)
+        samples = (raw.astype(np.float32) - np.float32(128.0)) / np.float32(128.0)
+    elif bits == 16:
+        raw = np.frombuffer(data, dtype="<i2", count=count, offset=offset)
+        samples = raw.astype(np.float32) / np.float32(32768.0)
+    elif bits == 24:
+        b = np.frombuffer(data, dtype=np.uint8, count=count * 3, offset=offset)
+        b = b.reshape(-1, 3).astype(np.int32)
+        v = b[:, 0] | (b[:, 1] << 8) | (b[:, 2] << 16)
+        v = (v ^ 0x800000) - 0x800000  # sign-extend 24 -> 32 bits
+        samples = v.astype(np.float32) / np.float32(8388608.0)
+    else:  # 32-bit PCM; float64 division keeps the full 32-bit resolution
+        raw = np.frombuffer(data, dtype="<i4", count=count, offset=offset)
+        samples = (raw.astype(np.float64) / 2147483648.0).astype(np.float32)
+    if is_float and not np.isfinite(samples).all():
+        raise InvalidAudioFormatError("WAV contains non-finite (NaN or infinite) float samples")
+    return samples.reshape(frames, channels)
 
 
 def decode_wav(data: bytes) -> DecodedAudio:
-    """Parse RIFF/WAVE chunks and decode 16-bit PCM to float32 full scale.
+    """Parse RIFF/WAVE chunks and decode to float32 (frames, channels) at full scale.
 
-    Any other format raises InvalidAudioFormatError naming the format.
+    Accepts PCM 8/16/24/32-bit, IEEE float 32/64-bit and WAVE_FORMAT_EXTENSIBLE
+    (SubFormat PCM or float), 1 to MAX_CHANNELS channels, odd chunks with their
+    pad byte, and a data chunk that declares more than the file holds (whole
+    frames only). `format_tag` on the result is the effective encoding tag (1 or 3).
+    Anything else raises a typed error whose message names the offending value.
     """
     if not isinstance(data, (bytes, bytearray, memoryview)):
         raise InvalidAudioFormatError("audio must be bytes")
@@ -170,11 +219,22 @@ def decode_wav(data: bytes) -> DecodedAudio:
         chunk_id = data[pos : pos + 4]
         (chunk_size,) = struct.unpack_from("<I", data, pos + 4)
         body = pos + 8
-        if chunk_id == b"fmt ":
+        if chunk_id == b"fmt " and fmt is None:
             if chunk_size < 16 or body + 16 > n:
                 raise InvalidAudioFormatError("truncated fmt chunk")
-            fmt = struct.unpack_from("<HHIIHH", data, body)
+            tag, channels, rate, _byte_rate, block_align, bits = struct.unpack_from(
+                "<HHIIHH", data, body
+            )
+            effective_tag = tag
+            if tag == _WAVE_FORMAT_EXTENSIBLE:
+                if chunk_size < 40 or body + 40 > n:
+                    raise InvalidAudioFormatError("truncated WAVE_FORMAT_EXTENSIBLE fmt chunk")
+                # SubFormat GUID starts at offset 24; its first two bytes are the format tag
+                (effective_tag,) = struct.unpack_from("<H", data, body + 24)
+            fmt = (tag, effective_tag, channels, rate, block_align, bits)
         elif chunk_id == b"data":
+            if fmt is None:
+                raise InvalidAudioFormatError("missing fmt chunk (data chunk comes first)")
             data_start = body
             data_len = min(chunk_size, n - body)  # tolerate a truncated final chunk
             break
@@ -185,40 +245,50 @@ def decode_wav(data: bytes) -> DecodedAudio:
     if data_start is None:
         raise InvalidAudioFormatError("missing data chunk")
 
-    format_tag, channels, sample_rate, _byte_rate, block_align, bits = fmt
-    if format_tag != _WAVE_FORMAT_PCM or bits not in (16, 24):
+    header_tag, format_tag, channels, sample_rate, block_align, bits = fmt
+    if header_tag not in SUPPORTED_FORMAT_TAGS:
         raise InvalidAudioFormatError(
-            f"unsupported WAV format (format tag {format_tag}, {bits}-bit); "
-            "this decoder reads 16- and 24-bit PCM"
+            f"Unsupported WAV format tag {header_tag} (supported: PCM 1, IEEE float 3, extensible 65534)"
         )
-    if channels < 1:
-        raise InvalidAudioFormatError("WAV has no channels")
+    if format_tag not in (_WAVE_FORMAT_PCM, _WAVE_FORMAT_FLOAT):
+        raise InvalidAudioFormatError(
+            f"Unsupported WAV format tag {format_tag} in the extensible SubFormat (supported: PCM 1, IEEE float 3)"
+        )
+    if not (1 <= channels <= MAX_CHANNELS):
+        raise InvalidAudioFormatError(
+            f"Unsupported channel count: {channels} channels (supported: 1 to {MAX_CHANNELS})"
+        )
+    is_float = format_tag == _WAVE_FORMAT_FLOAT
+    if is_float and bits not in _FLOAT_BITS:
+        raise InvalidAudioFormatError(f"Unsupported bit depth: {bits}-bit IEEE float (supported: 32, 64)")
+    if not is_float and bits not in _PCM_BITS:
+        raise InvalidAudioFormatError(f"Unsupported bit depth: {bits}-bit PCM (supported: 8, 16, 24, 32)")
     if block_align != channels * bits // 8:
-        raise InvalidAudioFormatError("inconsistent block alignment in fmt chunk")
+        raise InvalidAudioFormatError(
+            f"Inconsistent block alignment {block_align} for {channels} channels of {bits}-bit samples"
+        )
     if not (MIN_SAMPLE_RATE <= sample_rate <= MAX_SAMPLE_RATE):
         raise InvalidAudioFormatError(
-            f"sample rate {sample_rate} Hz outside {MIN_SAMPLE_RATE}-{MAX_SAMPLE_RATE} Hz"
+            f"Sample rate {sample_rate} Hz outside {MIN_SAMPLE_RATE}-{MAX_SAMPLE_RATE} Hz"
         )
 
-    frames = data_len // block_align
-    if bits == 16:
-        raw = np.frombuffer(data, dtype="<i2", count=frames * channels, offset=data_start)
-        samples = (raw.astype(np.float32) / np.float32(32768.0)).reshape(frames, channels)
-    else:
-        b = np.frombuffer(data, dtype=np.uint8, count=frames * channels * 3, offset=data_start)
-        b = b.reshape(-1, 3).astype(np.int32)
-        v = b[:, 0] | (b[:, 1] << 8) | (b[:, 2] << 16)
-        v = (v ^ 0x800000) - 0x800000  # sign-extend 24 -> 32 bits
-        samples = (v.astype(np.float32) / np.float32(8388608.0)).reshape(frames, channels)
+    frames = data_len // block_align  # only frames actually present
+    duration_s = frames / float(sample_rate)
+    if duration_s > MAX_DURATION_S:
+        raise AudioTooLongError(
+            f"audio is {duration_s:.1f} s; the maximum is {MAX_DURATION_S:.0f} s"
+        )
+
+    samples = _convert_payload(data, data_start, frames, channels, bits, is_float)
     return DecodedAudio(
         samples=samples,
         sample_rate=int(sample_rate),
         channels=int(channels),
         bits_per_sample=int(bits),
-        encoding="pcm",
+        encoding="float" if is_float else "pcm",
         format_tag=int(format_tag),
         frames=int(frames),
-        duration_s=frames / float(sample_rate),
+        duration_s=duration_s,
     )
 
 
