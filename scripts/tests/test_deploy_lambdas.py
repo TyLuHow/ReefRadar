@@ -508,3 +508,72 @@ def test_inference_deploy_fails_when_lambda_runs_a_different_image(deploy_lambda
 def test_inference_source_key_rejects_non_hex_sha(deploy_lambdas):
     with pytest.raises(deploy_lambdas.DeployError):
         deploy_lambdas.inference_source_key("../../etc/passwd")
+
+
+# --- binary members (Phase 5, ML-01/ML-08) -------------------------------------
+
+BINARY_BLOB = b"\x00\r\n\x01\r\n\xff\r\n"
+BINARY_SPEC = {
+    "function_name": "reefradar-2477-router",
+    "kind": "zip",
+    "members": [
+        {"source": "lambdas/router/handler.py", "archive_path": "handler.py"},
+        {"source": "lambdas/router/blob.f32", "archive_path": "blob.f32"},
+    ],
+}
+
+
+def _commit_binary_member(repo):
+    (repo / "lambdas" / "router" / "blob.f32").write_bytes(BINARY_BLOB)
+    (repo / "infrastructure" / "lambda-packages" / "router.json").write_text(json.dumps(BINARY_SPEC))
+    _git(["add", "-A"], repo)
+    _git(["commit", "-q", "-m", "add binary member"], repo)
+    return _git(["rev-parse", "HEAD"], repo).strip()
+
+
+def _zip_entry(zip_bytes, name):
+    import io
+    import zipfile
+
+    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+        return zf.read(name)
+
+
+def test_ref_build_preserves_binary_member_bytes(deploy_lambdas, git_repo):
+    head = _commit_binary_member(git_repo)
+    # Dirty the working-tree copy: the --ref build must still return the committed bytes.
+    (git_repo / "lambdas" / "router" / "blob.f32").write_bytes(b"changed")
+
+    reader = deploy_lambdas.git_show_reader(head)
+    spec = pkg.load_spec(
+        "router", spec_text=deploy_lambdas.git_show_spec_text(head, "router", git_repo)
+    )
+    built = pkg.build_package(spec, git_repo, reader=reader)
+
+    assert _zip_entry(built, "blob.f32") == BINARY_BLOB
+
+
+def test_ref_build_still_normalises_text_members(deploy_lambdas, git_repo):
+    head = _git(["rev-parse", "HEAD"], git_repo).strip()
+    reader = deploy_lambdas.git_show_reader(head)
+
+    data = reader(git_repo, "lambdas/router/handler.py")
+
+    assert b"\r\n" not in data
+    assert data == b"def handler(event, context):\n    return {}\n"
+
+
+def test_offline_drift_check_matches_a_zip_with_a_binary_member(
+    deploy_lambdas, load_script, git_repo
+):
+    _commit_binary_member(git_repo)
+    drift_check = load_script("drift-check")
+
+    deployed = pkg.build_package(BINARY_SPEC, git_repo)
+    assert _zip_entry(deployed, "blob.f32") == BINARY_BLOB
+    deployed_zip = git_repo / "deployed.zip"
+    deployed_zip.write_bytes(deployed)
+
+    report = drift_check.check_offline_zip("router", deployed_zip, git_repo)
+
+    assert report == {"missing": [], "extra": [], "changed": []}
