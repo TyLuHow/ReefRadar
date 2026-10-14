@@ -93,7 +93,7 @@ def test_fixture_manifest_reuses_v1_artifact_uris_that_exist_in_the_bucket():
 
 
 def test_fixtures_live_only_under_contracts_fixtures():
-    assert sorted(p.name for p in (BUCKET / "contract").iterdir()) == ["v1.json"]
+    assert sorted(p.name for p in (BUCKET / "contract").iterdir()) == ["v1.json", "v2.json"]
     for path in (BUCKET / "contract").glob("v*.json"):
         assert _load(path).get("fixture") is not True
 
@@ -431,15 +431,16 @@ def test_contract_docs_exist_and_state_the_projection_caveat():
 # A published version is frozen while the schemas may still grow
 # ---------------------------------------------------------------------------
 
-def _publish_v1(contracts_dir):
-    digest = contract_lib.sha256_hex((contracts_dir / "bucket" / "contract" / "v1.json").read_bytes())
-    (contracts_dir / "PUBLISHED.json").write_bytes(
-        contract_lib.canonical_json_bytes({"1": {"manifest_sha256": digest}})
-    )
+def _publish_all(contracts_dir):
+    """Record every committed bucket manifest (v1, and v2 once built) as published."""
+    record = {}
+    for path in sorted((contracts_dir / "bucket" / "contract").glob("v*.json")):
+        record[path.stem[1:]] = {"manifest_sha256": contract_lib.sha256_hex(path.read_bytes())}
+    (contracts_dir / "PUBLISHED.json").write_bytes(contract_lib.canonical_json_bytes(record))
 
 
 def test_a_published_version_tolerates_an_additive_schema_change(contracts_copy, monkeypatch):
-    _publish_v1(contracts_copy)
+    _publish_all(contracts_copy)
 
     def mutate(schema):
         schema["properties"]["brand_new_optional"] = {"type": "string"}

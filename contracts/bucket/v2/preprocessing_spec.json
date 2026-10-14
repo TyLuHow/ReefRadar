@@ -1,0 +1,160 @@
+{
+  "amplitude_scaling": {
+    "float32": "as stored",
+    "float64": "as stored, cast to float32",
+    "full_scale": "the most negative integer code maps to exactly -1.0 for every bit depth and channel count",
+    "normalisation": {
+      "per_window_dc_removal": true,
+      "reference": "perch-hoplite zoo_interface.normalize_audio with taxonomy_model_tf target_peak 0.25, with an explicit silent branch",
+      "silent_window": "a window that is all zeros after DC removal stays all zeros and is flagged silent",
+      "target_peak": 0.25
+    },
+    "pcm16": "value / 32768",
+    "pcm24": "value / 8388608",
+    "pcm32": "value / 2147483648",
+    "pcm8": "unsigned 8-bit: (value - 128) / 128"
+  },
+  "channel_mix": "mean",
+  "embedding_model": {
+    "dimension": 1280,
+    "name": "surfperch",
+    "version": "1.0"
+  },
+  "hop_s": 5.0,
+  "known_gaps": [
+    {
+      "closed_by": "Phase 5: lambdas/shared/reef_audio.py (preproc-2026.10.1-reef-audio)",
+      "evidence": [
+        "lambdas/preprocessor/tests/test_parity.py::test_parity_live_handler_equals_offline: the live preprocessor handler and the offline library produce identical 5 s window bytes for the same recording",
+        "lambdas/shared/tests/test_reef_audio.py::test_normalise_peak_and_mean and test_decode_scaling_identical_across_channel_counts: one normalisation and one scaling for every upload",
+        "models/interim-real-only/evaluation/inputs/reembedded.json: the 100 training windows were re-embedded through reef_audio, and the successor model was trained on those vectors"
+      ],
+      "id": "F8a",
+      "owner_phase": "Phase 5",
+      "reference": ".planning/audit/DATA-MODEL.md F8",
+      "status": "closed",
+      "summary": "Training audio, reference-site audio and live uploads now go through one normalisation (per 5 s window: subtract the window mean, scale to a peak of 0.25) and one scaling. Closed in this sense only: serving and offline share one pipeline, and the successor model was trained on windows from that pipeline."
+    },
+    {
+      "closed_by": "Phase 5: lambdas/classifier/handler.py (per-window classification, mean of window probabilities)",
+      "evidence": [
+        "per-window classification: lambdas/classifier/tests/test_handler.py::test_window_probabilities_and_recording_mean and test_window_no_mean_pooled_embedding_is_classified show each window is classified on its own and a mean embedding is never classified",
+        "models/interim-real-only/evaluation/inputs/reembedded.json: the 100 training windows were re-embedded through reef_audio, and the successor model was trained on those vectors"
+      ],
+      "id": "F8b",
+      "owner_phase": "Phase 5",
+      "reference": ".planning/audit/DATA-MODEL.md F8",
+      "status": "closed",
+      "summary": "The classifier was trained on single 5 s windows and now classifies single windows; the recording's result is the mean of the window probabilities, not the class of a mean embedding. Closed in this sense only: serving and offline share one pipeline."
+    },
+    {
+      "closed_by": "Phase 5: lambdas/shared/reef_audio.py (polyphase_kaiser_windowed_sinc resampler)",
+      "evidence": [
+        "lambdas/shared/tests/test_reef_audio.py::test_resample_matches_scipy_float64 and test_window_excerpts_match_scipy_oracle: the resampler agrees with scipy.signal.resample_poly",
+        "lambdas/shared/tests/test_reef_audio.py::test_alias_48k_20k_tone_suppressed and test_alias_96k_24k_tone_suppressed: a tone above the output Nyquist limit is suppressed instead of aliasing",
+        "lambdas/preprocessor/tests/test_parity.py::test_parity_live_handler_equals_offline: the live preprocessor handler and the offline library produce identical 5 s window bytes for the same recording"
+      ],
+      "id": "F8c",
+      "owner_phase": "Phase 5",
+      "reference": ".planning/audit/DATA-MODEL.md F8",
+      "status": "closed",
+      "summary": "Resampling is a polyphase Kaiser windowed-sinc low-pass filter (beta 5.0) that agrees with scipy, not linear interpolation. It gives about 54 dB of stopband attenuation, flat to about 13.4 kHz and stopped from about 18.6 kHz when downsampling to 32 kHz; content between 17 and 18.6 kHz is only partly attenuated, so this is not perfect anti-aliasing. Closed in this sense only: serving and offline share one pipeline."
+    },
+    {
+      "evidence": [
+        "contracts/bucket/v1/embeddings.f32 is reused by uri, unchanged",
+        "re-embedding the reference sites through reef_audio is Phase 11"
+      ],
+      "id": "F8d",
+      "owner_phase": "Phase 11",
+      "reference": ".planning/audit/DATA-MODEL.md F8",
+      "status": "open",
+      "summary": "Reference vectors were built differently per dataset (5-window means, about 30-file means, or 10 random windows, with and without normalisation). v2 reuses the v1 reference embeddings unchanged, so site similarity still compares reef_audio windows with reference vectors built by the earlier methods."
+    },
+    {
+      "evidence": [
+        "v2/evaluation_report.json (report loso-2026.10.1)",
+        "the real-data retrain and model selection are Phase 12"
+      ],
+      "id": "F8-model-evidence",
+      "owner_phase": "Phase 12",
+      "reference": ".planning/audit/DATA-MODEL.md F8",
+      "status": "open",
+      "summary": "The served model is an interim 3-class MLP fitted to 100 windows from 5 sites in Indonesia and Kenya. Its leave-one-site-out balanced accuracy is 0.4375 (0.3000 to 0.5833, 4 sites); the result cannot be told apart from chance and the model is not shown to generalise to new sites."
+    },
+    {
+      "evidence": [
+        "infrastructure/lambda_container/requirements.txt: tensorflow-cpu>=2.18.0",
+        "infrastructure/lambda_container/inference.py: MODEL_HANDLE google/surfperch/tensorFlow2/1"
+      ],
+      "id": "F8-inference-container",
+      "owner_phase": "Phase 11",
+      "reference": ".planning/audit/DATA-MODEL.md F8",
+      "status": "open",
+      "summary": "The inference container was not rebuilt: tensorflow-cpu is unpinned (>=2.18.0) and the code downloads the 4-component handle google/surfperch/tensorFlow2/1, not the pinned google/surfperch/tensorFlow2/1/1. The SavedModel file hashes below record what was embedded against, but a rebuild could resolve different packages."
+    }
+  ],
+  "levels": "peak and RMS dBFS of each 5 s window after resampling and before DC removal and normalisation, floored at -120.0; silent when the DC-removed window is all zeros",
+  "max_duration_s": 600.0,
+  "min_duration_s": 5.0,
+  "model_pin": {
+    "files": [
+      {
+        "bytes": 3859615,
+        "path": "saved_model.pb",
+        "sha256": "22269626eef55b37526468fff2ca951847b3bf9547504490067bbb862def1ae2"
+      },
+      {
+        "bytes": 97026563,
+        "path": "variables/variables.data-00000-of-00001",
+        "sha256": "e2971549fa9747b027ff028a4a038034a84181d2fabc97ae8144936eadde65bc"
+      },
+      {
+        "bytes": 8491,
+        "path": "variables/variables.index",
+        "sha256": "4720752f8deaf6694347ef09f024b8b2614495ee8390a5bc17421de581cb580f"
+      }
+    ],
+    "kaggle_handle": "google/surfperch/tensorFlow2/1/1"
+  },
+  "resampling": {
+    "anti_alias_filter": true,
+    "half_length_factor": 10,
+    "kaiser_beta": 5.0,
+    "method": "polyphase_kaiser_windowed_sinc",
+    "reference_implementation": "scipy.signal.resample_poly 1.13.1 defaults (Kaiser beta 5.0, half-length 10 x max(up, down), zero padding)"
+  },
+  "sample_rate_hz": 32000,
+  "schema_version": 1,
+  "serving": {
+    "window_pooling": "each 5 s window is classified on its own; the recording's result is the mean of the window probabilities (a mean embedding is never classified)"
+  },
+  "source": "lambdas/shared/reef_audio.py (SPEC_VERSION, spec_summary); lambdas/classifier/handler.py (per-window classification)",
+  "spec_version": "preproc-2026.10.1-reef-audio",
+  "status": "as-deployed",
+  "supported_input": {
+    "float_bits": [
+      32,
+      64
+    ],
+    "format_tags": [
+      1,
+      3,
+      65534
+    ],
+    "max_channels": 8,
+    "pcm_bits": [
+      8,
+      16,
+      24,
+      32
+    ],
+    "sample_rate_hz_range": [
+      4000,
+      192000
+    ]
+  },
+  "trailing_partial_window": "dropped",
+  "window_s": 5.0,
+  "window_samples": 160000
+}
