@@ -23,7 +23,6 @@ from decimal import Decimal
 import reef_audio
 import reef_reference
 from region_detection import detect_region, adjust_classification, DEFAULT_TRAINING_SITES
-from site_provenance import load_provenance, apply_label_provenance
 from contract_stamp import load_stamp, stamp_for_model, STAMP_KEYS
 
 s3 = boto3.client('s3')
@@ -77,8 +76,7 @@ LEGACY_PREPROCESSING_SPEC_VERSION = 'preproc-2026.10.0-as-deployed'
 
 # Caches for warm Lambda invocations
 _served_model = None
-_reference_embeddings = None
-_label_provenance = None
+_reference_set = None
 _contract_stamp = None
 
 # Retry configuration
@@ -210,7 +208,16 @@ def handler(event, context):
         region_result = detect_region(latitude, longitude, training_sites=training_sites)
         classification = adjust_classification(classification, region_result)
 
-        similar_sites, similar_sites_error = find_similar_sites_with_status(embeddings)
+        # Context from the bundled contract data: similarity to every reference
+        # site (the legacy top-3 is derived from it). Computed after, and apart
+        # from, classification: nothing here feeds back into the probabilities.
+        similarity = compute_similarity_context(embeddings)
+        similar_sites = similarity['similar_sites']
+        similar_sites_error = similarity['similar_sites_error']
+        # PCA coordinates and the acoustic OOD status (D-12: neither one alters
+        # or withholds a probability; each block is simply omitted if unavailable).
+        projection = compute_projection_block(embeddings, similarity['reference'])
+        ood = compute_ood_block(embeddings)
 
         # Per-window embeddings for later analysis (n x 1280 little-endian float32).
         s3.put_object(
@@ -242,7 +249,14 @@ def handler(event, context):
                 'classifier_model': 'trained_mlp',
                 'classifier_version': classification.get('model_version', '1.0')
             },
-            'windows': build_windows_block(window_probs, served, info['sidecar']),
+            'windows': build_windows_block(
+                window_probs, served, info['sidecar'],
+                similarities=similarity['window_similarities'],
+                nearest_site=similarity['nearest_site'],
+            ),
+            **({'site_similarities': similarity['site_similarities']} if similarity['site_similarities'] else {}),
+            **({'projection': projection} if projection else {}),
+            **({'ood': ood} if ood else {}),
             'input_audio': build_input_audio_block(info['sidecar']),
             'completed_at': datetime.utcnow().isoformat(),
             'caveats': region_result['caveat']
@@ -800,13 +814,18 @@ def aggregate_classification(P, model):
     }
 
 
-def build_windows_block(P, model, sidecar):
-    """The additive `windows` block: column-wise per-window data (contract analysis-result $defs/windows)."""
+def build_windows_block(P, model, sidecar, similarities=None, nearest_site=None):
+    """The additive `windows` block: column-wise per-window data (contract analysis-result $defs/windows).
+
+    `similarities` (n rows of one cosine per reference site, columns in
+    site_similarities.site_order) and `nearest_site` are added when the
+    reference set was available.
+    """
     classes = class_names(model)
     P = np.asarray(P, dtype=np.float64)
     n = int(P.shape[0])
     levels = sidecar['levels']
-    return {
+    block = {
         'count': n,
         'window_s': float(reef_audio.WINDOW_S),
         'index': list(range(n)),
@@ -818,6 +837,11 @@ def build_windows_block(P, model, sidecar):
         'rms_dbfs': [float(v) for v in levels['rms_dbfs']],
         'silent': [bool(v) for v in levels['silent']],
     }
+    if similarities is not None:
+        block['similarities'] = np.asarray(similarities, dtype=np.float64).tolist()
+    if nearest_site is not None:
+        block['nearest_site'] = list(nearest_site)
+    return block
 
 
 def build_input_audio_block(sidecar):
@@ -885,82 +909,6 @@ def classify_embedding(embedding, model=None):
         'model_version': config.get('version', 'unknown')
     }
 
-
-REFERENCE_KEYS = (
-    'reference/metadata_v6.json',
-    'reference/metadata_v5.json',
-    'reference/metadata.json',
-)
-
-
-def _site_embedding(site):
-    """Return a reference site's embedding vector, or None.
-
-    The published reference objects (metadata_v6.json / metadata.json) store
-    the per-site vector under `embedding`; older fixtures used
-    `mean_embedding`. Accept both so the similarity step reads what is
-    actually published.
-    """
-    if not isinstance(site, dict):
-        return None
-    vec = site.get('embedding')
-    if not vec:
-        vec = site.get('mean_embedding')
-    return vec or None
-
-
-def load_reference_sites():
-    """Load reference sites (with mean embeddings) from S3.
-
-    Uses the SAME key order as the router's /sites (v6 -> v5 -> legacy
-    metadata.json) and takes the first object that parses and contains at
-    least one site with an embedding (`embedding`, or legacy `mean_embedding`), so the sites a user sees listed
-    and the sites the similarity step compares against come from one source.
-    Returns (sites, source_key). Only successful loads are cached; failures
-    are logged and raised, never swallowed into an empty list.
-    """
-    global _reference_embeddings
-
-    if _reference_embeddings is not None:
-        return _reference_embeddings
-
-    errors = []
-    for key in REFERENCE_KEYS:
-        try:
-            response = s3.get_object(Bucket=EMBEDDINGS_BUCKET, Key=key)
-            metadata = json.loads(response['Body'].read().decode())
-        except Exception as e:
-            errors.append(f"{key}: {type(e).__name__}")
-            continue
-
-        # New format (v2.0+) has a 'sites' key; old format is a direct list.
-        if isinstance(metadata, dict) and 'sites' in metadata:
-            sites = metadata['sites']
-        elif isinstance(metadata, list):
-            sites = metadata
-        else:
-            sites = []
-
-        if any(_site_embedding(s) for s in sites):
-            _reference_embeddings = (sites, key)
-            return _reference_embeddings
-        errors.append(f"{key}: no sites with embeddings")
-
-    print(f"WARN reference lookup failed: {'; '.join(errors)}")
-    raise RuntimeError("no reference object with site embeddings could be loaded")
-
-
-def get_label_provenance():
-    """Load and cache data/site-label-provenance.json (or bundled copy).
-
-    D-17: this is the single place that decides which dataset assigned a
-    reference site's label and what that label actually means, so the
-    classifier can never invent a health status for a non-MARRS site.
-    """
-    global _label_provenance
-    if _label_provenance is None:
-        _label_provenance = load_provenance()
-    return _label_provenance
 
 
 def get_contract_stamp():
@@ -1046,89 +994,262 @@ def result_version_stamp(loaded_model_version, windows_spec_version=None):
     return stamp
 
 
-def find_similar_sites_with_status(embedding, top_k=3):
-    """Find most similar reference sites using cosine similarity.
 
-    `embedding` is the (n_windows, 1280) window matrix (a single 1-D vector is
-    accepted as one window). A reference site's score is the mean of the
-    per-window cosine similarities; the windows are never pooled first.
+# --- context for every analysis: similarity to the reference sites (plan 05-10) ----
 
-    Returns (similar_sites, error_note). `error_note` is None when the lookup
-    worked; otherwise a short, user-presentable reason why the list is empty
-    ("similarity unavailable") so an empty list is never ambiguous between
-    "no neighbours exist" and "the lookup is broken".
+SIMILARITY_UNAVAILABLE_NOTE = 'Reference embeddings could not be loaded, so similar-site comparison is unavailable.'
 
-    Each result carries its label provenance (D-17): `label_source` names
-    the dataset that assigned the status, and `label_original` is that
-    dataset's own term for it. Non-MARRS sites (e.g. CoralSoundExplorer's
-    disturbance-context recordings) never carry an invented health label
-    -- their `status` is whatever apply_label_provenance resolves to
-    (typically "unknown"), not a value this function makes up.
+SITE_SIMILARITIES_NOTE = (
+    'Scores compare this recording\'s windows (prepared by the current preprocessing) with reference '
+    'vectors that were made by the earlier preprocessing, so they are not a like-for-like comparison '
+    'until the reference vectors are re-embedded. Each score is the mean of the per-window cosine '
+    'similarities; the windows are never averaged into one vector first.'
+)
+
+
+def get_reference_set():
+    """The bundled, hash-verified contract reference set (embeddings, sites, projection).
+
+    Cached for warm invocations; only a successful load is cached, so a transient
+    problem is retried on the next invocation. Raises ReferenceDataError.
+    """
+    global _reference_set
+    if _reference_set is None:
+        _reference_set = reef_reference.load_reference_set()
+        print(
+            f"Reference set loaded: contract v{_reference_set.contract_version}, "
+            f"{len(_reference_set.row_site_ids)} sites with embeddings"
+        )
+    return _reference_set
+
+
+def _emit_context_unavailable_metric(block, reason):
+    """Make an omitted context block observable in CloudWatch without failing the analysis.
+
+    One CloudWatch Embedded Metric Format log line (metric ContextUnavailable in
+    namespace ReefRadar/Classifier, dimension Block), the same pattern as
+    _emit_stamp_metric.
     """
     try:
-        reference_data, source_key = load_reference_sites()
-    except Exception as e:
-        print(f"ERROR similar sites: reference load failed: {type(e).__name__}: {e}")
-        return [], 'Reference embeddings could not be loaded, so similar-site comparison is unavailable.'
+        print(json.dumps({
+            '_aws': {
+                'Timestamp': int(time.time() * 1000),
+                'CloudWatchMetrics': [{
+                    'Namespace': 'ReefRadar/Classifier',
+                    'Dimensions': [['Block']],
+                    'Metrics': [{'Name': 'ContextUnavailable', 'Unit': 'Count'}],
+                }],
+            },
+            'Block': block,
+            'ContextUnavailable': 1,
+            'reason': str(reason)[:200],
+        }))
+    except Exception:
+        pass  # observability must never fail an analysis
 
-    windows = np.atleast_2d(np.asarray(embedding, dtype=np.float64))
-    dim = windows.shape[1]
-    prov = get_label_provenance()
-    similarities = []
-    skipped_dim = 0
-    status_map = {'H': 'healthy', 'D': 'degraded', 'R': 'restored_early', 'N': 'restored_early'}
 
-    for ref in reference_data:
-        ref_embedding = np.array(_site_embedding(ref) or [])
-        if len(ref_embedding) != dim:
-            skipped_dim += 1
-            continue
-        sim = float(np.mean([cosine_similarity(w, ref_embedding) for w in windows]))
-        # Use 'status' field directly if available (new format), else map from site_type
-        status = ref.get('status') or status_map.get(ref.get('site_type', 'U'), 'unknown')
-        try:
-            labeled = apply_label_provenance({'site_id': ref.get('site_id', 'unknown'), 'status': status}, prov)
-        except KeyError:
-            print(f"WARN similar sites: no provenance for {ref.get('site_id')!r}; skipped")
-            continue
-        similarities.append({
-            'site_id': labeled['site_id'],
-            'similarity': float(sim),
-            'country': ref.get('country', 'Unknown'),
-            'status': labeled['status'],
-            'label_source': labeled['label_source'],
-            'label_source_name': labeled['label_source_name'],
-            'label_original': labeled['label_original'],
+def _normalise_rows(a):
+    """Row-normalise to unit length in float64; an all-zero row stays zero (cosine 0)."""
+    a = np.atleast_2d(np.asarray(a, dtype=np.float64))
+    norms = np.linalg.norm(a, axis=1, keepdims=True)
+    return np.divide(a, norms, out=np.zeros_like(a), where=norms > 0)
+
+
+def window_similarities(E, ref):
+    """Cosine similarity of every window to every acoustic reference site -> float64 (n, sites).
+
+    Columns follow ref.row_site_ids. Rows are normalised once and one matrix
+    product gives all the cosines; the windows are never pooled first.
+    """
+    S = _normalise_rows(E) @ _normalise_rows(ref.matrix).T
+    return np.clip(S, -1.0, 1.0)
+
+
+def build_site_similarities(S, ref):
+    """The additive `site_similarities` block (contract analysis-result $defs/site_similarities).
+
+    A site's score is the mean over windows of its per-window cosines; rank 1 is
+    the highest score, ties broken by row order. The location-only sites are
+    listed after the scored ones with has_embedding false and no similarity or
+    rank: they have no embedding, so nothing is invented for them.
+    """
+    scores = np.asarray(S, dtype=np.float64).mean(axis=0)
+    order = np.argsort(-scores, kind='stable')
+    rank = np.empty(len(scores), dtype=int)
+    rank[order] = np.arange(1, len(scores) + 1)
+    sites = [
+        {'site_id': site_id, 'has_embedding': True, 'similarity': float(scores[i]), 'rank': int(rank[i])}
+        for i, site_id in enumerate(ref.row_site_ids)
+    ]
+    sites += [
+        {'site_id': site_id, 'has_embedding': False, 'similarity': None, 'rank': None}
+        for site_id in ref.location_only_ids
+    ]
+    return {
+        'metric': 'cosine',
+        'aggregation': 'mean_of_window_cosines',
+        'contract_version': int(ref.contract_version),
+        'dataset_version': ref.dataset_version,
+        'site_order': list(ref.row_site_ids),
+        'sites': sites,
+        'note': SITE_SIMILARITIES_NOTE,
+    }
+
+
+def top3_similar_sites(scores, ref, top_k=3):
+    """The legacy `similar_sites` list: the top_k sites in exactly the old entry shape.
+
+    Entries are {site_id, similarity, country, status, label_source,
+    label_source_name, label_original}, read from the bundled contract site
+    records (which already carry the label provenance, D-17): label_source is the
+    site's dataset_id and status is never invented here.
+    """
+    scores = np.asarray(scores, dtype=np.float64)
+    entries = []
+    for i in np.argsort(-scores, kind='stable')[:top_k]:
+        site = ref.sites[ref.row_site_ids[int(i)]]
+        entries.append({
+            'site_id': site['site_id'],
+            'similarity': float(scores[int(i)]),
+            'country': site.get('country', 'Unknown'),
+            'status': site.get('status'),
+            'label_source': site.get('dataset_id'),
+            'label_source_name': site.get('label_source_name'),
+            'label_original': site.get('label_original'),
         })
+    return entries
 
-    if skipped_dim:
-        print(f"WARN similar sites: {skipped_dim}/{len(reference_data)} reference sites from {source_key} "
-              f"have no {dim}-dim embedding and were skipped")
 
-    if not similarities:
-        return [], (
-            f'No reference site has a comparable {dim}-dimensional embedding '
-            f'({skipped_dim} of {len(reference_data)} reference sites skipped), '
-            'so similar-site comparison is unavailable.'
+def compute_similarity_context(embeddings):
+    """Similarity of the windows to the reference sites.
+
+    Returns a dict with similar_sites, similar_sites_error (None when it worked),
+    site_similarities, window_similarities and nearest_site (the last three None
+    when the reference set is unavailable). A failure is logged and counted,
+    never raised: classification does not depend on it.
+    """
+    try:
+        ref = get_reference_set()
+        S = window_similarities(embeddings, ref)
+        scores = S.mean(axis=0)
+        return {
+            'similar_sites': top3_similar_sites(scores, ref),
+            'similar_sites_error': None,
+            'site_similarities': build_site_similarities(S, ref),
+            'window_similarities': S,
+            'nearest_site': [ref.row_site_ids[int(j)] for j in S.argmax(axis=1)],
+            'reference': ref,
+        }
+    except Exception as e:
+        print(f"ERROR similar sites: {type(e).__name__}: {e}")
+        _emit_context_unavailable_metric('similarity', f"{type(e).__name__}: {e}")
+        return {
+            'similar_sites': [],
+            'similar_sites_error': SIMILARITY_UNAVAILABLE_NOTE,
+            'site_similarities': None,
+            'window_similarities': None,
+            'nearest_site': None,
+            'reference': None,
+        }
+
+
+# --- projection and acoustic OOD (plan 05-10) ------------------------------------------
+#
+# Both blocks are computed after classification, from the same window embeddings E,
+# and never feed back into it (D-12: nothing here scales, adjusts or withholds a
+# probability). A load or compute failure omits the block, prints an EMF line and
+# leaves the analysis otherwise intact.
+
+OOD_NOTE = (
+    'Distance is measured to the 100 training windows, which were embedded with the same '
+    'preprocessing as this recording. It is reported beside the probabilities and never '
+    'changes or withholds them. It cannot detect a mismatch between the classifier and its '
+    'embeddings: a model that no longer fits its embedding space would not show up here.'
+)
+
+_ood_reference = None
+
+
+def get_ood_reference():
+    """The bundled, hash-verified OOD reference (cached after a successful load)."""
+    global _ood_reference
+    if _ood_reference is None:
+        _ood_reference = reef_reference.load_ood_reference()
+        print(
+            f"OOD reference loaded: {_ood_reference.version}, {_ood_reference.matrix.shape[0]} training "
+            f"windows, threshold {_ood_reference.threshold}"
         )
-
-    # Sort by similarity and return top_k
-    similarities.sort(key=lambda x: x['similarity'], reverse=True)
-    return similarities[:top_k], None
+    return _ood_reference
 
 
-def find_similar_sites(embedding, top_k=3):
-    """List-only wrapper around find_similar_sites_with_status."""
-    return find_similar_sites_with_status(embedding, top_k=top_k)[0]
+def build_projection_block(E, ref):
+    """The additive `projection` block: each window's PCA coordinates in the contract's basis.
+
+    coordinates = (window - mean) @ components.T in float64, the same formula the
+    reference sites' published coordinates come from, so a reference site's own
+    vector reproduces them. The centroid is the mean of the window points.
+    """
+    points = (np.atleast_2d(np.asarray(E, dtype=np.float64)) - ref.projection_mean) @ ref.projection_components.T
+    return {
+        'method': 'pca',
+        'contract_version': int(ref.contract_version),
+        'basis_uri': ref.projection_uri,
+        'explained_variance_ratio': [float(v) for v in ref.explained_variance_ratio],
+        'windows': points.tolist(),
+        'centroid': points.mean(axis=0).tolist(),
+        'note': ref.projection_note,
+    }
 
 
-def cosine_similarity(a, b):
-    """Calculate cosine similarity between two vectors."""
-    a = np.array(a)
-    b = np.array(b)
-    dot_product = np.dot(a, b)
-    norm_a = np.linalg.norm(a)
-    norm_b = np.linalg.norm(b)
-    if norm_a == 0 or norm_b == 0:
-        return 0.0
-    return dot_product / (norm_a * norm_b)
+def build_ood_block(E, ood_ref):
+    """The additive `ood` block: distance of each window to its nearest training window.
+
+    distance = 1 - the largest cosine to any training window (k = 1); a window is
+    "outside" exactly when its distance exceeds the calibrated threshold, which is
+    returned with every result so the numbers can be read without a lookup.
+    """
+    cosines = _normalise_rows(E) @ _normalise_rows(ood_ref.matrix).T
+    distance = np.maximum(0.0, 1.0 - cosines.max(axis=1))
+    outside = distance > ood_ref.threshold
+    n = int(distance.shape[0])
+    k = int(outside.sum())
+    return {
+        'metric': 'cosine_distance_to_nearest_training_window',
+        'k': 1,
+        'threshold': float(ood_ref.threshold),
+        'reference_version': ood_ref.version,
+        'reference_sha256': ood_ref.sha256,
+        'windows': {
+            'distance': distance.tolist(),
+            'status': ['outside' if flag else 'inside' for flag in outside],
+        },
+        'summary': {
+            'windows_outside': k,
+            'windows_total': n,
+            'statement': f'{k} of {n} windows are outside the training data',
+        },
+        'note': OOD_NOTE,
+    }
+
+
+def compute_projection_block(E, ref):
+    """build_projection_block, or None (with an EMF line) when it cannot be computed."""
+    if ref is None:
+        _emit_context_unavailable_metric('projection', 'reference set unavailable')
+        return None
+    try:
+        return build_projection_block(E, ref)
+    except Exception as e:
+        print(f"ERROR projection: {type(e).__name__}: {e}")
+        _emit_context_unavailable_metric('projection', f"{type(e).__name__}: {e}")
+        return None
+
+
+def compute_ood_block(E):
+    """build_ood_block against the bundled reference, or None (with an EMF line) when unavailable."""
+    try:
+        return build_ood_block(E, get_ood_reference())
+    except Exception as e:
+        print(f"ERROR ood: {type(e).__name__}: {e}")
+        _emit_context_unavailable_metric('ood', f"{type(e).__name__}: {e}")
+        return None

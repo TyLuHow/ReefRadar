@@ -170,3 +170,273 @@ def load_served_model(config_path: Optional[str] = None, weights_path: Optional[
         training_spec_version=spec_version,
         idx_to_label=dict(config["idx_to_label"]),
     )
+
+
+# --- contract reference set: embeddings, sites, projection (plan 05-10) -------------
+#
+# Every similarity and projection value shown for an analysis comes from the
+# contract's own files, pinned by the manifest's sha256 values: the 48 reference
+# embeddings (embeddings.f32 with row_site_ids), the site records, and the PCA
+# basis. In the Lambda package they sit next to this module under the
+# BUNDLED_ARTIFACT_FILES names with the contract manifest as contract_manifest.json;
+# in a checkout the artifact uris are resolved under contracts/bucket. Nothing is
+# read from S3 at runtime.
+
+CONTRACT_MANIFEST = "contract_manifest.json"
+BUNDLED_ARTIFACT_FILES = {
+    "embeddings": "reference_embeddings.f32",
+    "sites": "reference_sites.json",
+    "projection": "reference_projection.json",
+    "ood_reference": "ood_reference.json",
+    "ood_embeddings": "ood_reference.f32",
+}
+
+_REPO_ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+# Repo mode default manifest (switched to contract/v2.json when 05-15 bundles it).
+REPO_CONTRACT_MANIFEST = os.path.join(_REPO_ROOT, "contracts", "bucket", "contract", "v1.json")
+
+EMBEDDING_DIM = 1280
+
+
+@dataclass
+class ReferenceSet:
+    """The acoustic reference embeddings, their site records and the PCA basis."""
+
+    row_site_ids: list          # the acoustic-reference site ids in embedding row order
+    matrix: np.ndarray          # float32 (len(row_site_ids), 1280)
+    sites: Dict[str, Dict[str, Any]]   # every site record (acoustic and location-only) by id
+    location_only_ids: list     # ids of the sites that have no embedding, in sites.json order
+    projection_mean: np.ndarray        # float64 (1280,)
+    projection_components: np.ndarray  # float64 (2, 1280)
+    explained_variance_ratio: list
+    projection_note: str
+    projection_uri: str         # the manifest's uri for the projection (for example v1/projection.json)
+    contract_version: int
+    dataset_version: str
+
+
+class _ArtifactSource:
+    """Reads manifest artifacts from the bundled files or from the contract bucket, verified."""
+
+    def __init__(self, manifest_path: Optional[str]):
+        self.bundled = False
+        self.bucket_dir = None
+        if manifest_path is None:
+            bundled = os.path.join(_MODULE_DIR, CONTRACT_MANIFEST)
+            if os.path.exists(bundled):
+                self.bundled = True
+                manifest_path = bundled
+            else:
+                manifest_path = REPO_CONTRACT_MANIFEST
+        if not self.bundled:
+            # contracts/bucket/contract/vN.json -> contracts/bucket
+            self.bucket_dir = os.path.dirname(os.path.dirname(os.path.abspath(manifest_path)))
+        try:
+            with open(manifest_path, "rb") as f:
+                self.manifest = json.loads(f.read().decode("utf-8"))
+        except (OSError, ValueError) as exc:
+            raise ReferenceDataError(f"contract manifest could not be read: {exc}") from exc
+        if not isinstance(self.manifest, dict) or not isinstance(self.manifest.get("artifacts"), dict):
+            raise ReferenceDataError("contract manifest has no artifacts")
+
+    def artifact(self, name: str) -> Dict[str, Any]:
+        entry = self.manifest["artifacts"].get(name)
+        if not isinstance(entry, dict) or entry.get("present") is False or not entry.get("sha256"):
+            raise ReferenceDataError(f"contract manifest has no {name!r} artifact")
+        return entry
+
+    def read(self, name: str, entry: Optional[Dict[str, Any]] = None) -> bytes:
+        entry = entry or self.artifact(name)
+        if self.bundled:
+            filename = BUNDLED_ARTIFACT_FILES.get(name)
+            if filename is None:
+                raise ReferenceDataError(f"no bundled file is defined for artifact {name!r}")
+            path = os.path.join(_MODULE_DIR, filename)
+        else:
+            path = os.path.join(self.bucket_dir, *str(entry["uri"]).split("/"))
+        try:
+            with open(path, "rb") as f:
+                raw = f.read()
+        except OSError as exc:
+            raise ReferenceDataError(f"artifact {name!r} could not be read: {exc}") from exc
+        return _verify_artifact(name, entry, raw)
+
+
+def _verify_artifact(name: str, entry: Dict[str, Any], raw: bytes) -> bytes:
+    if hashlib.sha256(raw).hexdigest() != entry["sha256"]:
+        raise ReferenceDataError(f"artifact {name!r} sha256 does not match the contract manifest")
+    declared = entry.get("bytes")
+    if declared is not None and len(raw) != int(declared):
+        raise ReferenceDataError(
+            f"artifact {name!r} is {len(raw)} bytes but the contract manifest says {declared} bytes"
+        )
+    return raw
+
+
+def _json_object(name: str, raw: bytes) -> Dict[str, Any]:
+    try:
+        data = json.loads(raw.decode("utf-8"))
+    except ValueError as exc:
+        raise ReferenceDataError(f"artifact {name!r} is not valid JSON: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ReferenceDataError(f"artifact {name!r} must be a JSON object")
+    return data
+
+
+def _float32_matrix(name: str, raw: bytes, count: int, dim: int) -> np.ndarray:
+    if len(raw) != count * dim * 4:
+        raise ReferenceDataError(f"artifact {name!r} holds {len(raw)} bytes, expected {count * dim * 4}")
+    matrix = np.frombuffer(raw, dtype="<f4").reshape(count, dim)
+    if not np.isfinite(matrix).all():
+        raise ReferenceDataError(f"artifact {name!r} contains NaN or infinity")
+    return matrix.astype(np.float32)
+
+
+def load_reference_set(manifest_path: Optional[str] = None) -> ReferenceSet:
+    """Load and verify the contract's reference embeddings, sites and projection.
+
+    Bundled mode (contract_manifest.json next to this module) reads the bundled
+    files; otherwise the manifest at `manifest_path` (default REPO_CONTRACT_MANIFEST)
+    is read and artifact uris resolve under its contracts/bucket. Every artifact is
+    checked against the manifest's sha256 and byte count. Raises ReferenceDataError
+    for any missing, tampered or inconsistent file.
+    """
+    src = _ArtifactSource(manifest_path)
+
+    emb = src.artifact("embeddings")
+    row_site_ids = emb.get("row_site_ids")
+    if not isinstance(row_site_ids, list) or not row_site_ids or len(set(row_site_ids)) != len(row_site_ids):
+        raise ReferenceDataError("embeddings artifact has no usable row_site_ids")
+    if int(emb.get("dim", 0)) != EMBEDDING_DIM:
+        raise ReferenceDataError(f"embeddings dim is {emb.get('dim')!r}, expected {EMBEDDING_DIM}")
+    if int(emb.get("count", -1)) != len(row_site_ids):
+        raise ReferenceDataError("embeddings count does not equal len(row_site_ids)")
+    matrix = _float32_matrix("embeddings", src.read("embeddings"), len(row_site_ids), EMBEDDING_DIM)
+
+    sites_doc = _json_object("sites", src.read("sites"))
+    site_list = sites_doc.get("sites")
+    if not isinstance(site_list, list):
+        raise ReferenceDataError("sites artifact has no sites list")
+    sites: Dict[str, Dict[str, Any]] = {}
+    for site in site_list:
+        if not isinstance(site, dict) or not site.get("site_id") or site["site_id"] in sites:
+            raise ReferenceDataError("sites artifact has a site without a unique site_id")
+        sites[site["site_id"]] = site
+    row_index = {site_id: i for i, site_id in enumerate(row_site_ids)}
+    location_only = []
+    for site_id, site in sites.items():
+        if site.get("reference_role") == "acoustic_reference":
+            if row_index.get(site_id) is None or site.get("embedding_row") != row_index[site_id]:
+                raise ReferenceDataError(
+                    f"site {site_id!r} embedding_row {site.get('embedding_row')!r} does not match its "
+                    "position in the embeddings row order"
+                )
+        else:
+            if site_id in row_index or site.get("embedding_row") is not None:
+                raise ReferenceDataError(f"site {site_id!r} is location-only but has an embedding row")
+            location_only.append(site_id)
+    missing = [site_id for site_id in row_site_ids if site_id not in sites]
+    if missing:
+        raise ReferenceDataError(f"embedding rows have no site record: {missing[:3]}")
+
+    proj_entry = src.artifact("projection")
+    projection = _json_object("projection", src.read("projection"))
+    if projection.get("input_uri") != emb.get("uri"):
+        raise ReferenceDataError("projection input_uri is not the manifest's embeddings uri")
+    try:
+        mean = np.asarray(projection["mean"], dtype=np.float64)
+        components = np.asarray(projection["components"], dtype=np.float64)
+        ratio = [float(v) for v in projection["explained_variance_ratio"]]
+        note = projection["note"]
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ReferenceDataError(f"projection artifact is incomplete: {exc}") from exc
+    if mean.shape != (EMBEDDING_DIM,) or components.shape != (2, EMBEDDING_DIM) or len(ratio) != 2:
+        raise ReferenceDataError("projection basis has the wrong shape")
+    if not (np.isfinite(mean).all() and np.isfinite(components).all()):
+        raise ReferenceDataError("projection basis contains NaN or infinity")
+    if not isinstance(note, str) or not note:
+        raise ReferenceDataError("projection artifact has no note")
+
+    manifest = src.manifest
+    return ReferenceSet(
+        row_site_ids=list(row_site_ids),
+        matrix=matrix,
+        sites=sites,
+        location_only_ids=location_only,
+        projection_mean=mean,
+        projection_components=components,
+        explained_variance_ratio=ratio,
+        projection_note=note,
+        projection_uri=str(proj_entry["uri"]),
+        contract_version=int(manifest["contract_version"]),
+        dataset_version=str(manifest["dataset_version"]),
+    )
+
+
+# --- acoustic out-of-distribution reference (plan 05-10) -----------------------------
+#
+# The OOD reference is a sidecar (threshold, calibration, the training windows'
+# embedding sha256) plus the re-embedded training windows as a float32 matrix, both
+# named by the contract manifest. Contract v1 has none, so loading against it raises
+# ReferenceDataError and the classifier omits the ood block (never invents one).
+
+
+@dataclass
+class OodReference:
+    """The training windows an analysis is measured against, and the calibrated threshold."""
+
+    version: str
+    threshold: float
+    metric: str
+    k: int
+    matrix: np.ndarray       # float32 (n, 1280): the re-embedded training windows
+    sha256: str              # sha256 of the matrix bytes (the ood_embeddings artifact)
+    row_site_ids: list       # the training site of each row
+
+
+def load_ood_reference(manifest_path: Optional[str] = None) -> OodReference:
+    """Load and verify the OOD sidecar and its embeddings matrix.
+
+    Both artifacts are checked against the contract manifest's sha256 and byte
+    count, and the sidecar's own embeddings.sha256 must equal the matrix artifact's.
+    Requires metric cosine_distance and k 1. Raises ReferenceDataError otherwise,
+    including when the manifest names no OOD artifact (contract v1).
+    """
+    src = _ArtifactSource(manifest_path)
+    sidecar_entry = src.artifact("ood_reference")
+    sidecar = _json_object("ood_reference", src.read("ood_reference", sidecar_entry))
+
+    if sidecar.get("metric") != "cosine_distance":
+        raise ReferenceDataError(f"OOD metric is {sidecar.get('metric')!r}, expected 'cosine_distance'")
+    if sidecar.get("k") != 1:
+        raise ReferenceDataError(f"OOD k is {sidecar.get('k')!r}, expected 1")
+    threshold = sidecar.get("threshold")
+    if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) or not 0 <= threshold:
+        raise ReferenceDataError("OOD threshold must be a non-negative number")
+    version = sidecar.get("ood_version")
+    if not version:
+        raise ReferenceDataError("OOD sidecar has no ood_version")
+
+    sidecar_emb = sidecar.get("embeddings")
+    if not isinstance(sidecar_emb, dict):
+        raise ReferenceDataError("OOD sidecar has no embeddings block")
+    matrix_entry = src.artifact("ood_embeddings")
+    if sidecar_emb.get("sha256") != matrix_entry["sha256"]:
+        raise ReferenceDataError("OOD sidecar embeddings.sha256 does not match the ood_embeddings artifact")
+    if int(sidecar_emb.get("dim", 0)) != EMBEDDING_DIM:
+        raise ReferenceDataError(f"OOD embeddings dim is {sidecar_emb.get('dim')!r}, expected {EMBEDDING_DIM}")
+    count = int(sidecar_emb.get("count", 0))
+    row_site_ids = sidecar.get("row_site_ids")
+    if count < 1 or not isinstance(row_site_ids, list) or len(row_site_ids) != count:
+        raise ReferenceDataError("OOD row_site_ids does not match the embeddings count")
+    matrix = _float32_matrix("ood_embeddings", src.read("ood_embeddings", matrix_entry), count, EMBEDDING_DIM)
+
+    return OodReference(
+        version=str(version),
+        threshold=float(threshold),
+        metric=sidecar["metric"],
+        k=1,
+        matrix=matrix,
+        sha256=matrix_entry["sha256"],
+        row_site_ids=list(row_site_ids),
+    )
