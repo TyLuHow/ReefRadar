@@ -13,11 +13,12 @@ import json
 import zipfile
 from decimal import Decimal
 
+import numpy as np
 import pytest
 
 import lambda_packaging as pkg  # repo-wide pytest.ini pythonpath
 import reef_audio
-from preproc_wavs import EXCERPT_DIR, REPO_ROOT
+from .preproc_wavs import EXCERPT_DIR, REPO_ROOT, build_wav
 
 EXCERPT = EXCERPT_DIR / "ind_H1_20220830_120000.wav"
 
@@ -111,3 +112,77 @@ def test_preprocessor_package_members():
     zf = zipfile.ZipFile(io.BytesIO(zip_bytes))
     shared = (REPO_ROOT / "lambdas" / "shared" / "reef_audio.py").read_bytes()
     assert zf.read("reef_audio.py").replace(b"\r\n", b"\n") == shared.replace(b"\r\n", b"\n")
+
+
+# --- error paths: typed ERROR item, re-raise, no segments, no classifier invoke ----------
+
+
+def _assert_failed_cleanly(preproc, analysis_id="an-1"):
+    assert not preproc.has_object(analysis_id, "segments.f32")
+    assert not preproc.has_object(analysis_id, "segments.json")
+    assert preproc.item(analysis_id, "PREPROCESSED") is None
+    assert preproc.recorder.calls == []
+    item = preproc.item(analysis_id, "ERROR")
+    assert item is not None
+    assert item["status"] == "failed"
+    assert item["upload_id"] == "up-1"
+    return item
+
+
+def test_handler_invalid_format_error_item(preproc):
+    with pytest.raises(reef_audio.InvalidAudioFormatError):
+        preproc.run(b"this is definitely not a wav file" * 40)
+    item = _assert_failed_cleanly(preproc)
+    assert item["error_code"] == "INVALID_AUDIO_FORMAT"
+    assert "min_duration_required" not in item and "max_duration_allowed" not in item
+
+
+def test_handler_too_short_error_item(preproc):
+    three_seconds = build_wav(np.zeros(3 * 32000, dtype="<i2").tobytes(), rate=32000, bits=16)
+    with pytest.raises(reef_audio.AudioTooShortError):
+        preproc.run(three_seconds)
+    item = _assert_failed_cleanly(preproc)
+    assert item["error_code"] == "AUDIO_TOO_SHORT"
+    assert item["min_duration_required"] == "5.0"
+
+
+def test_handler_too_long_error_item(preproc):
+    # 601 s of 8-bit mono at the minimum accepted rate (4 kHz) is a 2.4 MB upload,
+    # inside the router's 4 MiB cap and a real 601 s file, not a lying header.
+    too_long = build_wav(bytes([128]) * (601 * 4000), rate=4000, bits=8)
+    with pytest.raises(reef_audio.AudioTooLongError):
+        preproc.run(too_long)
+    item = _assert_failed_cleanly(preproc)
+    assert item["error_code"] == "AUDIO_TOO_LONG"
+    assert item["max_duration_allowed"] == "600.0"
+
+
+def test_handler_unexpected_failure_is_processing_failed(preproc, monkeypatch, excerpt_bytes):
+    def boom(_windows):
+        raise RuntimeError("disk on fire")
+
+    monkeypatch.setattr(reef_audio, "encode_segments", boom)
+    with pytest.raises(RuntimeError):
+        preproc.run(excerpt_bytes)
+    item = preproc.item("an-1", "ERROR")
+    assert item["error_code"] == "PROCESSING_FAILED"
+    assert preproc.recorder.calls == []
+
+
+def test_handler_digital_silence_completes(preproc):
+    silence = build_wav(np.zeros(10 * 32000, dtype="<i2").tobytes(), rate=32000, bits=16)
+    result = preproc.run(silence)
+    assert result["statusCode"] == 200
+
+    sidecar = reef_audio.parse_sidecar(preproc.get_bytes("an-1", "preprocessing.json"))
+    assert sidecar["num_windows"] == 2
+    assert sidecar["levels"]["peak_dbfs"] == [-120.0, -120.0]
+    assert sidecar["levels"]["rms_dbfs"] == [-120.0, -120.0]
+    assert sidecar["levels"]["silent"] == [True, True]
+
+    windows = reef_audio.decode_segments(preproc.get_bytes("an-1", "segments.f32"))
+    assert windows.shape == (2, reef_audio.WINDOW_SAMPLES)
+    assert not windows.any()
+    assert np.isfinite(windows).all()
+    assert len(preproc.recorder.calls) == 1
+    assert preproc.item("an-1", "ERROR") is None
