@@ -192,8 +192,8 @@ BUNDLED_ARTIFACT_FILES = {
 }
 
 _REPO_ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
-# Repo mode default manifest (switched to contract/v2.json when 05-15 bundles it).
-REPO_CONTRACT_MANIFEST = os.path.join(_REPO_ROOT, "contracts", "bucket", "contract", "v1.json")
+# Repo mode default manifest: the published contract v2 (the version the classifier package bundles).
+REPO_CONTRACT_MANIFEST = os.path.join(_REPO_ROOT, "contracts", "bucket", "contract", "v2.json")
 
 EMBEDDING_DIM = 1280
 

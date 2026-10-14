@@ -156,8 +156,20 @@ def _copy_bucket(tmp_path):
     return path, json.loads(path.read_text(encoding="utf-8"))
 
 
-def test_reference_set_repo_mode_v1():
+def test_reference_set_repo_mode_default_is_v2():
+    assert Path(rr.REPO_CONTRACT_MANIFEST).as_posix().endswith("contracts/bucket/contract/v2.json")
     ref = rr.load_reference_set()
+    manifest = json.loads((_BUCKET / "contract" / "v2.json").read_text(encoding="utf-8"))
+    assert ref.contract_version == manifest["contract_version"] == 2
+    assert ref.row_site_ids == manifest["artifacts"]["embeddings"]["row_site_ids"]
+    assert len(ref.sites) == 54
+    ood = rr.load_ood_reference()
+    assert ood.matrix.shape == (100, 1280)
+    assert ood.version == "ood-2026.10.1-nn1-cosine"
+
+
+def test_reference_set_repo_mode_v1():
+    ref = rr.load_reference_set(str(_BUCKET / "contract" / "v1.json"))
     manifest = json.loads((_BUCKET / "contract" / "v1.json").read_text(encoding="utf-8"))
     assert ref.row_site_ids == manifest["artifacts"]["embeddings"]["row_site_ids"]
     assert len(ref.row_site_ids) == 48
@@ -246,7 +258,7 @@ def test_ood_reference_loads_a_valid_manifest(tmp_path):
 def test_ood_reference_rejects_v1_manifest_and_tampering(tmp_path):
     # The committed v1 manifest names no OOD artifact.
     with pytest.raises(rr.ReferenceDataError, match="ood_reference"):
-        rr.load_ood_reference()
+        rr.load_ood_reference(str(_BUCKET / "contract" / "v1.json"))
 
     # A flipped byte in the matrix or in the sidecar fails the manifest's sha256 check.
     for filename in ("ood_reference.f32", "ood_reference.json"):

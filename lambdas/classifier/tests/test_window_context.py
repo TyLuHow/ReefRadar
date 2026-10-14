@@ -79,7 +79,10 @@ def served_dir(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def classifier_handler(aws, served_dir, stamp_file):
+def classifier_handler(aws, served_dir, stamp_file, monkeypatch):
+    # These tests are written against the contract v1 reference set (no OOD artifact); the repo
+    # default moved to contract v2 in 05-15, and test_bundled_e2e.py covers the v2 package.
+    monkeypatch.setattr(reef_reference, "REPO_CONTRACT_MANIFEST", str(V1_MANIFEST))
     s3 = boto3.client("s3", region_name="us-east-1")
     dynamodb_client = boto3.client("dynamodb", region_name="us-east-1")
     s3.create_bucket(Bucket=AUDIO_BUCKET)

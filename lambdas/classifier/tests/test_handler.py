@@ -445,16 +445,23 @@ def test_classifier_package_includes_shared_members():
     assert set(manifest) == {
         "handler.py",
         "region_detection.py",
-        "site_provenance.py",
-        "site_label_provenance.json",
         "contract_stamp.py",
         "contract_stamp.json",
+        "contract_manifest.json",
         "reef_audio.py",
         "reef_reference.py",
+        "reference_embeddings.f32",
+        "reference_sites.json",
+        "reference_projection.json",
+        "ood_reference.json",
+        "ood_reference.f32",
+        "served_model_config.json",
+        "served_model_weights.npz",
     }
-    # CONTRACT-04: the packaged stamp is the committed contracts/bucket/v1/stamp.json
+    # CONTRACT-04: the packaged stamp is the committed contracts/bucket/v2/stamp.json
     # (LF-normalised, so the package is identical on Windows and Linux checkouts).
-    committed = (_REPO_ROOT / "contracts" / "bucket" / "v1" / "stamp.json").read_bytes()
+    # The byte-level checks of every bundled member live in test_bundled_e2e.py.
+    committed = (_REPO_ROOT / "contracts" / "bucket" / "v2" / "stamp.json").read_bytes()
     committed = committed.replace(b"\r\n", b"\n")
     zf = zipfile.ZipFile(io.BytesIO(zip_bytes))
     assert zf.read("contract_stamp.json") == committed

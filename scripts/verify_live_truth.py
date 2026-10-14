@@ -18,8 +18,19 @@ Exits 0 only if every check passes:
              analysis WITHOUT coordinates reports coordinates_provided false.
              Both analyses must also carry the contract version stamp
              (plan 02-11): contract_version an integer equal to --stamp
-             (default contracts/bucket/v1/stamp.json), and dataset_version,
+             (default contracts/bucket/v2/stamp.json), and dataset_version,
              model_version, preprocessing_spec_version equal to that file.
+             The expected classes and model_version come from --model-version
+             (default contracts/bucket/v2/model_version.json).
+  contract v2  (plan 05-15) when the stamp's contract_version is 2 or more, each
+             analysis must also satisfy check_v2_result: stamp_status stamped,
+             the legacy classification and similar_sites key sets unchanged, the
+             window count the excerpt really has (computed with reef_audio, never
+             typed), per-window probabilities summing to 1 with the recording the
+             column mean, 54 site similarities (48 with embeddings) in the
+             contract's row order, the legacy top-3 equal to ranks 1-3, the PCA
+             variance and the OOD threshold and reference hash equal to the
+             published artifacts, and no visualization.
 
 Presigned audio URLs are never printed or logged (only sample ids and
 outcomes). Run `--no-analysis` to skip the (slow) analysis checks.
@@ -50,7 +61,17 @@ ANALYSIS_SITE = "ind_H1"
 # catching any real defect (a missing class or a scaled distribution is off by
 # orders of magnitude more than this).
 PROBABILITY_TOLERANCE = 1e-5
-DEFAULT_STAMP = REPO_ROOT / "contracts" / "bucket" / "v1" / "stamp.json"
+BUCKET_DIR = REPO_ROOT / "contracts" / "bucket"
+DEFAULT_STAMP = BUCKET_DIR / "v2" / "stamp.json"
+DEFAULT_MODEL_VERSION = BUCKET_DIR / "v2" / "model_version.json"
+# Contract v2 result checks: stored values are rounded to 9 decimals, so 1e-6 is generous
+# for rows and means yet far below any real defect.
+V2_TOLERANCE = 1e-6
+CLASSIFICATION_KEYS = {"label", "confidence", "probabilities", "model_version", "region"}
+LEGACY_SIMILAR_SITE_KEYS = {
+    "site_id", "similarity", "country", "status", "label_source", "label_source_name", "label_original",
+}
+TOP_SIMILAR_SITES = 3
 
 
 # --------------------------------------------------------------------------
@@ -137,12 +158,153 @@ def load_stamp(path: pathlib.Path) -> dict:
     return json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
 
 
-def check_analysis(body: dict, model_card: dict, expect_coordinates: bool, expected_stamp: dict | None = None) -> list[str]:
+def build_v2_expectations(stamp: dict, window_count: int, bucket_dir: pathlib.Path = BUCKET_DIR) -> dict:
+    """What a correct contract-v2 result must equal, read from the published artifacts.
+
+    `window_count` is how many 5 s windows the analysed excerpt has (the caller
+    computes it from the excerpt bytes). Everything else comes from the contract
+    manifest the stamp names and the artifacts it points at.
+    """
+    bucket_dir = pathlib.Path(bucket_dir)
+    manifest = json.loads((bucket_dir / "contract" / f"v{stamp['contract_version']}.json").read_text(encoding="utf-8"))
+    artifacts = manifest["artifacts"]
+
+    def read(name):
+        return json.loads((bucket_dir / pathlib.Path(*artifacts[name]["uri"].split("/"))).read_text(encoding="utf-8"))
+
+    sidecar = read("ood_reference")
+    return {
+        "window_count": int(window_count),
+        "row_site_ids": list(artifacts["embeddings"]["row_site_ids"]),
+        "site_count": int(artifacts["sites"]["count"]),
+        "embedded_count": int(artifacts["embeddings"]["count"]),
+        "projection_variance": [float(v) for v in read("projection")["explained_variance_ratio"]],
+        "ood_threshold": float(sidecar["threshold"]),
+        "ood_reference_sha256": sidecar["embeddings"]["sha256"],
+        "preprocessing_spec_version": stamp["preprocessing_spec_version"],
+    }
+
+
+def check_v2_result(body: dict, model_card: dict, expected: dict) -> list[str]:
+    """Contract v2 checks (plan 05-15) on a /visualize body; one failure string per violation.
+
+    Proves, for a real analysis, that the legacy shape still holds and that every
+    new field and the v2 stamp are present and consistent with the published
+    artifacts. `expected` comes from build_v2_expectations.
+    """
+    failures: list[str] = []
+    if body.get("stamp_status") != "stamped":
+        failures.append(f"stamp_status is {body.get('stamp_status')!r}, expected 'stamped'")
+
+    classification = body.get("classification") or {}
+    if set(classification) != CLASSIFICATION_KEYS:
+        failures.append(
+            f"classification keys {sorted(classification)} != legacy keys {sorted(CLASSIFICATION_KEYS)}"
+        )
+
+    count = expected["window_count"]
+    windows = body.get("windows") or {}
+    classes = list(model_card["classes"])
+    if windows.get("count") != count:
+        failures.append(f"windows.count {windows.get('count')!r} != expected {count}")
+    per_window = windows.get("probabilities") or {}
+    if sorted(per_window) != sorted(classes):
+        failures.append(f"windows.probabilities classes {sorted(per_window)} != {sorted(classes)}")
+    elif any(not isinstance(per_window[c], list) or len(per_window[c]) != count for c in classes):
+        failures.append(f"windows.probabilities does not hold {count} values per class")
+    else:
+        bad_rows = [
+            i for i in range(count)
+            if abs(sum(per_window[c][i] for c in classes) - 1.0) > V2_TOLERANCE
+        ]
+        if bad_rows:
+            failures.append(f"per-window probabilities do not sum to 1 within {V2_TOLERANCE} for windows {bad_rows}")
+        recording = classification.get("probabilities") or {}
+        off = [
+            c for c in classes
+            if count and abs(recording.get(c, float("inf")) - sum(per_window[c]) / count) > V2_TOLERANCE
+        ]
+        if off:
+            failures.append(f"recording probabilities are not the mean of the window probabilities for {off}")
+
+    aggregation = (body.get("embedding_summary") or {}).get("aggregation")
+    if aggregation != "mean_of_window_probabilities":
+        failures.append(f"embedding_summary.aggregation is {aggregation!r}, expected 'mean_of_window_probabilities'")
+
+    similarities = body.get("site_similarities") or {}
+    sites = similarities.get("sites") or []
+    if len(sites) != expected["site_count"]:
+        failures.append(f"site_similarities has {len(sites)} sites, expected {expected['site_count']}")
+    embedded = [s for s in sites if s.get("has_embedding") is True]
+    if len(embedded) != expected["embedded_count"]:
+        failures.append(
+            f"site_similarities has {len(embedded)} sites with embeddings, expected {expected['embedded_count']}"
+        )
+    if similarities.get("site_order") != expected["row_site_ids"]:
+        failures.append("site_similarities.site_order differs from the contract manifest row_site_ids")
+
+    similar = body.get("similar_sites")
+    if not isinstance(similar, list) or len(similar) != TOP_SIMILAR_SITES:
+        failures.append(
+            f"similar_sites has {len(similar) if isinstance(similar, list) else 'no'} entries, "
+            f"expected {TOP_SIMILAR_SITES}"
+        )
+    else:
+        wrong_keys = [e.get("site_id") for e in similar if set(e) != LEGACY_SIMILAR_SITE_KEYS]
+        if wrong_keys:
+            failures.append(f"similar_sites entries {wrong_keys} do not have exactly the legacy keys")
+        ranked = sorted((s for s in embedded if isinstance(s.get("rank"), int)), key=lambda s: s["rank"])
+        top_ids = [s.get("site_id") for s in ranked[:TOP_SIMILAR_SITES]]
+        if [e.get("site_id") for e in similar] != top_ids:
+            failures.append("similar_sites site ids are not the sites ranked 1-3 in site_similarities")
+
+    variance = (body.get("projection") or {}).get("explained_variance_ratio")
+    want = expected["projection_variance"]
+    if (
+        not isinstance(variance, list) or len(variance) != len(want)
+        or any(abs(a - b) > V2_TOLERANCE for a, b in zip(variance, want))
+    ):
+        failures.append(f"projection.explained_variance_ratio {variance!r} != published {want!r}")
+
+    ood = body.get("ood") or {}
+    threshold = ood.get("threshold")
+    if not isinstance(threshold, (int, float)) or abs(threshold - expected["ood_threshold"]) > V2_TOLERANCE:
+        failures.append(f"ood.threshold {threshold!r} != published {expected['ood_threshold']!r}")
+    if ood.get("reference_sha256") != expected["ood_reference_sha256"]:
+        failures.append("ood.reference_sha256 differs from the published OOD reference")
+    ood_windows = ood.get("windows") or {}
+    for key in ("distance", "status"):
+        values = ood_windows.get(key)
+        if not isinstance(values, list) or len(values) != count:
+            failures.append(f"ood.windows.{key} does not hold {count} values")
+
+    spec = (body.get("input_audio") or {}).get("preprocessing_spec_version")
+    if spec != expected["preprocessing_spec_version"]:
+        failures.append(
+            f"input_audio.preprocessing_spec_version {spec!r} != stamp {expected['preprocessing_spec_version']!r}"
+        )
+    if body.get("visualization"):
+        failures.append("response carries a non-empty visualization (embedding-space data)")
+    return failures
+
+
+def check_analysis(
+    body: dict,
+    model_card: dict,
+    expect_coordinates: bool,
+    expected_stamp: dict | None = None,
+    expected_v2: dict | None = None,
+) -> list[str]:
     failures = []
     if body.get("status") != "complete":
         return [f"analysis status is {body.get('status')!r}, not 'complete'"]
     if expected_stamp is not None:
         failures.extend(check_stamp(body, expected_stamp))
+        if int(expected_stamp.get("contract_version", 0)) >= 2:
+            if expected_v2 is None:
+                failures.append("contract v2 stamp expected but no v2 expectations were supplied")
+            else:
+                failures.extend(check_v2_result(body, model_card, expected_v2))
     classification = body.get("classification") or {}
     probs = classification.get("probabilities") or {}
     total = sum(probs.values()) if probs else 0.0
@@ -155,7 +317,7 @@ def check_analysis(body: dict, model_card: dict, expect_coordinates: bool, expec
             f"classification.model_version {classification.get('model_version')!r} != "
             f"model-card {model_card['model_version']!r}"
         )
-    if body.get("visualization"):
+    if body.get("visualization") and not any("visualization" in f for f in failures):
         failures.append("response carries a non-empty visualization (embedding-space data)")
     region = classification.get("region") or {}
     if not region:
@@ -168,6 +330,16 @@ def check_analysis(body: dict, model_card: dict, expect_coordinates: bool, expec
     elif region.get("coordinates_provided") is not False:
         failures.append(f"region.coordinates_provided is {region.get('coordinates_provided')!r}, expected false")
     return failures
+
+
+def expected_window_count(wav_bytes: bytes) -> int:
+    """How many 5 s windows the classifier will see in this excerpt (reef_audio, never typed)."""
+    shared = str(REPO_ROOT / "lambdas" / "shared")
+    if shared not in sys.path:
+        sys.path.insert(0, shared)
+    import reef_audio
+
+    return int(reef_audio.audio_to_windows(wav_bytes).windows.shape[0])
 
 
 def analysis_summary(body: dict, analysis_id: str) -> dict:
@@ -184,6 +356,9 @@ def analysis_summary(body: dict, analysis_id: str) -> dict:
         "probability_sum": round(sum(probs.values()), 9) if probs else None,
         "region": {k: region.get(k) for k in ("detected", "scope", "coordinates_provided", "in_training_region", "training_sites_in_region")},
         "similar_sites_count": len(body.get("similar_sites") or []),
+        "stamp_status": body.get("stamp_status"),
+        "windows_count": (body.get("windows") or {}).get("count"),
+        "ood_statement": ((body.get("ood") or {}).get("summary") or {}).get("statement"),
     }
 
 
@@ -247,11 +422,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--timeout", type=float, default=180.0, help="Per-analysis completion timeout (seconds)")
     p.add_argument("--no-analysis", action="store_true", help="Skip the upload/analyse checks")
     p.add_argument("--manifest", type=pathlib.Path, default=REPO_ROOT / "data" / "audio-manifest.json")
-    p.add_argument("--model-card", type=pathlib.Path, default=REPO_ROOT / "dashboard-next" / "src" / "data" / "model-card.json")
+    p.add_argument(
+        "--model-version", type=pathlib.Path, default=DEFAULT_MODEL_VERSION,
+        help="Published model-version document supplying the expected classes and model_version "
+             "(default: contracts/bucket/v2/model_version.json)",
+    )
     p.add_argument("--repo-root", type=pathlib.Path, default=REPO_ROOT)
     p.add_argument(
         "--stamp", type=pathlib.Path, default=DEFAULT_STAMP,
-        help="Expected contract version stamp applied to both analyses (default: contracts/bucket/v1/stamp.json)",
+        help="Expected contract version stamp applied to both analyses (default: contracts/bucket/v2/stamp.json)",
     )
     return p
 
@@ -262,7 +441,7 @@ def main(argv=None, session=None) -> int:
     args = build_parser().parse_args(argv)
     session = session or requests.Session()
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
-    model_card = json.loads(args.model_card.read_text(encoding="utf-8"))
+    model_card = json.loads(args.model_version.read_text(encoding="utf-8"))
     expected_stamp = load_stamp(args.stamp) if not args.no_analysis else None
     api = args.api_url.rstrip("/")
     failures: list[str] = []
@@ -306,12 +485,20 @@ def main(argv=None, session=None) -> int:
         coords = (gallery["coordinates"]["lat"], gallery["coordinates"]["lng"])
         wav = (args.repo_root / excerpt["path"]).read_bytes()
         name = pathlib.Path(excerpt["path"]).name
+        expected_v2 = None
+        if expected_stamp is not None and int(expected_stamp["contract_version"]) >= 2:
+            expected_v2 = build_v2_expectations(
+                expected_stamp, expected_window_count(wav), args.repo_root / "contracts" / "bucket"
+            )
         for label, use_coords in (("with coordinates", True), ("without coordinates", False)):
             try:
                 started = time.monotonic()
                 analysis_id, body = run_analysis(session, api, wav, name, coords if use_coords else None, args.timeout)
                 elapsed = time.monotonic() - started
-                found = check_analysis(body, model_card, expect_coordinates=use_coords, expected_stamp=expected_stamp)
+                found = check_analysis(
+                    body, model_card, expect_coordinates=use_coords,
+                    expected_stamp=expected_stamp, expected_v2=expected_v2,
+                )
                 section(f"analysis {label} ({elapsed:.0f}s)", found)
                 summary[f"analysis_{'with' if use_coords else 'without'}_coordinates"] = analysis_summary(body, analysis_id)
             except Exception as e:  # noqa: BLE001

@@ -232,20 +232,26 @@ def test_load_spec_loads_real_router_spec():
 def test_load_spec_loads_real_classifier_spec_with_region_detection():
     spec = pkg.load_spec("classifier")
     archive_paths = {m["archive_path"] for m in spec["members"]}
-    # Plan 01-11 (D-17) adds the shared label-provenance members the
-    # classifier handler now imports alongside region_detection.py; plan 02-05
-    # (CONTRACT-04) adds the bundled version-stamp module and its JSON; plan
-    # 05-09 adds reef_audio.py (the stamp module imports its SPEC_VERSION and the
-    # classifier reads segments with it) and reef_reference.py (served model).
+    # Plan 02-05 (CONTRACT-04) adds the bundled version-stamp module and its JSON;
+    # 05-09 adds reef_audio.py and reef_reference.py (served model); 05-15 bundles
+    # the v2 stamp and manifest, the reference embeddings, sites and projection, the
+    # OOD reference and the successor model, and drops the label-provenance members
+    # (the handler reads label provenance from the contract's site records now).
     assert archive_paths == {
         "handler.py",
         "region_detection.py",
-        "site_provenance.py",
-        "site_label_provenance.json",
         "contract_stamp.py",
         "contract_stamp.json",
+        "contract_manifest.json",
         "reef_audio.py",
         "reef_reference.py",
+        "reference_embeddings.f32",
+        "reference_sites.json",
+        "reference_projection.json",
+        "ood_reference.json",
+        "ood_reference.f32",
+        "served_model_config.json",
+        "served_model_weights.npz",
     }
 
 

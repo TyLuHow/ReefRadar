@@ -4,11 +4,17 @@
   "members": [
     {"source": "lambdas/classifier/handler.py", "archive_path": "handler.py"},
     {"source": "lambdas/classifier/region_detection.py", "archive_path": "region_detection.py"},
-    {"source": "lambdas/shared/site_provenance.py", "archive_path": "site_provenance.py"},
-    {"source": "data/site-label-provenance.json", "archive_path": "site_label_provenance.json"},
     {"source": "lambdas/shared/reef_audio.py", "archive_path": "reef_audio.py"},
     {"source": "lambdas/shared/reef_reference.py", "archive_path": "reef_reference.py"},
     {"source": "lambdas/shared/contract_stamp.py", "archive_path": "contract_stamp.py"},
-    {"source": "contracts/bucket/v1/stamp.json", "archive_path": "contract_stamp.json"}
+    {"source": "contracts/bucket/v2/stamp.json", "archive_path": "contract_stamp.json"},
+    {"source": "contracts/bucket/contract/v2.json", "archive_path": "contract_manifest.json"},
+    {"source": "contracts/bucket/v1/embeddings.f32", "archive_path": "reference_embeddings.f32"},
+    {"source": "contracts/bucket/v1/sites.json", "archive_path": "reference_sites.json"},
+    {"source": "contracts/bucket/v1/projection.json", "archive_path": "reference_projection.json"},
+    {"source": "contracts/bucket/v2/ood_reference.json", "archive_path": "ood_reference.json"},
+    {"source": "contracts/bucket/v2/ood_reference.f32", "archive_path": "ood_reference.f32"},
+    {"source": "models/interim-real-only-2026.10.1/model_config.json", "archive_path": "served_model_config.json"},
+    {"source": "models/interim-real-only-2026.10.1/reef_classifier_weights.npz", "archive_path": "served_model_weights.npz"}
   ]
 }

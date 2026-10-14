@@ -15,12 +15,20 @@ import contract_stamp as cs
 import reef_audio
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent.parent.parent
-REPO_STAMP_PATH = REPO_ROOT / "contracts" / "bucket" / "v1" / "stamp.json"
+REPO_STAMP_PATH = REPO_ROOT / "contracts" / "bucket" / "v2" / "stamp.json"
+V1_STAMP_PATH = REPO_ROOT / "contracts" / "bucket" / "v1" / "stamp.json"
 
 
 @pytest.fixture(scope="module")
 def repo_stamp():
+    """The v2 stamp the classifier package bundles (05-15)."""
     return json.loads(REPO_STAMP_PATH.read_text(encoding="utf-8"))
+
+
+@pytest.fixture(scope="module")
+def v1_stamp():
+    """The superseded v1 stamp: it names the as-deployed preprocessing spec."""
+    return json.loads(V1_STAMP_PATH.read_text(encoding="utf-8"))
 
 
 # --- load_stamp ---------------------------------------------------------------
@@ -46,6 +54,18 @@ def test_load_stamp_falls_back_to_the_repo_file(repo_stamp, monkeypatch, tmp_pat
 
 def test_load_stamp_default_resolves_in_a_checkout(repo_stamp):
     assert cs.load_stamp() == repo_stamp
+
+
+def test_repo_default_is_the_v2_stamp(repo_stamp):
+    assert cs._REPO_STAMP_RELATIVE.replace("\\", "/").endswith("contracts/bucket/v2/stamp.json")
+    assert repo_stamp["contract_version"] == 2
+    assert repo_stamp["model_version"] == "interim-real-only-2026.10.1"
+
+
+def test_v2_stamp_covers_the_model_and_preprocessing_this_code_runs(repo_stamp):
+    out = cs.stamp_for_model(repo_stamp["model_version"], repo_stamp)
+    assert out == repo_stamp
+    assert repo_stamp["preprocessing_spec_version"] == reef_audio.SPEC_VERSION
 
 
 def test_load_stamp_prefers_the_bundled_file(monkeypatch, tmp_path):
@@ -104,14 +124,14 @@ def test_matching_model_gets_the_bundled_values(covered_stamp):
     assert out == covered_stamp
 
 
-def test_stamp_for_model_requires_reef_audio_spec(repo_stamp):
+def test_stamp_for_model_requires_reef_audio_spec(v1_stamp):
     """The committed v1 stamp names preproc-2026.10.0-as-deployed, not the spec this code runs."""
-    assert repo_stamp["preprocessing_spec_version"] != reef_audio.SPEC_VERSION
-    out = cs.stamp_for_model(repo_stamp["model_version"], repo_stamp)
+    assert v1_stamp["preprocessing_spec_version"] != reef_audio.SPEC_VERSION
+    out = cs.stamp_for_model(v1_stamp["model_version"], v1_stamp)
     assert out == {
         "contract_version": None,
         "dataset_version": None,
-        "model_version": repo_stamp["model_version"],
+        "model_version": v1_stamp["model_version"],
         "preprocessing_spec_version": None,
     }
 

@@ -4,7 +4,7 @@ CONTRACT-04: version stamps for analysis results.
 Every new analysis RESULT item pins the four versions it was produced with:
 contract_version, dataset_version, model_version and preprocessing_spec_version
 (see contracts/schema/analysis-result.schema.json). The values come from a
-small JSON file committed at contracts/bucket/v1/stamp.json and bundled into
+small JSON file committed at contracts/bucket/v2/stamp.json and bundled into
 the classifier deployment package as contract_stamp.json -- never fetched at
 runtime. Imports only the standard library and reef_audio (for SPEC_VERSION);
 both ship flat in the classifier zip, so it runs unchanged there.
@@ -26,7 +26,7 @@ _BUNDLED_FILENAME = "contract_stamp.json"
 
 # Repository file, resolved relative to this module in a checkout (tests,
 # local runs). An absolute path here would win over _MODULE_DIR in os.path.join.
-_REPO_STAMP_RELATIVE = os.path.join("..", "..", "contracts", "bucket", "v1", "stamp.json")
+_REPO_STAMP_RELATIVE = os.path.join("..", "..", "contracts", "bucket", "v2", "stamp.json")
 
 STAMP_KEYS = (
     "contract_version",
@@ -41,7 +41,7 @@ def load_stamp(path: Optional[str] = None) -> dict:
 
     When `path` is None: prefer `contract_stamp.json` sitting next to this
     module (the Lambda package layout), and fall back to the repository file
-    contracts/bucket/v1/stamp.json. Tests and deployed Lambdas therefore share
+    contracts/bucket/v2/stamp.json. Tests and deployed Lambdas therefore share
     one loading path with no environment variable.
     """
     if path is None:
