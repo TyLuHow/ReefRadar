@@ -1,0 +1,815 @@
+{
+  "count": 100,
+  "dim": 1280,
+  "dtype": "float32-le",
+  "embedding_space": "original training pipeline (file peak-normalised to 1.0, linear interpolation; scripts/generate_training_embeddings.py)",
+  "embeddings_file": "original.f32",
+  "embeddings_sha256": "72b71b70e3732c125f0d144c3e3de101c5a80eed840a7b253e3a11cfed45ea0f",
+  "rows": [
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220830_124200",
+      "label": "degraded",
+      "row": 0,
+      "site_id": "ind_D2",
+      "timestamp": "2022-08-30T12:42:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220830_155400",
+      "label": "degraded",
+      "row": 1,
+      "site_id": "ind_D2",
+      "timestamp": "2022-08-30T15:54:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220830_190600",
+      "label": "degraded",
+      "row": 2,
+      "site_id": "ind_D2",
+      "timestamp": "2022-08-30T19:06:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220830_222000",
+      "label": "degraded",
+      "row": 3,
+      "site_id": "ind_D2",
+      "timestamp": "2022-08-30T22:20:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220831_013200",
+      "label": "degraded",
+      "row": 4,
+      "site_id": "ind_D2",
+      "timestamp": "2022-08-31T01:32:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220831_044400",
+      "label": "degraded",
+      "row": 5,
+      "site_id": "ind_D2",
+      "timestamp": "2022-08-31T04:44:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220831_075800",
+      "label": "degraded",
+      "row": 6,
+      "site_id": "ind_D2",
+      "timestamp": "2022-08-31T07:58:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220831_111000",
+      "label": "degraded",
+      "row": 7,
+      "site_id": "ind_D2",
+      "timestamp": "2022-08-31T11:10:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220831_142200",
+      "label": "degraded",
+      "row": 8,
+      "site_id": "ind_D2",
+      "timestamp": "2022-08-31T14:22:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220831_173600",
+      "label": "degraded",
+      "row": 9,
+      "site_id": "ind_D2",
+      "timestamp": "2022-08-31T17:36:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220830_135800",
+      "label": "degraded",
+      "row": 10,
+      "site_id": "ind_D3",
+      "timestamp": "2022-08-30T13:58:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220830_170800",
+      "label": "degraded",
+      "row": 11,
+      "site_id": "ind_D3",
+      "timestamp": "2022-08-30T17:08:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220830_201800",
+      "label": "degraded",
+      "row": 12,
+      "site_id": "ind_D3",
+      "timestamp": "2022-08-30T20:18:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220830_233000",
+      "label": "degraded",
+      "row": 13,
+      "site_id": "ind_D3",
+      "timestamp": "2022-08-30T23:30:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220831_024000",
+      "label": "degraded",
+      "row": 14,
+      "site_id": "ind_D3",
+      "timestamp": "2022-08-31T02:40:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220831_055200",
+      "label": "degraded",
+      "row": 15,
+      "site_id": "ind_D3",
+      "timestamp": "2022-08-31T05:52:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220831_090200",
+      "label": "degraded",
+      "row": 16,
+      "site_id": "ind_D3",
+      "timestamp": "2022-08-31T09:02:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220831_121200",
+      "label": "degraded",
+      "row": 17,
+      "site_id": "ind_D3",
+      "timestamp": "2022-08-31T12:12:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220831_152400",
+      "label": "degraded",
+      "row": 18,
+      "site_id": "ind_D3",
+      "timestamp": "2022-08-31T15:24:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220831_183400",
+      "label": "degraded",
+      "row": 19,
+      "site_id": "ind_D3",
+      "timestamp": "2022-08-31T18:34:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220831_214600",
+      "label": "degraded",
+      "row": 20,
+      "site_id": "ind_D3",
+      "timestamp": "2022-08-31T21:46:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220901_005600",
+      "label": "degraded",
+      "row": 21,
+      "site_id": "ind_D3",
+      "timestamp": "2022-09-01T00:56:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220901_040600",
+      "label": "degraded",
+      "row": 22,
+      "site_id": "ind_D3",
+      "timestamp": "2022-09-01T04:06:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220901_071800",
+      "label": "degraded",
+      "row": 23,
+      "site_id": "ind_D3",
+      "timestamp": "2022-09-01T07:18:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220901_102800",
+      "label": "degraded",
+      "row": 24,
+      "site_id": "ind_D3",
+      "timestamp": "2022-09-01T10:28:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220901_134000",
+      "label": "degraded",
+      "row": 25,
+      "site_id": "ind_D3",
+      "timestamp": "2022-09-01T13:40:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220901_165000",
+      "label": "degraded",
+      "row": 26,
+      "site_id": "ind_D3",
+      "timestamp": "2022-09-01T16:50:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220901_200000",
+      "label": "degraded",
+      "row": 27,
+      "site_id": "ind_D3",
+      "timestamp": "2022-09-01T20:00:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220901_231200",
+      "label": "degraded",
+      "row": 28,
+      "site_id": "ind_D3",
+      "timestamp": "2022-09-01T23:12:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D3_20220902_022200",
+      "label": "degraded",
+      "row": 29,
+      "site_id": "ind_D3",
+      "timestamp": "2022-09-02T02:22:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220830_102200",
+      "label": "healthy",
+      "row": 30,
+      "site_id": "ind_H4",
+      "timestamp": "2022-08-30T10:22:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220830_155600",
+      "label": "healthy",
+      "row": 31,
+      "site_id": "ind_H4",
+      "timestamp": "2022-08-30T15:56:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220830_213600",
+      "label": "healthy",
+      "row": 32,
+      "site_id": "ind_H4",
+      "timestamp": "2022-08-30T21:36:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220831_033600",
+      "label": "healthy",
+      "row": 33,
+      "site_id": "ind_H4",
+      "timestamp": "2022-08-31T03:36:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220831_093000",
+      "label": "healthy",
+      "row": 34,
+      "site_id": "ind_H4",
+      "timestamp": "2022-08-31T09:30:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220831_153400",
+      "label": "healthy",
+      "row": 35,
+      "site_id": "ind_H4",
+      "timestamp": "2022-08-31T15:34:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220831_210800",
+      "label": "healthy",
+      "row": 36,
+      "site_id": "ind_H4",
+      "timestamp": "2022-08-31T21:08:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220901_024800",
+      "label": "healthy",
+      "row": 37,
+      "site_id": "ind_H4",
+      "timestamp": "2022-09-01T02:48:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220901_084000",
+      "label": "healthy",
+      "row": 38,
+      "site_id": "ind_H4",
+      "timestamp": "2022-09-01T08:40:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220901_141400",
+      "label": "healthy",
+      "row": 39,
+      "site_id": "ind_H4",
+      "timestamp": "2022-09-01T14:14:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220831_204800",
+      "label": "degraded",
+      "row": 40,
+      "site_id": "ind_D2",
+      "timestamp": "2022-08-31T20:48:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220901_000000",
+      "label": "degraded",
+      "row": 41,
+      "site_id": "ind_D2",
+      "timestamp": "2022-09-01T00:00:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220901_031400",
+      "label": "degraded",
+      "row": 42,
+      "site_id": "ind_D2",
+      "timestamp": "2022-09-01T03:14:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220901_062600",
+      "label": "degraded",
+      "row": 43,
+      "site_id": "ind_D2",
+      "timestamp": "2022-09-01T06:26:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220901_093800",
+      "label": "degraded",
+      "row": 44,
+      "site_id": "ind_D2",
+      "timestamp": "2022-09-01T09:38:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220901_125200",
+      "label": "degraded",
+      "row": 45,
+      "site_id": "ind_D2",
+      "timestamp": "2022-09-01T12:52:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220901_160400",
+      "label": "degraded",
+      "row": 46,
+      "site_id": "ind_D2",
+      "timestamp": "2022-09-01T16:04:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220901_191600",
+      "label": "degraded",
+      "row": 47,
+      "site_id": "ind_D2",
+      "timestamp": "2022-09-01T19:16:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220901_223000",
+      "label": "degraded",
+      "row": 48,
+      "site_id": "ind_D2",
+      "timestamp": "2022-09-01T22:30:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_D2_20220902_014200",
+      "label": "degraded",
+      "row": 49,
+      "site_id": "ind_D2",
+      "timestamp": "2022-09-02T01:42:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220906_124000",
+      "label": "restored_early",
+      "row": 50,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-06T12:40:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220907_113400",
+      "label": "restored_early",
+      "row": 51,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-07T11:34:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220908_045800",
+      "label": "restored_early",
+      "row": 52,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-08T04:58:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220908_143400",
+      "label": "restored_early",
+      "row": 53,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-08T14:34:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220908_195800",
+      "label": "restored_early",
+      "row": 54,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-08T19:58:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220908_222000",
+      "label": "restored_early",
+      "row": 55,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-08T22:20:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220909_011400",
+      "label": "restored_early",
+      "row": 56,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-09T01:14:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220909_033400",
+      "label": "restored_early",
+      "row": 57,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-09T03:34:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220909_060800",
+      "label": "restored_early",
+      "row": 58,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-09T06:08:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220909_120200",
+      "label": "restored_early",
+      "row": 59,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-09T12:02:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220909_172800",
+      "label": "restored_early",
+      "row": 60,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-09T17:28:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220909_202800",
+      "label": "restored_early",
+      "row": 61,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-09T20:28:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220909_225600",
+      "label": "restored_early",
+      "row": 62,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-09T22:56:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220910_014000",
+      "label": "restored_early",
+      "row": 63,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-10T01:40:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220910_041200",
+      "label": "restored_early",
+      "row": 64,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-10T04:12:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220910_113400",
+      "label": "restored_early",
+      "row": 65,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-10T11:34:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220910_142200",
+      "label": "restored_early",
+      "row": 66,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-10T14:22:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220910_205000",
+      "label": "restored_early",
+      "row": 67,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-10T20:50:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220911_112600",
+      "label": "restored_early",
+      "row": 68,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-11T11:26:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_N1_20220912_011600",
+      "label": "restored_early",
+      "row": 69,
+      "site_id": "ind_N1",
+      "timestamp": "2022-09-12T01:16:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220901_195000",
+      "label": "healthy",
+      "row": 70,
+      "site_id": "ind_H4",
+      "timestamp": "2022-09-01T19:50:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220902_012400",
+      "label": "healthy",
+      "row": 71,
+      "site_id": "ind_H4",
+      "timestamp": "2022-09-02T01:24:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220902_070000",
+      "label": "healthy",
+      "row": 72,
+      "site_id": "ind_H4",
+      "timestamp": "2022-09-02T07:00:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220902_123400",
+      "label": "healthy",
+      "row": 73,
+      "site_id": "ind_H4",
+      "timestamp": "2022-09-02T12:34:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220902_181400",
+      "label": "healthy",
+      "row": 74,
+      "site_id": "ind_H4",
+      "timestamp": "2022-09-02T18:14:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220903_001000",
+      "label": "healthy",
+      "row": 75,
+      "site_id": "ind_H4",
+      "timestamp": "2022-09-03T00:10:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220903_055000",
+      "label": "healthy",
+      "row": 76,
+      "site_id": "ind_H4",
+      "timestamp": "2022-09-03T05:50:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220903_112400",
+      "label": "healthy",
+      "row": 77,
+      "site_id": "ind_H4",
+      "timestamp": "2022-09-03T11:24:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220903_170000",
+      "label": "healthy",
+      "row": 78,
+      "site_id": "ind_H4",
+      "timestamp": "2022-09-03T17:00:00"
+    },
+    {
+      "country": "Indonesia",
+      "file_id": "ind_H4_20220903_223400",
+      "label": "healthy",
+      "row": 79,
+      "site_id": "ind_H4",
+      "timestamp": "2022-09-03T22:34:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230222_130800",
+      "label": "healthy",
+      "row": 80,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-22T13:08:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230222_164000",
+      "label": "healthy",
+      "row": 81,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-22T16:40:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230222_201200",
+      "label": "healthy",
+      "row": 82,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-22T20:12:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230222_234400",
+      "label": "healthy",
+      "row": 83,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-22T23:44:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230223_031600",
+      "label": "healthy",
+      "row": 84,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-23T03:16:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230223_064800",
+      "label": "healthy",
+      "row": 85,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-23T06:48:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230223_102000",
+      "label": "healthy",
+      "row": 86,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-23T10:20:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230223_135200",
+      "label": "healthy",
+      "row": 87,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-23T13:52:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230223_172400",
+      "label": "healthy",
+      "row": 88,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-23T17:24:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230223_205600",
+      "label": "healthy",
+      "row": 89,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-23T20:56:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230224_002800",
+      "label": "healthy",
+      "row": 90,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-24T00:28:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230224_040000",
+      "label": "healthy",
+      "row": 91,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-24T04:00:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230224_073200",
+      "label": "healthy",
+      "row": 92,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-24T07:32:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230224_110400",
+      "label": "healthy",
+      "row": 93,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-24T11:04:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230224_143600",
+      "label": "healthy",
+      "row": 94,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-24T14:36:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230224_180800",
+      "label": "healthy",
+      "row": 95,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-24T18:08:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230224_214000",
+      "label": "healthy",
+      "row": 96,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-24T21:40:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230225_011200",
+      "label": "healthy",
+      "row": 97,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-25T01:12:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230225_044400",
+      "label": "healthy",
+      "row": 98,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-25T04:44:00"
+    },
+    {
+      "country": "Kenya",
+      "file_id": "ken_H1_20230225_081600",
+      "label": "healthy",
+      "row": 99,
+      "site_id": "ken_H1",
+      "timestamp": "2023-02-25T08:16:00"
+    }
+  ],
+  "schema_version": 1,
+  "source": {
+    "key": "training/training_test_20.json",
+    "sha256": "e18c133ef1d640014fc77d4083d66f9cafe0773f509c738fe953a4d5e346ca7a"
+  }
+}
