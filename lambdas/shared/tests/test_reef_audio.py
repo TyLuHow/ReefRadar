@@ -15,10 +15,13 @@ dashboard-next/public. The real MARRS excerpts are read-only inputs.
 from __future__ import annotations
 
 import ast
+import hashlib
 import io
+import json
 import math
 import pathlib
 import re
+import struct
 import sys
 import tracemalloc
 import wave
@@ -351,3 +354,522 @@ def test_design_kaiser_filter_matches_scipy_firwin_design():
     assert h.sum() == pytest.approx(up, abs=1e-12)  # DC gain equals up
     ref = scipy_signal.firwin(41, 1.0 / 2, window=("kaiser", 5.0))
     assert np.max(np.abs(h - ref * up)) <= 1e-12
+
+
+# --- 05-05: hand-built WAVs, so any header field (including hostile ones) can be set ---
+
+_PCM_SUBFORMAT_TAIL = b"\x00\x00\x00\x00\x10\x00\x80\x00\x00\xaa\x00\x38\x9b\x71"
+
+
+def build_wav(
+    payload: bytes,
+    *,
+    tag: int = 1,
+    channels: int = 1,
+    rate: int = 32000,
+    bits: int = 16,
+    block_align: int | None = None,
+    extensible: bool = False,
+    pre_chunks: bytes = b"",
+    data_size: int | None = None,
+    include_fmt: bool = True,
+    include_data: bool = True,
+) -> bytes:
+    """Hand-built RIFF/WAVE. For extensible files `tag` is the SubFormat tag."""
+    if block_align is None:
+        block_align = channels * bits // 8
+    if extensible:
+        fmt_body = struct.pack("<HHIIHH", 0xFFFE, channels, rate, rate * block_align, block_align, bits)
+        fmt_body += struct.pack("<HHI", 22, bits, 0)  # cbSize, valid bits, channel mask
+        fmt_body += struct.pack("<H", tag) + _PCM_SUBFORMAT_TAIL
+    else:
+        fmt_body = struct.pack("<HHIIHH", tag, channels, rate, rate * block_align, block_align, bits)
+    body = b"WAVE"
+    if include_fmt:
+        body += b"fmt " + struct.pack("<I", len(fmt_body)) + fmt_body
+    body += pre_chunks
+    if include_data:
+        declared = len(payload) if data_size is None else data_size
+        body += b"data" + struct.pack("<I", declared) + payload
+        if len(payload) & 1 and data_size is None:
+            body += b"\x00"
+    return b"RIFF" + struct.pack("<I", len(body)) + body
+
+
+def pcm24_bytes(values) -> bytes:
+    """int values in [-2**23, 2**23) -> little-endian 3-byte samples."""
+    v = np.asarray(values, dtype=np.int64) & 0xFFFFFF
+    out = np.empty((v.size, 3), dtype=np.uint8)
+    out[:, 0] = v & 0xFF
+    out[:, 1] = (v >> 8) & 0xFF
+    out[:, 2] = (v >> 16) & 0xFF
+    return out.tobytes()
+
+
+def stereo_24bit_48k_12s() -> bytes:
+    n = 12 * 48000
+    t = np.arange(n) / 48000.0
+    inter = np.empty(2 * n)
+    inter[0::2] = np.round(0.4 * np.sin(2 * np.pi * 440.0 * t) * 8388607)
+    inter[1::2] = np.round(0.2 * np.sin(2 * np.pi * 1320.0 * t) * 8388607)
+    return build_wav(pcm24_bytes(inter), channels=2, rate=48000, bits=24)
+
+
+# --- 05-05 Task 1: transport (segments + sidecar), built on a 24-bit stereo upload ---
+
+
+def test_window_transport_round_trip_stereo_48k_24bit():
+    data = stereo_24bit_48k_12s()
+    decoded = ra.decode_wav(data)
+    assert decoded.samples.shape == (12 * 48000, 2)
+    assert decoded.samples.dtype == np.float32
+    assert decoded.bits_per_sample == 24
+
+    # full-scale mapping of the 24-bit extremes
+    extreme = ra.decode_wav(
+        build_wav(pcm24_bytes([-8388608, 0, 8388607, 0]), channels=2, rate=48000, bits=24)
+    )
+    assert extreme.samples[0, 0] == -1.0
+    assert extreme.samples[1, 0] == pytest.approx(8388607 / 8388608)
+
+    prepared = ra.audio_to_windows(data)
+    assert prepared.windows.shape == (2, 160000)
+    assert prepared.input["bits_per_sample"] == 24 and prepared.input["channels"] == 2
+
+    seg = ra.encode_segments(prepared.windows)
+    assert isinstance(seg, bytes)
+    assert len(seg) == 2 * 160000 * 4 == 2 * ra.SEGMENT_BYTES_PER_WINDOW
+    assert seg == np.ascontiguousarray(prepared.windows).astype("<f4").tobytes()
+    back = ra.decode_segments(seg)
+    assert back.shape == (2, 160000) and back.dtype == np.float32
+    assert np.array_equal(back, prepared.windows)
+
+    sidecar = ra.build_sidecar(prepared, seg)
+    raw = json.dumps(sidecar, allow_nan=False).encode("utf-8")
+    assert ra.parse_sidecar(raw) == sidecar
+    assert sidecar["segments_sha256"] == hashlib.sha256(seg).hexdigest()
+    assert sidecar["spec_version"] == ra.SPEC_VERSION
+    assert sidecar["segments_format"] == ra.SEGMENTS_FORMAT == "f32le"
+    assert sidecar["schema_version"] == ra.SIDECAR_SCHEMA_VERSION == 1
+    assert sidecar["num_windows"] == 2 and sidecar["segments_bytes"] == len(seg)
+    assert sidecar["window_samples"] == 160000 and sidecar["sample_rate_hz"] == 32000
+    assert sidecar["levels"]["peak_dbfs"] == prepared.peak_dbfs
+    assert sidecar["input"] == prepared.input
+    assert sidecar["dropped_tail_s"] == prepared.input["dropped_tail_s"]
+
+
+def test_window_transport_decode_segments_rejects_ragged_length():
+    with pytest.raises(ra.SidecarError):
+        ra.decode_segments(b"\x00" * (ra.SEGMENT_BYTES_PER_WINDOW + 4))
+
+
+def _good_sidecar():
+    prepared = ra.audio_to_windows(make_wav_bytes(np.zeros(160000, dtype=np.int16), 32000))
+    return ra.build_sidecar(prepared, ra.encode_segments(prepared.windows))
+
+
+def _with(key, value):
+    def apply(sc):
+        sc = json.loads(json.dumps(sc))
+        sc[key] = value
+        return sc
+
+    return apply
+
+
+MALFORMED = {
+    "schema_version": _with("schema_version", 2),
+    "format": _with("segments_format", "f64le"),
+    "window_samples": _with("window_samples", 80000),
+    "segments_bytes_vs_windows": _with("segments_bytes", 640004),
+    "bad_spec_version": _with("spec_version", "Preproc_2026"),
+    "bad_sha": _with("segments_sha256", "abc"),
+    "levels_length": _with(
+        "levels", {"peak_dbfs": [], "rms_dbfs": [-120.0], "silent": [True]}
+    ),
+    "missing_key": lambda sc: {k: v for k, v in sc.items() if k != "input"},
+}
+
+
+@pytest.mark.parametrize("name", sorted(MALFORMED))
+def test_window_sidecar_rejects_malformed(name):
+    bad = MALFORMED[name](_good_sidecar())
+    with pytest.raises(ra.SidecarError):
+        ra.parse_sidecar(json.dumps(bad).encode("utf-8"))
+
+
+def test_window_sidecar_rejects_non_json_and_non_finite():
+    with pytest.raises(ra.SidecarError):
+        ra.parse_sidecar(b"not json")
+    with pytest.raises(ra.SidecarError):
+        ra.parse_sidecar(b"[1, 2]")
+    text = json.dumps(_good_sidecar()).replace("-120.0", "NaN", 1)
+    with pytest.raises(ra.SidecarError):
+        ra.parse_sidecar(text.encode("utf-8"))
+
+
+def test_window_sidecar_build_checks_segment_length():
+    prepared = ra.audio_to_windows(make_wav_bytes(np.zeros(160000, dtype=np.int16), 32000))
+    with pytest.raises(ra.SidecarError):
+        ra.build_sidecar(prepared, b"\x00" * 100)
+
+
+# --- 05-05 Task 2: full decode matrix and header bounds ----------------------------
+
+_I16 = np.dtype("<i2")
+
+
+def _enc(kind: str, values) -> tuple[bytes, dict]:
+    """(payload, build_wav kwargs) for one of the six encodings."""
+    if kind == "pcm8":
+        return np.asarray(values, dtype=np.uint8).tobytes(), {"tag": 1, "bits": 8}
+    if kind == "pcm16":
+        return np.asarray(values, dtype="<i2").tobytes(), {"tag": 1, "bits": 16}
+    if kind == "pcm24":
+        return pcm24_bytes(values), {"tag": 1, "bits": 24}
+    if kind == "pcm32":
+        return np.asarray(values, dtype="<i4").tobytes(), {"tag": 1, "bits": 32}
+    if kind == "float32":
+        return np.asarray(values, dtype="<f4").tobytes(), {"tag": 3, "bits": 32}
+    if kind == "float64":
+        return np.asarray(values, dtype="<f8").tobytes(), {"tag": 3, "bits": 64}
+    raise AssertionError(kind)
+
+
+SCALING_CASES = {
+    "pcm8": ([0, 128, 255], [-1.0, 0.0, 127 / 128]),
+    "pcm16": ([-32768, 0, 32767], [-1.0, 0.0, 32767 / 32768]),
+    "pcm24": ([-8388608, 0, 8388607], [-1.0, 0.0, 8388607 / 8388608]),
+    "pcm32": ([-2147483648, 0, 2147483647], [-1.0, 0.0, 1.0]),
+    "float32": ([-1.0, 0.25, 1.5], [-1.0, 0.25, 1.5]),
+    "float64": ([-1.0, 0.25, 1.5], [-1.0, 0.25, 1.5]),
+}
+
+
+@pytest.mark.parametrize("kind", sorted(SCALING_CASES))
+def test_decode_scaling_exact(kind):
+    values, expected = SCALING_CASES[kind]
+    payload, kw = _enc(kind, values)
+    d = ra.decode_wav(build_wav(payload, **kw))
+    assert d.samples.dtype == np.float32 and d.samples.shape == (3, 1)
+    assert d.samples[:, 0].tolist() == pytest.approx(expected, abs=1e-7)
+    assert d.encoding == ("float" if kind.startswith("float") else "pcm")
+    assert d.bits_per_sample == kw["bits"]
+
+
+@pytest.mark.parametrize("kind", sorted(SCALING_CASES))
+def test_decode_scaling_identical_across_channel_counts(kind):
+    """The same sample values decode to the same floats for 1, 2 and 5 channels."""
+    values, expected = SCALING_CASES[kind]
+    for channels in (1, 2, 5):
+        payload, kw = _enc(kind, list(values) * channels)  # 3 frames x `channels`
+        d = ra.decode_wav(build_wav(payload, channels=channels, **kw))
+        assert d.samples.shape == (3, channels)
+        flat = d.samples.reshape(-1)
+        assert flat.tolist() == pytest.approx(list(expected) * channels, abs=1e-7)
+
+
+@pytest.mark.parametrize("subformat,kind", [(1, "pcm16"), (3, "float32"), (1, "pcm24")])
+def test_decode_extensible_subformat(subformat, kind):
+    values, expected = SCALING_CASES[kind]
+    payload, kw = _enc(kind, values)
+    kw["tag"] = subformat
+    d = ra.decode_wav(build_wav(payload, extensible=True, **kw))
+    assert d.samples[:, 0].tolist() == pytest.approx(expected, abs=1e-7)
+    assert d.format_tag == subformat
+
+
+def test_decode_extensible_unknown_subformat_rejected():
+    payload, kw = _enc("pcm16", [0, 1, 2])
+    kw["tag"] = 2  # ADPCM subformat
+    with pytest.raises(ra.InvalidAudioFormatError):
+        ra.decode_wav(build_wav(payload, extensible=True, **kw))
+
+
+def test_decode_multichannel_mean():
+    one = [1000, 2000, 3000, 4000, 5000]
+    payload = np.asarray(one * 2, dtype="<i2").tobytes()  # 2 frames x 5 channels
+    d = ra.decode_wav(build_wav(payload, channels=5, bits=16))
+    assert d.samples.shape == (2, 5)
+    mono = ra.mix_to_mono(d.samples)
+    assert mono.tolist() == pytest.approx([3000 / 32768] * 2, abs=1e-9)
+
+    stereo = ra.decode_wav(build_wav(np.array([100, 300, -50, 50], dtype="<i2").tobytes(), channels=2))
+    assert ra.mix_to_mono(stereo.samples).tolist() == pytest.approx([200 / 32768, 0.0], abs=1e-9)
+
+
+@pytest.mark.parametrize("channels", [0, 9, 200])
+def test_decode_rejects_bad_channel_counts(channels):
+    block = max(channels, 1) * 2
+    with pytest.raises(ra.InvalidAudioFormatError):
+        ra.decode_wav(build_wav(b"\x00" * (block * 4), channels=channels, bits=16, block_align=block))
+
+
+def test_decode_eight_channels_accepted():
+    payload = np.zeros(8 * 4, dtype="<i2").tobytes()
+    assert ra.decode_wav(build_wav(payload, channels=8)).samples.shape == (4, 8)
+
+
+def test_decode_odd_chunk_padding():
+    list_chunk = b"LIST" + struct.pack("<I", 3) + b"abc" + b"\x00"  # odd size + pad byte
+    payload = np.array([1000, -1000, 2000], dtype="<i2").tobytes()
+    d = ra.decode_wav(build_wav(payload, pre_chunks=list_chunk))
+    assert d.samples[:, 0].tolist() == pytest.approx([1000 / 32768, -1000 / 32768, 2000 / 32768])
+    # two odd chunks in a row
+    d2 = ra.decode_wav(build_wav(payload, pre_chunks=list_chunk + list_chunk))
+    assert d2.frames == 3
+
+
+def test_decode_truncated_data_trimmed():
+    payload = np.arange(10, dtype="<i2").tobytes() + b"\x01\x02"  # 5 stereo frames + half a frame
+    d = ra.decode_wav(build_wav(payload, channels=2, data_size=len(payload) + 4000))
+    assert d.frames == 5 and d.samples.shape == (5, 2)
+    # an odd trailing byte in a mono file
+    d2 = ra.decode_wav(build_wav(np.arange(7, dtype="<i2").tobytes() + b"\x07", data_size=1000))
+    assert d2.frames == 7
+
+
+BAD_HEADERS = {
+    "format_tag_2_adpcm": dict(tag=2),
+    "format_tag_85_mp3": dict(tag=0x55),
+    "pcm_12_bit": dict(bits=12, block_align=2),
+    "pcm_20_bit": dict(bits=20, block_align=3),
+    "float_16_bit": dict(tag=3, bits=16),
+    "float_24_bit": dict(tag=3, bits=24, block_align=3),
+    "block_align_wrong": dict(block_align=3),
+    "block_align_zero": dict(block_align=0),
+    "missing_fmt": dict(include_fmt=False),
+    "missing_data": dict(include_data=False),
+    "rate_zero": dict(rate=0),
+}
+
+
+@pytest.mark.parametrize("name", sorted(BAD_HEADERS))
+def test_decode_rejects_bad_headers(name):
+    kw = dict(BAD_HEADERS[name])
+    with pytest.raises(ra.InvalidAudioFormatError) as exc:
+        ra.decode_wav(build_wav(b"\x00" * 64, **kw))
+    assert exc.value.error_code == "INVALID_AUDIO_FORMAT"
+
+
+def test_decode_error_messages_name_the_value():
+    with pytest.raises(ra.InvalidAudioFormatError, match="12-bit"):
+        ra.decode_wav(build_wav(b"\x00" * 64, bits=12, block_align=2))
+    with pytest.raises(ra.InvalidAudioFormatError, match="format tag 2"):
+        ra.decode_wav(build_wav(b"\x00" * 64, tag=2))
+    with pytest.raises(ra.InvalidAudioFormatError, match="9 channels"):
+        ra.decode_wav(build_wav(b"\x00" * 72, channels=9, block_align=18))
+
+
+def test_decode_truncated_fmt_chunk_rejected():
+    good = build_wav(b"\x00" * 64)
+    # chop the file inside the fmt chunk body
+    with pytest.raises(ra.InvalidAudioFormatError):
+        ra.decode_wav(good[:30])
+    # extensible declared but fmt chunk only 16 bytes long
+    short = bytearray(build_wav(b"\x00" * 64))
+    struct.pack_into("<H", short, 20, 0xFFFE)
+    with pytest.raises(ra.InvalidAudioFormatError):
+        ra.decode_wav(bytes(short))
+
+
+@pytest.mark.parametrize("rate", [4000, 192000])
+def test_decode_sample_rate_bounds_accepted(rate):
+    d = ra.decode_wav(build_wav(b"\x00" * 64, rate=rate))
+    assert d.sample_rate == rate
+
+
+@pytest.mark.parametrize("rate", [3999, 192001, 7, 1000000])
+def test_decode_sample_rate_bounds_rejected(rate, monkeypatch):
+    def boom(*a, **k):
+        raise AssertionError("filter designed for an out-of-range rate")
+
+    monkeypatch.setattr(ra, "design_kaiser_filter", boom)
+    with pytest.raises(ra.InvalidAudioFormatError):
+        ra.audio_to_windows(build_wav(b"\x00" * 64, rate=rate))
+
+
+def test_decode_too_long_before_payload(monkeypatch):
+    calls = {"convert": 0, "filter": 0}
+    real_convert = getattr(ra, "_convert_payload")
+    real_filter = ra.design_kaiser_filter
+
+    def counting_convert(*a, **k):
+        calls["convert"] += 1
+        return real_convert(*a, **k)
+
+    def counting_filter(*a, **k):
+        calls["filter"] += 1
+        return real_filter(*a, **k)
+
+    monkeypatch.setattr(ra, "_convert_payload", counting_convert)
+    monkeypatch.setattr(ra, "design_kaiser_filter", counting_filter)
+
+    rate = ra.MIN_SAMPLE_RATE
+    frames = int(601 * rate)  # 8-bit mono at 4 kHz: 2.4 MB for 601 s
+    payload = np.full(frames, 128, dtype=np.uint8).tobytes()
+    data = build_wav(payload, rate=rate, bits=8)
+    with pytest.raises(ra.AudioTooLongError) as exc:
+        ra.audio_to_windows(data)
+    assert exc.value.error_code == "AUDIO_TOO_LONG"
+    assert calls == {"convert": 0, "filter": 0}
+
+    # exactly 600 s is accepted by the decoder (strictly greater than the maximum is refused)
+    ok = build_wav(payload[: int(600 * rate)], rate=rate, bits=8)
+    assert ra.decode_wav(ok).duration_s == pytest.approx(600.0)
+    assert calls["convert"] == 1
+
+
+def test_decode_header_lying_about_size_does_not_inflate_frames():
+    """A header declaring 700 s with a few bytes present decodes only what is there."""
+    payload = np.zeros(40, dtype="<i2").tobytes()
+    d = ra.decode_wav(build_wav(payload, rate=32000, data_size=700 * 32000 * 2))
+    assert d.frames == 40
+
+
+def test_decode_rejects_non_finite_float_samples():
+    for bad in (np.nan, np.inf, -np.inf):
+        payload, kw = _enc("float32", [0.0, bad, 0.5])
+        with pytest.raises(ra.InvalidAudioFormatError, match="non-finite"):
+            ra.decode_wav(build_wav(payload, **kw))
+    payload, kw = _enc("float64", [0.0, 1e300, 0.5])  # overflows float32 to inf
+    with pytest.raises(ra.InvalidAudioFormatError, match="non-finite"):
+        ra.decode_wav(build_wav(payload, **kw))
+
+
+def test_decode_error_codes():
+    cases = [
+        (b"junk" * 20, ra.InvalidAudioFormatError, "INVALID_AUDIO_FORMAT"),
+        (build_wav(b"\x00" * 64, tag=2), ra.InvalidAudioFormatError, "INVALID_AUDIO_FORMAT"),
+        (build_wav(np.zeros(4 * 32000, dtype="<i2").tobytes()), ra.AudioTooShortError, "AUDIO_TOO_SHORT"),
+        (
+            build_wav(np.zeros(601 * 4000, dtype=np.uint8).tobytes(), rate=4000, bits=8),
+            ra.AudioTooLongError,
+            "AUDIO_TOO_LONG",
+        ),
+    ]
+    for data, cls, code in cases:
+        with pytest.raises(ra.ReefAudioError) as exc:
+            ra.audio_to_windows(data)
+        assert type(exc.value) is cls and exc.value.error_code == code
+        assert isinstance(exc.value, ValueError)
+
+
+# --- 05-05 Task 3: storage-safe levels, silence, playback copy, spec summary -----------
+
+
+def _f32_wav(samples, rate: int = 32000) -> bytes:
+    return build_wav(np.asarray(samples, dtype="<f4").tobytes(), tag=3, bits=32, rate=rate)
+
+
+def test_normalise_digital_silence():
+    prepared = ra.audio_to_windows(make_wav_bytes(np.zeros(10 * 32000, dtype=np.int16), 32000))
+    assert prepared.windows.shape == (2, 160000)
+    assert prepared.silent == [True, True]
+    assert prepared.peak_dbfs == [-120.0, -120.0]
+    assert prepared.rms_dbfs == [-120.0, -120.0]
+    assert np.all(prepared.windows == 0.0)
+    assert not np.isnan(prepared.windows).any() and not np.isnan(prepared.resampled).any()
+
+
+def test_normalise_dc_only_window():
+    prepared = ra.audio_to_windows(_f32_wav(np.full(160000, 0.1, dtype=np.float32)))
+    assert prepared.silent == [True]
+    # the stored float32 value of 0.1, measured before DC removal
+    expected = 20.0 * math.log10(float(np.float32(0.1)))
+    assert prepared.peak_dbfs[0] == pytest.approx(expected, abs=1e-9)
+    assert prepared.peak_dbfs[0] == pytest.approx(-20.0, abs=1e-6)
+    assert prepared.rms_dbfs[0] == pytest.approx(expected, abs=1e-9)
+    assert np.all(prepared.windows == 0.0)
+
+
+def test_window_level_full_scale_and_floor():
+    x = np.zeros(160000, dtype=np.float32)
+    x[1234] = 1.0
+    prepared = ra.audio_to_windows(_f32_wav(x))
+    assert prepared.peak_dbfs == [0.0]
+    assert prepared.silent == [False]
+    # a lone full-scale sample: rms = 1 / sqrt(160000)
+    assert prepared.rms_dbfs[0] == pytest.approx(20.0 * math.log10(1.0 / math.sqrt(160000)), abs=1e-9)
+
+    tiny = ra.audio_to_windows(_f32_wav(np.full(160000, 1e-9, dtype=np.float32)))
+    assert tiny.rms_dbfs == [-120.0] and tiny.peak_dbfs == [-120.0]
+
+    quiet_tone = 1e-9 * np.sin(np.arange(160000) * 0.05)
+    q = ra.audio_to_windows(_f32_wav(quiet_tone))
+    assert q.rms_dbfs == [-120.0]
+
+
+def test_window_sidecar_never_non_finite():
+    silent = ra.audio_to_windows(make_wav_bytes(np.zeros(160000, dtype=np.int16), 32000))
+    dc = ra.audio_to_windows(_f32_wav(np.full(160000, 0.1, dtype=np.float32)))
+    full = np.zeros(160000, dtype=np.float32)
+    full[0] = 1.0
+    loud = ra.audio_to_windows(_f32_wav(full))
+    over = ra.audio_to_windows(_f32_wav(np.tile(np.array([1.5, -1.5], dtype=np.float32), 80000)))
+    for prepared in (silent, dc, loud, over):
+        seg = ra.encode_segments(prepared.windows)
+        sidecar = ra.build_sidecar(prepared, seg)
+        text = json.dumps(sidecar, allow_nan=False)
+        assert ra.parse_sidecar(text.encode("utf-8")) == sidecar
+        assert np.isfinite(prepared.windows).all()
+        for v in sidecar["levels"]["peak_dbfs"] + sidecar["levels"]["rms_dbfs"]:
+            assert math.isfinite(v) and v >= -120.0
+
+
+def test_window_playback_copy_clips():
+    samples = np.array([0.0, 1.0, -1.0, 2.0, -2.0, 1e9, -1e9, 0.5], dtype=np.float32)
+    data = ra.pcm16_wav_bytes(samples, 32000)
+    assert data[:4] == b"RIFF" and data[8:12] == b"WAVE" and data[12:16] == b"fmt "
+    assert struct.unpack_from("<I", data, 4)[0] == len(data) - 8
+    assert struct.unpack_from("<HHIIHH", data, 20) == (1, 1, 32000, 64000, 2, 16)
+    assert data[36:40] == b"data" and struct.unpack_from("<I", data, 40)[0] == 2 * samples.size
+    assert len(data) == 44 + 2 * samples.size
+    with wave.open(io.BytesIO(data), "rb") as w:
+        assert (w.getnchannels(), w.getsampwidth(), w.getframerate(), w.getnframes()) == (1, 2, 32000, 8)
+        values = np.frombuffer(w.readframes(8), dtype="<i2").tolist()
+    assert values[:7] == [0, 32767, -32767, 32767, -32767, 32767, -32767]  # no int16 wrap
+    assert values[7] in (16383, 16384)
+    # non-finite input never reaches the cast
+    nan_data = ra.pcm16_wav_bytes(np.array([np.nan, np.inf, -np.inf], dtype=np.float32), 32000)
+    with wave.open(io.BytesIO(nan_data), "rb") as w:
+        assert np.frombuffer(w.readframes(3), dtype="<i2").tolist() == [0, 32767, -32767]
+    # round trip through the decoder
+    back = ra.decode_wav(data)
+    assert back.frames == 8 and back.sample_rate == 32000
+
+
+def test_spec_summary_fields():
+    s = ra.spec_summary()
+    json.dumps(s, allow_nan=False)
+    assert s["spec_version"] == ra.SPEC_VERSION
+    assert s["sample_rate_hz"] == 32000 and s["window_s"] == 5.0 and s["window_samples"] == 160000
+    assert s["hop_s"] == 5.0 and s["min_duration_s"] == 5.0 and s["max_duration_s"] == 600.0
+    assert s["trailing_partial_window"] == "dropped" and s["channel_mix"] == "mean"
+
+    r = s["resampling"]
+    assert r["method"] == "polyphase_kaiser_windowed_sinc"
+    assert r["anti_alias_filter"] is True
+    assert r["kaiser_beta"] == 5.0 and r["half_length_factor"] == 10
+    assert "scipy.signal.resample_poly" in r["reference_implementation"]
+    assert "1.13.1" in r["reference_implementation"]
+
+    a = s["amplitude_scaling"]
+    assert a["normalisation"]["per_window_dc_removal"] is True
+    assert a["normalisation"]["target_peak"] == 0.25
+    for key in ("pcm8", "pcm16", "pcm24", "pcm32", "float32", "float64"):
+        assert key in a
+
+    m = s["embedding_model"]
+    assert m["name"] == "surfperch" and m["version"] == "1.0" and m["dimension"] == 1280
+    assert m["kaggle_handle"] == ra.KAGGLE_MODEL_HANDLE
+    assert m["saved_model_sha256"] == ra.SAVED_MODEL_SHA256
+
+    inp = s["supported_input"]
+    assert inp["format_tags"] == [1, 3, 65534]
+    assert inp["pcm_bits"] == [8, 16, 24, 32] and inp["float_bits"] == [32, 64]
+    assert inp["sample_rate_hz_range"] == [4000, 192000] and inp["max_channels"] == 8
+    assert "dBFS" in s["levels"] and "-120.0" in s["levels"]
+    # mutating the summary must not change the module constants
+    m["saved_model_sha256"].clear()
+    assert ra.SAVED_MODEL_SHA256
