@@ -396,6 +396,98 @@ def test_report_reproduces_refit_within_tolerance(report):
                 assert new["probabilities"][k] == pytest.approx(v, abs=1e-3)
 
 
+REPORT_MD_PATH = REPORT_PATH.with_name("REPORT.md")
+DOC_PATH = REPO_ROOT / "docs" / "MODEL_EVALUATION.md"
+BELOW = "below chance"
+IDENTIFIED = "the model identified sites, not reef health"
+
+
+def _with_balanced_interval(report, lo, hi, which=None):
+    import copy
+    r = copy.deepcopy(report)
+    for m in r["models"]:
+        if which is None or m["model_version"] == which:
+            m["metrics"]["balanced_accuracy"]["ci_low"] = lo
+            m["metrics"]["balanced_accuracy"]["ci_high"] = hi
+    return r
+
+
+def test_report_markdown_rendered_from_json(report):
+    md = ev.render_markdown(report)
+    assert REPORT_MD_PATH.read_bytes() == md.encode("utf-8")
+    assert b"\r\n" not in REPORT_MD_PATH.read_bytes()
+    assert f"The model served is `{report['served_model_version']}`" in md
+    for m in report["models"]:
+        assert f"## Model `{m['model_version']}`" in md
+        bal = m["metrics"]["balanced_accuracy"]
+        assert ev._f(bal["value"]) in md
+        assert ev._interval_text(bal) in md
+        for metric in (*m["metrics"]["per_class"].values(), *m["metrics"]["per_region"].values()):
+            assert ev._f(metric["value"]) in md
+        for f in m["folds"]:
+            assert f["held_out_site"] in md
+    assert NOT_EVALUABLE in md
+    assert "CI not estimable (1 site)" in md
+    for fig in report["invalidated_figures"]:
+        assert fig["reason"] in md
+    for c in report["caveats"]:
+        assert c in md
+    for i in report["inputs"]:
+        assert i["sha256"] in md
+    # nothing in the Markdown is a number that report.json does not hold: every
+    # decimal in the text is formatted from the report (spot check on the served model)
+    served = next(m for m in report["models"] if m["served"])
+    assert ev._f(served["metrics"]["balanced_accuracy"]["ci_high"]) in md
+
+
+@pytest.mark.parametrize("lo,hi,expect_below", [
+    (0.0, 0.2, True),     # entirely under 0.5: below chance
+    (0.6, 0.9, False),    # entirely above 0.5
+    (0.3, 0.7, False),    # straddles 0.5
+])
+def test_report_markdown_states_chance_honestly(report, lo, hi, expect_below):
+    r = _with_balanced_interval(report, lo, hi)
+    md = ev.render_markdown(r)
+    assert (BELOW in md) is expect_below
+    assert (IDENTIFIED in md.lower()) is expect_below
+    if not expect_below:
+        # the text places the interval against 0.5 instead
+        bal = r["models"][1]["metrics"]["balanced_accuracy"]
+        sentence = ev.chance_statement(r["models"][1])
+        assert ev._f(0.5) in sentence
+        assert ("contains that line" in sentence) or ("whole interval lies above" in sentence)
+        assert bal["ci_low"] == lo
+
+
+def test_report_markdown_chance_is_per_model(report):
+    r = _with_balanced_interval(report, 0.0, 0.2, which=ORIGINAL_V)
+    r = _with_balanced_interval(r, 0.3, 0.7, which=SERVED_V)
+    assert BELOW in ev.chance_statement(_model(r, ORIGINAL_V))
+    assert BELOW not in ev.chance_statement(_model(r, SERVED_V))
+    assert "identified sites" not in ev.chance_statement(_model(r, SERVED_V))
+
+
+def test_model_evaluation_doc_withdraws_split_figures(report):
+    doc = DOC_PATH.read_text(encoding="utf-8")
+    for line in doc.splitlines():
+        if "90.0%" in line:
+            assert "withdrawn" in line
+    for stale in ("Overall Accuracy", "Per-Class Performance", "Confusion Matrix",
+                  "Confidence Calibration", "test_accuracy"):
+        assert stale not in doc
+    assert "models/interim-real-only/evaluation/REPORT.md" in doc
+    assert "random split" in doc
+    served = _model(report, SERVED_V)["metrics"]["balanced_accuracy"]
+    assert ev._f(served["value"]) in doc
+    assert ev._f(served["ci_low"]) in doc and ev._f(served["ci_high"]) in doc
+    orig = _model(report, ORIGINAL_V)["metrics"]["balanced_accuracy"]
+    assert ev._f(orig["value"]) in doc and ev._f(orig["ci_high"]) in doc
+    assert SERVED_V in doc
+    # the page's chance reading matches the report's intervals
+    assert served["ci_low"] < 0.5 < served["ci_high"]
+    assert orig["ci_high"] < 0.5
+
+
 def test_bootstrap_committed_inputs_full_b(loso):
     _, _, folds, preds = loso
     t0 = time.time()

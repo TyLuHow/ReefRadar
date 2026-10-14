@@ -704,6 +704,180 @@ def write_report(report, out_path):
     out_path.write_bytes(contract_lib.canonical_json_bytes(report))
 
 
+def _f(value):
+    return "n/a" if value is None else f"{value:.4f}"
+
+
+def _interval_text(metric):
+    if metric["ci_status"] == "not_estimable_1_site":
+        return "CI not estimable (1 site)"
+    if metric["ci_low"] is None or metric["ci_high"] is None:
+        return "interval undefined"
+    return f"[{_f(metric['ci_low'])}, {_f(metric['ci_high'])}]"
+
+
+def _metric_row(name, metric):
+    frac = "" if metric["defined_fraction"] is None else _f(metric["defined_fraction"])
+    return (f"| {name} | {_f(metric['value'])} | {_interval_text(metric)} | "
+            f"{metric['n_sites']} | {metric['n_windows']} | {frac} |")
+
+
+def chance_statement(model):
+    """One plain sentence placing the balanced-accuracy interval against chance.
+
+    Chance is 1/k for the k classes that have an evaluable fold. The phrases
+    "below chance" and "the model identified sites, not reef health" appear only
+    when the whole interval lies under that line.
+    """
+    bal = model["metrics"]["balanced_accuracy"]
+    k = len(model["metrics"]["per_class"])
+    chance = 1.0 / k
+    head = (f"Balanced accuracy on held-out sites is {_f(bal['value'])} "
+            f"(95% interval {_interval_text(bal)}, {bal['n_sites']} sites, {bal['n_windows']} windows). "
+            f"Chance for the {k} evaluable classes is {_f(chance)}.")
+    if bal["ci_low"] is None or bal["ci_high"] is None:
+        return head + " The interval could not be estimated, so the result cannot be placed against chance."
+    if bal["ci_high"] < chance:
+        return (head + " The whole interval lies below chance: this result is below chance, "
+                "which means systematic mislabelling and not noise. The model identified sites, "
+                "not reef health.")
+    if bal["ci_low"] > chance:
+        return (head + " The whole interval lies above that line, but with so few sites this is "
+                "not evidence that the model recognises reef health at a new place.")
+    side = "above" if bal["value"] >= chance else "under"
+    return (head + f" The interval contains that line (the point estimate sits {side} it), so the "
+            "result cannot be told apart from chance and gives no evidence that the model "
+            "recognises reef health at a new site.")
+
+
+def _model_section(model, report):
+    served = "served" if model["served"] else "not served, kept for comparison"
+    embeddings = {
+        "original": "original embeddings (earlier training pipeline)",
+        "reembedded": "re-embedded rows (reef_audio, the pipeline the service uses)",
+    }[model["embeddings"]]
+    m = model["metrics"]
+    lines = [
+        f"## Model `{model['model_version']}` ({served})",
+        "",
+        f"Embedding space: {embeddings}; preprocessing `{model['preprocessing_spec_version']}`. "
+        "Numbers below are in this embedding space only.",
+        "",
+        chance_statement(model),
+        "",
+        "| Metric | Value | 95% interval | Sites | Windows | Defined fraction |",
+        "|---|---|---|---|---|---|",
+    ]
+    for c, metric in sorted(m["per_class"].items()):
+        lines.append(_metric_row(f"{c} recall", metric))
+    for fold in model["folds"]:
+        if not fold["evaluable"]:
+            lines.append(f"| {fold['true_class']} recall | {fold['reason']} | | | | |")
+    lines.append(_metric_row("balanced accuracy", m["balanced_accuracy"]))
+    for g, metric in sorted(m["per_region"].items()):
+        lines.append(_metric_row(f"{g} accuracy", metric))
+    for name, label in (("training_majority", "baseline: training majority"),
+                        ("uniform_random", "baseline: uniform random")):
+        b = model["baselines"][name]
+        lines.append(f"| {label} (balanced) | {_f(b['value'])} | no interval | "
+                     f"{b['n_sites']} | {b['n_windows']} | |")
+    lines += ["", "### Folds", "",
+              "| Held-out site | Country | True class | Correct | Predicted labels |",
+              "|---|---|---|---|---|"]
+    for fold in model["folds"]:
+        dist = ", ".join(f"{k} {v}" for k, v in sorted(fold["predicted_distribution"].items(),
+                                                       key=lambda kv: (-kv[1], kv[0])))
+        correct = (f"{fold['correct']}/{fold['n_test']}" if fold["evaluable"] else "not evaluable")
+        lines.append(f"| {fold['held_out_site']} | {fold['country']} | {fold['true_class']} | {correct} | {dist} |")
+    for fold in model["folds"]:
+        if not fold["evaluable"]:
+            dist = ", ".join(f"{k} {v}" for k, v in sorted(fold["predicted_distribution"].items(),
+                                                           key=lambda kv: (-kv[1], kv[0])))
+            lines += ["",
+                      f"{fold['held_out_site']} is the only {fold['true_class']} site, so this fold has no "
+                      f"{fold['true_class']} in training. Result: {fold['reason']}. Predicted labels for its {fold['n_test']} windows: {dist}; "
+                      "shown for completeness and excluded from every average."]
+    lines.append("")
+    return lines
+
+
+def render_markdown(report):
+    """Render the plain-language report from the report dict alone (no other source of numbers)."""
+    served = next(m for m in report["models"] if m["model_version"] == report["served_model_version"])
+    other = [m for m in report["models"] if m is not served]
+    b = report["bootstrap"]
+    cos = report["drift_probe"]["cosine"]
+    lines = [
+        f"# Leave-one-site-out evaluation `{report['report_version']}`",
+        "",
+        "This file is generated from `report.json` by `scripts/evaluate_loso.py report`; every number "
+        "below is in that file. Do not edit it by hand.",
+        "",
+        "## What was measured",
+        "",
+        f"Each fold holds out every window of one site and trains the interim recipe on the other sites, "
+        f"then tests on the held-out site. This asks the question the service cares about: does the model "
+        f"work at a site it has never heard. The model served is `{report['served_model_version']}`; "
+        + ("; ".join(f"`{m['model_version']}` is the earlier model and is not served" for m in other) + "."
+           if other else ""),
+        "",
+        "## Plain reading",
+        "",
+    ]
+    for m in report["models"]:
+        lines.append(f"- `{m['model_version']}`"
+                     + (" (served)" if m["served"] else " (not served)") + ": " + chance_statement(m))
+    lines += [
+        "",
+        "Both models are interim and have no evidence of generalising to new sites. The result is "
+        "reported with its intervals and the few-site caveats below; it is not a reef-health accuracy.",
+        "",
+    ]
+    for m in report["models"]:
+        lines += _model_section(m, report)
+    lines += [
+        "## Embedding drift between the two spaces",
+        "",
+        f"Over {report['drift_probe']['pairs']} pairs (the same file embedded both ways), cosine similarity "
+        f"has mean {_f(cos['mean'])}, median {_f(cos['median'])}, minimum {_f(cos['min'])} and maximum "
+        f"{_f(cos['max'])}. How it was measured: {report['drift_probe']['note']}. The two spaces are far apart, so the original "
+        "model's numbers say nothing about the service's embeddings, and the two models' scores must not "
+        "be read as one improving on the other.",
+        "",
+        "## Figures withdrawn",
+        "",
+    ]
+    for fig in report["invalidated_figures"]:
+        lines.append(f"- **{fig['figure']}**: {fig['value']}. Source: {fig['source']}. {fig['reason']}")
+    lines += ["", "## Caveats", ""]
+    for c in report["caveats"]:
+        lines.append(f"- {c}")
+    lines += [
+        "",
+        "## Reproduction",
+        "",
+        f"Bootstrap: {b['levels']} levels (sites with replacement, then windows within each drawn site), "
+        f"B = {b['B']}, seed {b['seed']}, `{b['rng']}`, NumPy {b['numpy_version']}, percentile 95 interval, "
+        f"no interval for a group with fewer than {b['min_sites_for_interval']} sites. "
+        f"Trainer `{report['trainer']['script']}` at `{report['trainer']['git_sha']}`, seed "
+        f"{report['trainer']['seed']}. Report generated by `{report['generated_by']['script']}` at "
+        f"`{report['generated_by']['git_sha']}`.",
+        "",
+        "| Input | Path | Rows | sha256 |",
+        "|---|---|---|---|",
+    ]
+    for i in report["inputs"]:
+        lines.append(f"| {i['name']} | `{i['path']}` | {i['rows']} | `{i['sha256']}` |")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_markdown(report, md_path):
+    md_path = pathlib.Path(md_path)
+    md_path.parent.mkdir(parents=True, exist_ok=True)
+    md_path.write_bytes(render_markdown(report).encode("utf-8"))
+
+
 # --------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------
@@ -739,7 +913,8 @@ def _cmd_run(args):
 def _cmd_report(args):
     report = build_report(args.inputs_dir, B=args.B, bootstrap_seed=args.bootstrap_seed)
     write_report(report, args.out)
-    print(f"Wrote {args.out}")
+    write_markdown(report, args.md)
+    print(f"Wrote {args.out} and {args.md}")
     return 0
 
 
