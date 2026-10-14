@@ -8,6 +8,7 @@ AWS access exists (plan 01-09 points this at the real account).
 
 import hashlib
 import io
+import pathlib
 import tarfile
 import zipfile
 
@@ -85,6 +86,74 @@ def test_build_package_supports_custom_reader(tmp_path):
     assert manifest == {
         "handler.py": hashlib.sha256(b"from a reader, not the filesystem\n").hexdigest()
     }
+
+
+# --- binary members (Phase 5, ML-01/ML-08) -----------------------------------
+
+CRLF_BLOB = b"\x00\r\n\x01\r\n"
+
+
+def _single_member_spec(source, archive_path):
+    return {"kind": "zip", "members": [{"source": source, "archive_path": archive_path}]}
+
+
+def _zip_entry(zip_bytes, name):
+    with zipfile.ZipFile(io.BytesIO(zip_bytes)) as zf:
+        return zf.read(name)
+
+
+@pytest.mark.parametrize("suffix", [".f32", ".npz", ".bin"])
+def test_binary_member_bytes_are_preserved(tmp_path, suffix):
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / f"blob{suffix}").write_bytes(CRLF_BLOB)
+    spec = _single_member_spec(f"data/blob{suffix}", f"blob{suffix}")
+
+    built = pkg.build_package(spec, tmp_path)
+
+    assert _zip_entry(built, f"blob{suffix}") == CRLF_BLOB
+    # Determinism is preserved.
+    assert built == pkg.build_package(spec, tmp_path)
+
+
+def test_text_member_is_still_crlf_normalised(tmp_path):
+    (tmp_path / "mod.py").write_bytes(b"a\r\nb\r\n")
+    spec = _single_member_spec("mod.py", "mod.py")
+
+    built = pkg.build_package(spec, tmp_path)
+
+    assert _zip_entry(built, "mod.py") == b"a\nb\n"
+
+
+def test_binary_member_manifest_hash_is_raw_sha256(tmp_path):
+    (tmp_path / "blob.f32").write_bytes(CRLF_BLOB)
+    spec = _single_member_spec("blob.f32", "blob.f32")
+
+    built = pkg.build_package(spec, tmp_path)
+
+    assert pkg.manifest_from_zip(built) == {"blob.f32": hashlib.sha256(CRLF_BLOB).hexdigest()}
+    assert pkg.manifest_from_spec(spec, tmp_path) == {
+        "blob.f32": hashlib.sha256(CRLF_BLOB).hexdigest()
+    }
+
+
+def test_normalize_member_bytes_suffix_rule_is_case_insensitive():
+    assert pkg.normalize_member_bytes("x/Weights.NPZ", CRLF_BLOB) == CRLF_BLOB
+    assert pkg.normalize_member_bytes("x/notes.txt", b"a\r\n") == b"a\n"
+
+
+def test_real_contract_embeddings_survive_packaging(tmp_path):
+    real = (
+        pathlib.Path(__file__).resolve().parents[2]
+        / "contracts" / "bucket" / "v1" / "embeddings.f32"
+    )
+    source_bytes = real.read_bytes()
+    (tmp_path / "contracts" / "bucket" / "v1").mkdir(parents=True)
+    (tmp_path / "contracts" / "bucket" / "v1" / "embeddings.f32").write_bytes(source_bytes)
+    spec = _single_member_spec("contracts/bucket/v1/embeddings.f32", "embeddings.f32")
+
+    built = pkg.build_package(spec, tmp_path)
+
+    assert _zip_entry(built, "embeddings.f32") == source_bytes
 
 
 # --- manifest_from_zip -----------------------------------------------------

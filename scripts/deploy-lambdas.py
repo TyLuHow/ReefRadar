@@ -98,7 +98,7 @@ def git_show_reader(ref: str):
                 f"git show {ref}:{source} failed: "
                 f"{result.stderr.decode(errors='replace').strip()}"
             )
-        return pkg.normalize_text_bytes(result.stdout)
+        return pkg.normalize_member_bytes(source, result.stdout)
 
     return reader
 
