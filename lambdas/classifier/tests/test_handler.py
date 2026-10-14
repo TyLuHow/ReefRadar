@@ -1,31 +1,29 @@
 """
-End-to-end test for lambdas/classifier/handler.py (plan 01-11).
+End-to-end tests for lambdas/classifier/handler.py (plans 01-11 and 05-09).
 
-Exercises handler.handler() against moto-mocked S3/DynamoDB -- segments
-JSON, a real-shape 1280-256-64-K classifier weights npz, model config,
-and reference embeddings -- with invoke_inference_with_retry stubbed
-(the only thing moto can't fake, since it calls a *different* Lambda
-function). Confirms, end to end:
+Exercises handler.handler() against moto-mocked S3/DynamoDB. Segments are real
+reef_audio windows from a 30 s MARRS excerpt written as segments.f32 plus the
+sidecar, the served model is a tmp bundled model (served_model_config.json and
+served_model_weights.npz, reef_reference._MODULE_DIR monkeypatched), reference
+embeddings come from the S3 fixture, and the inference Lambda is replaced by
+FakeInferenceLambda (the only thing moto cannot fake, since it calls a
+*different* Lambda function). Confirms, end to end:
 
-  - D-12/TRUTH-06: stored classification.probabilities are the model's
-    raw softmax output (sum to 1), and classification.region is a
-    separate, honest object built from the classifier's real (audited)
-    training sites.
-  - D-13: the RESULT item never carries a "visualization" key (the
-    meaningless half-vector-mean projection has been removed).
-  - D-17: similar_sites entries carry real label provenance instead of
-    an invented health status for non-MARRS reference sites.
+  - 05-09: every 5 s window is classified individually; the recording's
+    probabilities are the mean of the per-window probability vectors; a mean
+    embedding is never classified.
+  - D-12/TRUTH-06: stored probabilities are the model's raw softmax output and
+    classification.region is a separate, honest object.
+  - D-13: the RESULT item never carries a "visualization" key.
+  - D-17: similar_sites entries carry real label provenance.
 
 A packaging test also confirms infrastructure/lambda-packages/classifier.json
-bundles the shared site_provenance.py/site-label-provenance.json members
-the handler now imports.
+bundles the shared members the handler imports.
 """
 
 import importlib.util
 import io
 import json
-import os
-import sys
 import zipfile
 from decimal import Decimal
 from pathlib import Path
@@ -33,95 +31,54 @@ from pathlib import Path
 import boto3
 import numpy as np
 import pytest
-from moto import mock_aws
 
-# Load lambdas/conftest.py by explicit file path (see
-# test_load_lambda.py's own comment: a bare `import conftest` collides
-# with scripts/tests/conftest.py's cached module name under pytest's
-# collection order).
+# Load lambdas/conftest.py by explicit file path (see test_load_lambda.py's own
+# comment: a bare `import conftest` collides with scripts/tests/conftest.py's
+# cached module name under pytest's collection order).
 _LAMBDAS_DIR = Path(__file__).resolve().parent.parent.parent
 _REPO_ROOT = _LAMBDAS_DIR.parent
 _spec = importlib.util.spec_from_file_location("lambdas_conftest", _LAMBDAS_DIR / "conftest.py")
 _lambdas_conftest = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_lambdas_conftest)
 load_lambda = _lambdas_conftest.load_lambda
+write_served_model = _lambdas_conftest.write_served_model
+fake_embedding = _lambdas_conftest.fake_embedding
+FakeInferenceLambda = _lambdas_conftest.FakeInferenceLambda
+prepare_excerpt = _lambdas_conftest.prepare_excerpt
+put_binary_segments = _lambdas_conftest.put_binary_segments
+TEST_MODEL_VERSION = _lambdas_conftest.TEST_MODEL_VERSION
+TEST_DATASET_VERSION = _lambdas_conftest.TEST_DATASET_VERSION
+TEST_IDX_TO_LABEL = _lambdas_conftest.TEST_IDX_TO_LABEL
 
-# pytest.ini's `pythonpath = scripts lambdas/shared` puts this on sys.path repo-wide.
+# pytest.ini's `pythonpath = scripts lambdas/shared` puts these on sys.path repo-wide.
 import lambda_packaging as pkg  # noqa: E402
+import reef_audio  # noqa: E402
+import reef_reference  # noqa: E402
+import contract_lib  # noqa: E402
 
 AUDIO_BUCKET = "reefradar-2477-audio"
 EMBEDDINGS_BUCKET = "reefradar-2477-embeddings"
 METADATA_TABLE = "reefradar-2477-metadata"
 
 EMBEDDING_DIM = 1280
-HIDDEN_1 = 256
-HIDDEN_2 = 64
-NUM_CLASSES = 3  # interim-shaped (degraded/healthy/restored_early), per 01-10 audit
-IDX_TO_LABEL = {"0": "degraded", "1": "healthy", "2": "restored_early"}
+IDX_TO_LABEL = TEST_IDX_TO_LABEL
 
 # South Sulawesi, Indonesia -- inside the classifier's real training region.
 TEST_LATITUDE = -4.93
 TEST_LONGITUDE = 119.32
 
-WEIGHTS_CACHE = "/tmp/reef_classifier_weights.npz"
-CONFIG_CACHE = "/tmp/model_config.json"
+ANALYSIS_ID = "analysis-1"
 
 
-def _clear_tmp_cache():
-    """handler.py caches the downloaded model to /tmp for warm starts.
-
-    Each test must see its own S3-uploaded fixture model, not a stale
-    file left on disk by a previous test run, so clear (and ensure the
-    directory exists -- on Windows, '/tmp' resolves to the current
-    drive's root \\tmp, which may not exist yet) before every test.
-    """
-    os.makedirs("/tmp", exist_ok=True)
-    for path in (WEIGHTS_CACHE, CONFIG_CACHE):
-        if os.path.exists(path):
-            os.remove(path)
-
-
-def _build_weights_npz():
-    rng = np.random.RandomState(42)
-    w1 = rng.normal(scale=0.05, size=(EMBEDDING_DIM, HIDDEN_1)).astype(np.float32)
-    b1 = np.zeros(HIDDEN_1, dtype=np.float32)
-    w2 = rng.normal(scale=0.05, size=(HIDDEN_1, HIDDEN_2)).astype(np.float32)
-    b2 = np.zeros(HIDDEN_2, dtype=np.float32)
-    w3 = rng.normal(scale=0.05, size=(HIDDEN_2, NUM_CLASSES)).astype(np.float32)
-    b3 = np.zeros(NUM_CLASSES, dtype=np.float32)
-
-    buf = io.BytesIO()
-    np.savez(buf, w1=w1, b1=b1, w2=w2, b2=b2, w3=w3, b3=b3)
-    return buf.getvalue()
+@pytest.fixture(scope="module")
+def excerpt():
+    """The real 30 s MARRS excerpt as six normalised windows (prepared once)."""
+    return prepare_excerpt()
 
 
 def _setup_s3_fixtures(s3):
     s3.create_bucket(Bucket=AUDIO_BUCKET)
     s3.create_bucket(Bucket=EMBEDDINGS_BUCKET)
-
-    # Segments the preprocessor would have produced.
-    segments_payload = {
-        "segments": ["seg-0", "seg-1"],
-        "sample_rate": 32000,
-    }
-    s3.put_object(
-        Bucket=AUDIO_BUCKET,
-        Key="segments/analysis-1.json",
-        Body=json.dumps(segments_payload),
-        ContentType="application/json",
-    )
-
-    s3.put_object(Bucket=EMBEDDINGS_BUCKET, Key="models/reef_classifier_weights.npz", Body=_build_weights_npz())
-    s3.put_object(
-        Bucket=EMBEDDINGS_BUCKET,
-        Key="models/model_config.json",
-        Body=json.dumps({
-            "version": "interim-real-only-test",
-            "idx_to_label": IDX_TO_LABEL,
-            "test_accuracy": 0.8,
-        }),
-        ContentType="application/json",
-    )
 
     rng = np.random.RandomState(7)
     reference_sites = [
@@ -162,21 +119,51 @@ def _setup_dynamodb_fixture(dynamodb_client):
 
 
 @pytest.fixture
-def classifier_handler(aws):
-    _clear_tmp_cache()
+def stamp_file(tmp_path):
+    """A tmp version stamp covering the test model and reef_audio.SPEC_VERSION."""
+    path = tmp_path / "stamp.json"
+    path.write_text(json.dumps({
+        "contract_version": 2,
+        "dataset_version": TEST_DATASET_VERSION,
+        "model_version": TEST_MODEL_VERSION,
+        "preprocessing_spec_version": reef_audio.SPEC_VERSION,
+    }), encoding="utf-8")
+    return path
+
+
+@pytest.fixture
+def served_dir(tmp_path, monkeypatch):
+    """Bundled served model for the test; reef_reference reads it instead of the repo model."""
+    directory = tmp_path / "bundle"
+    config, weights = write_served_model(directory)
+    monkeypatch.setattr(reef_reference, "_MODULE_DIR", str(directory))
+    return directory, config, weights
+
+
+@pytest.fixture
+def classifier_handler(aws, served_dir, stamp_file):
     s3 = boto3.client("s3", region_name="us-east-1")
     dynamodb_client = boto3.client("dynamodb", region_name="us-east-1")
     _setup_s3_fixtures(s3)
     _setup_dynamodb_fixture(dynamodb_client)
 
     module = load_lambda("classifier")
-
-    def _stub_invoke_inference_with_retry(segments, sample_rate, analysis_id, request_id):
-        rng = np.random.RandomState(123)
-        return [rng.normal(size=EMBEDDING_DIM).tolist() for _ in segments]
-
-    module.invoke_inference_with_retry = _stub_invoke_inference_with_retry
+    module.lambda_client = FakeInferenceLambda(s3)
+    module.get_contract_stamp = lambda: json.loads(stamp_file.read_text(encoding="utf-8"))
     return module
+
+
+def _put_segments(analysis_id, excerpt, **kwargs):
+    s3 = boto3.client("s3", region_name="us-east-1")
+    return put_binary_segments(s3, AUDIO_BUCKET, analysis_id, excerpt, **kwargs)
+
+
+def _event(excerpt, analysis_id=ANALYSIS_ID, upload_id="upload-1", coords=True, **kwargs):
+    event = {"upload_id": upload_id, "analysis_id": analysis_id}
+    event.update(_put_segments(analysis_id, excerpt, **kwargs))
+    if coords:
+        event.update({"latitude": TEST_LATITUDE, "longitude": TEST_LONGITUDE})
+    return event
 
 
 def _get_result_item(module, analysis_id):
@@ -185,106 +172,298 @@ def _get_result_item(module, analysis_id):
     return resp["Item"]
 
 
+def _get_item(module, analysis_id, sk):
+    table = module.dynamodb.Table(METADATA_TABLE)
+    return table.get_item(Key={"pk": f"ANALYSIS#{analysis_id}", "sk": sk}).get("Item")
+
+
 def _to_float(value):
     return float(value) if isinstance(value, Decimal) else value
 
 
-def test_handler_end_to_end_stores_raw_probabilities_and_honest_region(classifier_handler):
-    event = {
-        "upload_id": "upload-1",
-        "analysis_id": "analysis-1",
-        "segments_key": "segments/analysis-1.json",
-        "num_segments": 2,
-        "latitude": TEST_LATITUDE,
-        "longitude": TEST_LONGITUDE,
-    }
+def _expected_window_probabilities(excerpt, weights, idx_to_label):
+    """Reference implementation of the per-window forward pass (float64 softmax)."""
+    E = np.stack([fake_embedding(w) for w in excerpt.windows])
+    h = np.maximum(0, E @ weights["w1"] + weights["b1"])
+    h = np.maximum(0, h @ weights["w2"] + weights["b2"])
+    logits = (h @ weights["w3"] + weights["b3"]).astype(np.float64)
+    e = np.exp(logits - logits.max(axis=1, keepdims=True))
+    P = e / e.sum(axis=1, keepdims=True)
+    classes = [idx_to_label[str(i)] for i in range(P.shape[1])]
+    return E, P, classes
 
-    result = classifier_handler.handler(event, context=None)
+
+# --- 05-09: per-window pipeline ----------------------------------------------
+
+
+def test_window_probabilities_and_recording_mean(classifier_handler, served_dir, excerpt):
+    _, config, weights = served_dir
+    result = classifier_handler.handler(_event(excerpt), context=None)
     assert result["statusCode"] == 200
 
-    item = _get_result_item(classifier_handler, "analysis-1")
+    item = _get_result_item(classifier_handler, ANALYSIS_ID)
     assert item["status"] == "complete"
+    _, P, classes = _expected_window_probabilities(excerpt, weights, config["idx_to_label"])
+    assert P.shape == (6, 3)
+
+    windows = item["windows"]
+    for k, cls in enumerate(classes):
+        stored = np.array([_to_float(v) for v in windows["probabilities"][cls]])
+        assert np.allclose(stored, P[:, k], atol=1e-8)
+    # Each stored per-window vector sums to 1 within the storage rounding.
+    columns = np.array([[_to_float(v) for v in windows["probabilities"][cls]] for cls in classes])
+    assert np.allclose(columns.sum(axis=0), 1.0, atol=1e-8)
 
     classification = item["classification"]
-    probabilities = {k: _to_float(v) for k, v in classification["probabilities"].items()}
-    total = sum(probabilities.values())
-    assert total == pytest.approx(1.0, abs=1e-6)
-    assert _to_float(classification["confidence"]) == pytest.approx(max(probabilities.values()), abs=1e-6)
+    assert set(classification) == {"label", "confidence", "probabilities", "model_version", "region"}
+    means = P.mean(axis=0)
+    for k, cls in enumerate(classes):
+        assert _to_float(classification["probabilities"][cls]) == pytest.approx(means[k], abs=1e-9)
+    assert sum(_to_float(v) for v in classification["probabilities"].values()) == pytest.approx(1.0, abs=1e-8)
+    assert classification["label"] == classes[int(np.argmax(means))]
+    assert _to_float(classification["confidence"]) == pytest.approx(means.max(), abs=1e-9)
+    assert classification["model_version"] == TEST_MODEL_VERSION
+
+    summary = item["embedding_summary"]
+    assert summary["aggregation"] == "mean_of_window_probabilities"
+    assert summary["num_segments"] == 6
+    assert summary["embedding_model"] == "surfperch"
+    assert summary["embedding_version"] == "1.0"
+    assert summary["synthetic"] is False
 
     region = classification["region"]
     assert region["coordinates_provided"] is True
     assert region["in_training_region"] is True
     assert region["training_countries"] == ["Indonesia", "Kenya"]
-    assert region["training_sites_in_region"] >= 1
-    # Legacy fields the current production frontend still reads.
     assert region["in_training_distribution"] == region["in_training_region"]
     assert region["confidence_adjusted"] is False
 
 
-def test_handler_end_to_end_no_coordinates(classifier_handler):
-    event = {
-        "upload_id": "upload-2",
-        "analysis_id": "analysis-2",
-        "segments_key": "segments/analysis-1.json",
-        "num_segments": 2,
+def test_window_inference_is_called_in_batches_of_at_most_ten(classifier_handler, excerpt):
+    classifier_handler.handler(_event(excerpt), context=None)
+    assert classifier_handler.lambda_client.batch_sizes == [6]
+    assert classifier_handler.BATCH_SIZE == 10
+
+
+def test_window_no_mean_pooled_embedding_is_classified(classifier_handler, excerpt, monkeypatch):
+    seen = []
+    original = classifier_handler.classify_windows
+
+    def spy(E, model):
+        seen.append(np.asarray(E).shape)
+        return original(E, model)
+
+    monkeypatch.setattr(classifier_handler, "classify_windows", spy)
+    classifier_handler.handler(_event(excerpt), context=None)
+    assert seen == [(6, EMBEDDING_DIM)]
+
+
+def test_window_block_and_input_audio_validate(classifier_handler, excerpt):
+    classifier_handler.handler(_event(excerpt), context=None)
+    item = _get_result_item(classifier_handler, ANALYSIS_ID)
+
+    windows = item["windows"]
+    assert int(windows["count"]) == 6
+    assert _to_float(windows["window_s"]) == 5.0
+    assert [int(i) for i in windows["index"]] == list(range(6))
+    assert [_to_float(v) for v in windows["start_s"]] == [0.0, 5.0, 10.0, 15.0, 20.0, 25.0]
+    assert windows["classes"] == ["degraded", "healthy", "restored_early"]
+    assert len(windows["label"]) == 6
+    assert all(label in windows["classes"] for label in windows["label"])
+    assert [_to_float(v) for v in windows["peak_dbfs"]] == pytest.approx(excerpt.peak_dbfs, abs=1e-8)
+    assert [_to_float(v) for v in windows["rms_dbfs"]] == pytest.approx(excerpt.rms_dbfs, abs=1e-8)
+    assert windows["silent"] == list(excerpt.silent)
+
+    input_audio = item["input_audio"]
+    assert int(input_audio["sample_rate_hz"]) == 16000
+    assert int(input_audio["channels"]) == 1
+    assert int(input_audio["bits_per_sample"]) == 16
+    assert input_audio["encoding"] == "pcm"
+    assert _to_float(input_audio["duration_s"]) == 30.0
+    assert int(input_audio["windows"]) == 6
+    assert _to_float(input_audio["dropped_tail_s"]) == 0.0
+    assert input_audio["preprocessing_spec_version"] == reef_audio.SPEC_VERSION
+
+    # Both blocks validate against the 05-06 analysis-result $defs (JSON-plain numbers).
+    def plain(obj):
+        if isinstance(obj, Decimal):
+            return int(obj) if obj == obj.to_integral_value() else float(obj)
+        if isinstance(obj, dict):
+            return {k: plain(v) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [plain(v) for v in obj]
+        return obj
+
+    contract_lib.validate(
+        {
+            "contract_version": None, "dataset_version": None,
+            "model_version": plain(item["model_version"]), "preprocessing_spec_version": None,
+            "windows": plain(windows), "input_audio": plain(input_audio),
+        },
+        "analysis-result",
+    )
+
+
+def test_window_embeddings_written_to_s3(classifier_handler, excerpt):
+    classifier_handler.handler(_event(excerpt), context=None)
+    s3 = boto3.client("s3", region_name="us-east-1")
+    raw = s3.get_object(Bucket=AUDIO_BUCKET, Key=f"processed/{ANALYSIS_ID}/embeddings.f32")["Body"].read()
+    assert len(raw) == 6 * EMBEDDING_DIM * 4
+    stored = np.frombuffer(raw, dtype="<f4").reshape(6, EMBEDDING_DIM)
+    expected = np.stack([fake_embedding(w) for w in excerpt.windows])
+    assert np.array_equal(stored, expected)
+
+
+def _assert_dynamo_safe(obj, path="item"):
+    assert not isinstance(obj, (np.generic, np.ndarray)), f"NumPy value at {path}"
+    assert not isinstance(obj, float), f"raw float at {path}"
+    if isinstance(obj, Decimal):
+        assert obj.is_finite(), f"non-finite Decimal at {path}"
+    elif isinstance(obj, dict):
+        for k, v in obj.items():
+            _assert_dynamo_safe(v, f"{path}.{k}")
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            _assert_dynamo_safe(v, f"{path}[{i}]")
+
+
+def test_window_stored_types_are_dynamo_safe(classifier_handler, excerpt):
+    classifier_handler.handler(_event(excerpt), context=None)
+    _assert_dynamo_safe(_get_result_item(classifier_handler, ANALYSIS_ID))
+
+
+def test_window_aggregation_label_and_confidence(classifier_handler, served_dir):
+    """aggregate_classification: label = argmax of the column means, confidence = their max."""
+    _, config, weights = served_dir
+    model = reef_reference.load_served_model()
+    P = np.array([[0.7, 0.2, 0.1], [0.1, 0.2, 0.7], [0.2, 0.5, 0.3]])
+    out = classifier_handler.aggregate_classification(P, model)
+    means = P.mean(axis=0)
+    assert out["label"] == "healthy"
+    assert out["confidence"] == pytest.approx(means.max())
+    assert out["probabilities"] == {
+        "degraded": pytest.approx(means[0]), "healthy": pytest.approx(means[1]),
+        "restored_early": pytest.approx(means[2]),
     }
+    assert sum(out["probabilities"].values()) == pytest.approx(1.0)
+    assert out["model_version"] == TEST_MODEL_VERSION
 
-    result = classifier_handler.handler(event, context=None)
+
+def test_window_classify_matches_single_vector_forward_pass(classifier_handler, served_dir):
+    model = reef_reference.load_served_model()
+    rng = np.random.RandomState(5)
+    E = rng.normal(size=(4, EMBEDDING_DIM)).astype(np.float32)
+    P = classifier_handler.classify_windows(E, model)
+    assert P.shape == (4, 3) and P.dtype == np.float64
+    assert np.allclose(P.sum(axis=1), 1.0, atol=1e-12)
+    single = classifier_handler.classify_embedding(E[2], model=(model.weights, model.config))
+    for k, cls in enumerate(["degraded", "healthy", "restored_early"]):
+        assert single["probabilities"][cls] == pytest.approx(P[2, k], abs=1e-6)
+
+
+def test_window_convert_floats_converts_numpy_and_rejects_non_finite(classifier_handler):
+    out = classifier_handler.convert_floats({
+        "a": np.float32(0.5), "b": np.int64(3), "c": np.bool_(True), "d": np.array([1.5, 2.5]),
+    })
+    assert out == {"a": Decimal("0.5"), "b": 3, "c": True, "d": [Decimal("1.5"), Decimal("2.5")]}
+    assert type(out["b"]) is int and type(out["c"]) is bool
+    for bad in (float("nan"), float("inf"), np.float64("-inf"), [1.0, float("nan")]):
+        with pytest.raises(ValueError):
+            classifier_handler.convert_floats({"x": bad})
+
+
+def test_convert_floats_keeps_nine_decimals(classifier_handler):
+    assert classifier_handler.convert_floats(0.123456789123) == Decimal("0.123456789")
+
+
+# --- the served model is bundled, never read from S3 ---------------------------
+
+
+def test_window_served_model_is_not_read_from_s3(classifier_handler, excerpt):
+    """A decoy model in the S3 models/ keys (what the old classifier hot-reloaded) is ignored."""
+    s3 = boto3.client("s3", region_name="us-east-1")
+    s3.put_object(Bucket=EMBEDDINGS_BUCKET, Key="models/model_config.json",
+                  Body=json.dumps({"version": "decoy", "idx_to_label": IDX_TO_LABEL}))
+    classifier_handler.handler(_event(excerpt), context=None)
+    item = _get_result_item(classifier_handler, ANALYSIS_ID)
+    assert item["model_version"] == TEST_MODEL_VERSION
+    assert not hasattr(classifier_handler, "load_classifier_model")
+
+
+@pytest.mark.parametrize("model_dir", ["models/interim-real-only", "models"])
+def test_validate_model_accepts_published_and_archived_models(classifier_handler, model_dir):
+    base = _REPO_ROOT / model_dir
+    if not (base / "model_config.json").exists():
+        pytest.skip(f"{model_dir}/model_config.json not present in this checkout")
+    config = json.loads((base / "model_config.json").read_text(encoding="utf-8"))
+    with np.load(base / "reef_classifier_weights.npz") as npz:
+        weights = {k: npz[k] for k in npz.files}
+    classifier_handler.validate_model(weights, config)
+
+
+def test_validate_model_rejects_class_count_mismatch(classifier_handler, served_dir):
+    _, config, weights = served_dir
+    config = dict(config)
+    config["idx_to_label"] = {"0": "degraded", "1": "healthy", "2": "restored_early", "3": "restored_mid"}
+    config["num_classes"] = 4
+    with pytest.raises(ValueError):
+        classifier_handler.validate_model(weights, config)
+
+
+def test_validate_model_rejects_missing_label_map(classifier_handler, served_dir):
+    _, config, weights = served_dir
+    config = {k: v for k, v in config.items() if k != "idx_to_label"}
+    with pytest.raises(ValueError):
+        classifier_handler.validate_model(weights, config)
+
+
+# --- end to end behaviour kept from earlier plans -----------------------------
+
+
+def test_handler_end_to_end_no_coordinates(classifier_handler, excerpt):
+    result = classifier_handler.handler(_event(excerpt, analysis_id="analysis-2", coords=False), context=None)
     assert result["statusCode"] == 200
-
     item = _get_result_item(classifier_handler, "analysis-2")
-    classification = item["classification"]
-    probabilities = {k: _to_float(v) for k, v in classification["probabilities"].items()}
-    assert sum(probabilities.values()) == pytest.approx(1.0, abs=1e-6)
-
-    region = classification["region"]
+    probabilities = {k: _to_float(v) for k, v in item["classification"]["probabilities"].items()}
+    assert sum(probabilities.values()) == pytest.approx(1.0, abs=1e-8)
+    region = item["classification"]["region"]
     assert region["coordinates_provided"] is False
     assert region["in_training_region"] is False
 
 
-# --- D-13: no fake "embedding space" visualization ---------------------------
-# --- D-17: similar_sites carry real label provenance ------------------------
-
-
-def test_handler_no_visualization_and_similar_sites_carry_label_provenance(classifier_handler):
-    event = {
-        "upload_id": "upload-3",
-        "analysis_id": "analysis-3",
-        "segments_key": "segments/analysis-1.json",
-        "num_segments": 2,
-        "latitude": TEST_LATITUDE,
-        "longitude": TEST_LONGITUDE,
-    }
-
-    result = classifier_handler.handler(event, context=None)
+def test_handler_no_visualization_and_similar_sites_carry_label_provenance(classifier_handler, excerpt):
+    result = classifier_handler.handler(_event(excerpt, analysis_id="analysis-3"), context=None)
     assert result["statusCode"] == 200
-
     item = _get_result_item(classifier_handler, "analysis-3")
 
     # D-13: the half-vector-mean "embedding space" projection is gone.
     assert "visualization" not in item
     assert not hasattr(classifier_handler, "generate_visualization")
 
-    # D-17: every similar_sites entry states who assigned its label and
-    # what that dataset's own term for it was -- no invented health label
-    # for a non-MARRS site.
+    # D-17: every similar_sites entry states who assigned its label.
     by_site = {s["site_id"]: s for s in item["similar_sites"]}
-
     marrs_site = by_site["ind_H4"]
     assert marrs_site["status"] == "healthy"
     assert marrs_site["label_source"] == "marrs"
     assert marrs_site["label_source_name"].startswith("MARRS")
-
-    # Fixture stores this CoralSoundExplorer site's raw status as
-    # "degraded" -- apply_label_provenance must override it to "unknown"
-    # (a disturbance-context recording, not a MARRS-style health call).
     tourist_site = by_site["borabora_tourist"]
     assert tourist_site["status"] == "unknown"
     assert tourist_site["label_source"] == "coralsoundexplorer"
     assert tourist_site["label_original"] == "tourist"
+    assert len(item["similar_sites"]) <= 3
 
 
-# --- Packaging: classifier.json bundles the shared provenance members -------
+def test_similar_sites_use_the_mean_of_window_cosines(classifier_handler, excerpt):
+    classifier_handler.handler(_event(excerpt, analysis_id="analysis-cos"), context=None)
+    item = _get_result_item(classifier_handler, "analysis-cos")
+    E = np.stack([fake_embedding(w) for w in excerpt.windows]).astype(np.float64)
+    ref = np.random.RandomState(7).normal(size=EMBEDDING_DIM)  # ind_H4 is the first reference row
+    cos = (E @ ref) / (np.linalg.norm(E, axis=1) * np.linalg.norm(ref))
+    got = {s["site_id"]: _to_float(s["similarity"]) for s in item["similar_sites"]}
+    assert got["ind_H4"] == pytest.approx(cos.mean(), abs=1e-8)
+
+
+# --- Packaging: classifier.json bundles the shared members -------------------
 
 
 def test_classifier_package_includes_shared_members():
@@ -298,6 +477,8 @@ def test_classifier_package_includes_shared_members():
         "site_label_provenance.json",
         "contract_stamp.py",
         "contract_stamp.json",
+        "reef_audio.py",
+        "reef_reference.py",
     }
     # CONTRACT-04: the packaged stamp is the committed contracts/bucket/v1/stamp.json
     # (LF-normalised, so the package is identical on Windows and Linux checkouts).
@@ -307,50 +488,57 @@ def test_classifier_package_includes_shared_members():
     assert zf.read("contract_stamp.json") == committed
 
 
-def test_stale_stamp_is_nulled_when_the_loaded_model_differs(classifier_handler):
-    """T-02-05-01: the fixture model's version ('interim-real-only-test') is not the
-    bundled stamp's model, so the contract fields are guarded to null while
-    model_version still reports the running model."""
-    result = classifier_handler.handler(
-        {
-            "upload_id": "upload-s1",
-            "analysis_id": "analysis-s1",
-            "segments_key": "segments/analysis-1.json",
-            "num_segments": 2,
-        },
-        context=None,
-    )
+# --- stamping (CONTRACT-04, extended in 05-09) --------------------------------
+
+
+def test_stamp_covered_requires_spec_match(classifier_handler, excerpt):
+    result = classifier_handler.handler(_event(excerpt, analysis_id="analysis-st"), context=None)
     assert result["statusCode"] == 200
+    item = _get_result_item(classifier_handler, "analysis-st")
+    assert item["stamp_status"] == "stamped"
+    assert int(item["contract_version"]) == 2
+    assert item["dataset_version"] == TEST_DATASET_VERSION
+    assert item["model_version"] == TEST_MODEL_VERSION
+    assert item["preprocessing_spec_version"] == reef_audio.SPEC_VERSION
+
+
+def test_stamp_for_another_model_is_nulled_but_keeps_the_running_model(classifier_handler, excerpt, stamp_file):
+    stamp = json.loads(stamp_file.read_text(encoding="utf-8"))
+    stamp["model_version"] = "some-other-model"
+    classifier_handler.get_contract_stamp = lambda: stamp
+    classifier_handler.handler(_event(excerpt, analysis_id="analysis-s1"), context=None)
     item = _get_result_item(classifier_handler, "analysis-s1")
-    assert item["model_version"] == "interim-real-only-test"
+    assert item["model_version"] == TEST_MODEL_VERSION
     assert item["contract_version"] is None
     assert item["dataset_version"] is None
     assert item["preprocessing_spec_version"] is None
-    # CR-01: distinguishable from a legacy result (which has no stamp_status).
     assert item["stamp_status"] == "uncovered"
 
 
-def test_unloadable_stamp_writes_nulls_and_does_not_fail_the_analysis(classifier_handler):
+def test_stamp_v1_stamp_no_longer_covers_new_results(classifier_handler, excerpt, capsys):
+    """The committed v1 stamp names the as-deployed preprocessing spec, so a result
+    produced by reef_audio is 'uncovered' (05-15 bundles the v2 stamp)."""
+    v1 = json.loads((_REPO_ROOT / "contracts" / "bucket" / "v1" / "stamp.json").read_text(encoding="utf-8"))
+    classifier_handler.get_contract_stamp = lambda: v1
+    out = classifier_handler.result_version_stamp(v1["model_version"], reef_audio.SPEC_VERSION)
+    assert out["stamp_status"] == "uncovered"
+    assert out["contract_version"] is None
+    assert out["model_version"] == v1["model_version"]
+    lines = [json.loads(line) for line in capsys.readouterr().out.splitlines() if line.startswith("{")]
+    assert lines and lines[-1]["UnstampedResults"] == 1 and lines[-1]["Status"] == "uncovered"
+
+
+def test_unloadable_stamp_writes_nulls_and_does_not_fail_the_analysis(classifier_handler, excerpt):
     def _broken():
         raise FileNotFoundError("contract_stamp.json missing")
 
     classifier_handler.get_contract_stamp = _broken
-    result = classifier_handler.handler(
-        {
-            "upload_id": "upload-s2",
-            "analysis_id": "analysis-s2",
-            "segments_key": "segments/analysis-1.json",
-            "num_segments": 2,
-        },
-        context=None,
-    )
+    result = classifier_handler.handler(_event(excerpt, analysis_id="analysis-s2"), context=None)
     assert result["statusCode"] == 200
     item = _get_result_item(classifier_handler, "analysis-s2")
     for key in ("contract_version", "dataset_version", "preprocessing_spec_version"):
         assert item[key] is None
-    # CR-01: the running model's own version does not depend on the stamp file,
-    # and the failure is flagged distinctly from an uncovered or legacy result.
-    assert item["model_version"] == "interim-real-only-test"
+    assert item["model_version"] == TEST_MODEL_VERSION
     assert item["stamp_status"] == "load_failed"
 
 
@@ -367,30 +555,113 @@ def test_unstamped_outcomes_emit_a_cloudwatch_metric(classifier_handler, capsys)
     assert emitted[0]["_aws"]["CloudWatchMetrics"][0]["Metrics"][0]["Name"] == "UnstampedResults"
 
 
+# --- 05-09 Task 2: legacy refusal, integrity, alignment ------------------------
+
+
+def _put_legacy_segments(analysis_id, n=2):
+    s3 = boto3.client("s3", region_name="us-east-1")
+    key = f"segments/{analysis_id}.json"
+    rows = [[0.0] * reef_audio.WINDOW_SAMPLES for _ in range(n)]
+    s3.put_object(Bucket=AUDIO_BUCKET, Key=key, Body=json.dumps({"segments": rows, "sample_rate": 32000}))
+    return key
+
+
+def test_segment_format_legacy_json_refused(classifier_handler):
+    key = _put_legacy_segments("analysis-leg")
+    calls = []
+    classifier_handler.lambda_client = type("L", (), {"invoke": lambda self, **k: calls.append(k)})()
+    event = {"upload_id": "upload-leg", "analysis_id": "analysis-leg", "segments_key": key, "num_segments": 2}
+    info = classifier_handler.read_segment_info(event)
+    assert info["spec_version"] == classifier_handler.LEGACY_PREPROCESSING_SPEC_VERSION
+    assert info["spec_version"] == "preproc-2026.10.0-as-deployed"
+
+    result = classifier_handler.handler(event, context=None)
+    assert result["statusCode"] == 500
+    assert calls == []  # no inference call
+    err = _get_item(classifier_handler, "analysis-leg", "ERROR")
+    assert err["error_code"] == "PREPROCESSING_SPEC_MISMATCH"
+    assert err["stage"] == "classification"
+    assert "start the analysis again" in err["suggestion"]
+    assert _get_item(classifier_handler, "analysis-leg", "RESULT") is None
+
+
+def test_segment_format_spec_mismatch_refused(classifier_handler, excerpt, served_dir, monkeypatch):
+    directory, _, _ = served_dir
+    write_served_model(directory, spec_version="preproc-trained-elsewhere")
+    result = classifier_handler.handler(_event(excerpt, analysis_id="analysis-sm"), context=None)
+    assert result["statusCode"] == 500
+    assert classifier_handler.lambda_client.batch_sizes == []
+    err = _get_item(classifier_handler, "analysis-sm", "ERROR")
+    assert err["error_code"] == "PREPROCESSING_SPEC_MISMATCH"
+    assert _get_item(classifier_handler, "analysis-sm", "RESULT") is None
+
+
+@pytest.mark.parametrize("tamper", ["flip", "truncate"])
+def test_segment_format_integrity_errors(classifier_handler, excerpt, tamper):
+    event = _event(excerpt, analysis_id=f"analysis-i-{tamper}", tamper=tamper)
+    result = classifier_handler.handler(event, context=None)
+    assert result["statusCode"] == 500
+    err = _get_item(classifier_handler, f"analysis-i-{tamper}", "ERROR")
+    assert err["error_code"] == "SEGMENTS_INTEGRITY"
+    assert err["stage"] == "classification"
+    assert _get_item(classifier_handler, f"analysis-i-{tamper}", "RESULT") is None
+
+
+def test_segment_format_event_count_must_match_the_sidecar(classifier_handler, excerpt):
+    event = _event(excerpt, analysis_id="analysis-cnt")
+    event["num_segments"] = 5
+    assert classifier_handler.handler(event, context=None)["statusCode"] == 500
+    assert _get_item(classifier_handler, "analysis-cnt", "ERROR")["error_code"] == "SEGMENTS_INTEGRITY"
+
+
+def test_segment_batches_are_ranged_reads_of_at_most_ten_windows(classifier_handler, excerpt):
+    """read_segment_batches yields (start, float32 array) and equals the source windows."""
+    event = _event(excerpt, analysis_id="analysis-rng")
+    batches = list(classifier_handler.read_segment_batches(event))
+    assert [start for start, _ in batches] == [0]
+    assert np.array_equal(np.concatenate([b for _, b in batches]), excerpt.windows)
+
+    classifier_handler.BATCH_SIZE = 4
+    batches = list(classifier_handler.read_segment_batches(event))
+    assert [(start, b.shape[0]) for start, b in batches] == [(0, 4), (4, 2)]
+    assert all(b.dtype == np.float32 for _, b in batches)
+
+
+@pytest.mark.parametrize("mode", ["short", "long", "wrong_length", "nan"])
+def test_alignment_short_long_nonfinite_batches(classifier_handler, excerpt, mode):
+    s3 = boto3.client("s3", region_name="us-east-1")
+    classifier_handler.lambda_client = FakeInferenceLambda(s3, mode=mode)
+    aid = f"analysis-al-{mode}"
+    result = classifier_handler.handler(_event(excerpt, analysis_id=aid), context=None)
+    assert result["statusCode"] == 500
+    err = _get_item(classifier_handler, aid, "ERROR")
+    assert err["error_code"] == "EMBEDDING_MISMATCH"
+    assert err["stage"] == "inference"
+    assert _get_item(classifier_handler, aid, "RESULT") is None
+    assert classifier_handler.get_error_suggestion("EMBEDDING_MISMATCH") != \
+        classifier_handler.get_error_suggestion("SOMETHING_UNKNOWN")
+
+
+def test_alignment_mismatch_is_not_retried(classifier_handler, excerpt):
+    s3 = boto3.client("s3", region_name="us-east-1")
+    fake = FakeInferenceLambda(s3, mode="short")
+    classifier_handler.lambda_client = fake
+    classifier_handler.handler(_event(excerpt, analysis_id="analysis-nr"), context=None)
+    assert len(fake.batch_sizes) == 1
+
+
 # --- WR-03: one authoritative outcome, no async-retry fighting the UI ---------
 
 
-def _get_item(module, analysis_id, sk):
-    table = module.dynamodb.Table(METADATA_TABLE)
-    return table.get_item(Key={"pk": f"ANALYSIS#{analysis_id}", "sk": sk}).get("Item")
-
-
-def test_inference_failure_records_error_and_returns_normally(classifier_handler):
-    def _failing(segments, sample_rate, analysis_id, request_id):
+def test_inference_failure_records_error_and_returns_normally(classifier_handler, excerpt):
+    def _failing(*args, **kwargs):
         raise classifier_handler.InferenceError(
             "boom", error_type="TIMEOUT", retry_count=3, request_id="req-1"
         )
 
-    classifier_handler.invoke_inference_with_retry = _failing
-    event = {
-        "upload_id": "upload-f1",
-        "analysis_id": "analysis-f1",
-        "segments_key": "segments/analysis-1.json",
-        "num_segments": 2,
-    }
-
+    classifier_handler.invoke_inference_batch = _failing
+    result = classifier_handler.handler(_event(excerpt, analysis_id="analysis-f1"), context=None)
     # Must NOT raise: raising would trigger Lambda's async retries.
-    result = classifier_handler.handler(event, context=None)
     assert result["statusCode"] == 500
 
     err = _get_item(classifier_handler, "analysis-f1", "ERROR")
@@ -404,8 +675,10 @@ def test_unexpected_failure_records_error_and_returns_normally(classifier_handle
     event = {
         "upload_id": "upload-f2",
         "analysis_id": "analysis-f2",
-        "segments_key": "segments/does-not-exist.json",
+        "segments_key": "segments/does-not-exist.f32",
         "num_segments": 2,
+        "segments_format": "f32le",
+        "preprocessing_key": "segments/does-not-exist.json",
     }
     result = classifier_handler.handler(event, context=None)
     assert result["statusCode"] == 500
@@ -414,42 +687,31 @@ def test_unexpected_failure_records_error_and_returns_normally(classifier_handle
     assert err["stage"] == "classification"
 
 
-def test_duplicate_delivery_does_not_redo_work_or_overwrite_result(classifier_handler):
-    event = {
-        "upload_id": "upload-d1",
-        "analysis_id": "analysis-d1",
-        "segments_key": "segments/analysis-1.json",
-        "num_segments": 2,
-    }
+def test_duplicate_delivery_does_not_redo_work_or_overwrite_result(classifier_handler, excerpt):
+    event = _event(excerpt, analysis_id="analysis-d1")
     assert classifier_handler.handler(event, context=None)["statusCode"] == 200
     first = _get_item(classifier_handler, "analysis-d1", "RESULT")
 
-    def _must_not_run(*args, **kwargs):
-        raise AssertionError("inference must not run for a duplicate delivery")
+    class _MustNotRun:
+        def invoke(self, **kwargs):
+            raise AssertionError("inference must not run for a duplicate delivery")
 
-    classifier_handler.invoke_inference_with_retry = _must_not_run
+    classifier_handler.lambda_client = _MustNotRun()
     result = classifier_handler.handler(event, context=None)
     assert result["statusCode"] == 200
     assert _get_item(classifier_handler, "analysis-d1", "RESULT") == first
     assert _get_item(classifier_handler, "analysis-d1", "ERROR") is None
 
 
-def test_stale_preprocessor_error_does_not_block_classification(classifier_handler):
-    """REVIEW iter-2 WR-01: a preprocessor ERROR (no 'stage') from a failed
-    first attempt that a Lambda async retry then recovered must not wedge the
-    analysis; the classifier produces a RESULT and clears the stale ERROR."""
+def test_stale_preprocessor_error_does_not_block_classification(classifier_handler, excerpt):
+    """REVIEW iter-2 WR-01: a preprocessor ERROR (no 'stage') from a failed first
+    attempt that a Lambda async retry then recovered must not wedge the analysis."""
     table = classifier_handler.dynamodb.Table(METADATA_TABLE)
     table.put_item(Item={
         "pk": "ANALYSIS#analysis-s1", "sk": "ERROR",
         "error_code": "PROCESSING_FAILED", "status": "failed",
     })
-    event = {
-        "upload_id": "upload-s1",
-        "analysis_id": "analysis-s1",
-        "segments_key": "segments/analysis-1.json",
-        "num_segments": 2,
-    }
-    assert classifier_handler.handler(event, context=None)["statusCode"] == 200
+    assert classifier_handler.handler(_event(excerpt, analysis_id="analysis-s1"), context=None)["statusCode"] == 200
     assert _get_item(classifier_handler, "analysis-s1", "RESULT") is not None
     assert _get_item(classifier_handler, "analysis-s1", "ERROR") is None
 
@@ -475,18 +737,12 @@ def test_classifier_error_supersedes_stale_preprocessor_error(classifier_handler
     assert _get_item(classifier_handler, "analysis-s2", "ERROR")["error_code"] == "TIMEOUT"
 
 
-def test_idempotency_guard_read_failure_is_recorded_not_raised(classifier_handler, monkeypatch):
+def test_idempotency_guard_read_failure_is_recorded_not_raised(classifier_handler, monkeypatch, excerpt):
     def _boom(table, analysis_id):
         raise RuntimeError("dynamodb unavailable")
 
     monkeypatch.setattr(classifier_handler, "_terminal_outcome_exists", _boom)
-    event = {
-        "upload_id": "upload-s3",
-        "analysis_id": "analysis-s3",
-        "segments_key": "segments/analysis-1.json",
-        "num_segments": 2,
-    }
-    result = classifier_handler.handler(event, context=None)
+    result = classifier_handler.handler(_event(excerpt, analysis_id="analysis-s3"), context=None)
     assert result["statusCode"] == 500
     err = _get_item(classifier_handler, "analysis-s3", "ERROR")
     assert err["error_code"] == "CLASSIFICATION_FAILED"
@@ -500,85 +756,6 @@ def test_late_failure_never_contradicts_stored_result(classifier_handler):
     )
     assert out["statusCode"] == 200
     assert _get_item(classifier_handler, "analysis-l1", "ERROR") is None
-
-
-# --- WR-04: model load-time validation and refresh ---------------------------
-
-
-def _load_local_model(dirname):
-    base = _REPO_ROOT / dirname
-    if not (base / "model_config.json").exists():
-        # models/ (the archived v2.0 artifacts) is gitignored; only the
-        # committed interim model is guaranteed in a clean clone / CI.
-        pytest.skip(f"{dirname}/model_config.json not present in this checkout")
-    config = json.loads((base / "model_config.json").read_text(encoding="utf-8"))
-    with np.load(base / "reef_classifier_weights.npz") as npz:
-        weights = {k: npz[k] for k in npz.files}
-    return weights, config
-
-
-@pytest.mark.parametrize("model_dir", ["models/interim-real-only", "models"])
-def test_validate_model_accepts_published_and_archived_models(classifier_handler, model_dir):
-    # The live interim (3-class) model and the archived v2.0 (4-class) model
-    # must both keep loading.
-    weights, config = _load_local_model(model_dir)
-    classifier_handler.validate_model(weights, config)
-
-
-def test_validate_model_rejects_class_count_mismatch(classifier_handler):
-    weights, config = _load_local_model("models/interim-real-only")  # 3 outputs
-    config = dict(config)
-    config["idx_to_label"] = {"0": "degraded", "1": "healthy", "2": "restored_early", "3": "restored_mid"}
-    config["num_classes"] = 4
-    with pytest.raises(ValueError):
-        classifier_handler.validate_model(weights, config)
-
-
-def test_validate_model_rejects_missing_label_map(classifier_handler):
-    weights, config = _load_local_model("models/interim-real-only")
-    config = {k: v for k, v in config.items() if k != "idx_to_label"}
-    with pytest.raises(ValueError):
-        classifier_handler.validate_model(weights, config)
-
-
-def test_load_rejects_weights_sha_mismatch(classifier_handler):
-    s3 = boto3.client("s3", region_name="us-east-1")
-    s3.put_object(
-        Bucket=EMBEDDINGS_BUCKET,
-        Key="models/model_config.json",
-        Body=json.dumps({
-            "version": "x", "idx_to_label": IDX_TO_LABEL, "num_classes": 3,
-            "weights_sha256": "0" * 64,
-        }),
-    )
-    with pytest.raises(Exception, match="sha256"):
-        classifier_handler.load_classifier_model()
-
-
-def test_warm_container_reloads_when_model_objects_change(classifier_handler):
-    s3 = boto3.client("s3", region_name="us-east-1")
-    _, config1 = classifier_handler.load_classifier_model()
-    assert config1["version"] == "interim-real-only-test"
-
-    s3.put_object(
-        Bucket=EMBEDDINGS_BUCKET,
-        Key="models/model_config.json",
-        Body=json.dumps({"version": "v-next", "idx_to_label": IDX_TO_LABEL, "num_classes": 3}),
-    )
-    # Within the refresh window the cached model is served ...
-    _, cached = classifier_handler.load_classifier_model()
-    assert cached["version"] == "interim-real-only-test"
-    # ... and once it elapses the changed ETag triggers a reload.
-    classifier_handler._model_checked_at = 0.0
-    _, config2 = classifier_handler.load_classifier_model()
-    assert config2["version"] == "v-next"
-
-
-def test_classify_probabilities_sum_to_one(classifier_handler):
-    rng = np.random.RandomState(5)
-    out = classifier_handler.classify_embedding(rng.normal(size=EMBEDDING_DIM))
-    assert sum(out["probabilities"].values()) == pytest.approx(1.0, abs=1e-9)
-    assert set(out["probabilities"]) == set(IDX_TO_LABEL.values())
 
 
 # --- WR-05: similar-site lookup is honest about failure ----------------------
@@ -606,8 +783,7 @@ def test_similar_sites_reports_reason_when_reference_cannot_load(classifier_hand
 
 
 def test_similar_sites_reads_published_embedding_key(classifier_handler):
-    # The live reference objects store vectors under `embedding` (not
-    # `mean_embedding`); the lookup must find them.
+    # The live reference objects store vectors under `embedding` (not `mean_embedding`).
     s3 = boto3.client("s3", region_name="us-east-1")
     rng = np.random.RandomState(3)
     s3.put_object(
@@ -636,16 +812,10 @@ def test_reference_lookup_prefers_router_key_order(classifier_handler):
     assert [s["site_id"] for s in sites] == ["ken_H1"]
 
 
-def test_handler_stores_similar_sites_error_note(classifier_handler):
+def test_handler_stores_similar_sites_error_note(classifier_handler, excerpt):
     s3 = boto3.client("s3", region_name="us-east-1")
     s3.delete_object(Bucket=EMBEDDINGS_BUCKET, Key="reference/metadata.json")
-    event = {
-        "upload_id": "upload-s1",
-        "analysis_id": "analysis-s1",
-        "segments_key": "segments/analysis-1.json",
-        "num_segments": 2,
-    }
-    assert classifier_handler.handler(event, context=None)["statusCode"] == 200
+    assert classifier_handler.handler(_event(excerpt, analysis_id="analysis-s1"), context=None)["statusCode"] == 200
     item = _get_result_item(classifier_handler, "analysis-s1")
     assert item["similar_sites"] == []
     assert "unavailable" in item["similar_sites_error"]
@@ -710,18 +880,8 @@ def test_read_timeout_is_classified_as_timeout(classifier_handler, monkeypatch):
 # --- WR-08: stored probabilities keep the "sums to 1" property ----------------
 
 
-def test_stored_probabilities_sum_to_one_within_1e8(classifier_handler):
-    event = {
-        "upload_id": "upload-p1",
-        "analysis_id": "analysis-p1",
-        "segments_key": "segments/analysis-1.json",
-        "num_segments": 2,
-    }
-    assert classifier_handler.handler(event, context=None)["statusCode"] == 200
+def test_stored_probabilities_sum_to_one_within_1e8(classifier_handler, excerpt):
+    assert classifier_handler.handler(_event(excerpt, analysis_id="analysis-p1"), context=None)["statusCode"] == 200
     item = _get_result_item(classifier_handler, "analysis-p1")
     probs = [_to_float(v) for v in item["classification"]["probabilities"].values()]
     assert sum(probs) == pytest.approx(1.0, abs=1e-8)
-
-
-def test_convert_floats_keeps_nine_decimals(classifier_handler):
-    assert classifier_handler.convert_floats(0.123456789123) == Decimal("0.123456789")
