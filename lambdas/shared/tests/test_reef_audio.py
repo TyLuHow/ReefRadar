@@ -753,3 +753,123 @@ def test_decode_error_codes():
             ra.audio_to_windows(data)
         assert type(exc.value) is cls and exc.value.error_code == code
         assert isinstance(exc.value, ValueError)
+
+
+# --- 05-05 Task 3: storage-safe levels, silence, playback copy, spec summary -----------
+
+
+def _f32_wav(samples, rate: int = 32000) -> bytes:
+    return build_wav(np.asarray(samples, dtype="<f4").tobytes(), tag=3, bits=32, rate=rate)
+
+
+def test_normalise_digital_silence():
+    prepared = ra.audio_to_windows(make_wav_bytes(np.zeros(10 * 32000, dtype=np.int16), 32000))
+    assert prepared.windows.shape == (2, 160000)
+    assert prepared.silent == [True, True]
+    assert prepared.peak_dbfs == [-120.0, -120.0]
+    assert prepared.rms_dbfs == [-120.0, -120.0]
+    assert np.all(prepared.windows == 0.0)
+    assert not np.isnan(prepared.windows).any() and not np.isnan(prepared.resampled).any()
+
+
+def test_normalise_dc_only_window():
+    prepared = ra.audio_to_windows(_f32_wav(np.full(160000, 0.1, dtype=np.float32)))
+    assert prepared.silent == [True]
+    # the stored float32 value of 0.1, measured before DC removal
+    expected = 20.0 * math.log10(float(np.float32(0.1)))
+    assert prepared.peak_dbfs[0] == pytest.approx(expected, abs=1e-9)
+    assert prepared.peak_dbfs[0] == pytest.approx(-20.0, abs=1e-6)
+    assert prepared.rms_dbfs[0] == pytest.approx(expected, abs=1e-9)
+    assert np.all(prepared.windows == 0.0)
+
+
+def test_window_level_full_scale_and_floor():
+    x = np.zeros(160000, dtype=np.float32)
+    x[1234] = 1.0
+    prepared = ra.audio_to_windows(_f32_wav(x))
+    assert prepared.peak_dbfs == [0.0]
+    assert prepared.silent == [False]
+    # a lone full-scale sample: rms = 1 / sqrt(160000)
+    assert prepared.rms_dbfs[0] == pytest.approx(20.0 * math.log10(1.0 / math.sqrt(160000)), abs=1e-9)
+
+    tiny = ra.audio_to_windows(_f32_wav(np.full(160000, 1e-9, dtype=np.float32)))
+    assert tiny.rms_dbfs == [-120.0] and tiny.peak_dbfs == [-120.0]
+
+    quiet_tone = 1e-9 * np.sin(np.arange(160000) * 0.05)
+    q = ra.audio_to_windows(_f32_wav(quiet_tone))
+    assert q.rms_dbfs == [-120.0]
+
+
+def test_window_sidecar_never_non_finite():
+    silent = ra.audio_to_windows(make_wav_bytes(np.zeros(160000, dtype=np.int16), 32000))
+    dc = ra.audio_to_windows(_f32_wav(np.full(160000, 0.1, dtype=np.float32)))
+    full = np.zeros(160000, dtype=np.float32)
+    full[0] = 1.0
+    loud = ra.audio_to_windows(_f32_wav(full))
+    over = ra.audio_to_windows(_f32_wav(np.tile(np.array([1.5, -1.5], dtype=np.float32), 80000)))
+    for prepared in (silent, dc, loud, over):
+        seg = ra.encode_segments(prepared.windows)
+        sidecar = ra.build_sidecar(prepared, seg)
+        text = json.dumps(sidecar, allow_nan=False)
+        assert ra.parse_sidecar(text.encode("utf-8")) == sidecar
+        assert np.isfinite(prepared.windows).all()
+        for v in sidecar["levels"]["peak_dbfs"] + sidecar["levels"]["rms_dbfs"]:
+            assert math.isfinite(v) and v >= -120.0
+
+
+def test_window_playback_copy_clips():
+    samples = np.array([0.0, 1.0, -1.0, 2.0, -2.0, 1e9, -1e9, 0.5], dtype=np.float32)
+    data = ra.pcm16_wav_bytes(samples, 32000)
+    assert data[:4] == b"RIFF" and data[8:12] == b"WAVE" and data[12:16] == b"fmt "
+    assert struct.unpack_from("<I", data, 4)[0] == len(data) - 8
+    assert struct.unpack_from("<HHIIHH", data, 20) == (1, 1, 32000, 64000, 2, 16)
+    assert data[36:40] == b"data" and struct.unpack_from("<I", data, 40)[0] == 2 * samples.size
+    assert len(data) == 44 + 2 * samples.size
+    with wave.open(io.BytesIO(data), "rb") as w:
+        assert (w.getnchannels(), w.getsampwidth(), w.getframerate(), w.getnframes()) == (1, 2, 32000, 8)
+        values = np.frombuffer(w.readframes(8), dtype="<i2").tolist()
+    assert values[:7] == [0, 32767, -32767, 32767, -32767, 32767, -32767]  # no int16 wrap
+    assert values[7] in (16383, 16384)
+    # non-finite input never reaches the cast
+    nan_data = ra.pcm16_wav_bytes(np.array([np.nan, np.inf, -np.inf], dtype=np.float32), 32000)
+    with wave.open(io.BytesIO(nan_data), "rb") as w:
+        assert np.frombuffer(w.readframes(3), dtype="<i2").tolist() == [0, 32767, -32767]
+    # round trip through the decoder
+    back = ra.decode_wav(data)
+    assert back.frames == 8 and back.sample_rate == 32000
+
+
+def test_spec_summary_fields():
+    s = ra.spec_summary()
+    json.dumps(s, allow_nan=False)
+    assert s["spec_version"] == ra.SPEC_VERSION
+    assert s["sample_rate_hz"] == 32000 and s["window_s"] == 5.0 and s["window_samples"] == 160000
+    assert s["hop_s"] == 5.0 and s["min_duration_s"] == 5.0 and s["max_duration_s"] == 600.0
+    assert s["trailing_partial_window"] == "dropped" and s["channel_mix"] == "mean"
+
+    r = s["resampling"]
+    assert r["method"] == "polyphase_kaiser_windowed_sinc"
+    assert r["anti_alias_filter"] is True
+    assert r["kaiser_beta"] == 5.0 and r["half_length_factor"] == 10
+    assert "scipy.signal.resample_poly" in r["reference_implementation"]
+    assert "1.13.1" in r["reference_implementation"]
+
+    a = s["amplitude_scaling"]
+    assert a["normalisation"]["per_window_dc_removal"] is True
+    assert a["normalisation"]["target_peak"] == 0.25
+    for key in ("pcm8", "pcm16", "pcm24", "pcm32", "float32", "float64"):
+        assert key in a
+
+    m = s["embedding_model"]
+    assert m["name"] == "surfperch" and m["version"] == "1.0" and m["dimension"] == 1280
+    assert m["kaggle_handle"] == ra.KAGGLE_MODEL_HANDLE
+    assert m["saved_model_sha256"] == ra.SAVED_MODEL_SHA256
+
+    inp = s["supported_input"]
+    assert inp["format_tags"] == [1, 3, 65534]
+    assert inp["pcm_bits"] == [8, 16, 24, 32] and inp["float_bits"] == [32, 64]
+    assert inp["sample_rate_hz_range"] == [4000, 192000] and inp["max_channels"] == 8
+    assert "dBFS" in s["levels"] and "-120.0" in s["levels"]
+    # mutating the summary must not change the module constants
+    m["saved_model_sha256"].clear()
+    assert ra.SAVED_MODEL_SHA256
