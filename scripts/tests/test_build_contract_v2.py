@@ -222,3 +222,130 @@ def test_v1_check_unchanged(capsys):
     v1 = _load(BUCKET / "contract" / "v1.json")
     assert v1["model_version"] == "interim-real-only"
     assert v1["preprocessing_spec_version"] == "preproc-2026.10.0-as-deployed"
+
+
+# ---------------------------------------------------------------------------
+# Task 2: the checker rules for v2's cross-artifact links
+# ---------------------------------------------------------------------------
+
+def _rewrite(path, mutate, canonical=True):
+    data = json.loads(path.read_text(encoding="utf-8"))
+    mutate(data)
+    path.write_bytes(contract_lib.canonical_json_bytes(data))
+
+
+def _reseal(contracts_dir, label, uri):
+    """Point the v2 manifest's entry for `label` at the (edited) file so only the link rule can fail."""
+    manifest_path = contracts_dir / "bucket" / "contract" / "v2.json"
+    data = (contracts_dir / "bucket" / uri).read_bytes()
+
+    def mutate(manifest):
+        entry = manifest["artifacts"][label]
+        entry["sha256"] = contract_lib.sha256_hex(data)
+        entry["bytes"] = len(data)
+
+    _rewrite(manifest_path, mutate)
+
+
+def _problems(contracts_dir):
+    return check_contract.check_manifest(
+        contracts_dir / "bucket" / "contract" / "v2.json", contracts_dir, copies_must_match=True
+    )
+
+
+def _tamper_ood_bytes(contracts_dir):
+    path = contracts_dir / "bucket" / "v2" / "ood_reference.f32"
+    path.write_bytes(path.read_bytes()[:-4])
+    _reseal(contracts_dir, "ood_embeddings", "v2/ood_reference.f32")
+    return "ood_reference.f32"
+
+
+def _tamper_ood_rows_hash(contracts_dir):
+    path = contracts_dir / "bucket" / "v2" / "ood_reference.f32"
+    data = bytearray(path.read_bytes())
+    data[0] ^= 0x01
+    path.write_bytes(bytes(data))
+    _reseal(contracts_dir, "ood_embeddings", "v2/ood_reference.f32")
+    return "embeddings.sha256"
+
+
+def _tamper_ood_spec(contracts_dir):
+    path = contracts_dir / "bucket" / "v2" / "ood_reference.json"
+    _rewrite(path, lambda d: d.update(preprocessing_spec_version="preproc-2026.10.0-as-deployed"))
+    _reseal(contracts_dir, "ood_reference", "v2/ood_reference.json")
+    return "ood_reference.preprocessing_spec_version"
+
+
+def _tamper_model_report_sha(contracts_dir):
+    path = contracts_dir / "bucket" / "v2" / "model_version.json"
+    _rewrite(path, lambda d: d["evaluation"].update(report_sha256="0" * 64))
+    _reseal(contracts_dir, "model_version", "v2/model_version.json")
+    return "report_sha256"
+
+
+def _tamper_model_report_uri(contracts_dir):
+    path = contracts_dir / "bucket" / "v2" / "model_version.json"
+    _rewrite(path, lambda d: d["evaluation"].update(report_uri="v2/other_report.json"))
+    _reseal(contracts_dir, "model_version", "v2/model_version.json")
+    return "report_uri"
+
+
+def _tamper_report_served_model(contracts_dir):
+    path = contracts_dir / "bucket" / "v2" / "evaluation_report.json"
+    _rewrite(path, lambda d: d.update(served_model_version="interim-real-only"))
+    _reseal(contracts_dir, "evaluation_report", "v2/evaluation_report.json")
+    # keep model_version.evaluation.report_sha256 in step so only the served-model rule trips
+    data = path.read_bytes()
+    model_path = contracts_dir / "bucket" / "v2" / "model_version.json"
+    _rewrite(model_path, lambda d: d["evaluation"].update(report_sha256=contract_lib.sha256_hex(data)))
+    _reseal(contracts_dir, "model_version", "v2/model_version.json")
+    return "served_model_version"
+
+
+def _tamper_model_training_spec(contracts_dir):
+    path = contracts_dir / "bucket" / "v2" / "model_version.json"
+    _rewrite(path, lambda d: d["training"].update(preprocessing_spec_version="preproc-2026.10.0-as-deployed"))
+    _reseal(contracts_dir, "model_version", "v2/model_version.json")
+    return "trained under"
+
+
+TAMPERINGS = [
+    _tamper_ood_bytes,
+    _tamper_ood_rows_hash,
+    _tamper_ood_spec,
+    _tamper_model_report_sha,
+    _tamper_model_report_uri,
+    _tamper_report_served_model,
+    _tamper_model_training_spec,
+]
+
+
+def test_checker_v2_clean(contracts_copy):
+    assert _problems(contracts_copy) == []
+    assert check_contract.main(["--check", "--additive"]) == 0
+
+
+@pytest.mark.parametrize("tamper", TAMPERINGS, ids=lambda f: f.__name__.replace("_tamper_", ""))
+def test_checker_v2_cross_links(contracts_copy, tamper):
+    needle = tamper(contracts_copy)
+    problems = _problems(contracts_copy)
+    assert problems, f"{tamper.__name__} produced no problem"
+    assert any(needle in line for line in problems), (needle, problems)
+
+
+def test_checker_v2_validates_report_and_ood_against_their_schemas(contracts_copy):
+    path = contracts_copy / "bucket" / "v2" / "evaluation_report.json"
+    _rewrite(path, lambda d: d.pop("report_version"))
+    _reseal(contracts_copy, "evaluation_report", "v2/evaluation_report.json")
+    assert any("evaluation-report" in line for line in _problems(contracts_copy))
+    path = contracts_copy / "bucket" / "v2" / "ood_reference.json"
+    _rewrite(path, lambda d: d.pop("ood_version"))
+    _reseal(contracts_copy, "ood_reference", "v2/ood_reference.json")
+    assert any("ood-reference" in line for line in _problems(contracts_copy))
+
+
+def test_checker_v1_rules_unchanged(contracts_copy):
+    assert check_contract.check_manifest(
+        contracts_copy / "bucket" / "contract" / "v1.json", contracts_copy, copies_must_match=False
+    ) == []
+    assert copy.deepcopy(build_contract.V2_DATASET_VERSION) == build_contract.DATASET_VERSION
