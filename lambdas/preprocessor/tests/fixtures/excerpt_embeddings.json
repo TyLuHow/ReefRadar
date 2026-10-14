@@ -1,0 +1,356 @@
+{
+  "count": 54,
+  "dim": 1280,
+  "dtype": "float32-le",
+  "embeddings_file": "excerpt_embeddings.f32",
+  "embeddings_sha256": "f16834a840b6f256ff512a525f142e5945e9f80e3ac4c7b153978a5ad1ce3a82",
+  "excerpts": [
+    {
+      "path": "aus_D1_20230208_120000.wav",
+      "sha256": "c621cd2698e3debe84fa41dbc423c819e0b8c5a296543bebc100d326ea65beb1",
+      "wav_bytes": 960044,
+      "windows": [
+        {
+          "index": 0,
+          "row": 0,
+          "window_sha256": "86d956bd3f6efa02661eea0a45e3f93c500d50ff4b1c753807f210e619dff577"
+        },
+        {
+          "index": 1,
+          "row": 1,
+          "window_sha256": "48206d77cdbe2dfd37d34e6db84d56657d1a4e1bf9c9a1450334f73a6d96f0f7"
+        },
+        {
+          "index": 2,
+          "row": 2,
+          "window_sha256": "3177d175c56645cc80380c396f9914724c6d686a0997d0fe84f1d4dc3fe9d22c"
+        },
+        {
+          "index": 3,
+          "row": 3,
+          "window_sha256": "eb5c3c83e9da92431302dcce3d3f32dcf1eb9cf7e03e5d8b33584adb4cd2d3cf"
+        },
+        {
+          "index": 4,
+          "row": 4,
+          "window_sha256": "20deb3b83162d957e446ab726611a03d68aed1416d73cbf23c094f888a4a900d"
+        },
+        {
+          "index": 5,
+          "row": 5,
+          "window_sha256": "7d18b75521f9406b2f22de5b8b4b5359ffdb6b6a6110c20242180cc258b95fa3"
+        }
+      ]
+    },
+    {
+      "path": "aus_H1_20230208_120000.wav",
+      "sha256": "3009645d4c9b1cdcd50e6f3f4103611f5a269e9700a6597ea45b053a10be5cb6",
+      "wav_bytes": 960044,
+      "windows": [
+        {
+          "index": 0,
+          "row": 6,
+          "window_sha256": "ffafc6f69ae12977ba0e4a705d1732e4f19ba29392f19a3326429f08cfd781e0"
+        },
+        {
+          "index": 1,
+          "row": 7,
+          "window_sha256": "65eeb3e9ca454e4e6e569898ed7983a31e7d96b969634972bc4137df57669871"
+        },
+        {
+          "index": 2,
+          "row": 8,
+          "window_sha256": "3ccfa21a78d1780ac5b1fae49cf8f2e00b4500a2bc9e5730a645a7ec959c6585"
+        },
+        {
+          "index": 3,
+          "row": 9,
+          "window_sha256": "79bd1fc4405cd858d9f6a5b39de8526a25a0cb175cb9eb641f353472ba27abf3"
+        },
+        {
+          "index": 4,
+          "row": 10,
+          "window_sha256": "9c012c3e9c196cb767d7a2f272ac3349fdf760c97907222baec8cd6e7715aa39"
+        },
+        {
+          "index": 5,
+          "row": 11,
+          "window_sha256": "49892fea9140acea6a489ba142c1e8e6bd3a7c999bb5f426ebb7feff4d5907e7"
+        }
+      ]
+    },
+    {
+      "path": "aus_H2_20230208_120000.wav",
+      "sha256": "2620a6499e5cd9e3fecc5fed11e341405adeb31b0f196176e24dd25475f31eac",
+      "wav_bytes": 960044,
+      "windows": [
+        {
+          "index": 0,
+          "row": 12,
+          "window_sha256": "5a6402d3ce15636a28129f721e81045f52a24406b70d7e4dfed05ec1ba11de8c"
+        },
+        {
+          "index": 1,
+          "row": 13,
+          "window_sha256": "e82708d9bca59087eab004fcdc899a5886e1033cea040d7e6897a144a88e47c7"
+        },
+        {
+          "index": 2,
+          "row": 14,
+          "window_sha256": "15d406c27936da5b6772ae5813e701afbd059aa92c78f2cb563aae904f004443"
+        },
+        {
+          "index": 3,
+          "row": 15,
+          "window_sha256": "f6e02920ab0550bf61ad4c67657134558b744d0b38ccf45eaa2c6b7180fc7b5a"
+        },
+        {
+          "index": 4,
+          "row": 16,
+          "window_sha256": "0d49f5d92f13dc4290c13fda5ae1c64ee608e4eebf557713af503015d3211c04"
+        },
+        {
+          "index": 5,
+          "row": 17,
+          "window_sha256": "0df2fdcb7cf562cbd029531b9201fb8f3f61a39fa8bf6f22cbff78260ea931d3"
+        }
+      ]
+    },
+    {
+      "path": "aus_R1_20230208_120000.wav",
+      "sha256": "51b86c77209d48c31454c4f38c831cf5ec9c2bfdd265d055f4460a0ff3c05060",
+      "wav_bytes": 960044,
+      "windows": [
+        {
+          "index": 0,
+          "row": 18,
+          "window_sha256": "4cbe6cc0e51f9767f1be27342619809db373045871717379bcfde7d4bd3a1f3d"
+        },
+        {
+          "index": 1,
+          "row": 19,
+          "window_sha256": "36c35519a6bf6a31bc974f77c45dca791560c0a909c43d12077dc6b1276ec751"
+        },
+        {
+          "index": 2,
+          "row": 20,
+          "window_sha256": "7d1744ad9540e4746113a7e5df00fe59a2a3cefb5d96d66ed1673d7f17a2dc61"
+        },
+        {
+          "index": 3,
+          "row": 21,
+          "window_sha256": "9bfa01da7f64fc6de183636532f34b649e3fe6d4108859048abff3428b552d51"
+        },
+        {
+          "index": 4,
+          "row": 22,
+          "window_sha256": "436970ac51b2e2f4dabd4458a9a9c8c3a53632edbd40926c48af4901ab8af823"
+        },
+        {
+          "index": 5,
+          "row": 23,
+          "window_sha256": "814998329522c0b79bd7af532f56e6be2f0fd2d145128bd9f321bae6dbedc6b6"
+        }
+      ]
+    },
+    {
+      "path": "ind_D1_20220830_120000.wav",
+      "sha256": "4841f9045143892dd7bb3d69184896b4f9206f3927111c83cb6482648f191e96",
+      "wav_bytes": 960044,
+      "windows": [
+        {
+          "index": 0,
+          "row": 24,
+          "window_sha256": "d872f68a652651e24cde45eec1914befab9991109f55c6c868940c4bee70cf04"
+        },
+        {
+          "index": 1,
+          "row": 25,
+          "window_sha256": "db227ecde84bdcf870ffee42e20decbb738d440c280624dd8f4fb07f6a35b321"
+        },
+        {
+          "index": 2,
+          "row": 26,
+          "window_sha256": "6060de73e61c2f7e8f29c7ec0292ded2a90dee31ef9c9054356463b9ecead5e4"
+        },
+        {
+          "index": 3,
+          "row": 27,
+          "window_sha256": "f906f981df529b35b9d57f5a1ae4b225a41bbc2bb57b75646f184c0cfdb7bfb0"
+        },
+        {
+          "index": 4,
+          "row": 28,
+          "window_sha256": "21b3d8313a9537f71f06f812f8609ccc1ff1f4a5f7638012b121d43124ce317f"
+        },
+        {
+          "index": 5,
+          "row": 29,
+          "window_sha256": "1036d1be814fde511413cbff1950aa208cb96b3f98f5ee248de03cd6ab9e2cbd"
+        }
+      ]
+    },
+    {
+      "path": "ind_H1_20220830_120000.wav",
+      "sha256": "df098586c4f234e553dabdc82cebfd4ddae00ffa477278560f01a43b09a9bc62",
+      "wav_bytes": 960044,
+      "windows": [
+        {
+          "index": 0,
+          "row": 30,
+          "window_sha256": "890007be67dc7a3870412ca91dded6f386e1f2f88209d4474e51303681121b99"
+        },
+        {
+          "index": 1,
+          "row": 31,
+          "window_sha256": "c7a30f0829dd48403d954fe1f524cf7ebf71e7eea866af0b236a464c6386cb7d"
+        },
+        {
+          "index": 2,
+          "row": 32,
+          "window_sha256": "5e6b2c884f9a4feb775acbe78b11da01209803a84082a1745434c8696dcfb60d"
+        },
+        {
+          "index": 3,
+          "row": 33,
+          "window_sha256": "ece13da5e006db76c657b953f6f0265aabd0eff9416074470789b26031b5d978"
+        },
+        {
+          "index": 4,
+          "row": 34,
+          "window_sha256": "4241198ab067eb28531f003d54b25b8d43a91b2ac949e7f6a34a883391c16a12"
+        },
+        {
+          "index": 5,
+          "row": 35,
+          "window_sha256": "68c5ff15bc5aa690ff87c728e89ceb451ddeaaf7da181a5233d078a3c870272b"
+        }
+      ]
+    },
+    {
+      "path": "ind_N1_20220907_120000.wav",
+      "sha256": "4c7b39d821014b1648dc33fa87ef4b1bdf1e969f1f6c70cd86ab6110cadc4958",
+      "wav_bytes": 960044,
+      "windows": [
+        {
+          "index": 0,
+          "row": 36,
+          "window_sha256": "cde2293d94b80f4e5e97ebc2adbbb8c087f7ae3a6bc15045c26d9fa1b7391eb2"
+        },
+        {
+          "index": 1,
+          "row": 37,
+          "window_sha256": "cd1c366f037c177239dd7cb8d4a628cda911ff13cd88b77822c5750a3e10ac29"
+        },
+        {
+          "index": 2,
+          "row": 38,
+          "window_sha256": "690619a15b25a05fa5133cd11dda9d4ee6202f98fce12ec973079ca88fb928f6"
+        },
+        {
+          "index": 3,
+          "row": 39,
+          "window_sha256": "185bf1164d1f782aa890408f9e90335699181f8bc6ace3edfc2f433d48a6a401"
+        },
+        {
+          "index": 4,
+          "row": 40,
+          "window_sha256": "868e2f3b3125345e446f1153b4584ec1424bfb9ff196fc99b64a86eab325fa02"
+        },
+        {
+          "index": 5,
+          "row": 41,
+          "window_sha256": "b694ba8b78c84668a71d2ee1e2ee64815b400760fd5c5b8623a4998f2ac65526"
+        }
+      ]
+    },
+    {
+      "path": "ind_R1_20220830_120000.wav",
+      "sha256": "6dc059d2abfb95f169ebe596009d75a26a2967e4f530c95dc4df9073312b093b",
+      "wav_bytes": 960044,
+      "windows": [
+        {
+          "index": 0,
+          "row": 42,
+          "window_sha256": "d9c6975eef2f1caf1f334e80895e75e961df6fe134d99133baf54df397cd5e6b"
+        },
+        {
+          "index": 1,
+          "row": 43,
+          "window_sha256": "ea8747d8f0bdbdf3faedd01ea9e5a010a1bb3f783d4077a2139df7b6235734d5"
+        },
+        {
+          "index": 2,
+          "row": 44,
+          "window_sha256": "64691bb3a92c1f1144e4f07f1c721e08ca1b93550b48d557922b921819e3b53b"
+        },
+        {
+          "index": 3,
+          "row": 45,
+          "window_sha256": "1ad5783fccb985e4b480348e167cda364a9c1871f410489c27bd251803c565fc"
+        },
+        {
+          "index": 4,
+          "row": 46,
+          "window_sha256": "b82d916587d1b53f9e3f6d71ce812e6ccbd42209de3ab883ab6cb83060e901f9"
+        },
+        {
+          "index": 5,
+          "row": 47,
+          "window_sha256": "0ae8dd2948bc3e7f0bdc31771bae72d2d68e9068f6d55336b6fb2adfd81df519"
+        }
+      ]
+    },
+    {
+      "path": "mex_R1_20230529_120000.wav",
+      "sha256": "db38515e43f115ae48399c6913df9f7dc54b80246c19221d79d7a304e9a29524",
+      "wav_bytes": 960044,
+      "windows": [
+        {
+          "index": 0,
+          "row": 48,
+          "window_sha256": "047a3e789ce27556ab1677a4fd3a05a9e98091118c6f2418a6798ec1b675ab5c"
+        },
+        {
+          "index": 1,
+          "row": 49,
+          "window_sha256": "3d88310fa4fd897cada7ee8a67152357dd6b63b2b8e7d9b352884e9753e0f0c5"
+        },
+        {
+          "index": 2,
+          "row": 50,
+          "window_sha256": "e8e990a9e6572bb4b5246d92b99153400d13a01567c650ff6de085c89e074d71"
+        },
+        {
+          "index": 3,
+          "row": 51,
+          "window_sha256": "7bd3bcdaef2dd2a868fb88e510d880b1e7b10d48972d9507356baea9ecea6bfa"
+        },
+        {
+          "index": 4,
+          "row": 52,
+          "window_sha256": "6fb25328d995d1e381500a628cca7f9393d3ad34beec55665fd2e48fa95d767c"
+        },
+        {
+          "index": 5,
+          "row": 53,
+          "window_sha256": "49bbadf87bf87023270b67587f6875a20908cd4a714dd1f7e49424daaf192ba0"
+        }
+      ]
+    }
+  ],
+  "excerpts_dir": "dashboard-next/public/audio/marrs",
+  "inference": {
+    "batch_size": 10,
+    "container_note": "inference container not rebuilt in Phase 5; its tensorflow-cpu version is unpinned and unrecorded",
+    "function_name": "reefradar-2477-inference",
+    "kaggle_handle_pin": "google/surfperch/tensorFlow2/1/1"
+  },
+  "recorded_at": "2026-10-14T15:00:29Z",
+  "schema_version": 1,
+  "spec_version": "preproc-2026.10.1-reef-audio",
+  "tolerance": {
+    "cosine_min": 0.99999,
+    "max_abs": 1e-05
+  }
+}
