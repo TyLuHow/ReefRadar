@@ -344,7 +344,7 @@ Plans:
   3. Every analysis returns similarity to all reference sites (not only top-3), projection coordinates with explained variance, and an out-of-distribution status computed from distance to training data and reported separately from class probabilities.
   4. A leave-one-site-out evaluation harness reports the current model's per-class and per-region metrics with bootstrap confidence intervals, and the report is stored as a versioned artifact for the model card.
 
-**Plans**: 4/17 plans executed (10 waves; live AWS work serial in 05-11, 05-16, 05-17)
+**Plans**: 6/17 plans executed (10 waves; live AWS work serial in 05-11, 05-16, 05-17)
 
 Plans:
 **Wave 1**
@@ -356,8 +356,8 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 05-05-PLAN.md — reef_audio decode matrix, header bounds, storage-safe levels, segment transport, spec summary (SPEC_VERSION frozen)
-- [ ] 05-06-PLAN.md — Additive contract schemas (per-window result keys, training spec parity rule, evaluation report, OOD reference) with Zod mirror
+- [x] 05-05-PLAN.md — reef_audio decode matrix, header bounds, storage-safe levels, segment transport, spec summary (SPEC_VERSION frozen)
+- [x] 05-06-PLAN.md — Additive contract schemas (per-window result keys, training spec parity rule, evaluation report, OOD reference) with Zod mirror
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -614,7 +614,7 @@ Numeric order (1 → 17) is a valid order. With parallelization, Data & ML phase
 | 2. Data Contract v1 | 13/13 | Complete    | 2026-10-02 |
 | 3. Platform Upgrade & Stack Consolidation | 15/15 | Complete    | 2026-10-03 |
 | 4. Design System & Instrument Primitives | 24/24 | In Progress|  |
-| 5. Preprocessing Parity & Grouped Evaluation | 4/17 | In Progress|  |
+| 5. Preprocessing Parity & Grouped Evaluation | 6/17 | In Progress|  |
 | 6. Instrument Shell & Atlas | 0/TBD | Not started | - |
 | 7. Listening Bench | 0/TBD | Not started | - |
 | 8. Guarded Upstream Ingestion | 0/TBD | Not started | - |
