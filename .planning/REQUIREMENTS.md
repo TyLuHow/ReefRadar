@@ -42,14 +42,14 @@
 
 ### Model & Evaluation (ML)
 
-- [ ] **ML-01**: One shared audio-preprocessing library (anti-aliased resampling, consistent normalization, 5 s windowing) is used by both offline jobs and the live analysis Lambdas (train/serve parity)
-- [ ] **ML-02**: The live pipeline classifies each 5 s window individually (never a mean-pooled embedding) and persists per-window probabilities and similarities
-- [ ] **ML-03**: The classifier is evaluated with leave-one-site-out (grouped) cross-validation with bootstrap confidence intervals, per class and per region
+- [x] **ML-01**: One shared audio-preprocessing library (anti-aliased resampling, consistent normalization, 5 s windowing) is used by both offline jobs and the live analysis Lambdas (train/serve parity)
+- [x] **ML-02**: The live pipeline classifies each 5 s window individually (never a mean-pooled embedding) and persists per-window probabilities and similarities
+- [x] **ML-03**: The classifier is evaluated with leave-one-site-out (grouped) cross-validation with bootstrap confidence intervals, per class and per region
 - [ ] **ML-04**: SurfPerch and Perch 2.0 embeddings are compared under the same grouped evaluation and the better-supported model is chosen with recorded rationale
 - [ ] **ML-05**: The classifier is retrained on real data only (no synthetic samples), calibrated, and given an explicit abstain threshold
-- [ ] **ML-06**: Out-of-distribution status is computed from distance to training data and reported separately from class probabilities
+- [x] **ML-06**: Out-of-distribution status is computed from distance to training data and reported separately from class probabilities
 - [ ] **ML-07**: Model artifacts, metrics and a model card are published as a versioned release and deployed to the live classifier
-- [ ] **ML-08**: Similarity to all reference sites (not only top-3) and projection coordinates (PCA of reference embeddings with explained variance) are returned for every analysis
+- [x] **ML-08**: Similarity to all reference sites (not only top-3) and projection coordinates (PCA of reference embeddings with explained variance) are returned for every analysis
 
 ### Platform & Engineering (PLAT)
 
@@ -237,14 +237,14 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DATA-07 | Phase 11 | Pending |
 | DATA-08 | Phase 11 | Pending |
 | DATA-09 | Phase 11 | Pending |
-| ML-01 | Phase 5 | Pending |
-| ML-02 | Phase 5 | Pending |
-| ML-03 | Phase 5 | Pending |
+| ML-01 | Phase 5 | Complete |
+| ML-02 | Phase 5 | Complete |
+| ML-03 | Phase 5 | Complete |
 | ML-04 | Phase 12 | Pending |
 | ML-05 | Phase 12 | Pending |
-| ML-06 | Phase 5 | Pending |
+| ML-06 | Phase 5 | Complete |
 | ML-07 | Phase 12 | Pending |
-| ML-08 | Phase 5 | Pending |
+| ML-08 | Phase 5 | Complete |
 | PLAT-01 | Phase 3 | Complete |
 | PLAT-02 | Phase 3 | Complete |
 | PLAT-03 | Phase 3 | Complete |
