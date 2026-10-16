@@ -757,3 +757,99 @@ py -3.12 scripts/verify_contract_live.py --expect-latest 1
 Rehearsal (2026-10-16): `--set-latest 1 --dry-run` exited 0. It verified 14 v1 objects against `PUBLISHED.json`,
 passed the budget gate, reported `would_flip` for `contract/latest.json` (155 bytes, sha256 `9ec73e4a...`, naming v1)
 and made no S3 write. A bad v2 is superseded by publishing v3, not edited.
+
+## Phase 5 deploy (2026-10-16): SUCCEEDED, verified live
+
+Plan 05-17. Production now runs the shared `reef_audio` preprocessing and the per-window classifier serving the
+successor model, stamped with contract v2. No credentials, environment values or signed URLs appear in this section.
+
+### Approving decision
+
+The owner answered "deploy" (2026-10-16) after the contract v2 publish. Basis: the standing approval for production
+deploys within the 25 USD/month ceiling (`.planning/research/DRIVING-QUESTIONS.md`, "Standing owner approvals
+(2026-10-01)") and `05-CONTEXT.md` "Rollout, versioning and autonomy" (scripted deploy after CI is green; classifier
+and router before the preprocessor; serial live verification).
+
+### Pre-flight
+
+| Check | Result |
+|---|---|
+| Git sha deployed from | `d96c58cdd074f4759a95a4194203f87cf8550a9d` (clean tree, pushed) |
+| CI on that sha | run 38954731500 success: python, web, citations, e2e, visual (the run on `fc545f2` had 2 contract tests that assumed v2 unpublished; fixed in `d96c58c`) |
+| AWS account | 781978598306 |
+| Contract live | `verify_contract_live.py --expect-latest 2` exit 0 |
+| Drift before | classifier, router, preprocessor DRIFT against HEAD (expected); inference MATCH |
+| Rollback refs proven | classifier and router: `--ref 066c253 --dry-run` reproduces the live hash exactly (`BJgiVBnJ...I1u0=`, `u92VjjqQ...l+Y=`); `066c253` is the post-rewrite hash of `cc4789d`, the 2026-10-02 deploy |
+| Preprocessor rollback | the live zip (`StVZQB8v...lWk=`, hand-built 2026-02-20, before D-04) has one member, `handler.py`, byte-identical (line endings normalised) to `066c253:lambdas/preprocessor/handler.py`; `--ref 066c253` rebuilds the same code with zip hash `yxv5wkua...e/k=`. A copy of the live zip was kept outside the repo |
+
+### What changed in production
+
+| Function | CodeSha256 before | CodeSha256 after | Deployed (UTC) |
+|---|---|---|---|
+| reefradar-2477-classifier | `BJgiVBnJeSnIWN3EFWvqxx68gpKEO33FghPdqR/I1u0=` | `LzxelAMwXRhqwkovEps9pwjXYwJolqTdKjgnc+SBmbE=` (14 members) | 19:41:31 |
+| reefradar-2477-router | `u92VjjqQL1/Xbolho28Ntg6gn/8hHAq3paxEeILMl+Y=` | `/zCahCbfgt79dJGoaLeyUoO3Z3NZ8gAHzZ148k1JHfI=` | 19:41:48 |
+| reefradar-2477-preprocessor | `StVZQB8v8GAEkcEJkPERYuYDSCkiUkGkHBP1yDrklWk=` | `EfDEOleFX8I9VptWh7Wla5smJmuh0Q2hDizOGEG2uL0=` (2 members) | 19:41:55 |
+
+Each deployed hash equals its dry-run. Inference was not touched. No S3 `models/` key, DynamoDB item or function
+configuration changed. During the 24 s between the classifier and preprocessor deploys, an analysis preprocessed by the
+old preprocessor would have been refused by the new classifier with `PREPROCESSING_SPEC_MISMATCH` rather than misclassified.
+
+### Verification
+
+- One inference warm-up invoke: StatusCode 200.
+- `py -3.12 scripts/verify_live_truth.py`: exit 0, 0 failures (/sites provenance, /samples ids, 9 sample clips real
+  and hash-matched, both analyses).
+
+| Analysis | Id | Result |
+|---|---|---|
+| With coordinates (ind_H1 excerpt) | `3f0b40c6-a455-461d-8a24-29a646296cc3` | label degraded, probability sum 1.0, region INDONESIA (in training region), 3 similar sites, 6 windows, "0 of 6 windows are outside the training data" |
+| Without coordinates | `b0a375aa-2865-4703-af0c-26cc1855ab75` | label degraded, region UNKNOWN, the same window and OOD results |
+
+Both stamps: contract_version `2`, dataset_version `reefradar-reference-2026.10.0`, model_version
+`interim-real-only-2026.10.1`, preprocessing_spec_version `preproc-2026.10.1-reef-audio`, `stamp_status: stamped`.
+
+- Live embedding parity: `verify_live_embeddings.py --analysis-id 3f0b40c6-... --excerpt
+  dashboard-next/public/audio/marrs/ind_H1_20220830_120000.wav --confirm` exit 0. 6 live rows against 6 fixture rows,
+  min cosine 1.000000000, max abs difference 0.0 (tolerance cosine >= 0.99999, max abs <= 1e-5).
+- Legacy result unchanged: `GET /visualize/8ebcf44d-e608-4260-9372-ba09fffc5cbf` (stored 2026-10-02) returns its 13
+  keys: `analysis_id`, `caveats`, `classification`, `contract_version`, `dataset_version`, `embedding_summary`,
+  `model_version`, `preprocessing_spec_version`, `similar_sites`, `similar_sites_error`, `stamp_status`, `status`,
+  `visualization`. None of `windows`, `site_similarities`, `projection`, `ood`, `input_audio` appear.
+- `py -3.12 scripts/drift-check.py --function all`: router, preprocessor, classifier, inference all MATCH, exit 0.
+- `infrastructure/deployed-state.json` refreshed from a read-only boto3 query (environment variable names only).
+
+### What visibly changes, and why
+
+The legacy UI on `main` keeps its layout, but labels and similarity percentages move:
+
+- The classifier now serves `interim-real-only-2026.10.1`, retrained on the same 100 files embedded through `reef_audio`
+  so that training and serving share one pipeline. The same audio embedded the old way and the new way has a mean
+  cosine of only 0.207, so the predecessor could not be served on `reef_audio` embeddings.
+- Leave-one-site-out evaluation (`models/interim-real-only/evaluation/REPORT.md`): the served model's balanced
+  accuracy on held-out sites is 0.4375 (95% interval 0.30-0.58, 4 sites, 80 windows), which cannot be told apart from
+  chance (0.5). The predecessor's was 0.0625 (0-0.175), below chance: it had learned the sites, not reef health.
+- Classification is now per 5 s window and aggregated, and each result adds similarity to all reference sites, a
+  projection position and an out-of-distribution statement.
+- Similarities compare `reef_audio` windows with reference vectors from the earlier pipeline. That gap (F8d) stays open
+  until Phase 11 re-embeds the references.
+- The legacy UI's model card copy still names `interim-real-only` (deferred to Phase 13; see
+  `.planning/phases/05-preprocessing-parity-grouped-evaluation/deferred-items.md`).
+- Old results are not migrated and keep their v1 stamps, which stay truthful because contract v1 is immutable.
+
+### Rollback (this deploy)
+
+Run in this order, so the new classifier refuses legacy segments cleanly rather than the old classifier failing on
+binary ones. Each works with a dirty working tree:
+
+```
+py -3.12 scripts/deploy-lambdas.py --function preprocessor --ref 066c253 --confirm
+py -3.12 scripts/deploy-lambdas.py --function classifier --ref 066c253 --confirm
+py -3.12 scripts/deploy-lambdas.py --function router --ref 066c253 --confirm
+py -3.12 scripts/publish_contract.py --set-latest 1 --confirm
+py -3.12 scripts/verify_contract_live.py --expect-latest 1
+py -3.12 scripts/verify_live_truth.py --model-version contracts/bucket/v1/model_version.json --stamp contracts/bucket/v1/stamp.json
+```
+
+The S3 `models/` keys were never changed, so the rolled-back classifier serves exactly what it served before. Results
+written while v2 was live keep their v2 stamps, which stay resolvable because contract v2 is immutable. drift-check
+reports drift against HEAD after a rollback until the next deploy.
