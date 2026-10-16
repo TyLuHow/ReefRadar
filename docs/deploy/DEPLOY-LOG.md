@@ -648,3 +648,112 @@ Manual CLI equivalent: `aws cloudfront get-distribution-config --id E1SD3UZ4FZ1G
 ## Note: commit hashes before 2026-10-03
 
 On 2026-10-03 branch `redesign/v2-discovery` was rewritten to correct the commit author email; file contents are unchanged. Every commit hash written in this log before that date (including `--ref` rollback refs such as `c721554`, `6aca641`, `26b3e61`) is a pre-rewrite hash. Map it to the current hash with `docs/history/2026-10-03-commit-hash-map.txt` before running a rollback, e.g. `c721554` -> `4cec650`, `6aca641` -> `9c60ba1`.
+
+## Contract v2 publish (2026-10-16)
+
+Plan 05-16. Second contract publish: the successor model, the `reef_audio` preprocessing spec, the leave-one-site-out
+evaluation report and the out-of-distribution reference. Published 2026-10-16T18:47:08Z. No credentials, environment
+values or signed URLs appear in this section.
+
+### Approving decision
+
+The owner answered "publish" at the 05-16 checkpoint (2026-10-16) after reviewing the served model and its LOSO result
+(balanced accuracy 0.44, 95% interval 0.30-0.58, 4 evaluable sites), the original model's LOSO result (0.06, 0-0.18),
+the old-vs-new embedding drift (mean cosine 0.207), the OOD threshold (0.352 cosine distance), the spec's closed and open
+gaps and the dry-run plan. Basis: `05-CONTEXT.md` "Publish contract v2" (locked) and the standing owner approvals in
+`.planning/research/DRIVING-QUESTIONS.md` ("Standing owner approvals (2026-10-01)").
+
+### Source and endpoint
+
+| Item | Value |
+|---|---|
+| Git sha published from | `60bdb1a738f94fe5756b3be327a5ea1e303490fc` (branch `redesign/v2-discovery`, `contracts/` clean) |
+| Bucket | `reefradar-2477-contract` (private, served only through CloudFront) |
+| CloudFront domain | `d7dr1fzple2sg.cloudfront.net` (distribution `E1SD3UZ4FZ1GWL`) |
+| Budget gate | passed: `reefradar-2477-ceiling-25`, 3 notifications |
+| Manifest sha256 | `70c3c500544a881fd389a9971c53e16860337f19c9e88810cf6aefd0d96f787d` |
+
+### Commands run
+
+```
+py -3.12 scripts/check_contract.py --check --additive
+py -3.12 scripts/build_contract.py --version 2 --check
+py -3.12 scripts/setup_contract_infra.py --step budget --verify
+py -3.12 scripts/verify_contract_live.py --expect-latest 1
+py -3.12 scripts/publish_model.py --archive-version models/interim-real-only-2026.10.1 --dry-run
+py -3.12 scripts/publish_model.py --archive-version models/interim-real-only-2026.10.1 --confirm
+py -3.12 scripts/publish_contract.py --version 2 --dry-run
+py -3.12 scripts/publish_contract.py --version 2 --confirm
+py -3.12 scripts/verify_contract_live.py --expect-latest 2
+py -3.12 scripts/publish_contract.py --set-latest 1 --dry-run
+```
+
+### Archived successor model (create-only, re-downloaded and verified)
+
+| Key in `reefradar-2477-embeddings` | Bytes | sha256 | Status |
+|---|---|---|---|
+| `models/archive/interim-real-only-2026.10.1/model_config.json` | 3066 | `348b20a2b41b323f354fe4094087b2d81fa98585ac292fe94aee44338f52ffbd` | created |
+| `models/archive/interim-real-only-2026.10.1/reef_classifier_weights.npz` | 1379754 | `cdc169fab304d8c0f20e8f88eb2bbb6d520813c2ea1de64ed5d072f3a934ce80` | created |
+
+Both equal `config_sha256` and `weights_sha256` in `v2/model_version.json`. The live keys the deployed classifier reads
+were identical before and after archiving: `models/model_config.json` sha256
+`9781d1ab16794402057b7ac405432952e2d8ce84bf2dfac6e752a8e78fdbf658`, `models/reef_classifier_weights.npz` sha256
+`ab9e383043ef1bd9e693facf43fdcdac76a640e693b2f834f4fa567561dedcf4`.
+
+### Published keys (the pointer was written last)
+
+| Key | Bytes | sha256 | Status |
+|---|---|---|---|
+| `v1/embeddings.f32` | 245760 | `f73ab3a45422d43227ba0006d229fd801a541b3c36138012b42ccb40517816ec` | exists_identical |
+| `v1/projection.json` | 77509 | `da2ab7cc4142e36e3ff2dccfd10e135d3328f2a10635e63cd77d7046ea026c14` | exists_identical |
+| `v1/sites.json` | 59384 | `26325470e84fc51dd1a6cabd43c9a0100bb0358bf386ede855f8cf8902352661` | exists_identical |
+| `v2/evaluation_report.json` | 79150 | `bc0482baf6f56f043c6e9e273b9fbfdf6ad75565278eedaa36187945ba89f20b` | created |
+| `v2/model_version.json` | 3129 | `71fe1be8e76d30554eae535ce9ff3065848474e94f1d8808d992e5b6bc3575e6` | created |
+| `v2/ood_reference.f32` | 512000 | `74123a44555181c7fb8cbe3a1340d72dc65df8ad4abdbafe0aedf64a5d5712e2` | created |
+| `v2/ood_reference.json` | 4101 | `d25adfff4929dd0e38b9dd8d8402b55db0ba706b39cebf2e1e80b3ccde7665c3` | created |
+| `v2/preprocessing_spec.json` | 8276 | `fb5c35912ab436aae98abb42565e1c2791fbe7f688b1c9936bb07088942c9f6b` | created |
+| `v2/schema/analysis-result.schema.json` | 10818 | `cb9e28119fb98e65aecb41f31025bfe29db7a0b677806bfbc911da411d1688f1` | created |
+| `v2/schema/contract-manifest.schema.json` | 7470 | `ffbe3072befcf2a40aee62ea26b8592cc711e0b8875b153f206d679488292a5b` | created |
+| `v2/schema/contract-pointer.schema.json` | 677 | `d101ccab16f01084d8c180fed71dd04b78665b606d7b1fe70aa9a126d48a31bf` | created |
+| `v2/schema/evaluation-report.schema.json` | 10211 | `5ae1abe745d74da840a9404acee1aef355dba40a0c717ef1521e59cf8be43266` | created |
+| `v2/schema/model-version.schema.json` | 4934 | `69b1f47c4e9cea5e95bc06434cbb1d01dded507725c034e6e95e5f167c9459f4` | created |
+| `v2/schema/ood-reference.schema.json` | 4157 | `75000cb55782ec0424a6a6a965e7281785235010fd5c5bfcfffa37504b2e77fc` | created |
+| `v2/schema/preprocessing-spec.schema.json` | 5041 | `697de97611d951b52bea307f9345104488252848267a5faac8ce8bf46f40cc84` | created |
+| `v2/schema/projection.schema.json` | 2241 | `2c493734705abbd2bc24a10a8c411b375258007ebfb57a0e265f64fc0438ff22` | created |
+| `v2/schema/site.schema.json` | 5882 | `7961edb8f6d26eceaf04af39f94fda019916d6a865519d08af6972343cb1f79a` | created |
+| `v2/stamp.json` | 196 | `f038120874d70145fba73f2817266962cd276b2c5a09e5c7c7b1d08bc3866f1f` | created |
+| `contract/v2.json` (manifest) | 8811 | `70c3c500544a881fd389a9971c53e16860337f19c9e88810cf6aefd0d96f787d` | created |
+| `contract/latest.json` (pointer) | 155 | `4e1d2273c0493e10846963581b474300aa3ae6c0b1220d46f6beeee361908dd0` | pointer_flipped (1 -> 2) |
+
+### What v2 contains
+
+- Successor model `interim-real-only-2026.10.1` (the same 100 training files, re-embedded through `reef_audio`), with
+  weights at `models/archive/interim-real-only-2026.10.1/`.
+- Preprocessing spec: the normalisation, per-window classification and anti-aliasing gaps are closed with test
+  evidence; open gaps remain for the reference vectors and container pinning (Phase 11) and new-site validation
+  (Phase 12).
+- The LOSO evaluation report and the OOD reference (threshold 0.352 cosine distance).
+- Analysis-result schema with `windows`, `site_similarities`, `projection`, `ood` and `input_audio`.
+- Dataset unchanged: sites, embeddings and projection are the v1 objects, reused byte-identical.
+
+### Verification (`verify_contract_live.py --expect-latest 2`, exit 0, "OK: contract verified live")
+
+95 PASS lines and 3 WARN lines; each WARN is the known report-only CORS preflight 403 (owner decision 2026-10-02). The
+pointer names version 2, the manifest matches the pointer and the committed `contracts/bucket/contract/v2.json`, every
+artifact matches its sha256 and is served immutable with CORS `*`, and direct S3 access, unknown versions and the CDN
+root all answer 403. `contracts/PUBLISHED.json` lists versions 1 and 2, and `published.ts` records the v2 manifest
+sha256.
+
+### Rollback
+
+Published objects are never deleted or edited. Only the pointer moves:
+
+```
+py -3.12 scripts/publish_contract.py --set-latest 1 --dry-run
+py -3.12 scripts/publish_contract.py --set-latest 1 --confirm
+py -3.12 scripts/verify_contract_live.py --expect-latest 1
+```
+
+Rehearsal (2026-10-16): `--set-latest 1 --dry-run` exited 0. It verified 14 v1 objects against `PUBLISHED.json`,
+passed the budget gate, reported `would_flip` for `contract/latest.json` (155 bytes, sha256 `9ec73e4a...`, naming v1)
+and made no S3 write. A bad v2 is superseded by publishing v3, not edited.

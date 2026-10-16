@@ -11,4 +11,5 @@
  */
 export const PUBLISHED_MANIFEST_SHA256: Readonly<Record<number, string>> = {
   1: 'c9d520addac040f4e7f2c74dce2678e4b3365779f176f8f90a004bf04db7bcb2',
+  2: '70c3c500544a881fd389a9971c53e16860337f19c9e88810cf6aefd0d96f787d',
 };
