@@ -30,9 +30,9 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 4 — Design System & Instrument Primitives
-Plan: Phase 5 executing — waves 1-8 merged (15/17). Classifier package (14 members, 2.05 MB) bundles contract v2 data and the successor model; v2 live verifiers built. Next: 05-16 contract v2 publish (one-way, owner checkpoint), then 05-17 production deploy.
+Plan: Phase 5 executing — waves 1-9 merged (16/17). Contract v2 published and verified live (manifest 70c3c500…787d, latest -> 2, published 2026-10-16T18:47:08Z); successor model archived under models/archive/interim-real-only-2026.10.1/. Next: 05-17 production deploy (classifier stamps v2), rollback scripted.
 Status: Phase 4 complete in code; owner device checks deferred (/gsd-verify-work 4). Autonomous run continuing at Phase 5
-Last activity: 2026-10-14 — Phase 5 wave 8 merged
+Last activity: 2026-10-16 — 05-16 contract v2 published
 
 Progress: [████████████████████] 20/20 plans ([██░░░░░░░░] 18%)
 
