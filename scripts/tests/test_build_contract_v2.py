@@ -198,7 +198,29 @@ def test_v2_schema_copies_match_the_current_schemas(manifest):
     assert "ood_reference" in manifest["artifacts"]["schemas"]
 
 
+def _unpublish_v2(contracts_dir):
+    """Drop v2 from the copy's PUBLISHED.json so --check runs the rebuild comparison.
+
+    Once v2 is published, --check skips the rebuild (check_contract.py guards its bytes
+    against PUBLISHED.json instead); these tests exercise the recipe itself.
+    """
+    path = contracts_dir / "PUBLISHED.json"
+    published = _load(path)
+    published.pop("2", None)
+    path.write_bytes(contract_lib.canonical_json_bytes(published))
+
+
+def test_v2_check_skips_the_rebuild_once_published(contracts_copy, capsys):
+    if "2" not in _load(contracts_copy / "PUBLISHED.json"):
+        pytest.skip("v2 is not published in this tree")
+    path = contracts_copy / "bucket" / "v2" / "preprocessing_spec.json"
+    path.write_bytes(path.read_bytes().replace(b"Phase 11", b"Phase 12", 1))
+    assert build_contract.main(["--version", "2", "--check"]) == 0
+    assert "v2 is published; skipping the rebuild comparison" in capsys.readouterr().out
+
+
 def test_v2_check_is_reproducible(contracts_copy, capsys):
+    _unpublish_v2(contracts_copy)
     assert build_contract.main(["--version", "2", "--check"]) == 0
     assert "OK" in capsys.readouterr().out
     # a rebuild with the committed frozen_at yields bytes equal to the committed files
@@ -210,6 +232,7 @@ def test_v2_check_is_reproducible(contracts_copy, capsys):
 
 
 def test_v2_check_fails_when_a_committed_file_differs(contracts_copy, capsys):
+    _unpublish_v2(contracts_copy)
     path = contracts_copy / "bucket" / "v2" / "preprocessing_spec.json"
     path.write_bytes(path.read_bytes().replace(b"Phase 11", b"Phase 12", 1))
     assert build_contract.main(["--version", "2", "--check"]) == 1

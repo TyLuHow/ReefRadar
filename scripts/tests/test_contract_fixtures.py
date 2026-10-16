@@ -559,7 +559,8 @@ def test_history_catches_a_rewrite_that_is_already_committed(published_repo, cap
 def test_a_new_published_version_is_allowed(published_repo):
     contracts = published_repo / "contracts"
     published = _load(contracts / "PUBLISHED.json")
-    published["2"] = {"manifest_sha256": "1" * 64}
+    new_version = str(max(int(v) for v in published) + 1)
+    published[new_version] = {"manifest_sha256": "1" * 64}
     (contracts / "PUBLISHED.json").write_bytes(contract_lib.canonical_json_bytes(published))
     assert _run(contracts, "--published-base-ref", "HEAD") == 0
 
