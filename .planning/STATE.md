@@ -5,16 +5,16 @@ milestone_name: Reef Soundscape Research Instrument
 current_phase: 4
 current_phase_name: Design System & Instrument Primitives
 status: executing
-stopped_at: Completed 04-15-PLAN.md
-last_updated: "2026-10-05T02:39:04.172Z"
-last_activity: 2026-10-05
+stopped_at: Phase 6 context gathered
+last_updated: "2026-10-17T18:47:38.943Z"
+last_activity: 2026-10-16
 last_activity_desc: 04-15 complete (Transport in three sizes with the keyboard contract and focus kept through the loading moment, BandToggle with the computed above-limit rule and at-least-one-on, WindowStrip with unclassified and measured-energy cells only; three fixtures sections on the real ind_H1 clip)
-state_head: 0a1c674693e11521e354ecd1a40cd2247440a895
+state_head: c95b30bcaad8fe6b1bc3883d1fbd800c9aab38d7
 progress:
   total_phases: 17
   completed_phases: 3
-  total_plans: 72
-  completed_plans: 63
+  total_plans: 89
+  completed_plans: 89
   percent: 18
 ---
 
@@ -233,6 +233,7 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 - [Phase 4 -> Phase 6, open after 04-24 keep-atlas]: open target-size questions from 04-22 (named exemptions in fixtures-targets.spec.ts): (1) WindowStrip cells are 39 px wide on a 390 px phone (13 px dense) to stay time-aligned; options: scroll on phones, drop alignment, or accept with Transport prev/next as the 44 px path. (2) StatusBand segments sized by count (6-site segment 34 px wide on phone); option: make the label grid the 44 px toggles on coarse pointers. (3) Inline footer licence/DOI links use the WCAG 2.5.8 inline exception (18-39 px); own lines if 44 px wanted.
+
 None yet.
 
 ### Blockers/Concerns
@@ -259,6 +260,6 @@ Items acknowledged and deferred at milestone close, most recent first:
 
 ## Session Continuity
 
-Last session: 2026-10-05T02:38:29.689Z
-Stopped at: Completed 04-15-PLAN.md
-Resume file: None
+Last session: 2026-10-17T18:47:37.659Z
+Stopped at: Phase 6 context gathered
+Resume file: .planning/phases/06-instrument-shell-atlas/06-CONTEXT.md
